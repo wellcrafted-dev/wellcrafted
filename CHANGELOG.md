@@ -1,5 +1,11 @@
 # @epicenterhq/result
 
+## 0.6.1
+
+### Patch Changes
+
+- 1c4ef64: Make second arg of mutate optional, use Partial Typescript helper
+
 ## 0.6.0
 
 ### Minor Changes
