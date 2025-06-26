@@ -141,31 +141,31 @@
                 <ellipse cx="50" cy="80" rx="25" ry="8" fill="#1E293B"/>
                 <rect x="30" y="70" width="40" height="10" rx="2" fill="#374151"/>
                 
-                <!-- Glow effect -->
-                <circle cx="55" cy="65" r="15" fill="url(#goldGlow)"/>
+                <!-- Glow effect centered on anvil -->
+                <circle cx="50" cy="70" r="15" fill="url(#goldGlow)"/>
                 
-                <!-- Hammer (positioned more right, slightly smaller) -->
-                <g transform="rotate(-35 58 45) translate(2 0) scale(0.9)" filter="url(#shadowGold)">
-                    <!-- Handle -->
-                    <rect x="52" y="25" width="8" height="35" fill="url(#darkHandle)"/>
+                <!-- Hammer (moved down, handle centered, positioned over anvil) -->
+                <g transform="rotate(-35 55 65) translate(10 12) scale(0.9)" filter="url(#shadowGold)">
+                    <!-- Handle (shifted left to center on head) -->
+                    <rect x="48" y="25" width="8" height="35" fill="url(#darkHandle)"/>
                     <!-- Grip texture -->
-                    <rect x="53" y="30" width="6" height="1" fill="#4B5563" opacity="0.8"/>
-                    <rect x="53" y="35" width="6" height="1" fill="#4B5563" opacity="0.8"/>
-                    <rect x="53" y="40" width="6" height="1" fill="#4B5563" opacity="0.8"/>
-                    <rect x="53" y="45" width="6" height="1" fill="#4B5563" opacity="0.8"/>
-                    <rect x="53" y="50" width="6" height="1" fill="#4B5563" opacity="0.8"/>
+                    <rect x="49" y="30" width="6" height="1" fill="#4B5563" opacity="0.8"/>
+                    <rect x="49" y="35" width="6" height="1" fill="#4B5563" opacity="0.8"/>
+                    <rect x="49" y="40" width="6" height="1" fill="#4B5563" opacity="0.8"/>
+                    <rect x="49" y="45" width="6" height="1" fill="#4B5563" opacity="0.8"/>
+                    <rect x="49" y="50" width="6" height="1" fill="#4B5563" opacity="0.8"/>
                     
                     <!-- Hammer head -->
-                    <rect x="40" y="20" width="28" height="12" rx="2" fill="url(#goldHead)"/>
+                    <rect x="38" y="20" width="28" height="12" rx="2" fill="url(#goldHead)"/>
                     <!-- Gold engraving lines -->
-                    <path d="M 42,26 L 66,26" stroke="#D97706" stroke-width="0.5"/>
-                    <path d="M 45,23 L 63,23 M 45,29 L 63,29" stroke="#FCD34D" stroke-width="0.3"/>
+                    <path d="M 40,26 L 64,26" stroke="#D97706" stroke-width="0.5"/>
+                    <path d="M 43,23 L 61,23 M 43,29 L 61,29" stroke="#FCD34D" stroke-width="0.3"/>
                 </g>
                 
-                <!-- Golden sparks -->
-                <circle cx="65" cy="62" r="1.5" fill="#FCD34D"/>
-                <circle cx="70" cy="65" r="1" fill="#F59E0B" opacity="0.8"/>
-                <circle cx="62" cy="70" r="1" fill="#D97706" opacity="0.6"/>
+                <!-- Golden sparks centered on anvil impact -->
+                <circle cx="54" cy="72" r="1.5" fill="#FCD34D"/>
+                <circle cx="58" cy="72" r="1" fill="#F59E0B" opacity="0.8"/>
+                <circle cx="56" cy="76" r="1" fill="#D97706" opacity="0.6"/>
             </svg>
             <h3>V4-01: Gilded Dark Handle</h3>
             <p>Golden hammer head with contrasting dark charcoal handle for better color separation</p>
@@ -237,6 +237,10 @@
                         <stop offset="0%" style="stop-color:#92400E;stop-opacity:1" />
                         <stop offset="100%" style="stop-color:#78350F;stop-opacity:1" />
                     </linearGradient>
+                    <radialGradient id="silverGlow" cx="50%" cy="50%" r="30%">
+                        <stop offset="0%" style="stop-color:#E5E7EB;stop-opacity:0.6" />
+                        <stop offset="100%" style="stop-color:#E5E7EB;stop-opacity:0" />
+                    </radialGradient>
                     <filter id="shadowSteel">
                         <feDropShadow dx="1" dy="1" stdDeviation="1" flood-opacity="0.3"/>
                     </filter>
@@ -246,29 +250,32 @@
                 <ellipse cx="50" cy="80" rx="25" ry="8" fill="#1E293B"/>
                 <rect x="30" y="70" width="40" height="10" rx="2" fill="#374151"/>
                 
-                <!-- Hammer (positioned more right, slightly smaller) -->
-                <g transform="rotate(-35 58 45) translate(2 0) scale(0.9)" filter="url(#shadowSteel)">
-                    <!-- Handle -->
-                    <rect x="52" y="25" width="8" height="35" fill="url(#woodHandle)"/>
+                <!-- Silver glow effect centered on anvil -->
+                <circle cx="50" cy="70" r="15" fill="url(#silverGlow)"/>
+                
+                <!-- Hammer (moved down, handle centered, positioned over anvil) -->
+                <g transform="rotate(-35 55 65) translate(10 12) scale(0.9)" filter="url(#shadowSteel)">
+                    <!-- Handle (shifted left to center on head) -->
+                    <rect x="48" y="25" width="8" height="35" fill="url(#woodHandle)"/>
                     <!-- Wood grain -->
-                    <rect x="53" y="28" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
-                    <rect x="53" y="35" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
-                    <rect x="53" y="42" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
-                    <rect x="53" y="49" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
+                    <rect x="49" y="28" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
+                    <rect x="49" y="35" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
+                    <rect x="49" y="42" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
+                    <rect x="49" y="49" width="6" height="0.5" fill="#A16207" opacity="0.6"/>
                     
                     <!-- Hammer head -->
-                    <rect x="40" y="20" width="28" height="12" rx="2" fill="url(#steelHead)"/>
+                    <rect x="38" y="20" width="28" height="12" rx="2" fill="url(#steelHead)"/>
                     <!-- Subtle damascus pattern -->
-                    <path d="M 42,23 Q 50,25 58,23 Q 66,25 66,26 Q 58,24 50,26 Q 42,24.5 42,26" 
+                    <path d="M 40,23 Q 48,25 56,23 Q 64,25 64,26 Q 56,24 48,26 Q 40,24.5 40,26" 
                           fill="none" stroke="#4B5563" stroke-width="0.3" opacity="0.4"/>
-                    <path d="M 42,29 Q 50,27 58,29 Q 66,27 66,28 Q 58,30 50,28 Q 42,29.5 42,28" 
+                    <path d="M 40,29 Q 48,27 56,29 Q 64,27 64,28 Q 56,30 48,28 Q 40,29.5 40,28" 
                           fill="none" stroke="#4B5563" stroke-width="0.3" opacity="0.4"/>
                 </g>
                 
-                <!-- Steel sparks -->
-                <circle cx="65" cy="62" r="1.5" fill="#E5E7EB"/>
-                <circle cx="70" cy="65" r="1" fill="#9CA3AF" opacity="0.8"/>
-                <circle cx="62" cy="70" r="1" fill="#6B7280" opacity="0.6"/>
+                <!-- Steel sparks centered on anvil impact -->
+                <circle cx="54" cy="72" r="1.5" fill="#E5E7EB"/>
+                <circle cx="58" cy="72" r="1" fill="#9CA3AF" opacity="0.8"/>
+                <circle cx="56" cy="76" r="1" fill="#6B7280" opacity="0.6"/>
             </svg>
             <h3>V4-02: Subtle Damascus</h3>
             <p>Refined damascus pattern with wood handle - waves much more subtle for icon clarity</p>
@@ -351,27 +358,27 @@
                 <rect x="30" y="70" width="40" height="10" rx="2" fill="#374151"/>
                 
                 <!-- Hammer (positioned more right, slightly smaller) -->
-                <g transform="rotate(-35 58 45) translate(2 0) scale(0.9)" filter="url(#shadowChrome)">
-                    <!-- Handle -->
-                    <rect x="52" y="25" width="8" height="35" fill="url(#blackHandle)"/>
+                <g transform="rotate(-35 55 65) translate(10 12) scale(0.9)" filter="url(#shadowChrome)">
+                    <!-- Handle (shifted left to center on head) -->
+                    <rect x="48" y="25" width="8" height="35" fill="url(#blackHandle)"/>
                     <!-- Grip texture -->
-                    <rect x="53" y="30" width="6" height="1" fill="#374151" opacity="0.8"/>
-                    <rect x="53" y="35" width="6" height="1" fill="#374151" opacity="0.8"/>
-                    <rect x="53" y="40" width="6" height="1" fill="#374151" opacity="0.8"/>
-                    <rect x="53" y="45" width="6" height="1" fill="#374151" opacity="0.8"/>
-                    <rect x="53" y="50" width="6" height="1" fill="#374151" opacity="0.8"/>
+                    <rect x="49" y="30" width="6" height="1" fill="#374151" opacity="0.8"/>
+                    <rect x="49" y="35" width="6" height="1" fill="#374151" opacity="0.8"/>
+                    <rect x="49" y="40" width="6" height="1" fill="#374151" opacity="0.8"/>
+                    <rect x="49" y="45" width="6" height="1" fill="#374151" opacity="0.8"/>
+                    <rect x="49" y="50" width="6" height="1" fill="#374151" opacity="0.8"/>
                     
                     <!-- Hammer head -->
-                    <rect x="40" y="20" width="28" height="12" rx="2" fill="url(#chromeHead)"/>
+                    <rect x="38" y="20" width="28" height="12" rx="2" fill="url(#chromeHead)"/>
                     <!-- Chrome highlights -->
-                    <rect x="42" y="22" width="2" height="8" fill="#F8FAFC" opacity="0.8"/>
-                    <rect x="45" y="21" width="18" height="1" fill="#F8FAFC" opacity="0.6"/>
+                    <rect x="40" y="22" width="2" height="8" fill="#F8FAFC" opacity="0.8"/>
+                    <rect x="43" y="21" width="18" height="1" fill="#F8FAFC" opacity="0.6"/>
                 </g>
                 
-                <!-- Chrome sparks -->
-                <circle cx="65" cy="62" r="1.5" fill="#E2E8F0"/>
-                <circle cx="70" cy="65" r="1" fill="#CBD5E1" opacity="0.8"/>
-                <circle cx="62" cy="70" r="1" fill="#94A3B8" opacity="0.6"/>
+                <!-- Chrome sparks centered on anvil impact -->
+                <circle cx="54" cy="72" r="1.5" fill="#E2E8F0"/>
+                <circle cx="58" cy="72" r="1" fill="#CBD5E1" opacity="0.8"/>
+                <circle cx="56" cy="76" r="1" fill="#94A3B8" opacity="0.6"/>
             </svg>
             <h3>V4-03: Clean Chrome</h3>
             <p>Chrome finish without branding, black handle for contrast - clean professional look</p>
