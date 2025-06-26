@@ -1,0 +1,21 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad15" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A4F7C;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5EEAD4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Compact 3x3 diamond grid -->
+  <g transform="scale(0.7) translate(21.5, 21.5)">
+    <path d="M 25,25 L 35,15 L 45,25 L 35,35 Z" fill="url(#grad15)"/>
+    <path d="M 45,25 L 55,15 L 65,25 L 55,35 Z" fill="url(#grad15)" opacity="0.9"/>
+    <path d="M 65,25 L 75,15 L 85,25 L 75,35 Z" fill="url(#grad15)" opacity="0.8"/>
+    <path d="M 25,45 L 35,35 L 45,45 L 35,55 Z" fill="url(#grad15)" opacity="0.9"/>
+    <path d="M 45,45 L 55,35 L 65,45 L 55,55 Z" fill="url(#grad15)" opacity="0.8"/>
+    <path d="M 65,45 L 75,35 L 85,45 L 75,55 Z" fill="url(#grad15)" opacity="0.7"/>
+    <path d="M 25,65 L 35,55 L 45,65 L 35,75 Z" fill="url(#grad15)" opacity="0.8"/>
+    <path d="M 45,65 L 55,55 L 65,65 L 55,75 Z" fill="url(#grad15)" opacity="0.7"/>
+    <path d="M 65,65 L 75,55 L 85,65 L 75,75 Z" fill="url(#grad15)" opacity="0.6"/>
+  </g>
+</svg>

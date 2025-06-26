@@ -1,0 +1,28 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad10" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Anvil base -->
+  <path d="M 20,70 L 25,65 L 75,65 L 80,70 L 75,80 L 25,80 Z" fill="#1E293B"/>
+  <rect x="30" y="60" width="40" height="5" fill="#374151"/>
+  <!-- Geometric modules being forged -->
+  <g transform="translate(50,45)">
+    <!-- Diamond module -->
+    <path d="M 0,-10 L 8,-2 L 0,6 L -8,-2 Z" fill="url(#grad10)"/>
+    <path d="M 0,-6 L 4,-2 L 0,2 L -4,-2 Z" fill="#14B8A6" opacity="0.7"/>
+    <!-- Hexagon modules -->
+    <g transform="translate(-15,0)">
+      <path d="M -5,0 L -2.5,-4.3 L 2.5,-4.3 L 5,0 L 2.5,4.3 L -2.5,4.3 Z" fill="#0A4F7C" opacity="0.8"/>
+    </g>
+    <g transform="translate(15,0)">
+      <path d="M -5,0 L -2.5,-4.3 L 2.5,-4.3 L 5,0 L 2.5,4.3 L -2.5,4.3 Z" fill="#14B8A6" opacity="0.6"/>
+    </g>
+  </g>
+  <!-- Sparks -->
+  <circle cx="35" cy="55" r="1.5" fill="#FB923C" opacity="0.8"/>
+  <circle cx="65" cy="55" r="1.5" fill="#FB923C" opacity="0.8"/>
+  <path d="M 40,50 L 42,48 M 58,48 L 60,50" stroke="#FDBA74" stroke-width="1.5" opacity="0.6"/>
+</svg>

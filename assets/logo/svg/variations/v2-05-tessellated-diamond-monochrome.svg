@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Monochrome tessellated diamonds -->
+  <path d="M 50,20 L 65,35 L 50,50 L 35,35 Z" fill="#14B8A6"/>
+  <path d="M 50,50 L 65,65 L 50,80 L 35,65 Z" fill="#14B8A6" opacity="0.7"/>
+  <path d="M 35,35 L 20,50 L 35,65 L 50,50 Z" fill="#14B8A6" opacity="0.5"/>
+  <path d="M 65,35 L 80,50 L 65,65 L 50,50 Z" fill="#14B8A6" opacity="0.5"/>
+</svg>

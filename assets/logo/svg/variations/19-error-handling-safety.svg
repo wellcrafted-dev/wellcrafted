@@ -1,0 +1,39 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad19a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A4F7C;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad19b" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#881337;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Safety harness/net structure -->
+  <g transform="translate(50,50)">
+    <!-- Main diamond frame -->
+    <path d="M 0,-30 L 25,-5 L 25,20 L 0,35 L -25,20 L -25,-5 Z" 
+          fill="none" stroke="#1E293B" stroke-width="3"/>
+    <!-- Inner safety net pattern -->
+    <path d="M 0,-25 L 20,-5 M 0,-25 L -20,-5 M -20,-5 L 0,10 M 20,-5 L 0,10 M 0,10 L -20,20 M 0,10 L 20,20 M -20,20 L 0,30 M 20,20 L 0,30"
+          stroke="#374151" stroke-width="1" opacity="0.5"/>
+    <!-- Success path (top) -->
+    <g transform="translate(0,-15)">
+      <rect x="-8" y="-5" width="16" height="10" rx="2" fill="url(#grad19a)"/>
+      <text x="0" y="2" font-family="monospace" font-size="6" fill="#ffffff" text-anchor="middle">Ok</text>
+    </g>
+    <!-- Error catch (bottom) -->
+    <g transform="translate(0,20)">
+      <rect x="-10" y="-5" width="20" height="10" rx="2" fill="url(#grad19b)"/>
+      <text x="0" y="2" font-family="monospace" font-size="6" fill="#ffffff" text-anchor="middle">Err</text>
+    </g>
+    <!-- Safety indicators -->
+    <circle cx="-20" cy="-5" r="3" fill="#14B8A6"/>
+    <circle cx="20" cy="-5" r="3" fill="#14B8A6"/>
+    <circle cx="-20" cy="20" r="3" fill="#EA580C"/>
+    <circle cx="20" cy="20" r="3" fill="#EA580C"/>
+  </g>
+  <!-- Flow arrows -->
+  <path d="M 50,20 L 50,30 M 47,28 L 50,30 L 53,28" stroke="#14B8A6" stroke-width="2" fill="none" opacity="0.7"/>
+  <path d="M 45,75 L 40,80 M 55,75 L 60,80" stroke="#EA580C" stroke-width="2" fill="none" opacity="0.7"/>
+</svg>

@@ -1,0 +1,49 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad6a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FB923C;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gild6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FDE047;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow6">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+    <radialGradient id="glow6">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#FBBF24;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  <!-- Forging surface -->
+  <rect x="30" y="70" width="40" height="10" rx="2" fill="#374151"/>
+  <rect x="25" y="78" width="50" height="5" fill="#1E293B"/>
+  <!-- Golden glow -->
+  <ellipse cx="50" cy="70" rx="18" ry="10" fill="url(#glow6)"/>
+  <!-- Gilded hammer -->
+  <g transform="rotate(-45 50 50)" filter="url(#shadow6)">
+    <rect x="45" y="20" width="10" height="50" fill="url(#grad6a)"/>
+    <!-- Gilded hammer head with metallic finish -->
+    <rect x="35" y="15" width="30" height="15" rx="2" fill="url(#gild6)"/>
+    <!-- Metallic highlights -->
+    <rect x="37" y="17" width="26" height="2" fill="#FEF3C7" opacity="0.6"/>
+    <rect x="37" y="26" width="26" height="2" fill="#92400E" opacity="0.3"/>
+    <!-- Decorative engraving -->
+    <circle cx="50" cy="22.5" r="4" fill="none" stroke="#92400E" stroke-width="0.5" opacity="0.5"/>
+    <circle cx="50" cy="22.5" r="2" fill="#D97706" opacity="0.4"/>
+    <!-- Enhanced grip -->
+    <rect x="47" y="35" width="6" height="2" fill="#881337" opacity="0.5"/>
+    <rect x="47" y="40" width="6" height="2" fill="#881337" opacity="0.5"/>
+    <rect x="47" y="45" width="6" height="2" fill="#881337" opacity="0.5"/>
+    <rect x="47" y="50" width="6" height="2" fill="#881337" opacity="0.5"/>
+  </g>
+  <!-- Golden sparks -->
+  <circle cx="45" cy="68" r="1.5" fill="#FBBF24"/>
+  <circle cx="55" cy="67" r="1.5" fill="#FBBF24"/>
+  <circle cx="50" cy="65" r="2" fill="#F59E0B"/>
+  <circle cx="40" cy="65" r="1" fill="#FDE047" opacity="0.8"/>
+  <circle cx="60" cy="64" r="1" fill="#FDE047" opacity="0.8"/>
+</svg>

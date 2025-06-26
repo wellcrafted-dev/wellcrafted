@@ -1,0 +1,35 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad14a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A4F7C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14B8A6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad14b" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FB923C;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Outer ring -->
+  <circle cx="50" cy="50" r="35" fill="none" stroke="#1E293B" stroke-width="2"/>
+  <!-- Crosshair lines -->
+  <path d="M 50,10 L 50,35 M 50,65 L 50,90" stroke="#374151" stroke-width="2"/>
+  <path d="M 10,50 L 35,50 M 65,50 L 90,50" stroke="#374151" stroke-width="2"/>
+  <!-- Dual state quadrants -->
+  <g transform="translate(50,50)">
+    <!-- Success quadrants (top-left, bottom-right) -->
+    <path d="M -20,-20 A 20,20 0 0,1 0,-20 L 0,0 Z" fill="url(#grad14a)" opacity="0.7"/>
+    <path d="M 0,0 L 20,0 A 20,20 0 0,1 20,20 L 0,20 Z" fill="url(#grad14a)" opacity="0.7"/>
+    <!-- Error quadrants (top-right, bottom-left) -->
+    <path d="M 0,-20 A 20,20 0 0,1 20,0 L 0,0 Z" fill="url(#grad14b)" opacity="0.7"/>
+    <path d="M -20,0 L 0,0 L 0,20 A 20,20 0 0,1 -20,0 Z" fill="url(#grad14b)" opacity="0.7"/>
+    <!-- Center precision point -->
+    <circle cx="0" cy="0" r="8" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="5" fill="none" stroke="#ffffff" stroke-width="1"/>
+    <circle cx="0" cy="0" r="2" fill="#ffffff"/>
+  </g>
+  <!-- State indicators -->
+  <circle cx="35" cy="35" r="3" fill="#14B8A6"/>
+  <circle cx="65" cy="35" r="3" fill="#EA580C"/>
+  <circle cx="35" cy="65" r="3" fill="#EA580C"/>
+  <circle cx="65" cy="65" r="3" fill="#14B8A6"/>
+</svg>

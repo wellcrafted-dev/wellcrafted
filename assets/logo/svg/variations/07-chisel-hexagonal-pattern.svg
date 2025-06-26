@@ -1,0 +1,26 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad7" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0A4F7C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14B8A6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Chisel blade with hexagonal pattern -->
+  <g transform="translate(50,50) rotate(-45)">
+    <!-- Chisel body -->
+    <rect x="-5" y="-25" width="10" height="50" fill="#1E293B"/>
+    <!-- Hexagonal pattern on blade -->
+    <g transform="translate(0,-20)">
+      <path d="M -3,0 L -1.5,-2.6 L 1.5,-2.6 L 3,0 L 1.5,2.6 L -1.5,2.6 Z" fill="url(#grad7)"/>
+      <path d="M -3,6 L -1.5,3.4 L 1.5,3.4 L 3,6 L 1.5,8.6 L -1.5,8.6 Z" fill="url(#grad7)" opacity="0.7"/>
+      <path d="M -3,12 L -1.5,9.4 L 1.5,9.4 L 3,12 L 1.5,14.6 L -1.5,14.6 Z" fill="url(#grad7)" opacity="0.5"/>
+    </g>
+    <!-- Cutting edge -->
+    <path d="M -5,25 L 0,30 L 5,25" fill="#EA580C"/>
+  </g>
+  <!-- Carved hexagons -->
+  <g transform="translate(65,65)">
+    <path d="M -6,0 L -3,-5.2 L 3,-5.2 L 6,0 L 3,5.2 L -3,5.2 Z" fill="none" stroke="#14B8A6" stroke-width="1.5" opacity="0.5"/>
+    <path d="M -4,0 L -2,-3.5 L 2,-3.5 L 4,0 L 2,3.5 L -2,3.5 Z" fill="#5EEAD4" opacity="0.3"/>
+  </g>
+</svg>

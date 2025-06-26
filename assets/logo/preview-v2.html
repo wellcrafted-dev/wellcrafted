@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wellcrafted Logo Variations V2</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1, h2 {
+            color: #1E293B;
+        }
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .logo-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            text-align: center;
+        }
+        .logo-card img {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        .logo-card h3 {
+            font-size: 14px;
+            margin: 10px 0 5px;
+            color: #374151;
+        }
+        .logo-card p {
+            font-size: 12px;
+            color: #6B7280;
+            margin: 0;
+        }
+        .dark-bg {
+            background: #1E293B;
+        }
+        .dark-bg h3, .dark-bg p {
+            color: #E5E7EB;
+        }
+        .original {
+            border: 3px solid #14B8A6;
+        }
+        .favorite {
+            border: 2px solid #EA580C;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wellcrafted Logo Variations V2</h1>
+    <p>Focused on the original tessellated diamond and digital hammer themes</p>
+
+    <h2>Original Inspirations</h2>
+    <div class="logo-grid">
+        <div class="logo-card original">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+              <defs>
+                <linearGradient id="gradOrig1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#0A4F7C;stop-opacity:1" />
+                  <stop offset="50%" style="stop-color:#14B8A6;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#0A4F7C;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M 50,20 L 65,35 L 50,50 L 35,35 Z" fill="url(#gradOrig1)"/>
+              <path d="M 50,50 L 65,65 L 50,80 L 35,65 Z" fill="url(#gradOrig1)" opacity="0.7"/>
+              <path d="M 35,35 L 20,50 L 35,65 L 50,50 Z" fill="url(#gradOrig1)" opacity="0.5"/>
+              <path d="M 65,35 L 80,50 L 65,65 L 50,50 Z" fill="url(#gradOrig1)" opacity="0.5"/>
+            </svg>
+            <h3>Original: Tessellated Diamonds</h3>
+            <p>The foundation pattern</p>
+        </div>
+        <div class="logo-card original">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+              <defs>
+                <linearGradient id="gradOrig2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#FB923C;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <g transform="rotate(-45 50 50)">
+                <rect x="45" y="20" width="10" height="50" fill="url(#gradOrig2)"/>
+                <rect x="35" y="15" width="30" height="15" rx="2" fill="#1E293B"/>
+                <path d="M 35,22.5 L 40,22.5 M 45,22.5 L 50,22.5 M 55,22.5 L 60,22.5" stroke="#FB923C" stroke-width="2"/>
+              </g>
+              <circle cx="65" cy="65" r="3" fill="#1E293B"/>
+              <circle cx="70" cy="70" r="3" fill="#1E293B" opacity="0.6"/>
+              <circle cx="75" cy="75" r="3" fill="#1E293B" opacity="0.3"/>
+            </svg>
+            <h3>Original: Digital Hammer</h3>
+            <p>The craft tool</p>
+        </div>
+    </div>
+
+    <h2>Tessellated Diamond Variations (1-5)</h2>
+    <div class="logo-grid">
+        <div class="logo-card">
+            <img src="svg/variations/v2-01-tessellated-diamond-classic.svg" alt="V2-1">
+            <h3>01: Classic Tessellation</h3>
+            <p>Pure original form</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-02-tessellated-diamond-centered.svg" alt="V2-2">
+            <h3>02: Centered Focus</h3>
+            <p>With center accent</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-03-tessellated-diamond-outlined.svg" alt="V2-3">
+            <h3>03: Outlined Structure</h3>
+            <p>Added definition</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-04-tessellated-diamond-extended.svg" alt="V2-4">
+            <h3>04: Extended Pattern</h3>
+            <p>Vertical extension</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-05-tessellated-diamond-monochrome.svg" alt="V2-5">
+            <h3>05: Monochrome</h3>
+            <p>Single color variant</p>
+        </div>
+    </div>
+
+    <h2>Digital Hammer Variations (6-10)</h2>
+    <div class="logo-grid">
+        <div class="logo-card">
+            <img src="svg/variations/v2-06-hammer-classic.svg" alt="V2-6">
+            <h3>06: Classic Hammer</h3>
+            <p>Original design</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-07-hammer-straight.svg" alt="V2-7">
+            <h3>07: Straight Hammer</h3>
+            <p>Vertical orientation</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-08-hammer-emphasized.svg" alt="V2-8">
+            <h3>08: Emphasized Hammer</h3>
+            <p>With shadow and grip</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-09-hammer-minimal.svg" alt="V2-9">
+            <h3>09: Minimal Hammer</h3>
+            <p>Simplified form</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-10-hammer-monochrome.svg" alt="V2-10">
+            <h3>10: Monochrome Hammer</h3>
+            <p>Teal variant</p>
+        </div>
+    </div>
+
+    <h2>Combined & Result-Focused (11-15)</h2>
+    <div class="logo-grid">
+        <div class="logo-card favorite">
+            <img src="svg/variations/v2-11-combined-diamond-hammer.svg" alt="V2-11">
+            <h3>11: Combined Elements ⭐</h3>
+            <p>Both themes united</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-12-diamond-hammer-integrated.svg" alt="V2-12">
+            <h3>12: Integrated Design</h3>
+            <p>Diamond hammer head</p>
+        </div>
+        <div class="logo-card favorite">
+            <img src="svg/variations/v2-13-tessellated-result-pattern.svg" alt="V2-13">
+            <h3>13: Result Pattern ⭐</h3>
+            <p>Success/Error duality</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-14-hammer-building-diamonds.svg" alt="V2-14">
+            <h3>14: Building Diamonds</h3>
+            <p>Hammer in action</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-15-diamond-grid-compact.svg" alt="V2-15">
+            <h3>15: Compact Grid</h3>
+            <p>Dense tessellation</p>
+        </div>
+    </div>
+
+    <h2>Refined & Professional (16-20)</h2>
+    <div class="logo-grid">
+        <div class="logo-card">
+            <img src="svg/variations/v2-16-hammer-precision-marks.svg" alt="V2-16">
+            <h3>16: Precision Hammer</h3>
+            <p>With guide marks</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-17-tessellated-depth.svg" alt="V2-17">
+            <h3>17: Depth & Shadow</h3>
+            <p>3D tessellation</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-18-hammer-forging.svg" alt="V2-18">
+            <h3>18: Forging Action</h3>
+            <p>Hammer with sparks</p>
+        </div>
+        <div class="logo-card">
+            <img src="svg/variations/v2-19-diamond-construction.svg" alt="V2-19">
+            <h3>19: Construction Lines</h3>
+            <p>Building process</p>
+        </div>
+        <div class="logo-card favorite">
+            <img src="svg/variations/v2-20-unified-craft-pattern.svg" alt="V2-20">
+            <h3>20: Unified Craft ⭐</h3>
+            <p>Perfect synthesis</p>
+        </div>
+    </div>
+
+    <p style="margin-top: 40px; color: #6B7280;">
+        🟩 = Original designs | ⭐ = Recommended combinations
+    </p>
+</body>
+</html>

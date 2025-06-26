@@ -1,0 +1,28 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad5a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A4F7C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14B8A6;stop-opacity:0.3" />
+    </linearGradient>
+    <linearGradient id="grad5b" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5EEAD4;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+  <!-- Crystalline pattern forming gauge -->
+  <g transform="translate(50,50)">
+    <!-- Outer crystal ring -->
+    <path d="M 0,-30 L 15,-25 L 25,-15 L 30,0 L 25,15 L 15,25 L 0,30 L -15,25 L -25,15 L -30,0 L -25,-15 L -15,-25 Z" 
+          fill="none" stroke="#1E293B" stroke-width="2"/>
+    <!-- Inner crystals -->
+    <path d="M 0,-20 L 10,-17 L 17,-10 L 20,0" fill="none" stroke="url(#grad5a)" stroke-width="3"/>
+    <path d="M 0,-20 L -10,-17 L -17,-10 L -20,0" fill="none" stroke="url(#grad5b)" stroke-width="3"/>
+    <path d="M 0,20 L 10,17 L 17,10 L 20,0" fill="none" stroke="#EA580C" stroke-width="2" opacity="0.7"/>
+    <path d="M 0,20 L -10,17 L -17,10 L -20,0" fill="none" stroke="#FB923C" stroke-width="2" opacity="0.5"/>
+    <!-- Center pivot -->
+    <circle cx="0" cy="0" r="5" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="2" fill="#14B8A6"/>
+    <!-- Indicator needle -->
+    <path d="M 0,0 L 0,-18" stroke="#EA580C" stroke-width="3" stroke-linecap="round" transform="rotate(30)"/>
+  </g>
+</svg>

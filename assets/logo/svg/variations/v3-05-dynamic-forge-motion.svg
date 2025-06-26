@@ -1,0 +1,50 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FB923C;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow5">
+      <feDropShadow dx="2" dy="2" stdDeviation="2.5" flood-opacity="0.4"/>
+    </filter>
+    <filter id="motion5">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1,0.2"/>
+    </filter>
+    <radialGradient id="glow5">
+      <stop offset="0%" style="stop-color:#FDBA74;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#FB923C;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  <!-- Anvil with perspective -->
+  <path d="M 20,73 L 30,70 L 70,70 L 80,73 L 75,82 L 25,82 Z" fill="#1E293B"/>
+  <rect x="32" y="67" width="36" height="6" rx="1" fill="#374151"/>
+  <!-- Intense impact glow -->
+  <ellipse cx="50" cy="70" rx="25" ry="15" fill="url(#glow5)"/>
+  <!-- Motion trails -->
+  <g opacity="0.3" filter="url(#motion5)">
+    <rect x="45" y="25" width="10" height="35" fill="#FB923C" transform="rotate(-48 50 42.5)"/>
+    <rect x="45" y="20" width="10" height="35" fill="#FB923C" transform="rotate(-46 50 37.5)"/>
+  </g>
+  <!-- Main hammer with shadow -->
+  <g transform="rotate(-44 50 48)" filter="url(#shadow5)">
+    <rect x="45" y="20" width="10" height="48" fill="url(#grad5)"/>
+    <rect x="35" y="15" width="30" height="15" rx="2" fill="#1E293B"/>
+    <!-- Dynamic grip -->
+    <rect x="47" y="33" width="6" height="2" fill="#881337" opacity="0.6"/>
+    <rect x="47" y="37" width="6" height="2" fill="#881337" opacity="0.6"/>
+    <rect x="47" y="41" width="6" height="2" fill="#881337" opacity="0.6"/>
+    <rect x="47" y="45" width="6" height="2" fill="#881337" opacity="0.6"/>
+    <rect x="47" y="49" width="6" height="2" fill="#881337" opacity="0.6"/>
+  </g>
+  <!-- Explosive spark pattern -->
+  <circle cx="50" cy="68" r="3" fill="#FDBA74"/>
+  <circle cx="43" cy="65" r="2" fill="#FB923C"/>
+  <circle cx="57" cy="65" r="2" fill="#FB923C"/>
+  <circle cx="38" cy="66" r="1.5" fill="#FDBA74" opacity="0.9"/>
+  <circle cx="62" cy="66" r="1.5" fill="#FDBA74" opacity="0.9"/>
+  <circle cx="45" cy="61" r="1" fill="#FDBA74" opacity="0.7"/>
+  <circle cx="55" cy="61" r="1" fill="#FDBA74" opacity="0.7"/>
+  <circle cx="35" cy="68" r="1" fill="#FB923C" opacity="0.6"/>
+  <circle cx="65" cy="68" r="1" fill="#FB923C" opacity="0.6"/>
+</svg>

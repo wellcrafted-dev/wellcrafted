@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Minimal hammer design -->
+  <g transform="rotate(-45 50 50)">
+    <rect x="47" y="25" width="6" height="40" fill="#EA580C"/>
+    <rect x="38" y="20" width="24" height="10" rx="1" fill="#1E293B"/>
+  </g>
+  <!-- Simplified impact -->
+  <circle cx="68" cy="68" r="2" fill="#374151" opacity="0.6"/>
+  <circle cx="72" cy="72" r="2" fill="#374151" opacity="0.4"/>
+</svg>
