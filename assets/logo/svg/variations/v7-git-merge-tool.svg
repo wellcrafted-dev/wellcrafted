@@ -1,0 +1,205 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Git branch gradients -->
+    <linearGradient id="mainBranch" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="featureBranch" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1D4ED8;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="mergeBranch" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Tool gradient -->
+    <linearGradient id="toolGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#475569;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Conflict resolution -->
+    <radialGradient id="conflictGlow">
+      <stop offset="0%" style="stop-color:#EF4444;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#DC2626;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Merge glow -->
+    <filter id="mergeGlow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Repository background -->
+  <rect x="0" y="0" width="100" height="100" fill="#0F172A" opacity="0.3"/>
+  
+  <!-- Main branch timeline -->
+  <g stroke="url(#mainBranch)" stroke-width="3" fill="none">
+    <line x1="15" y1="50" x2="85" y2="50"/>
+  </g>
+  
+  <!-- Main branch commits -->
+  <g fill="url(#mainBranch)">
+    <circle cx="20" cy="50" r="4"/>
+    <circle cx="35" cy="50" r="4"/>
+    <circle cx="65" cy="50" r="4"/>
+    <circle cx="80" cy="50" r="4"/>
+  </g>
+  
+  <!-- Feature branch -->
+  <g stroke="url(#featureBranch)" stroke-width="3" fill="none">
+    <path d="M 35,50 Q 40,35 45,30 L 60,30 Q 65,35 65,50"/>
+  </g>
+  
+  <!-- Feature branch commits -->
+  <g fill="url(#featureBranch)">
+    <circle cx="45" cy="30" r="3.5"/>
+    <circle cx="55" cy="30" r="3.5"/>
+    <circle cx="60" cy="30" r="3.5"/>
+  </g>
+  
+  <!-- Merge commit -->
+  <circle cx="65" cy="50" r="5" fill="url(#mergeBranch)" stroke="#F59E0B" stroke-width="2" filter="url(#mergeGlow)"/>
+  
+  <!-- Merge tool (stylized as hammer/wrench hybrid) -->
+  <g transform="translate(50,65) rotate(-15)">
+    <!-- Tool handle -->
+    <rect x="-2" y="-15" width="4" height="30" rx="2" fill="url(#toolGrad)"/>
+    <rect x="-1" y="-14" width="2" height="28" rx="1" fill="#475569"/>
+    
+    <!-- Merge head (combines hammer and wrench) -->
+    <ellipse cx="0" cy="-20" rx="8" ry="5" fill="url(#toolGrad)"/>
+    <ellipse cx="0" cy="-20" rx="6" ry="4" fill="#64748B"/>
+    
+    <!-- Wrench jaw -->
+    <rect x="6" y="-23" width="4" height="6" rx="1" fill="url(#toolGrad)"/>
+    <rect x="7" y="-22" width="2" height="4" rx="0.5" fill="#475569"/>
+    
+    <!-- Tool grip -->
+    <g fill="#334155" opacity="0.8">
+      <rect x="-1.5" y="-5" width="3" height="1"/>
+      <rect x="-1.5" y="-2" width="3" height="1"/>
+      <rect x="-1.5" y="1" width="3" height="1"/>
+      <rect x="-1.5" y="4" width="3" height="1"/>
+    </g>
+  </g>
+  
+  <!-- Conflict markers -->
+  <g fill="#EF4444" font-family="monospace" font-size="3" opacity="0.9">
+    <text x="40" y="15"><<<<<<< HEAD</text>
+    <text x="40" y="75">>>>>>> feature</text>
+    <text x="40" y="45">=======</text>
+  </g>
+  
+  <!-- Conflict resolution glow -->
+  <circle cx="50" cy="45" r="15" fill="url(#conflictGlow)" opacity="0.3"/>
+  
+  <!-- Git commands -->
+  <g fill="#10B981" font-family="monospace" font-size="2.5" opacity="0.8">
+    <text x="5" y="10">git merge feature</text>
+    <text x="5" y="15">Auto-merging...</text>
+    <text x="5" y="20">CONFLICT detected</text>
+  </g>
+  
+  <!-- Resolution status -->
+  <g fill="#F59E0B" font-family="monospace" font-size="2.5" opacity="0.8">
+    <text x="5" y="85">Resolving conflicts</text>
+    <text x="5" y="90">3 files changed</text>
+    <text x="5" y="95">git commit -m "Merge"</text>
+  </g>
+  
+  <!-- Branch labels -->
+  <g font-family="monospace" font-size="2.5">
+    <text x="15" y="42" fill="url(#mainBranch)">main</text>
+    <text x="38" y="25" fill="url(#featureBranch)">feature/tools</text>
+    <text x="67" y="42" fill="url(#mergeBranch)">merge</text>
+  </g>
+  
+  <!-- Commit hashes -->
+  <g fill="#94A3B8" font-family="monospace" font-size="1.8" opacity="0.7">
+    <text x="15" y="58">a1b2c3d</text>
+    <text x="30" y="58">e4f5g6h</text>
+    <text x="60" y="58">i7j8k9l</text>
+    <text x="75" y="58">m0n1o2p</text>
+    
+    <text x="40" y="38">q3r4s5t</text>
+    <text x="50" y="38">u6v7w8x</text>
+    <text x="55" y="38">y9z0a1b</text>
+  </g>
+  
+  <!-- Diff indicators -->
+  <g stroke="#10B981" stroke-width="1" fill="none" opacity="0.6">
+    <line x1="25" y1="52" x2="30" y2="52"/>
+    <text x="25" y="48" fill="#10B981" font-family="monospace" font-size="2">+5</text>
+  </g>
+  
+  <g stroke="#EF4444" stroke-width="1" fill="none" opacity="0.6">
+    <line x1="40" y1="52" x2="35" y2="52"/>
+    <text x="40" y="48" fill="#EF4444" font-family="monospace" font-size="2">-3</text>
+  </g>
+  
+  <!-- Merge arrow -->
+  <g stroke="url(#mergeBranch)" stroke-width="2" fill="none" marker-end="url(#mergeArrow)">
+    <path d="M 58,32 Q 62,40 64,48"/>
+  </g>
+  
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="mergeArrow" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto" fill="#F59E0B">
+      <polygon points="0,0 6,2 0,4"/>
+    </marker>
+  </defs>
+  
+  <!-- Working directory status -->
+  <g fill="#06B6D4" font-family="monospace" font-size="2" opacity="0.7">
+    <text x="70" y="15">Working tree:</text>
+    <text x="70" y="20">M  src/tools.ts</text>
+    <text x="70" y="25">A  tests/merge.test</text>
+    <text x="70" y="30">?? temp.log</text>
+  </g>
+  
+  <!-- Staging area -->
+  <rect x="70" y="75" width="25" height="15" rx="2" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+  <text x="72" y="80" fill="#E5E7EB" font-family="monospace" font-size="2">Staged changes:</text>
+  <text x="72" y="85" fill="#10B981" font-family="monospace" font-size="1.8">+ resolved conflicts</text>
+  <text x="72" y="88" fill="#10B981" font-family="monospace" font-size="1.8">+ merge commit</text>
+  
+  <!-- Git log visualization -->
+  <g stroke="#64748B" stroke-width="1" fill="none" opacity="0.4">
+    <!-- Connection lines -->
+    <line x1="20" y1="50" x2="35" y2="50"/>
+    <line x1="35" y1="50" x2="45" y2="30"/>
+    <line x1="45" y1="30" x2="55" y2="30"/>
+    <line x1="55" y1="30" x2="60" y2="30"/>
+    <line x1="60" y1="30" x2="65" y2="50"/>
+    <line x1="35" y1="50" x2="65" y2="50"/>
+    <line x1="65" y1="50" x2="80" y2="50"/>
+  </g>
+  
+  <!-- Merge strategy indicator -->
+  <g fill="#8B5CF6" font-family="monospace" font-size="2" opacity="0.8">
+    <text x="5" y="35">Strategy: recursive</text>
+    <text x="5" y="40">Three-way merge</text>
+  </g>
+  
+  <!-- Author info -->
+  <g fill="#F8FAFC" font-family="monospace" font-size="1.5" opacity="0.6">
+    <text x="15" y="62">Alice</text>
+    <text x="30" y="62">Bob</text>
+    <text x="60" y="62">Alice</text>
+    <text x="75" y="62">Merge</text>
+    
+    <text x="40" y="42">Carol</text>
+    <text x="50" y="42">Dave</text>
+    <text x="55" y="42">Eve</text>
+  </g>
+</svg>

@@ -1,0 +1,307 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Pulse plasma gradient -->
+    <linearGradient id="plasmaPulse11" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="10%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E0F2FE;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:1" />
+      <animateTransform attributeName="gradientTransform" type="rotate" values="0 50 50;180 50 50;360 50 50" dur="3s" repeatCount="indefinite"/>
+    </linearGradient>
+    
+    <!-- Pulse titanium -->
+    <linearGradient id="pulseTitanium11" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#94A3B8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Pulsing plasma field -->
+    <radialGradient id="pulseField11" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.95" />
+      <stop offset="20%" style="stop-color:#F0F9FF;stop-opacity:0.8" />
+      <stop offset="40%" style="stop-color:#7DD3FC;stop-opacity:0.6" />
+      <stop offset="65%" style="stop-color:#0EA5E9;stop-opacity:0.4" />
+      <stop offset="85%" style="stop-color:#0284C7;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:0" />
+      <animate attributeName="r" values="40%;65%;40%" dur="2.5s" repeatCount="indefinite"/>
+    </radialGradient>
+    
+    <!-- Pulse glow filters -->
+    <filter id="pulseGlow11">
+      <feGaussianBlur stdDeviation="3.5"/>
+      <feColorMatrix values="1.6 0 0 0 0  0 1.6 0 0 0  0 0 1.6 0 0  0 0 0 0.9 0"/>
+      <animate attributeName="stdDeviation" values="3.5;5.5;3.5" dur="2s" repeatCount="indefinite"/>
+    </filter>
+    
+    <filter id="pulseLightning11">
+      <feGaussianBlur stdDeviation="2.5"/>
+      <feColorMatrix values="1.4 0 0 0 0  0 1.4 0 0 0  0 0 1.4 0 0  0 0 0 0.8 0"/>
+      <animate attributeName="stdDeviation" values="2.5;4;2.5" dur="1.8s" repeatCount="indefinite"/>
+    </filter>
+    
+    <filter id="pulseCore11">
+      <feGaussianBlur stdDeviation="4"/>
+      <feColorMatrix values="2 0 0 0 0  0 2 0 0 0  0 0 2 0 0  0 0 0 0.8 0"/>
+      <animate attributeName="stdDeviation" values="4;7;4" dur="1.5s" repeatCount="indefinite"/>
+    </filter>
+    
+    <filter id="pulseMotion11">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4,1.5"/>
+    </filter>
+    
+    <!-- Rhythmic shimmer gradient -->
+    <linearGradient id="rhythmShimmer11" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:0.6" />
+      <stop offset="30%" style="stop-color:#38BDF8;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#38BDF8;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#0EA5E9;stop-opacity:0.6" />
+      <animateTransform attributeName="gradientTransform" type="translate" values="-150 0;150 0;-150 0" dur="1.5s" repeatCount="indefinite"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rhythmic particle constellation -->
+  <g opacity="0.5">
+    <circle cx="25" cy="28" r="1.2" fill="#0EA5E9">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.2;2;1.2" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="75" cy="32" r="1" fill="#0284C7">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1;1.6;1" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="32" cy="22" r="1.3" fill="#0369A1">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="68" cy="42" r="0.9" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="0.9;1.5;0.9" dur="1.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="18" cy="50" r="1.1" fill="#0C4A6E">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="82" cy="55" r="1.2" fill="#0EA5E9">
+      <animate attributeName="r" values="1.2;1.8;1.2" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="28" cy="62" r="1" fill="#0284C7">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="72" cy="65" r="1.1" fill="#0369A1">
+      <animate attributeName="opacity" values="0.3;0.9;0.3" dur="1.7s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.1;1.7;1.1" dur="1.7s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Enhanced anvil -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,87 L 24,87 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.6"/>
+  <rect x="32" y="72" width="36" height="5" rx="1.5" fill="#1E293B" stroke="#0EA5E9" stroke-width="0.4"/>
+  <rect x="34" y="73" width="32" height="2" fill="#0284C7" opacity="0.8"/>
+  <ellipse cx="46" cy="74" rx="1.2" ry="0.8" fill="#7DD3FC" opacity="0.9"/>
+  <ellipse cx="50" cy="74" rx="1.5" ry="1" fill="#F0F9FF" opacity="1"/>
+  <ellipse cx="54" cy="74" rx="1.2" ry="0.8" fill="#7DD3FC" opacity="0.9"/>
+  
+  <!-- Pulsing plasma field -->
+  <ellipse cx="50" cy="75" rx="42" ry="28" fill="url(#pulseField11)" opacity="0.95"/>
+  
+  <!-- Rhythmic motion blur -->
+  <g opacity="0.6" filter="url(#pulseMotion11)">
+    <rect x="46" y="0" width="7" height="55" fill="#0EA5E9" transform="rotate(-38 49.5 27.5)">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="44" y="-2" width="7" height="55" fill="#0284C7" transform="rotate(-35 47.5 25.5)">
+      <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="42" y="-4" width="7" height="55" fill="#0369A1" transform="rotate(-32 45.5 23.5)">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.1s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  
+  <!-- Pulsing hammer -->
+  <g transform="rotate(-38 50 36)" filter="url(#pulseGlow11)">
+    <!-- Handle with rhythm -->
+    <rect x="47" y="2" width="6" height="50" rx="3" fill="url(#pulseTitanium11)">
+      <animate attributeName="width" values="6;6.5;6" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    
+    <!-- Rhythmic grip pattern -->
+    <rect x="46.8" y="14" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="46.8" y="18" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="1.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="46.8" y="22" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="46.8" y="26" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="46.8" y="30" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="46.8" y="34" width="6.4" height="1.2" fill="#0EA5E9" opacity="0.8">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="1.3s" repeatCount="indefinite"/>
+    </rect>
+    
+    <!-- Pulsing hammer head -->
+    <rect x="37" y="-3" width="26" height="16" rx="3.5" fill="url(#plasmaPulse11)">
+      <animate attributeName="width" values="26;27;26" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="height" values="16;16.5;16" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    
+    <!-- Shimmer overlay -->
+    <rect x="37" y="-3" width="26" height="16" rx="3.5" fill="url(#rhythmShimmer11)" opacity="0.7"/>
+    
+    <!-- Pulsing energy core layers -->
+    <rect x="38" y="-2" width="24" height="3.5" fill="#FFFFFF" opacity="0.95">
+      <animate attributeName="opacity" values="0.95;1;0.95" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="38" y="8.5" width="24" height="3.5" fill="#0C4A6E" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.8;0.6" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="39" y="1" width="22" height="2.5" fill="#F0F9FF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.3s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="39" y="9" width="22" height="2.5" fill="#0284C7" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.7s" repeatCount="indefinite"/>
+    </rect>
+    
+    <!-- Pulsing tech details -->
+    <circle cx="42" cy="5" r="1.5" fill="#FFFFFF" opacity="0.95">
+      <animate attributeName="r" values="1.5;1.8;1.5" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.95;1;0.95" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="58" cy="5" r="1.5" fill="#FFFFFF" opacity="0.95">
+      <animate attributeName="r" values="1.5;1.8;1.5" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.95;1;0.95" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="42" cy="5" r="1" fill="#0EA5E9" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="58" cy="5" r="1" fill="#0EA5E9" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <rect x="38" y="-4" width="24" height="1" fill="#F0F9FF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="38" y="13" width="24" height="1" fill="#F0F9FF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="2s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  
+  <!-- Rhythmic pulsing core -->
+  <circle cx="50" cy="74" r="8" fill="#FFFFFF" filter="url(#pulseCore11)">
+    <animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;1;0.9" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Rhythmic lightning storm -->
+  <g filter="url(#pulseLightning11)">
+    <!-- Primary rhythmic trunk -->
+    <path d="M 50,75 L 50,100 L 51,97 L 49,105 L 50,102" stroke="#FFFFFF" stroke-width="3.5" fill="none">
+      <animate attributeName="stroke-width" values="3.5;4.5;3.5" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.2s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Major rhythmic branches -->
+    <path d="M 50,77 L 68,98 L 66,95 L 72,102 L 70,99" stroke="#F0F9FF" stroke-width="3" fill="none">
+      <animate attributeName="stroke-width" values="3;3.8;3" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,77 L 32,98 L 34,95 L 28,102 L 30,99" stroke="#F0F9FF" stroke-width="3" fill="none">
+      <animate attributeName="stroke-width" values="3;3.8;3" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.6s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Secondary rhythmic branches -->
+    <path d="M 50,80 L 76,105 L 74,102 L 82,108 L 80,105" stroke="#E0F2FE" stroke-width="2.5" fill="none">
+      <animate attributeName="stroke-width" values="2.5;3.2;2.5" dur="1.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,80 L 24,105 L 26,102 L 18,108 L 20,105" stroke="#E0F2FE" stroke-width="2.5" fill="none">
+      <animate attributeName="stroke-width" values="2.5;3.2;2.5" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="2s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Tertiary rhythmic branches -->
+    <path d="M 68,98 L 85,115 L 83,112 L 90,118 L 88,115" stroke="#7DD3FC" stroke-width="2" fill="none">
+      <animate attributeName="opacity" values="0.6;0.8;0.6" dur="1.3s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 32,98 L 15,115 L 17,112 L 10,118 L 12,115" stroke="#7DD3FC" stroke-width="2" fill="none">
+      <animate attributeName="opacity" values="0.6;0.8;0.6" dur="1.5s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Upward rhythmic branches -->
+    <path d="M 50,72 L 72,52 L 70,55 L 78,49 L 76,52" stroke="#E0F2FE" stroke-width="2.8" fill="none">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.7s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,72 L 28,52 L 30,55 L 22,49 L 24,52" stroke="#E0F2FE" stroke-width="2.8" fill="none">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.9s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Rhythmic energy sparks -->
+  <g>
+    <!-- Central rhythmic spark -->
+    <circle cx="50" cy="100" r="1.5" fill="#FFFFFF">
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="0.8s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.5;2.2;1.5" dur="0.8s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Major rhythmic sparks -->
+    <circle cx="68" cy="98" r="1.2" fill="#F0F9FF">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.2;1.8;1.2" dur="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="32" cy="98" r="1.2" fill="#F0F9FF">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.2;1.8;1.2" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="76" cy="105" r="1" fill="#E0F2FE">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="24" cy="105" r="1" fill="#E0F2FE">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="85" cy="115" r="0.8" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.6;0.8;0.6" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="15" cy="115" r="0.8" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.6;0.8;0.6" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Upper rhythmic sparks -->
+    <circle cx="72" cy="52" r="1" fill="#E0F2FE">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="28" cy="52" r="1" fill="#E0F2FE">
+      <animate attributeName="opacity" values="0.7;0.9;0.7" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Rhythmic rotating energy matrix -->
+  <g opacity="0.8">
+    <rect x="66" y="96" width="3" height="3" fill="#FFFFFF" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" values="0 67.5 97.5;360 67.5 97.5" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="30" y="96" width="3" height="3" fill="#FFFFFF" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" values="0 31.5 97.5;-360 31.5 97.5" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.9;1;0.9" dur="1.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="74" y="103" width="2.5" height="2.5" fill="#F0F9FF" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 75.25 104.25;360 75.25 104.25" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="22" y="103" width="2.5" height="2.5" fill="#F0F9FF" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 23.25 104.25;-360 23.25 104.25" dur="1.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

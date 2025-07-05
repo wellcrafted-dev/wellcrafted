@@ -1,0 +1,25 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pulse Wave: Lightning as energy wave -->
+  <!-- Minimalist hammer -->
+  <rect x="35" y="20" width="30" height="10" fill="#0C4A6E" opacity="0.8"/>
+  <rect x="48" y="28" width="4" height="20" fill="#0C4A6E" opacity="0.8"/>
+  
+  <!-- Energy pulse wave -->
+  <path d="M30 55 Q35 50 40 55 T50 55 T60 55 T70 55" 
+        stroke="#0EA5E9" 
+        stroke-width="3" 
+        fill="none"
+        stroke-linecap="round"/>
+  
+  <!-- Secondary wave -->
+  <path d="M35 60 Q40 57 45 60 T55 60 T65 60" 
+        stroke="#F0F9FF" 
+        stroke-width="2" 
+        fill="none"
+        stroke-linecap="round"
+        opacity="0.7"/>
+  
+  <!-- Wave impact on anvil -->
+  <rect x="40" y="75" width="20" height="5" fill="#0C4A6E"/>
+  <line x1="30" y1="77" x2="70" y2="77" stroke="#0EA5E9" stroke-width="1" opacity="0.5"/>
+</svg>

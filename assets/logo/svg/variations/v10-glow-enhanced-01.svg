@@ -1,0 +1,87 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-Layer Hammer Glow -->
+    <radialGradient id="hammerGlowCore" cx="50%" cy="35%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="30%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="70%" style="stop-color:#FFA500;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <radialGradient id="hammerGlowAura" cx="50%" cy="35%" r="50%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.6"/>
+      <stop offset="40%" style="stop-color:#FFA500;stop-opacity:0.3"/>
+      <stop offset="80%" style="stop-color:#FF6347;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Glow-Enhanced Lightning Gradients -->
+    <linearGradient id="glowLightning1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="30%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="60%" style="stop-color:#00FFFF;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#0080FF;stop-opacity:0.3"/>
+    </linearGradient>
+    
+    <linearGradient id="glowLightning2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="30%" style="stop-color:#FFA500;stop-opacity:0.7"/>
+      <stop offset="60%" style="stop-color:#87CEEB;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#4682B4;stop-opacity:0.2"/>
+    </linearGradient>
+    
+    <!-- Lightning Glow Effects -->
+    <filter id="lightningGlow">
+      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Multi-Layer Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="35" ry="25" fill="url(#hammerGlowAura)"/>
+  <ellipse cx="50" cy="35" rx="25" ry="15" fill="url(#hammerGlowCore)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Glow-Enhanced Lightning Emanations -->
+  <!-- Primary lightning with glow -->
+  <path d="M50 63 L48 68 L52 70 L50 75 L54 73 L52 78 L56 76 L54 82" 
+        stroke="url(#glowLightning1)" stroke-width="1.5" fill="none" filter="url(#lightningGlow)"/>
+  
+  <!-- Left side glow lightning -->
+  <path d="M40 63 L37 68 L41 70 L39 75 L43 73 L41 78 L45 76" 
+        stroke="url(#glowLightning2)" stroke-width="1.2" fill="none" filter="url(#lightningGlow)"/>
+  
+  <path d="M30 63 L27 68 L31 70 L29 75 L33 73" 
+        stroke="url(#glowLightning1)" stroke-width="1" fill="none" filter="url(#lightningGlow)"/>
+  
+  <!-- Right side glow lightning -->
+  <path d="M60 63 L63 68 L59 70 L61 75 L57 73 L59 78 L55 76" 
+        stroke="url(#glowLightning2)" stroke-width="1.2" fill="none" filter="url(#lightningGlow)"/>
+  
+  <path d="M70 63 L73 68 L69 70 L71 75 L67 73" 
+        stroke="url(#glowLightning1)" stroke-width="1" fill="none" filter="url(#lightningGlow)"/>
+  
+  <!-- Outer glow lightning -->
+  <path d="M25 68 L22 72 L26 74 L24 78" 
+        stroke="url(#glowLightning2)" stroke-width="0.9" fill="none" filter="url(#lightningGlow)"/>
+  
+  <path d="M75 68 L78 72 L74 74 L76 78" 
+        stroke="url(#glowLightning1)" stroke-width="0.9" fill="none" filter="url(#lightningGlow)"/>
+  
+  <!-- Bottom accent lightning -->
+  <path d="M35 82 L33 86 L37 88" 
+        stroke="url(#glowLightning2)" stroke-width="0.8" fill="none" filter="url(#lightningGlow)"/>
+  
+  <path d="M65 82 L67 86 L63 88" 
+        stroke="url(#glowLightning1)" stroke-width="0.8" fill="none" filter="url(#lightningGlow)"/>
+</svg>

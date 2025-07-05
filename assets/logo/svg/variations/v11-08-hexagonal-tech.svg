@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexagonal Tech: Honeycomb pattern integration -->
+  <defs>
+    <polygon id="hex" points="50,20 65,28 65,42 50,50 35,42 35,28" fill="#0EA5E9"/>
+  </defs>
+  
+  <!-- Main hexagon hammer head -->
+  <use href="#hex"/>
+  
+  <!-- Lightning hexagon pattern -->
+  <polygon points="50,45 55,48 55,54 50,57 45,54 45,48" fill="#F0F9FF"/>
+  
+  <!-- Handle hexagons -->
+  <polygon points="50,55 54,57 54,63 50,65 46,63 46,57" fill="#0C4A6E"/>
+  <polygon points="50,63 54,65 54,71 50,73 46,71 46,65" fill="#0C4A6E"/>
+  
+  <!-- Anvil hexagon -->
+  <polygon points="50,75 60,80 60,85 50,90 40,85 40,80" fill="#0C4A6E"/>
+</svg>

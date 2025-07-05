@@ -1,0 +1,103 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Intense Multi-Layer Hammer Glow -->
+    <radialGradient id="hammerGlowIntense" cx="50%" cy="35%" r="25%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="20%" style="stop-color:#FFD700;stop-opacity:0.9"/>
+      <stop offset="60%" style="stop-color:#FFA500;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <radialGradient id="hammerGlowMid" cx="50%" cy="35%" r="40%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.7"/>
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#FF6347;stop-opacity:0"/>
+    </radialGradient>
+    
+    <radialGradient id="hammerGlowOuter" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" style="stop-color:#FFA500;stop-opacity:0.5"/>
+      <stop offset="70%" style="stop-color:#FF6347;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Glow-Sync Lightning Gradients -->
+    <linearGradient id="syncLightning1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="25%" style="stop-color:#FFD700;stop-opacity:0.9"/>
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:0.7"/>
+      <stop offset="75%" style="stop-color:#00FFFF;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#0080FF;stop-opacity:0.3"/>
+    </linearGradient>
+    
+    <linearGradient id="syncLightning2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="25%" style="stop-color:#FFA500;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#FF6347;stop-opacity:0.6"/>
+      <stop offset="75%" style="stop-color:#87CEEB;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#4682B4;stop-opacity:0.2"/>
+    </linearGradient>
+    
+    <!-- Enhanced Lightning Glow Effects -->
+    <filter id="intenseGlow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <filter id="lightGlow">
+      <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Triple-Layer Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="45" ry="35" fill="url(#hammerGlowOuter)"/>
+  <ellipse cx="50" cy="35" rx="30" ry="20" fill="url(#hammerGlowMid)"/>
+  <ellipse cx="50" cy="35" rx="20" ry="12" fill="url(#hammerGlowIntense)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Glow-Synchronized Lightning Emanations -->
+  <!-- Central intense lightning -->
+  <path d="M50 63 L48 68 L52 70 L50 75 L54 73 L52 78 L56 76 L54 82 L58 80" 
+        stroke="url(#syncLightning1)" stroke-width="1.8" fill="none" filter="url(#intenseGlow)"/>
+  
+  <!-- Major side lightning -->
+  <path d="M42 63 L39 68 L43 70 L41 75 L45 73 L43 78 L47 76 L45 82" 
+        stroke="url(#syncLightning2)" stroke-width="1.5" fill="none" filter="url(#intenseGlow)"/>
+  
+  <path d="M58 63 L61 68 L57 70 L59 75 L55 73 L57 78 L53 76 L55 82" 
+        stroke="url(#syncLightning1)" stroke-width="1.5" fill="none" filter="url(#intenseGlow)"/>
+  
+  <!-- Secondary lightning -->
+  <path d="M34 63 L31 68 L35 70 L33 75 L37 73 L35 78" 
+        stroke="url(#syncLightning2)" stroke-width="1.2" fill="none" filter="url(#lightGlow)"/>
+  
+  <path d="M66 63 L69 68 L65 70 L67 75 L63 73 L65 78" 
+        stroke="url(#syncLightning1)" stroke-width="1.2" fill="none" filter="url(#lightGlow)"/>
+  
+  <!-- Outer lightning -->
+  <path d="M26 68 L23 72 L27 74 L25 78 L29 76" 
+        stroke="url(#syncLightning2)" stroke-width="1" fill="none" filter="url(#lightGlow)"/>
+  
+  <path d="M74 68 L77 72 L73 74 L75 78 L71 76" 
+        stroke="url(#syncLightning1)" stroke-width="1" fill="none" filter="url(#lightGlow)"/>
+  
+  <!-- Bottom accent lightning -->
+  <path d="M30 84 L28 88 L32 90" 
+        stroke="url(#syncLightning2)" stroke-width="0.9" fill="none" filter="url(#lightGlow)"/>
+  
+  <path d="M70 84 L72 88 L68 90" 
+        stroke="url(#syncLightning1)" stroke-width="0.9" fill="none" filter="url(#lightGlow)"/>
+</svg>

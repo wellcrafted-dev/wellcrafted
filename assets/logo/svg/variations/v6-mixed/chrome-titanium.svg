@@ -1,0 +1,66 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Chrome/Titanium split gradient -->
+    <linearGradient id="chromeTitanium13" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#CBD5E1;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
+    </linearGradient>
+    <!-- Carbon fiber handle -->
+    <linearGradient id="carbonHandle13" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F172A;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0F172A;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Purple energy -->
+    <radialGradient id="purpleEnergy13" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:0.9" />
+      <stop offset="40%" style="stop-color:#6366F1;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#1E1B4B;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Purple energy field -->
+  <ellipse cx="50" cy="74" rx="25" ry="14" fill="url(#purpleEnergy13)" opacity="0.7"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Carbon fiber handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#carbonHandle13)"/>
+    <!-- Carbon weave -->
+    <rect x="47.5" y="15" width="1" height="30" fill="#374151" opacity="0.8"/>
+    <rect x="49.5" y="15" width="1" height="30" fill="#374151" opacity="0.8"/>
+    <rect x="51.5" y="15" width="1" height="30" fill="#374151" opacity="0.8"/>
+    <!-- Chrome/Titanium hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#chromeTitanium13)"/>
+    <!-- Split line -->
+    <rect x="49" y="2" width="1" height="18" fill="#94A3B8" opacity="0.5"/>
+    <!-- Chrome side reflection -->
+    <rect x="37" y="4" width="11" height="3" rx="1" fill="#F8FAFC" opacity="0.8"/>
+    <!-- Titanium side detail -->
+    <rect x="51" y="4" width="12" height="2" fill="#334155" opacity="0.6"/>
+    <rect x="51" y="14" width="12" height="2" fill="#64748B" opacity="0.7"/>
+  </g>
+  
+  <!-- Purple energy sparks -->
+  <circle cx="50" cy="72" r="2.5" fill="#E0E7FF" opacity="0.9"/>
+  <circle cx="44" cy="69" r="2" fill="#A5B4FC" opacity="0.9"/>
+  <circle cx="56" cy="69" r="2" fill="#A5B4FC" opacity="0.9"/>
+  <circle cx="38" cy="71" r="1.5" fill="#6366F1" opacity="0.8"/>
+  <circle cx="62" cy="71" r="1.5" fill="#6366F1" opacity="0.8"/>
+  
+  <!-- Energy pattern -->
+  <g opacity="0.6">
+    <polygon points="50,72 46,65 54,65" fill="#E0E7FF" opacity="0.6"/>
+    <line x1="50" y1="72" x2="40" y2="68" stroke="#6366F1" stroke-width="0.8"/>
+    <line x1="50" y1="72" x2="60" y2="68" stroke="#6366F1" stroke-width="0.8"/>
+  </g>
+</svg>

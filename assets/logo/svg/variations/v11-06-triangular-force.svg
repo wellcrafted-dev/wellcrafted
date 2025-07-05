@@ -1,0 +1,17 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Triangular Force: Hammer as triangle, lightning as angles -->
+  <g>
+    <!-- Hammer head as triangle -->
+    <path d="M30 40 L50 20 L70 40 Z" fill="#0EA5E9"/>
+    
+    <!-- Handle as narrow triangle -->
+    <path d="M45 40 L50 70 L55 40 Z" fill="#0C4A6E"/>
+    
+    <!-- Lightning as angular path -->
+    <path d="M50 35 L58 50 L42 50 Z" fill="#F0F9FF"/>
+    <path d="M46 50 L54 65 L50 50 Z" fill="#F0F9FF"/>
+    
+    <!-- Anvil as trapezoid -->
+    <path d="M40 75 L60 75 L65 85 L35 85 Z" fill="#0C4A6E"/>
+  </g>
+</svg>

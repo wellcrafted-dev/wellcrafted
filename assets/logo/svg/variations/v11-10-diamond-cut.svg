@@ -1,0 +1,25 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Diamond Cut: Faceted geometric interpretation -->
+  <defs>
+    <linearGradient id="diamond-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0F9FF"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Hammer head as faceted diamond -->
+  <g>
+    <path d="M50 15 L70 30 L50 40 L30 30 Z" fill="url(#diamond-grad)"/>
+    <path d="M30 30 L35 35 L50 40 Z" fill="#0C4A6E" opacity="0.5"/>
+    <path d="M70 30 L65 35 L50 40 Z" fill="#0C4A6E" opacity="0.3"/>
+  </g>
+  
+  <!-- Handle as elongated diamond -->
+  <path d="M50 40 L54 45 L50 70 L46 45 Z" fill="#0C4A6E"/>
+  
+  <!-- Lightning as diamond facets -->
+  <path d="M50 45 L56 55 L50 60 L44 55 Z" fill="#F0F9FF"/>
+  
+  <!-- Anvil as wide diamond -->
+  <path d="M35 75 L50 80 L65 75 L50 85 Z" fill="#0C4A6E"/>
+</svg>

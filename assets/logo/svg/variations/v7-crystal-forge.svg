@@ -1,0 +1,72 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Crystal gradient -->
+    <linearGradient id="crystalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#0284C7;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0.5" />
+    </linearGradient>
+    
+    <!-- Fire gradient -->
+    <linearGradient id="fireGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FBBF24;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Prism refraction -->
+    <linearGradient id="prismGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:0.8" />
+      <stop offset="33%" style="stop-color:#8B5CF6;stop-opacity:0.6" />
+      <stop offset="66%" style="stop-color:#F59E0B;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#EF4444;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Forge base -->
+  <rect x="20" y="75" width="60" height="15" rx="3" fill="#374151"/>
+  <rect x="25" y="70" width="50" height="8" rx="2" fill="#4B5563"/>
+  
+  <!-- Crystal formation -->
+  <g fill="url(#crystalGrad)" stroke="#38BDF8" stroke-width="1">
+    <!-- Main crystal -->
+    <polygon points="50,20 40,45 60,45" opacity="0.9"/>
+    <polygon points="40,45 35,60 50,55" opacity="0.7"/>
+    <polygon points="60,45 65,60 50,55" opacity="0.7"/>
+    <polygon points="35,60 50,70 65,60" opacity="0.5"/>
+    
+    <!-- Side crystals -->
+    <polygon points="35,40 25,50 35,60" opacity="0.6"/>
+    <polygon points="65,40 75,50 65,60" opacity="0.6"/>
+  </g>
+  
+  <!-- Crystal internal structure -->
+  <g stroke="#0EA5E9" stroke-width="0.5" fill="none" opacity="0.6">
+    <line x1="50" y1="20" x2="50" y2="55"/>
+    <line x1="40" y1="45" x2="60" y2="45"/>
+    <line x1="35" y1="60" x2="65" y2="60"/>
+    <line x1="40" y1="45" x2="35" y2="60"/>
+    <line x1="60" y1="45" x2="65" y2="60"/>
+  </g>
+  
+  <!-- Forge fire -->
+  <ellipse cx="50" cy="78" rx="25" ry="8" fill="url(#fireGrad)" opacity="0.8"/>
+  <ellipse cx="50" cy="75" rx="18" ry="5" fill="#FBBF24" opacity="0.6"/>
+  
+  <!-- Prism light refraction -->
+  <g fill="url(#prismGrad)" opacity="0.7">
+    <polygon points="50,20 45,15 55,15"/>
+    <rect x="15" y="25" width="3" height="20" rx="1"/>
+    <rect x="82" y="30" width="3" height="15" rx="1"/>
+    <rect x="25" y="15" width="15" height="2" ry="1"/>
+    <rect x="60" y="18" width="12" height="2" ry="1"/>
+  </g>
+  
+  <!-- Sparkles -->
+  <g fill="#38BDF8">
+    <circle cx="30" cy="25" r="1"/>
+    <circle cx="70" cy="30" r="1.5"/>
+    <circle cx="45" cy="15" r="0.8"/>
+    <circle cx="55" cy="12" r="1.2"/>
+  </g>
+</svg>

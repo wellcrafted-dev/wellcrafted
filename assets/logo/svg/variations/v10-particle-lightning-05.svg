@@ -1,0 +1,76 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Hammer Glow -->
+    <radialGradient id="hammerGlow8" cx="50%" cy="35%" r="40%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Crystal Particle-Lightning Gradients -->
+    <radialGradient id="crystalParticle1" cx="50%" cy="50%" r="35%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="30%" style="stop-color:#E6E6FA;stop-opacity:0.8"/>
+      <stop offset="70%" style="stop-color:#DDA0DD;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#9370DB;stop-opacity:0.2"/>
+    </radialGradient>
+    
+    <radialGradient id="crystalParticle2" cx="50%" cy="50%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="40%" style="stop-color:#F0E68C;stop-opacity:0.7"/>
+      <stop offset="80%" style="stop-color:#BDB76B;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#8B7355;stop-opacity:0.1"/>
+    </radialGradient>
+    
+    <!-- Crystal Lightning Gradient -->
+    <linearGradient id="crystalLightning" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="30%" style="stop-color:#E6E6FA;stop-opacity:0.8"/>
+      <stop offset="60%" style="stop-color:#DDA0DD;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#9370DB;stop-opacity:0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="25" ry="15" fill="url(#hammerGlow8)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Crystal Particle-Lightning Formation -->
+  <!-- Large crystal particles with faceted lightning -->
+  <circle cx="28" cy="65" r="4" fill="url(#crystalParticle1)"/>
+  <path d="M28 65 L26 69 L30 71 L28 75 L32 73 L34 77 L38 75 L36 79" stroke="url(#crystalLightning)" stroke-width="1" fill="none"/>
+  
+  <circle cx="50" cy="68" r="4.5" fill="url(#crystalParticle2)"/>
+  <path d="M50 68 L48 72 L52 74 L50 78 L54 76 L56 80 L60 78 L58 82" stroke="url(#crystalLightning)" stroke-width="1.2" fill="none"/>
+  
+  <circle cx="72" cy="66" r="3.8" fill="url(#crystalParticle1)"/>
+  <path d="M72 66 L70 70 L74 72 L72 76 L76 74 L78 78 L82 76 L80 80" stroke="url(#crystalLightning)" stroke-width="1" fill="none"/>
+  
+  <!-- Medium crystal particles -->
+  <circle cx="24" cy="75" r="3.2" fill="url(#crystalParticle2)"/>
+  <path d="M24 75 L22 79 L26 81 L24 85 L28 83" stroke="url(#crystalLightning)" stroke-width="0.8" fill="none"/>
+  
+  <circle cx="38" cy="80" r="3.5" fill="url(#crystalParticle1)"/>
+  <path d="M38 80 L36 84 L40 86 L38 90 L42 88" stroke="url(#crystalLightning)" stroke-width="0.9" fill="none"/>
+  
+  <circle cx="62" cy="82" r="3.1" fill="url(#crystalParticle2)"/>
+  <path d="M62 82 L60 86 L64 88 L62 92 L66 90" stroke="url(#crystalLightning)" stroke-width="0.8" fill="none"/>
+  
+  <circle cx="76" cy="78" r="3.4" fill="url(#crystalParticle1)"/>
+  <path d="M76 78 L78 82 L74 84 L76 88 L72 86" stroke="url(#crystalLightning)" stroke-width="0.9" fill="none"/>
+  
+  <!-- Small crystal particles -->
+  <circle cx="20" cy="85" r="2.5" fill="url(#crystalParticle2)"/>
+  <circle cx="33" cy="89" r="2.8" fill="url(#crystalParticle1)"/>
+  <circle cx="48" cy="91" r="2.3" fill="url(#crystalParticle2)"/>
+  <circle cx="57" cy="93" r="2.6" fill="url(#crystalParticle1)"/>
+  <circle cx="70" cy="95" r="2.4" fill="url(#crystalParticle2)"/>
+  <circle cx="80" cy="87" r="2.7" fill="url(#crystalParticle1)"/>
+</svg>

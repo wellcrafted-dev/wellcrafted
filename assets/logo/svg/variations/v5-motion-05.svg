@@ -1,0 +1,126 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Copper hammer gradient -->
+    <linearGradient id="copper5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FED7AA;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#FB923C;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9A3412;stop-opacity:1" />
+    </linearGradient>
+    <!-- Mahogany handle -->
+    <linearGradient id="mahogany5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C2D12;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#92400E;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#451A03;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1C0701;stop-opacity:1" />
+    </linearGradient>
+    <!-- Spiral energy field -->
+    <radialGradient id="spiralEnergy5" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FED7AA;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#FB923C;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#EA580C;stop-opacity:0.5" />
+      <stop offset="80%" style="stop-color:#9A3412;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#451A03;stop-opacity:0" />
+    </radialGradient>
+    <!-- Whirlwind motion filter -->
+    <filter id="whirlwind5">
+      <feTurbulence baseFrequency="0.05" numOctaves="2"/>
+      <feDisplacementMap in="SourceGraphic" scale="2"/>
+    </filter>
+    <!-- Spiral motion blur -->
+    <filter id="spiralBlur5">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.8,0.4"/>
+    </filter>
+  </defs>
+  
+  <!-- Anvil base -->
+  <path d="M 18,78 L 28,75 L 72,75 L 82,78 L 78,88 L 22,88 Z" fill="#1E293B"/>
+  <rect x="30" y="72" width="40" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Spiral energy vortex -->
+  <ellipse cx="50" cy="75" rx="35" ry="20" fill="url(#spiralEnergy5)" opacity="0.9"/>
+  
+  <!-- Whirlwind trails creating spiral motion -->
+  <g opacity="0.5" filter="url(#whirlwind5)">
+    <path d="M 20,30 Q 30,20 50,75" stroke="#FB923C" stroke-width="2" fill="none" opacity="0.6"/>
+    <path d="M 80,30 Q 70,20 50,75" stroke="#FB923C" stroke-width="2" fill="none" opacity="0.6"/>
+    <path d="M 50,10 Q 40,40 50,75" stroke="#EA580C" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M 50,10 Q 60,40 50,75" stroke="#EA580C" stroke-width="1.5" fill="none" opacity="0.5"/>
+  </g>
+  
+  <!-- Spinning motion trails -->
+  <g opacity="0.4" filter="url(#spiralBlur5)">
+    <rect x="46" y="5" width="8" height="55" fill="#FB923C" transform="rotate(-30 50 32.5)"/>
+    <rect x="46" y="5" width="8" height="55" fill="#FB923C" transform="rotate(-35 50 32.5)"/>
+    <rect x="46" y="5" width="8" height="55" fill="#FB923C" transform="rotate(-40 50 32.5)"/>
+    <rect x="46" y="5" width="8" height="55" fill="#FB923C" transform="rotate(-45 50 32.5)"/>
+  </g>
+  
+  <!-- Main hammer at peak energy -->
+  <g transform="rotate(-37 50 37)">
+    <!-- Mahogany handle with wood grain -->
+    <rect x="47" y="5" width="6" height="50" rx="3" fill="url(#mahogany5)"/>
+    <!-- Wood grain lines -->
+    <rect x="47.5" y="10" width="5" height="1" fill="#7C2D12" opacity="0.7"/>
+    <rect x="47.5" y="18" width="5" height="1" fill="#7C2D12" opacity="0.7"/>
+    <rect x="47.5" y="26" width="5" height="1" fill="#7C2D12" opacity="0.7"/>
+    <rect x="47.5" y="34" width="5" height="1" fill="#7C2D12" opacity="0.7"/>
+    <rect x="47.5" y="42" width="5" height="1" fill="#7C2D12" opacity="0.7"/>
+    <!-- Copper hammer head -->
+    <rect x="38" y="0" width="24" height="15" rx="3" fill="url(#copper5)"/>
+    <!-- Copper patina details -->
+    <rect x="40" y="3" width="20" height="2" fill="#FED7AA" opacity="0.8"/>
+    <rect x="40" y="10" width="20" height="2" fill="#9A3412" opacity="0.7"/>
+    <!-- Handle ferrule -->
+    <rect x="46" y="14" width="8" height="3" fill="#9A3412"/>
+  </g>
+  
+  <!-- Spiral spark pattern -->
+  <g>
+    <!-- Center impact -->
+    <circle cx="50" cy="73" r="3" fill="#FED7AA">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <!-- Spiral arms -->
+    <circle cx="44" cy="68" r="2" fill="#FB923C" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="56" cy="68" r="2" fill="#FB923C" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="38" cy="70" r="1.5" fill="#EA580C" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="62" cy="70" r="1.5" fill="#EA580C" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="47" cy="63" r="1" fill="#FED7AA" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="53" cy="63" r="1" fill="#FED7AA" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 73;360 50 73" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Spinning energy particles -->
+  <g opacity="0.6">
+    <circle cx="32" cy="72" r="0.8" fill="#FB923C">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 75;360 50 75" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="68" cy="72" r="0.8" fill="#FB923C">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 75;360 50 75" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="42" cy="60" r="0.6" fill="#EA580C">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 75;360 50 75" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="58" cy="60" r="0.6" fill="#EA580C">
+      <animateTransform attributeName="transform" type="rotate" values="0 50 75;360 50 75" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Vortex center glow -->
+  <circle cx="50" cy="75" r="8" fill="#FED7AA" opacity="0.3">
+    <animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.3;0.1;0.3" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

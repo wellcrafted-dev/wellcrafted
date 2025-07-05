@@ -1,0 +1,191 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Reactor core gradient -->
+    <radialGradient id="reactorCore">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#FBBF24;stop-opacity:0.95" />
+      <stop offset="35%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+      <stop offset="60%" style="stop-color:#DC2626;stop-opacity:0.6" />
+      <stop offset="85%" style="stop-color:#7C3AED;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:0.2" />
+    </radialGradient>
+    
+    <!-- Stellarator coil -->
+    <linearGradient id="stellaratorCoil" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891B2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0E7490;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#164E63;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Helical field -->
+    <linearGradient id="helicalField" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#8B5CF6;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+    </linearGradient>
+    
+    <!-- Cryogenic cooling -->
+    <linearGradient id="cryoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Fusion energy glow -->
+    <filter id="fusionGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Magnetic flux -->
+    <pattern id="magneticFlux" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="1" fill="none" stroke="#06B6D4" stroke-width="0.3" opacity="0.4"/>
+    </pattern>
+  </defs>
+  
+  <!-- Magnetic flux background -->
+  <rect x="0" y="0" width="100" height="100" fill="url(#magneticFlux)"/>
+  
+  <!-- Vacuum vessel -->
+  <ellipse cx="50" cy="50" rx="38" ry="28" fill="none" stroke="#475569" stroke-width="4"/>
+  <ellipse cx="50" cy="50" rx="35" ry="25" fill="none" stroke="#64748B" stroke-width="2"/>
+  
+  <!-- Stellarator coils (helical configuration) -->
+  <g fill="url(#stellaratorCoil)" stroke="#0891B2" stroke-width="1">
+    <!-- Helical coil set 1 -->
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="none" stroke-width="6" transform="rotate(0 50 50)"/>
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="none" stroke-width="6" transform="rotate(36 50 50)"/>
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="none" stroke-width="6" transform="rotate(72 50 50)"/>
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="none" stroke-width="6" transform="rotate(108 50 50)"/>
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="none" stroke-width="6" transform="rotate(144 50 50)"/>
+    
+    <!-- Modular coils -->
+    <rect x="48" y="15" width="4" height="8" rx="2"/>
+    <rect x="70" y="25" width="8" height="4" ry="2"/>
+    <rect x="75" y="48" width="4" height="8" rx="2"/>
+    <rect x="70" y="71" width="8" height="4" ry="2"/>
+    <rect x="48" y="77" width="4" height="8" rx="2"/>
+    <rect x="22" y="71" width="8" height="4" ry="2"/>
+    <rect x="21" y="48" width="4" height="8" rx="2"/>
+    <rect x="22" y="25" width="8" height="4" ry="2"/>
+  </g>
+  
+  <!-- Fusion plasma -->
+  <ellipse cx="50" cy="50" rx="22" ry="16" fill="url(#reactorCore)" filter="url(#fusionGlow)"/>
+  
+  <!-- Helical magnetic field lines -->
+  <g stroke="url(#helicalField)" stroke-width="2" fill="none" opacity="0.7">
+    <path d="M 28,45 Q 40,35 52,45 Q 64,55 72,45"/>
+    <path d="M 28,55 Q 40,65 52,55 Q 64,45 72,55"/>
+    <path d="M 32,40 Q 44,30 56,40 Q 68,50 76,40"/>
+    <path d="M 32,60 Q 44,70 56,60 Q 68,50 76,60"/>
+  </g>
+  
+  <!-- Plasma instability modes -->
+  <g fill="url(#reactorCore)" opacity="0.6">
+    <ellipse cx="42" cy="42" rx="4" ry="2" transform="rotate(-45 42 42)"/>
+    <ellipse cx="58" cy="42" rx="3.5" ry="1.8" transform="rotate(30 58 42)"/>
+    <ellipse cx="58" cy="58" rx="4.2" ry="2.2" transform="rotate(-60 58 58)"/>
+    <ellipse cx="42" cy="58" rx="3.8" ry="2" transform="rotate(15 42 58)"/>
+  </g>
+  
+  <!-- Island chain visualization -->
+  <g stroke="#F59E0B" stroke-width="1.5" fill="none" opacity="0.8">
+    <circle cx="38" cy="45" r="3"/>
+    <circle cx="50" cy="40" r="2.5"/>
+    <circle cx="62" cy="45" r="3"/>
+    <circle cx="62" cy="55" r="2.5"/>
+    <circle cx="50" cy="60" r="3"/>
+    <circle cx="38" cy="55" r="2.5"/>
+  </g>
+  
+  <!-- Cryogenic cooling system -->
+  <g transform="translate(85,20)">
+    <rect x="-3" y="0" width="6" height="20" rx="3" fill="url(#cryoGrad)"/>
+    <rect x="-2" y="1" width="4" height="18" rx="2" fill="#DBEAFE"/>
+    
+    <!-- Cooling lines -->
+    <g stroke="#3B82F6" stroke-width="1" fill="none">
+      <path d="M -3,5 Q 0,3 3,5"/>
+      <path d="M -3,10 Q 0,8 3,10"/>
+      <path d="M -3,15 Q 0,13 3,15"/>
+    </g>
+    
+    <!-- Temperature -->
+    <text x="0" y="25" text-anchor="middle" fill="#1E40AF" font-family="monospace" font-size="3">4K</text>
+  </g>
+  
+  <!-- Neutral beam heating -->
+  <g transform="translate(5,40)">
+    <rect x="0" y="0" width="12" height="8" rx="2" fill="url(#stellaratorCoil)"/>
+    
+    <!-- Beam trajectory -->
+    <g stroke="#FBBF24" stroke-width="2" fill="none">
+      <line x1="12" y1="2" x2="25" y2="8"/>
+      <line x1="12" y1="4" x2="25" y2="10"/>
+      <line x1="12" y1="6" x2="25" y2="12"/>
+    </g>
+  </g>
+  
+  <!-- ECH heating -->
+  <g transform="translate(75,75)">
+    <rect x="0" y="-4" width="15" height="8" rx="2" fill="url(#stellaratorCoil)"/>
+    
+    <!-- Microwave -->
+    <g stroke="#8B5CF6" stroke-width="1.5" fill="none">
+      <path d="M 0,0 Q -8,-5 -15,-2"/>
+      <path d="M 0,0 Q -8,5 -15,2"/>
+    </g>
+  </g>
+  
+  <!-- Plasma diagnostics -->
+  <g fill="#0EA5E9" font-family="monospace" font-size="4" opacity="0.9">
+    <text x="5" y="15">Wendelstein 7-X</text>
+    <text x="5" y="25">ι = 1.0</text>
+    <text x="5" y="35">β = 4.2%</text>
+  </g>
+  
+  <!-- Performance metrics -->
+  <g fill="#0284C7" font-family="monospace" font-size="3" opacity="0.8">
+    <text x="5" y="85">T: 80M°C</text>
+    <text x="5" y="90">n: 8×10¹⁹/m³</text>
+    <text x="5" y="95">τE = 0.9s</text>
+  </g>
+  
+  <!-- Stellarator advantages -->
+  <g fill="#0E7490" font-family="monospace" font-size="3" opacity="0.7">
+    <text x="70" y="15">Steady State</text>
+    <text x="70" y="20">No Disruptions</text>
+    <text x="70" y="25">Bootstrap-free</text>
+  </g>
+  
+  <!-- Modular assembly -->
+  <g stroke="#64748B" stroke-width="1" fill="none" opacity="0.6">
+    <line x1="30" y1="30" x2="70" y2="30"/>
+    <line x1="70" y1="30" x2="70" y2="70"/>
+    <line x1="70" y1="70" x2="30" y2="70"/>
+    <line x1="30" y1="70" x2="30" y2="30"/>
+  </g>
+  
+  <!-- Flux surfaces -->
+  <g stroke="#06B6D4" stroke-width="1" fill="none" opacity="0.5">
+    <ellipse cx="50" cy="50" rx="18" ry="13"/>
+    <ellipse cx="50" cy="50" rx="15" ry="11"/>
+    <ellipse cx="50" cy="50" rx="12" ry="9"/>
+    <ellipse cx="50" cy="50" rx="9" ry="7"/>
+  </g>
+  
+  <!-- Rotational transform -->
+  <g stroke="#F59E0B" stroke-width="1" fill="none" opacity="0.6" stroke-dasharray="2,2">
+    <path d="M 35,50 Q 50,35 65,50 Q 50,65 35,50"/>
+  </g>
+  
+  <!-- Power exhaust -->
+  <g transform="translate(50,75)">
+    <path d="M -5,0 L 5,0 L 3,8 L -3,8 Z" fill="#DC2626" opacity="0.8"/>
+    <rect x="-3" y="3" width="6" height="2" fill="#FBBF24"/>
+    <text x="0" y="12" text-anchor="middle" fill="#DC2626" font-family="monospace" font-size="3">Divertor</text>
+  </g>
+</svg>

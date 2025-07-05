@@ -1,0 +1,106 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Atomic core gradient -->
+    <radialGradient id="atomicCore">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:0.4" />
+    </radialGradient>
+    
+    <!-- Electron orbital gradient -->
+    <linearGradient id="orbitalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Quantum field -->
+    <radialGradient id="quantumField">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Energy wave -->
+    <pattern id="energyWave" x="0" y="0" width="8" height="4" patternUnits="userSpaceOnUse">
+      <path d="M 0,2 Q 2,0 4,2 T 8,2" stroke="#06B6D4" stroke-width="0.3" fill="none" opacity="0.5"/>
+    </pattern>
+  </defs>
+  
+  <!-- Quantum field background -->
+  <circle cx="50" cy="50" r="48" fill="url(#quantumField)"/>
+  <rect x="0" y="0" width="100" height="100" fill="url(#energyWave)" opacity="0.3"/>
+  
+  <!-- Electron orbitals -->
+  <g fill="none" stroke="url(#orbitalGrad)" stroke-width="2" opacity="0.8">
+    <!-- S orbital (spherical) -->
+    <circle cx="50" cy="50" r="25"/>
+    
+    <!-- P orbitals (dumbbell shaped) -->
+    <ellipse cx="50" cy="50" rx="35" ry="12" transform="rotate(0 50 50)"/>
+    <ellipse cx="50" cy="50" rx="35" ry="12" transform="rotate(90 50 50)"/>
+    
+    <!-- D orbital -->
+    <ellipse cx="50" cy="50" rx="32" ry="18" transform="rotate(45 50 50)"/>
+    <ellipse cx="50" cy="50" rx="32" ry="18" transform="rotate(-45 50 50)"/>
+  </g>
+  
+  <!-- Atomic nucleus -->
+  <circle cx="50" cy="50" r="8" fill="url(#atomicCore)"/>
+  <circle cx="50" cy="50" r="6" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="50" cy="50" r="4" fill="#FBBF24" opacity="0.6"/>
+  
+  <!-- Electrons -->
+  <g fill="#06B6D4">
+    <!-- S orbital electrons -->
+    <circle cx="25" cy="50" r="2"/>
+    <circle cx="75" cy="50" r="2"/>
+    
+    <!-- P orbital electrons -->
+    <circle cx="50" cy="15" r="1.8"/>
+    <circle cx="50" cy="85" r="1.8"/>
+    <circle cx="15" cy="50" r="1.8"/>
+    <circle cx="85" cy="50" r="1.8"/>
+    
+    <!-- D orbital electrons -->
+    <g transform="rotate(45 50 50)">
+      <circle cx="27" cy="50" r="1.5"/>
+      <circle cx="73" cy="50" r="1.5"/>
+    </g>
+    <g transform="rotate(-45 50 50)">
+      <circle cx="27" cy="50" r="1.5"/>
+      <circle cx="73" cy="50" r="1.5"/>
+    </g>
+  </g>
+  
+  <!-- Quantum energy levels -->
+  <g stroke="#F59E0B" stroke-width="1" fill="none" opacity="0.6" stroke-dasharray="2,2">
+    <circle cx="50" cy="50" r="15"/>
+    <circle cx="50" cy="50" r="25"/>
+    <circle cx="50" cy="50" r="35"/>
+    <circle cx="50" cy="50" r="42"/>
+  </g>
+  
+  <!-- Photon emission -->
+  <g fill="#FBBF24" opacity="0.9">
+    <circle cx="62" cy="38" r="1.2"/>
+    <circle cx="65" cy="35" r="0.8"/>
+    <circle cx="68" cy="32" r="0.6"/>
+    <circle cx="70" cy="30" r="0.4"/>
+    
+    <!-- Wavy photon path -->
+    <path d="M 62,38 Q 64,36 66,34 Q 68,32 70,30" stroke="#FBBF24" stroke-width="0.8" fill="none"/>
+  </g>
+  
+  <!-- Quantum spin indicators -->
+  <g fill="#EA580C" opacity="0.7">
+    <polygon points="50,42 48,45 52,45" transform="rotate(0 50 50)"/>
+    <polygon points="50,55 52,58 48,58" transform="rotate(180 50 50)"/>
+  </g>
+  
+  <!-- Electron probability clouds -->
+  <g fill="url(#orbitalGrad)" opacity="0.2">
+    <ellipse cx="35" cy="35" rx="8" ry="4" transform="rotate(-30 35 35)"/>
+    <ellipse cx="65" cy="35" rx="6" ry="3" transform="rotate(30 65 35)"/>
+    <ellipse cx="35" cy="65" rx="7" ry="3.5" transform="rotate(60 35 65)"/>
+    <ellipse cx="65" cy="65" rx="6" ry="3" transform="rotate(-60 65 65)"/>
+  </g>
+</svg>

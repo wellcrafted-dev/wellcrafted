@@ -1,0 +1,140 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Geode exterior gradient -->
+    <linearGradient id="geodeExterior" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#78716C;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#57534E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3C3834;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Crystal interior gradient -->
+    <radialGradient id="crystalInterior">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#0EA5E9;stop-opacity:0.8" />
+      <stop offset="70%" style="stop-color:#0284C7;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0.4" />
+    </radialGradient>
+    
+    <!-- Amethyst gradient -->
+    <linearGradient id="amethystGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A855F7;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#7C3AED;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#5B21B6;stop-opacity:0.5" />
+    </radialGradient>
+    
+    <!-- Citrine gradient -->
+    <linearGradient id="citrineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:0.5" />
+    </linearGradient>
+    
+    <!-- Quartz crystal pattern -->
+    <pattern id="quartzPattern" x="0" y="0" width="4" height="8" patternUnits="userSpaceOnUse">
+      <polygon points="2,0 4,2 2,4 0,2" fill="#E2E8F0" opacity="0.3"/>
+      <polygon points="2,4 4,6 2,8 0,6" fill="#CBD5E1" opacity="0.2"/>
+    </pattern>
+  </defs>
+  
+  <!-- Geode exterior shell -->
+  <ellipse cx="50" cy="50" rx="45" ry="35" fill="url(#geodeExterior)" stroke="#57534E" stroke-width="2"/>
+  
+  <!-- Rough exterior texture -->
+  <g fill="#78716C" opacity="0.6">
+    <circle cx="25" cy="30" r="3"/>
+    <circle cx="75" cy="35" r="2.5"/>
+    <circle cx="30" cy="70" r="2"/>
+    <circle cx="70" cy="65" r="2.8"/>
+    <circle cx="20" cy="55" r="1.8"/>
+    <circle cx="80" cy="50" r="2.2"/>
+  </g>
+  
+  <!-- Crystal cavity -->
+  <ellipse cx="50" cy="50" rx="35" ry="25" fill="url(#crystalInterior)"/>
+  
+  <!-- Quartz crystal formations -->
+  <g fill="url(#quartzPattern)" stroke="#38BDF8" stroke-width="0.5">
+    <!-- Central cluster -->
+    <polygon points="50,35 45,40 50,45 55,40" opacity="0.9"/>
+    <polygon points="50,45 45,50 50,55 55,50" opacity="0.8"/>
+    <polygon points="50,55 45,60 50,65 55,60" opacity="0.7"/>
+    
+    <!-- Side formations -->
+    <polygon points="35,45 30,50 35,55 40,50" opacity="0.6"/>
+    <polygon points="65,45 70,50 65,55 60,50" opacity="0.6"/>
+    
+    <!-- Top formations -->
+    <polygon points="45,30 40,35 45,40 50,35" opacity="0.7"/>
+    <polygon points="55,30 60,35 55,40 50,35" opacity="0.7"/>
+  </g>
+  
+  <!-- Amethyst crystals -->
+  <g fill="url(#amethystGrad)" stroke="#A855F7" stroke-width="0.8">
+    <polygon points="25,45 20,50 25,58 30,50" opacity="0.8"/>
+    <polygon points="28,38 23,43 28,50 33,43" opacity="0.7"/>
+    <polygon points="30,58 25,63 30,68 35,63" opacity="0.6"/>
+  </g>
+  
+  <!-- Citrine crystals -->
+  <g fill="url(#citrineGrad)" stroke="#F59E0B" stroke-width="0.8">
+    <polygon points="75,45 80,50 75,58 70,50" opacity="0.8"/>
+    <polygon points="72,38 77,43 72,50 67,43" opacity="0.7"/>
+    <polygon points="70,58 75,63 70,68 65,63" opacity="0.6"/>
+  </g>
+  
+  <!-- Crystal points -->
+  <g fill="#F8FAFC" opacity="0.9">
+    <polygon points="50,25 48,30 52,30"/>
+    <polygon points="25,40 23,45 27,45"/>
+    <polygon points="75,40 77,45 73,45"/>
+    <polygon points="35,65 33,70 37,70"/>
+    <polygon points="65,65 67,70 63,70"/>
+  </g>
+  
+  <!-- Internal light reflections -->
+  <g fill="url(#crystalInterior)" opacity="0.5">
+    <ellipse cx="40" cy="42" rx="6" ry="2" transform="rotate(-30 40 42)"/>
+    <ellipse cx="60" cy="42" rx="6" ry="2" transform="rotate(30 60 42)"/>
+    <ellipse cx="50" cy="58" rx="8" ry="3"/>
+  </g>
+  
+  <!-- Druzy sparkles -->
+  <g fill="#06B6D4" opacity="0.8">
+    <circle cx="45" cy="35" r="0.8"/>
+    <circle cx="55" cy="37" r="1"/>
+    <circle cx="42" cy="48" r="0.6"/>
+    <circle cx="58" cy="52" r="0.9"/>
+    <circle cx="48" cy="62" r="0.7"/>
+    <circle cx="52" cy="58" r="0.8"/>
+    <circle cx="35" cy="52" r="0.5"/>
+    <circle cx="65" cy="48" r="0.6"/>
+  </g>
+  
+  <!-- Geological layers -->
+  <g stroke="#57534E" stroke-width="1" fill="none" opacity="0.6">
+    <ellipse cx="50" cy="50" rx="42" ry="32"/>
+    <ellipse cx="50" cy="50" rx="39" ry="29"/>
+    <ellipse cx="50" cy="50" rx="36" ry="26"/>
+  </g>
+  
+  <!-- Fracture lines -->
+  <g stroke="#3C3834" stroke-width="0.5" fill="none" opacity="0.7">
+    <path d="M 20,40 Q 30,45 40,40"/>
+    <path d="M 60,40 Q 70,45 80,40"/>
+    <path d="M 35,70 Q 45,65 55,70"/>
+  </g>
+  
+  <!-- Mineral identification -->
+  <g fill="#0284C7" font-family="monospace" font-size="4" opacity="0.8">
+    <text x="15" y="85">SiO₂</text>
+    <text x="50" y="85" text-anchor="middle">Quartz</text>
+    <text x="85" y="85" text-anchor="end">Mohs 7</text>
+  </g>
+  
+  <!-- Cutting guidelines -->
+  <g stroke="#F59E0B" stroke-width="1" fill="none" opacity="0.5" stroke-dasharray="2,2">
+    <line x1="50" y1="15" x2="50" y2="85"/>
+    <line x1="15" y1="50" x2="85" y2="50"/>
+    <circle cx="50" cy="50" r="20"/>
+  </g>
+</svg>

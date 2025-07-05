@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WellCrafted Logo V5 Motion Series - Size Testing</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #f59e0b, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .size-test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .logo-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .logo-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #f1f5f9;
+        }
+        
+        .size-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        
+        .size-label {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            min-width: 60px;
+        }
+        
+        .logo-display {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 8px;
+        }
+        
+        /* Dark background for contrast testing */
+        .dark-bg {
+            background: #0f172a;
+        }
+        
+        /* Light background for contrast testing */
+        .light-bg {
+            background: #f8fafc;
+        }
+        
+        .motion-effects {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+        
+        .motion-effects h2 {
+            color: #f59e0b;
+            margin-bottom: 15px;
+        }
+        
+        .motion-showcase {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .motion-item {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+        
+        .motion-item h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+        }
+        
+        .motion-description {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WellCrafted Logo V5 Motion Series</h1>
+        <p>Dynamic hammer variations with motion blur, energy effects, and impact visualization</p>
+        <p><strong>Size Testing:</strong> 16px, 24px, 32px | <strong>Focus:</strong> Motion & Energy</p>
+    </div>
+
+    <div class="size-test-grid">
+        <!-- Motion 01: Golden Energy Burst -->
+        <div class="logo-card">
+            <div class="logo-title">01: Golden Energy Burst</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="16" height="16" alt="Motion 01 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="16" height="16" alt="Motion 01 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="24" height="24" alt="Motion 01 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="24" height="24" alt="Motion 01 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="32" height="32" alt="Motion 01 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-01.svg" width="32" height="32" alt="Motion 01 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 02: Chrome Velocity -->
+        <div class="logo-card">
+            <div class="logo-title">02: Chrome Velocity</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="16" height="16" alt="Motion 02 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="16" height="16" alt="Motion 02 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="24" height="24" alt="Motion 02 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="24" height="24" alt="Motion 02 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="32" height="32" alt="Motion 02 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-02.svg" width="32" height="32" alt="Motion 02 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 03: Forge Heat -->
+        <div class="logo-card">
+            <div class="logo-title">03: Forge Heat</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="16" height="16" alt="Motion 03 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="16" height="16" alt="Motion 03 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="24" height="24" alt="Motion 03 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="24" height="24" alt="Motion 03 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="32" height="32" alt="Motion 03 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-03.svg" width="32" height="32" alt="Motion 03 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 04: Precision Kinetic -->
+        <div class="logo-card">
+            <div class="logo-title">04: Precision Kinetic</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="16" height="16" alt="Motion 04 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="16" height="16" alt="Motion 04 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="24" height="24" alt="Motion 04 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="24" height="24" alt="Motion 04 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="32" height="32" alt="Motion 04 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-04.svg" width="32" height="32" alt="Motion 04 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 05: Spiral Vortex -->
+        <div class="logo-card">
+            <div class="logo-title">05: Spiral Vortex</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="16" height="16" alt="Motion 05 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="16" height="16" alt="Motion 05 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="24" height="24" alt="Motion 05 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="24" height="24" alt="Motion 05 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="32" height="32" alt="Motion 05 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-05.svg" width="32" height="32" alt="Motion 05 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 06: Power Strike -->
+        <div class="logo-card">
+            <div class="logo-title">06: Power Strike</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="16" height="16" alt="Motion 06 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="16" height="16" alt="Motion 06 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="24" height="24" alt="Motion 06 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="24" height="24" alt="Motion 06 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="32" height="32" alt="Motion 06 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-06.svg" width="32" height="32" alt="Motion 06 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 07: Damascus Flow -->
+        <div class="logo-card">
+            <div class="logo-title">07: Damascus Flow</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="16" height="16" alt="Motion 07 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="16" height="16" alt="Motion 07 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="24" height="24" alt="Motion 07 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="24" height="24" alt="Motion 07 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="32" height="32" alt="Motion 07 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-07.svg" width="32" height="32" alt="Motion 07 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motion 08: Plasma Forge -->
+        <div class="logo-card">
+            <div class="logo-title">08: Plasma Forge</div>
+            <div class="size-row">
+                <div class="size-label">16px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="16" height="16" alt="Motion 08 - 16px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="16" height="16" alt="Motion 08 - 16px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">24px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="24" height="24" alt="Motion 08 - 24px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="24" height="24" alt="Motion 08 - 24px">
+                    </div>
+                </div>
+            </div>
+            <div class="size-row">
+                <div class="size-label">32px:</div>
+                <div class="logo-display">
+                    <div class="logo-container dark-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="32" height="32" alt="Motion 08 - 32px">
+                    </div>
+                    <div class="logo-container light-bg">
+                        <img src="svg/variations/v5-motion-08.svg" width="32" height="32" alt="Motion 08 - 32px">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="motion-effects">
+        <h2>Motion & Energy Effects Overview</h2>
+        <div class="motion-showcase">
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-01.svg" width="48" height="48" alt="Golden Energy Burst">
+                <h3>Golden Energy Burst</h3>
+                <div class="motion-description">
+                    Motion trails with golden sparks, impact glow, and animated energy particles
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-02.svg" width="48" height="48" alt="Chrome Velocity">
+                <h3>Chrome Velocity</h3>
+                <div class="motion-description">
+                    Velocity streaks, electric discharge, and dynamic spark constellation
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-03.svg" width="48" height="48" alt="Forge Heat">
+                <h3>Forge Heat</h3>
+                <div class="motion-description">
+                    Heat shimmer, forge glow, molten droplets, and rising fire particles
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-04.svg" width="48" height="48" alt="Precision Kinetic">
+                <h3>Precision Kinetic</h3>
+                <div class="motion-description">
+                    Kinetic energy field, precision sparks, and pressure wave visualization
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-05.svg" width="48" height="48" alt="Spiral Vortex">
+                <h3>Spiral Vortex</h3>
+                <div class="motion-description">
+                    Whirlwind trails, rotating sparks, and spiral energy vortex
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-06.svg" width="48" height="48" alt="Power Strike">
+                <h3>Power Strike</h3>
+                <div class="motion-description">
+                    Electric arcs, power discharge rings, and explosive impact sparks
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-07.svg" width="48" height="48" alt="Damascus Flow">
+                <h3>Damascus Flow</h3>
+                <div class="motion-description">
+                    Fluid motion trails, flowing energy streams, and elegant ripple effects
+                </div>
+            </div>
+            <div class="motion-item">
+                <img src="svg/variations/v5-motion-08.svg" width="48" height="48" alt="Plasma Forge">
+                <h3>Plasma Forge</h3>
+                <div class="motion-description">
+                    Quantum distortion, plasma waves, and high-energy particle burst
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

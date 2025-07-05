@@ -1,0 +1,181 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Plasma-forged steel gradient with amber transition -->
+    <linearGradient id="plasmaAmber3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandle3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Plasma energy field with amber cascade -->
+    <radialGradient id="plasmaFieldAmber3" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FDE047;stop-opacity:0.9" />
+      <stop offset="10%" style="stop-color:#FBBF24;stop-opacity:0.8" />
+      <stop offset="25%" style="stop-color:#F97316;stop-opacity:0.7" />
+      <stop offset="40%" style="stop-color:#7DD3FC;stop-opacity:0.6" />
+      <stop offset="60%" style="stop-color:#0EA5E9;stop-opacity:0.4" />
+      <stop offset="80%" style="stop-color:#0284C7;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:0" />
+    </radialGradient>
+    <!-- Amber glow -->
+    <radialGradient id="amberGlow3" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F97316;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#92400E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Filters -->
+    <filter id="quantumDistort3">
+      <feTurbulence baseFrequency="0.08" numOctaves="3"/>
+      <feDisplacementMap in="SourceGraphic" scale="4"/>
+    </filter>
+    <filter id="hyperVelocity3">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4,1.2"/>
+    </filter>
+    <filter id="energyGlow3">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <!-- Gradient mask for cascading effect -->
+    <linearGradient id="cascadeMask3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0" />
+      <stop offset="50%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#FBBF24" stroke-width="0.3"/>
+  <!-- Tech surface pattern with amber highlights -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  <rect x="36" y="74" width="4" height="2" fill="#FBBF24" opacity="0.6"/>
+  <rect x="44" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="52" y="74" width="4" height="2" fill="#FBBF24" opacity="0.6"/>
+  <rect x="60" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  
+  <!-- Massive plasma field with amber cascade -->
+  <ellipse cx="50" cy="75" rx="40" ry="24" fill="url(#plasmaFieldAmber3)" opacity="0.95"/>
+  
+  <!-- Amber cascade effect -->
+  <g opacity="0.7">
+    <path d="M 35,50 Q 40,65 35,80" stroke="url(#cascadeMask3)" stroke-width="8" fill="none" filter="url(#energyGlow3)">
+      <animate attributeName="stroke" values="#FBBF24;#F97316;#FBBF24" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 65,50 Q 60,65 65,80" stroke="url(#cascadeMask3)" stroke-width="8" fill="none" filter="url(#energyGlow3)">
+      <animate attributeName="stroke" values="#F97316;#FBBF24;#F97316" dur="2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Quantum distortion trails with amber streams -->
+  <g opacity="0.6" filter="url(#quantumDistort3)">
+    <path d="M 15,15 Q 30,5 50,75" stroke="#0EA5E9" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M 85,15 Q 70,5 50,75" stroke="#0EA5E9" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M 30,10 Q 35,30 45,75" stroke="#FBBF24" stroke-width="2.5" fill="none" opacity="0.7"/>
+    <path d="M 70,10 Q 65,30 55,75" stroke="#FBBF24" stroke-width="2.5" fill="none" opacity="0.7"/>
+  </g>
+  
+  <!-- Hyper-velocity motion blur with amber streaks -->
+  <g opacity="0.5" filter="url(#hyperVelocity3)">
+    <rect x="46" y="2" width="8" height="56" fill="#0EA5E9" transform="rotate(-38 50 30)"/>
+    <rect x="44" y="-2" width="8" height="56" fill="#FBBF24" transform="rotate(-36 48 26)" opacity="0.8"/>
+    <rect x="42" y="-6" width="8" height="56" fill="#0369A1" transform="rotate(-30 46 22)"/>
+  </g>
+  
+  <!-- Main plasma hammer -->
+  <g transform="rotate(-38 50 36)">
+    <!-- Titanium handle with tech grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle3)"/>
+    <!-- Tech grip pattern with amber accents -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="#FBBF24" opacity="0.8"/>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="#F97316" opacity="0.8"/>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="#FBBF24" opacity="0.8"/>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="#F97316" opacity="0.8"/>
+    <!-- Plasma-forged hammer head with amber crown -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#plasmaAmber3)"/>
+    <!-- Energy core -->
+    <rect x="38" y="1" width="24" height="3" fill="#FEF3C7" opacity="0.9"/>
+    <rect x="38" y="8" width="24" height="3" fill="#0C4A6E" opacity="0.8"/>
+    <!-- Tech details -->
+    <circle cx="42" cy="5" r="1" fill="#FBBF24" opacity="0.9"/>
+    <circle cx="58" cy="5" r="1" fill="#7DD3FC" opacity="0.8"/>
+  </g>
+  
+  <!-- Plasma explosion core with amber center -->
+  <circle cx="50" cy="73" r="5" fill="url(#amberGlow3)" filter="url(#energyGlow3)">
+    <animate attributeName="r" values="5;3;5" dur="0.4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.7;1" dur="0.4s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- High-energy particle burst with amber/blue cascade -->
+  <g opacity="0.9">
+    <!-- Central burst -->
+    <circle cx="43" cy="70" r="3" fill="#FBBF24"/>
+    <circle cx="57" cy="70" r="3" fill="#7DD3FC"/>
+    <circle cx="36" cy="72" r="2.5" fill="#F97316" opacity="0.9"/>
+    <circle cx="64" cy="72" r="2.5" fill="#0EA5E9" opacity="0.9"/>
+    <!-- Cascading particles -->
+    <circle cx="46" cy="66" r="2" fill="#FDE047" opacity="0.9">
+      <animate attributeName="cy" values="66;74;66" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="54" cy="66" r="2" fill="#F0F9FF" opacity="0.8">
+      <animate attributeName="cy" values="66;74;66" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="39" cy="76" r="1.5" fill="#0284C7" opacity="0.7"/>
+    <circle cx="61" cy="76" r="1.5" fill="#92400E" opacity="0.7"/>
+  </g>
+  
+  <!-- Quantum energy discharge with amber/blue interweave -->
+  <g filter="url(#quantumDistort3)" opacity="0.7">
+    <path d="M 50,73 L 30,68 L 35,70 L 25,65 L 30,67" stroke="#FBBF24" stroke-width="2" fill="none"/>
+    <path d="M 50,73 L 70,68 L 65,70 L 75,65 L 70,67" stroke="#F0F9FF" stroke-width="2" fill="none"/>
+    <path d="M 50,73 L 42,58 L 45,62 L 38,55 L 42,59" stroke="#7DD3FC" stroke-width="1.5" fill="none"/>
+    <path d="M 50,73 L 58,58 L 55,62 L 62,55 L 58,59" stroke="#F97316" stroke-width="1.5" fill="none"/>
+    <!-- Interwoven arcs -->
+    <path d="M 40,70 Q 50,65 60,70" stroke="#FBBF24" stroke-width="1" fill="none" opacity="0.8"/>
+    <path d="M 35,72 Q 50,67 65,72" stroke="#0EA5E9" stroke-width="1" fill="none" opacity="0.8"/>
+  </g>
+  
+  <!-- Plasma wave rings with amber accents -->
+  <g opacity="0.4">
+    <circle cx="50" cy="75" r="18" fill="none" stroke="#FBBF24" stroke-width="1.5">
+      <animate attributeName="r" values="18;25;18" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="26" fill="none" stroke="#0284C7" stroke-width="1.2">
+      <animate attributeName="r" values="26;33;26" dur="1.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="34" fill="none" stroke="#F97316" stroke-width="0.8">
+      <animate attributeName="r" values="34;41;34" dur="2.1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Energy matrix particles with cascading motion -->
+  <g opacity="0.6">
+    <rect x="28" y="76" width="2" height="2" fill="#FBBF24" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 29 77;360 29 77" dur="3s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="70" y="76" width="2" height="2" fill="#7DD3FC" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 71 77;360 71 77" dur="3s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="44" y="58" width="1.5" height="1.5" fill="#F97316" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 44.75 58.75;360 44.75 58.75" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="58;62;58" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="54" y="58" width="1.5" height="1.5" fill="#0EA5E9" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 54.75 58.75;360 54.75 58.75" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="58;62;58" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

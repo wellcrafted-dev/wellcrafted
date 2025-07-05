@@ -1,0 +1,92 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Protractor gradient -->
+    <linearGradient id="protractorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#0284C7;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0.5" />
+    </linearGradient>
+    
+    <!-- Measurement gradient -->
+    <linearGradient id="measureGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#DC2626;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Technical precision glow -->
+    <radialGradient id="precisionGlow">
+      <stop offset="0%" style="stop-color:#38BDF8;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Grid pattern -->
+    <pattern id="techGrid" width="5" height="5" patternUnits="userSpaceOnUse">
+      <circle cx="2.5" cy="2.5" r="0.2" fill="#0891B2" opacity="0.3"/>
+    </pattern>
+  </defs>
+  
+  <!-- Technical grid background -->
+  <rect x="0" y="0" width="100" height="100" fill="url(#techGrid)"/>
+  
+  <!-- Precision glow -->
+  <circle cx="50" cy="75" r="35" fill="url(#precisionGlow)" opacity="0.4"/>
+  
+  <!-- Protractor body -->
+  <path d="M 15,75 A 35,35 0 0,1 85,75 Z" fill="url(#protractorGrad)" stroke="#38BDF8" stroke-width="2"/>
+  
+  <!-- Inner arc -->
+  <path d="M 20,75 A 30,30 0 0,1 80,75" fill="none" stroke="#0EA5E9" stroke-width="1" opacity="0.6"/>
+  
+  <!-- Degree markings -->
+  <g stroke="#38BDF8" stroke-width="1" fill="#0EA5E9" font-family="monospace" font-size="4">
+    <!-- Major degree marks -->
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(0 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(30 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(60 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(90 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(120 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(150 50 75)"/>
+    <line x1="50" y1="42" x2="50" y2="47" transform="rotate(180 50 75)"/>
+    
+    <!-- Degree numbers -->
+    <text x="50" y="38" text-anchor="middle" transform="rotate(0 50 75)">0</text>
+    <text x="48" y="38" text-anchor="middle" transform="rotate(30 50 75)">30</text>
+    <text x="46" y="38" text-anchor="middle" transform="rotate(60 50 75)">60</text>
+    <text x="50" y="38" text-anchor="middle" transform="rotate(90 50 75)">90</text>
+    <text x="54" y="38" text-anchor="middle" transform="rotate(120 50 75)">120</text>
+    <text x="52" y="38" text-anchor="middle" transform="rotate(150 50 75)">150</text>
+    <text x="50" y="38" text-anchor="middle" transform="rotate(180 50 75)">180</text>
+  </g>
+  
+  <!-- Minor degree marks -->
+  <g stroke="#0891B2" stroke-width="0.5" opacity="0.7">
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(15 50 75)"/>
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(45 50 75)"/>
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(75 50 75)"/>
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(105 50 75)"/>
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(135 50 75)"/>
+    <line x1="50" y1="44" x2="50" y2="46" transform="rotate(165 50 75)"/>
+  </g>
+  
+  <!-- Measuring arm -->
+  <g transform="rotate(45 50 75)">
+    <line x1="50" y1="75" x2="50" y2="45" stroke="url(#measureGrad)" stroke-width="3"/>
+    <circle cx="50" cy="45" r="2" fill="#FB923C"/>
+    <polygon points="50,42 48,45 52,45" fill="#EA580C"/>
+  </g>
+  
+  <!-- Center pivot -->
+  <circle cx="50" cy="75" r="4" fill="url(#measureGrad)"/>
+  <circle cx="50" cy="75" r="2" fill="#FB923C"/>
+  
+  <!-- Base line -->
+  <line x1="15" y1="75" x2="85" y2="75" stroke="#38BDF8" stroke-width="2"/>
+  
+  <!-- Angle measurement display -->
+  <g fill="#FB923C" font-family="monospace" font-size="8">
+    <text x="50" y="90" text-anchor="middle">45°</text>
+  </g>
+  
+  <!-- Construction arc -->
+  <path d="M 50,75 L 65,60 A 15,15 0 0,0 50,60 Z" fill="none" stroke="#FB923C" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+</svg>

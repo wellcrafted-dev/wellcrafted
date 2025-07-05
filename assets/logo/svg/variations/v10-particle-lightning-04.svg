@@ -1,0 +1,76 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Hammer Glow -->
+    <radialGradient id="hammerGlow7" cx="50%" cy="35%" r="40%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Aurora Particle-Lightning Gradients -->
+    <radialGradient id="auroraParticle1" cx="50%" cy="50%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="40%" style="stop-color:#00FF7F;stop-opacity:0.7"/>
+      <stop offset="80%" style="stop-color:#32CD32;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#228B22;stop-opacity:0.1"/>
+    </radialGradient>
+    
+    <radialGradient id="auroraParticle2" cx="50%" cy="50%" r="25%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.8"/>
+      <stop offset="40%" style="stop-color:#40E0D0;stop-opacity:0.6"/>
+      <stop offset="80%" style="stop-color:#008B8B;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#2F4F4F;stop-opacity:0.1"/>
+    </radialGradient>
+    
+    <!-- Aurora Lightning Gradient -->
+    <linearGradient id="auroraLightning" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="25%" style="stop-color:#00FF7F;stop-opacity:0.7"/>
+      <stop offset="50%" style="stop-color:#32CD32;stop-opacity:0.5"/>
+      <stop offset="75%" style="stop-color:#40E0D0;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#008B8B;stop-opacity:0.2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="25" ry="15" fill="url(#hammerGlow7)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Aurora Particle-Lightning Display -->
+  <!-- Major aurora particles with lightning -->
+  <circle cx="32" cy="66" r="3.8" fill="url(#auroraParticle1)"/>
+  <path d="M32 66 L30 70 L34 72 L32 76 L36 74 L38 78 L42 76" stroke="url(#auroraLightning)" stroke-width="0.9" fill="none"/>
+  
+  <circle cx="50" cy="69" r="4.2" fill="url(#auroraParticle2)"/>
+  <path d="M50 69 L48 73 L52 75 L50 79 L54 77 L56 81 L60 79" stroke="url(#auroraLightning)" stroke-width="1.1" fill="none"/>
+  
+  <circle cx="68" cy="67" r="3.5" fill="url(#auroraParticle1)"/>
+  <path d="M68 67 L66 71 L70 73 L68 77 L72 75 L74 79 L78 77" stroke="url(#auroraLightning)" stroke-width="0.9" fill="none"/>
+  
+  <!-- Medium aurora particles -->
+  <circle cx="27" cy="76" r="2.8" fill="url(#auroraParticle2)"/>
+  <path d="M27 76 L25 80 L29 82 L27 86" stroke="url(#auroraLightning)" stroke-width="0.7" fill="none"/>
+  
+  <circle cx="42" cy="81" r="3.1" fill="url(#auroraParticle1)"/>
+  <path d="M42 81 L40 85 L44 87 L42 91" stroke="url(#auroraLightning)" stroke-width="0.8" fill="none"/>
+  
+  <circle cx="58" cy="83" r="2.9" fill="url(#auroraParticle2)"/>
+  <path d="M58 83 L56 87 L60 89 L58 93" stroke="url(#auroraLightning)" stroke-width="0.7" fill="none"/>
+  
+  <circle cx="73" cy="80" r="3.3" fill="url(#auroraParticle1)"/>
+  <path d="M73 80 L75 84 L71 86 L73 90" stroke="url(#auroraLightning)" stroke-width="0.8" fill="none"/>
+  
+  <!-- Small aurora particles -->
+  <circle cx="22" cy="86" r="2.2" fill="url(#auroraParticle2)"/>
+  <circle cx="36" cy="90" r="2.5" fill="url(#auroraParticle1)"/>
+  <circle cx="52" cy="92" r="2.1" fill="url(#auroraParticle2)"/>
+  <circle cx="65" cy="94" r="2.4" fill="url(#auroraParticle1)"/>
+  <circle cx="78" cy="88" r="2.3" fill="url(#auroraParticle2)"/>
+</svg>

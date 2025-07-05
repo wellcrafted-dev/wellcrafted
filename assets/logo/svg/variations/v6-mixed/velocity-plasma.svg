@@ -1,0 +1,67 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Steel hammer gradient -->
+    <linearGradient id="steelHammer17" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Dark handle -->
+    <linearGradient id="handle17" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Velocity streak filter -->
+    <filter id="velocityStreak17">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3,0.8"/>
+    </filter>
+    <!-- Plasma burst -->
+    <radialGradient id="plasmaBurst17" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#7DD3FC;stop-opacity:0.8" />
+      <stop offset="40%" style="stop-color:#0EA5E9;stop-opacity:0.6" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Plasma burst -->
+  <ellipse cx="50" cy="74" rx="30" ry="18" fill="url(#plasmaBurst17)" opacity="0.8"/>
+  
+  <!-- Combined velocity streaks -->
+  <g opacity="0.6" filter="url(#velocityStreak17)">
+    <rect x="45" y="8" width="6" height="55" fill="#0EA5E9" transform="rotate(-42 48 35.5)"/>
+    <rect x="43" y="5" width="6" height="55" fill="#7DD3FC" transform="rotate(-40 46 32.5)"/>
+    <rect x="41" y="2" width="6" height="55" fill="#F0F9FF" transform="rotate(-38 44 29.5)"/>
+  </g>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Dark handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#handle17)"/>
+    <!-- Steel hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#steelHammer17)"/>
+    <!-- Strike face -->
+    <rect x="38" y="14" width="24" height="2" fill="#1E293B"/>
+  </g>
+  
+  <!-- Combined plasma sparks -->
+  <circle cx="50" cy="72" r="4" fill="#F0F9FF" opacity="0.9">
+    <animate attributeName="r" values="4;2;4" dur="0.4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="43" cy="69" r="2.5" fill="#7DD3FC" opacity="0.9"/>
+  <circle cx="57" cy="69" r="2.5" fill="#7DD3FC" opacity="0.9"/>
+  <circle cx="36" cy="71" r="2" fill="#0EA5E9" opacity="0.8"/>
+  <circle cx="64" cy="71" r="2" fill="#0EA5E9" opacity="0.8"/>
+  
+  <!-- Energy trails -->
+  <g opacity="0.6">
+    <path d="M 50,72 L 30,60 L 35,63" stroke="#7DD3FC" stroke-width="1.5" fill="none"/>
+    <path d="M 50,72 L 70,60 L 65,63" stroke="#7DD3FC" stroke-width="1.5" fill="none"/>
+  </g>
+</svg>

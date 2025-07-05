@@ -1,0 +1,68 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gear gradient -->
+    <linearGradient id="gearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891B2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0E7490;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#164E63;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Code bracket gradient -->
+    <linearGradient id="codeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C2410C;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Energy field -->
+    <radialGradient id="energyField">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#0E7490;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Energy field -->
+  <circle cx="50" cy="50" r="40" fill="url(#energyField)"/>
+  
+  <!-- Main gear -->
+  <g transform="rotate(15 50 50)">
+    <!-- Gear teeth -->
+    <g fill="url(#gearGrad)">
+      <rect x="48" y="15" width="4" height="8" rx="1"/>
+      <rect x="48" y="77" width="4" height="8" rx="1"/>
+      <rect x="15" y="48" width="8" height="4" ry="1"/>
+      <rect x="77" y="48" width="8" height="4" ry="1"/>
+      
+      <!-- Diagonal teeth -->
+      <g transform="rotate(45 50 50)">
+        <rect x="48" y="18" width="4" height="6" rx="1"/>
+        <rect x="48" y="76" width="4" height="6" rx="1"/>
+        <rect x="18" y="48" width="6" height="4" ry="1"/>
+        <rect x="76" y="48" width="6" height="4" ry="1"/>
+      </g>
+    </g>
+    
+    <!-- Gear body -->
+    <circle cx="50" cy="50" r="22" fill="url(#gearGrad)"/>
+    <circle cx="50" cy="50" r="18" fill="none" stroke="#0891B2" stroke-width="2"/>
+  </g>
+  
+  <!-- Code brackets integrated -->
+  <g fill="url(#codeGrad)" stroke="url(#codeGrad)" stroke-width="2">
+    <!-- Left bracket -->
+    <path d="M 35,35 L 28,35 L 28,50 L 28,65 L 35,65" fill="none"/>
+    <!-- Right bracket -->
+    <path d="M 65,35 L 72,35 L 72,50 L 72,65 L 65,65" fill="none"/>
+  </g>
+  
+  <!-- Center hub with code symbol -->
+  <circle cx="50" cy="50" r="8" fill="url(#codeGrad)"/>
+  <text x="50" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="white">&lt;/&gt;</text>
+  
+  <!-- Rotating sparks -->
+  <g>
+    <circle cx="72" cy="35" r="1.5" fill="#06B6D4"/>
+    <circle cx="65" cy="28" r="1" fill="#0891B2"/>
+    <circle cx="35" cy="72" r="1.5" fill="#06B6D4"/>
+    <circle cx="28" cy="65" r="1" fill="#0891B2"/>
+  </g>
+</svg>

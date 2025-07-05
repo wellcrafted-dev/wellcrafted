@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Branching Minimal: Simple Y-shaped discharge -->
+  <!-- Simplified hammer -->
+  <path d="M30 25 L70 25 L70 35 L55 35 L55 55 L45 55 L45 35 L30 35 Z" fill="#0C4A6E"/>
+  
+  <!-- Y-shaped lightning -->
+  <path d="M50 40 L50 60 M50 50 L40 65 M50 50 L60 65" 
+        stroke="#0EA5E9" 
+        stroke-width="4" 
+        stroke-linecap="round"
+        fill="none"/>
+  
+  <!-- Ground effect -->
+  <line x1="35" y1="75" x2="65" y2="75" stroke="#0EA5E9" stroke-width="2"/>
+  
+  <!-- Anvil -->
+  <rect x="40" y="78" width="20" height="5" fill="#0C4A6E"/>
+</svg>

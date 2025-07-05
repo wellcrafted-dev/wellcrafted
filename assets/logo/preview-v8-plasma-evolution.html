@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V8 Plasma Evolution Collection - Motion 08 Variations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 3rem;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 16px;
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(6, 182, 212, 0.1), rgba(245, 158, 11, 0.1));
+            z-index: -1;
+        }
+        
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #f59e0b, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+        }
+        
+        .description {
+            font-size: 1rem;
+            color: #cbd5e1;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            line-height: 1.8;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: rgba(6, 182, 212, 0.15);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #06b6d4;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        
+        .agent-section {
+            margin-bottom: 4rem;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 16px;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 12px;
+            border-left: 4px solid;
+        }
+        
+        .agent-1 { border-left-color: #f59e0b; }
+        .agent-2 { border-left-color: #8b5cf6; }
+        .agent-3 { border-left-color: #10b981; }
+        .agent-4 { border-left-color: #f97316; }
+        .agent-5 { border-left-color: #ef4444; }
+        .agent-6 { border-left-color: #06b6d4; }
+        .agent-7 { border-left-color: #84cc16; }
+        .agent-8 { border-left-color: #ec4899; }
+        .agent-9 { border-left-color: #fbbf24; }
+        .agent-10 { border-left-color: #6366f1; }
+        
+        .agent-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .agent-1 .agent-icon { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+        .agent-2 .agent-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .agent-3 .agent-icon { background: linear-gradient(135deg, #10b981, #059669); }
+        .agent-4 .agent-icon { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .agent-5 .agent-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .agent-6 .agent-icon { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .agent-7 .agent-icon { background: linear-gradient(135deg, #84cc16, #65a30d); }
+        .agent-8 .agent-icon { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .agent-9 .agent-icon { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .agent-10 .agent-icon { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        
+        .agent-info {
+            flex: 1;
+        }
+        
+        .agent-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+        
+        .agent-description {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+        
+        .agent-count {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .logo-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(6, 182, 212, 0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        
+        .logo-card:hover::before {
+            opacity: 1;
+        }
+        
+        .logo-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(6, 182, 212, 0.6);
+            box-shadow: 0 20px 40px rgba(6, 182, 212, 0.15);
+        }
+        
+        .logo-display {
+            width: 100%;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .logo-svg {
+            max-width: 90%;
+            max-height: 90%;
+            transition: transform 0.4s ease;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+        
+        .logo-card:hover .logo-svg {
+            transform: scale(1.1);
+        }
+        
+        .logo-name {
+            font-size: 1rem;
+            color: #cbd5e1;
+            text-align: center;
+            word-wrap: break-word;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .logo-technique {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .logo-version {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+        
+        .control-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .control-btn.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+            color: #dbeafe;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-content {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 3rem;
+            position: relative;
+            border: 2px solid rgba(6, 182, 212, 0.3);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            color: #f8fafc;
+        }
+        
+        .modal-logo {
+            width: 100%;
+            max-width: 500px;
+            height: 500px;
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 16px;
+        }
+        
+        .modal-logo svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .modal-title {
+            text-align: center;
+            font-size: 2rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+        
+        .modal-description {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .logo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 1.5rem;
+            }
+            
+            .agent-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .stats {
+                gap: 1rem;
+            }
+            
+            .controls {
+                gap: 0.5rem;
+            }
+            
+            .control-btn {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">V8 Plasma Evolution</h1>
+            <p class="subtitle">Motion 08 Variations - 10 Agent Exploration</p>
+            <p class="description">
+                A systematic exploration of the beloved Motion 08 (Plasma Forge) design through 10 specialized agents. 
+                Each agent explores different aspects: orange integration, hammerhead forms, arc colors, energy patterns, 
+                animation, materials, and celebration elements - all while preserving the core teal identity with lightning.
+            </p>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number">19</div>
+                    <div class="stat-label">Total Variations</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">10</div>
+                    <div class="stat-label">Specialized Agents</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Motion 08 Based</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">∞</div>
+                    <div class="stat-label">Joy Factor</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn active" data-filter="all">All Agents</button>
+            <button class="control-btn" data-filter="orange">Orange Integration</button>
+            <button class="control-btn" data-filter="forms">Hammerhead Forms</button>
+            <button class="control-btn" data-filter="colors">Arc Colors</button>
+            <button class="control-btn" data-filter="patterns">Energy Patterns</button>
+            <button class="control-btn" data-filter="motion">Animation</button>
+            <button class="control-btn" data-filter="materials">Materials</button>
+            <button class="control-btn" data-filter="joy">Joy & Synthesis</button>
+        </div>
+        
+        <!-- Agent 1: Orange Integration Specialist -->
+        <div class="agent-section agent-1" data-category="orange">
+            <div class="agent-header">
+                <div class="agent-icon">1</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 1: Orange Integration Specialist</div>
+                    <div class="agent-description">Explores orange color integration inspired by Motion 03, Svelte (#FF3E00), and Rust (#CE422B) while maintaining the teal core identity</div>
+                </div>
+                <div class="agent-count">3 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-svelte-fusion">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-svelte-fusion.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Svelte Fusion</div>
+                    <div class="logo-technique">Orange-teal energy fusion</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-rust-energy">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-rust-energy.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Rust Energy</div>
+                    <div class="logo-technique">Rust color plasma integration</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-amber-cascade">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-amber-cascade.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Amber Cascade</div>
+                    <div class="logo-technique">Warm amber energy flows</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 2-4: Hammerhead Form Explorers -->
+        <div class="agent-section agent-2" data-category="forms">
+            <div class="agent-header">
+                <div class="agent-icon">2</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 2: Geometric Hammerhead Explorer</div>
+                    <div class="agent-description">Explores sharp, precise geometric hammerhead forms with crystalline and angular structures</div>
+                </div>
+                <div class="agent-count">3 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-angular-prism">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-angular-prism.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Angular Prism</div>
+                    <div class="logo-technique">Sharp geometric precision</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-diamond-circuit">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-diamond-circuit.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Diamond Circuit</div>
+                    <div class="logo-technique">Tech-inspired diamond form</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-hexagonal-crystal">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-hexagonal-crystal.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Hexagonal Crystal</div>
+                    <div class="logo-technique">Crystalline structure</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="agent-section agent-3" data-category="forms">
+            <div class="agent-header">
+                <div class="agent-icon">3</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 3: Organic Hammerhead Explorer</div>
+                    <div class="agent-description">Explores flowing, natural organic forms inspired by biological structures and energy blooms</div>
+                </div>
+                <div class="agent-count">3 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-liquid-wave">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-liquid-wave.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Liquid Wave</div>
+                    <div class="logo-technique">Flowing organic curves</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-bio-crystal">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-bio-crystal.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Bio Crystal</div>
+                    <div class="logo-technique">Bio-inspired crystalline growth</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-energy-bloom">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-energy-bloom.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Energy Bloom</div>
+                    <div class="logo-technique">Flowering energy patterns</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="agent-section agent-4" data-category="forms">
+            <div class="agent-header">
+                <div class="agent-icon">4</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 4: Hybrid Hammerhead Explorer</div>
+                    <div class="agent-description">Combines geometric precision with organic flow using sacred geometry and golden ratio proportions</div>
+                </div>
+                <div class="agent-count">1 variation</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-sacred-crystal">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-sacred-crystal.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Sacred Crystal</div>
+                    <div class="logo-technique">Golden ratio sacred geometry</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 5: Arc Colorist -->
+        <div class="agent-section agent-5" data-category="colors">
+            <div class="agent-header">
+                <div class="agent-icon">5</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 5: Arc Colorist</div>
+                    <div class="agent-description">Transforms lightning arcs from blue to rainbow spectrum and aurora colors while maintaining energy intensity</div>
+                </div>
+                <div class="agent-count">2 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-rainbow-prism">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-rainbow-prism.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Rainbow Prism</div>
+                    <div class="logo-technique">Full spectrum lightning</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-aurora-cascade">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-aurora-cascade.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Aurora Cascade</div>
+                    <div class="logo-technique">Northern lights energy</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 6: Energy Pattern Architect -->
+        <div class="agent-section agent-6" data-category="patterns">
+            <div class="agent-header">
+                <div class="agent-icon">6</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 6: Energy Pattern Architect</div>
+                    <div class="agent-description">Designs complex energy field patterns including sacred mandalas and dynamic spiral vortices</div>
+                </div>
+                <div class="agent-count">2 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-mandala-energy">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-mandala-energy.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Mandala Energy</div>
+                    <div class="logo-technique">Sacred geometric patterns</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-spiral-vortex">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-spiral-vortex.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Spiral Vortex</div>
+                    <div class="logo-technique">Dynamic spiral energy</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 7: Animation Choreographer -->
+        <div class="agent-section agent-7" data-category="motion">
+            <div class="agent-header">
+                <div class="agent-icon">7</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 7: Animation Choreographer</div>
+                    <div class="agent-description">Creates enhanced motion effects with kinetic energy, sonic booms, and complex multi-layer animations</div>
+                </div>
+                <div class="agent-count">1 variation</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-kinetic-symphony">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-kinetic-symphony.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Kinetic Symphony</div>
+                    <div class="logo-technique">Advanced motion choreography</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 8: Material Alchemist -->
+        <div class="agent-section agent-8" data-category="materials">
+            <div class="agent-header">
+                <div class="agent-icon">8</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 8: Material Alchemist</div>
+                    <div class="agent-description">Develops advanced materials including holographic effects, chromatic shifts, and phase-shifting crystals</div>
+                </div>
+                <div class="agent-count">2 variations</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-holographic-matrix">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-holographic-matrix.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Holographic Matrix</div>
+                    <div class="logo-technique">Holographic interference patterns</div>
+                </div>
+                
+                <div class="logo-card" data-name="plasma-forge-phase-crystal">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-phase-crystal.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Phase Crystal</div>
+                    <div class="logo-technique">Phase-shifting crystalline matter</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 9: Joy Amplifier -->
+        <div class="agent-section agent-9" data-category="joy">
+            <div class="agent-header">
+                <div class="agent-icon">9</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 9: Joy Amplifier</div>
+                    <div class="agent-description">Focuses on creating designs that bring maximum joy through celebration colors, firework effects, and festive particles</div>
+                </div>
+                <div class="agent-count">1 variation</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-celebration">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-celebration.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Celebration</div>
+                    <div class="logo-technique">Firework joy explosion</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent 10: Synthesis Master -->
+        <div class="agent-section agent-10" data-category="joy">
+            <div class="agent-header">
+                <div class="agent-icon">10</div>
+                <div class="agent-info">
+                    <div class="agent-title">Agent 10: Synthesis Master</div>
+                    <div class="agent-description">Combines the best discoveries from all agents into cohesive final designs with multi-dimensional effects</div>
+                </div>
+                <div class="agent-count">1 variation</div>
+            </div>
+            <div class="logo-grid">
+                <div class="logo-card" data-name="plasma-forge-ultimate-synthesis">
+                    <div class="logo-version">V8</div>
+                    <div class="logo-display">
+                        <object class="logo-svg" data="svg/variations/v7-plasma-evolution/plasma-forge-ultimate-synthesis.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-name">Ultimate Synthesis</div>
+                    <div class="logo-technique">All discoveries combined</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for enlarged view -->
+    <div id="logoModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div id="modalLogo" class="modal-logo"></div>
+            <h3 id="modalTitle" class="modal-title"></h3>
+            <p id="modalDescription" class="modal-description"></p>
+        </div>
+    </div>
+    
+    <script>
+        // Filter functionality
+        const filterBtns = document.querySelectorAll('.control-btn[data-filter]');
+        const sections = document.querySelectorAll('.agent-section');
+        
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active button
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filter = btn.dataset.filter;
+                
+                if (filter === 'all') {
+                    sections.forEach(section => section.style.display = 'block');
+                } else {
+                    sections.forEach(section => {
+                        if (section.dataset.category === filter) {
+                            section.style.display = 'block';
+                        } else {
+                            section.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Modal functionality
+        const modal = document.getElementById('logoModal');
+        const modalLogo = document.getElementById('modalLogo');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDescription = document.getElementById('modalDescription');
+        const modalClose = document.querySelector('.modal-close');
+        const logoCards = document.querySelectorAll('.logo-card');
+        
+        logoCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const svgObject = card.querySelector('.logo-svg');
+                const name = card.querySelector('.logo-name').textContent;
+                const technique = card.querySelector('.logo-technique').textContent;
+                const version = card.querySelector('.logo-version').textContent;
+                
+                modalLogo.innerHTML = `<object class="logo-svg" data="${svgObject.data}" type="image/svg+xml" style="max-width: 100%; max-height: 100%;"></object>`;
+                modalTitle.textContent = `${name} (${version})`;
+                modalDescription.textContent = technique;
+                modal.style.display = 'flex';
+            });
+        });
+        
+        modalClose.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Add smooth scrolling for section navigation
+        document.querySelectorAll('.control-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setTimeout(() => {
+                    const firstVisibleSection = document.querySelector('.agent-section[style*="block"], .agent-section:not([style])');
+                    if (firstVisibleSection) {
+                        firstVisibleSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

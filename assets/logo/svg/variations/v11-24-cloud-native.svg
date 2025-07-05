@@ -1,0 +1,34 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cloud Native: Ethereal, floating elements -->
+  <defs>
+    <filter id="cloud-blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1"/>
+    </filter>
+  </defs>
+  
+  <!-- Cloud-like hammer -->
+  <g opacity="0.9">
+    <ellipse cx="40" cy="28" rx="12" ry="8" fill="#0EA5E9" filter="url(#cloud-blur)"/>
+    <ellipse cx="60" cy="28" rx="12" ry="8" fill="#0EA5E9" filter="url(#cloud-blur)"/>
+    <ellipse cx="50" cy="25" rx="15" ry="10" fill="#0EA5E9"/>
+  </g>
+  
+  <!-- Ethereal handle -->
+  <rect x="48" y="35" width="4" height="25" fill="#0C4A6E" opacity="0.4" filter="url(#cloud-blur)"/>
+  
+  <!-- Floating lightning particles -->
+  <g fill="#F0F9FF">
+    <circle cx="45" cy="45" r="2" opacity="0.8">
+      <animate attributeName="cy" values="45;50;45" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="50" r="3" opacity="0.6">
+      <animate attributeName="cy" values="50;45;50" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="55" cy="55" r="2" opacity="0.8">
+      <animate attributeName="cy" values="55;50;55" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Misty base -->
+  <ellipse cx="50" cy="78" rx="25" ry="5" fill="#0C4A6E" opacity="0.3" filter="url(#cloud-blur)"/>
+</svg>

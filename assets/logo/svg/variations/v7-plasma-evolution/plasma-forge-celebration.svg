@@ -1,0 +1,155 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Celebration gradient hammer -->
+    <linearGradient id="celebrationHammer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF700;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#FF6B35;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#F7931E;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0EA5E9;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandle10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Firework burst field -->
+    <radialGradient id="fireworkField" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#FF6B35;stop-opacity:0.9" />
+      <stop offset="40%" style="stop-color:#F7931E;stop-opacity:0.7" />
+      <stop offset="60%" style="stop-color:#7DD3FC;stop-opacity:0.5" />
+      <stop offset="80%" style="stop-color:#0EA5E9;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0" />
+    </radialGradient>
+    <!-- Filters -->
+    <filter id="sparkle">
+      <feTurbulence baseFrequency="0.1" numOctaves="1"/>
+      <feDisplacementMap in="SourceGraphic" scale="2"/>
+      <feGaussianBlur stdDeviation="0.5"/>
+    </filter>
+    <filter id="celebration">
+      <feGaussianBlur stdDeviation="2"/>
+      <feColorMatrix values="1.5 0 0 0 0  0 1.5 0 0 0  0 0 1.5 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#FFD700" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#F7931E" stroke-width="0.3"/>
+  
+  <!-- Firework burst field -->
+  <ellipse cx="50" cy="75" rx="45" ry="28" fill="url(#fireworkField)" opacity="0.9"/>
+  
+  <!-- Celebration trails -->
+  <g opacity="0.8">
+    <path d="M 15,15 Q 30,5 50,75" stroke="#FFD700" stroke-width="4" fill="none" opacity="0.9"/>
+    <path d="M 85,15 Q 70,5 50,75" stroke="#FF6B35" stroke-width="4" fill="none" opacity="0.9"/>
+    <path d="M 50,0 Q 40,30 50,75" stroke="#F7931E" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M 50,0 Q 60,30 50,75" stroke="#7DD3FC" stroke-width="3" fill="none" opacity="0.8"/>
+  </g>
+  
+  <!-- Main celebration hammer -->
+  <g transform="rotate(-38 50 36)">
+    <!-- Titanium handle -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle10)"/>
+    <!-- Celebration grip pattern -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="#FFD700" opacity="0.8"/>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="#FF6B35" opacity="0.8"/>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="#F7931E" opacity="0.8"/>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#7DD3FC" opacity="0.8"/>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="#0EA5E9" opacity="0.8"/>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="#FFD700" opacity="0.8"/>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="#FF6B35" opacity="0.8"/>
+    <!-- Celebration hammer head -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#celebrationHammer)"/>
+    <!-- Joy core -->
+    <rect x="38" y="1" width="24" height="3" fill="#FFF700" opacity="0.9"/>
+    <rect x="38" y="8" width="24" height="3" fill="#0EA5E9" opacity="0.8"/>
+    <!-- Celebration details -->
+    <circle cx="42" cy="5" r="1" fill="#FFD700" opacity="0.9"/>
+    <circle cx="58" cy="5" r="1" fill="#FF6B35" opacity="0.9"/>
+  </g>
+  
+  <!-- Massive firework explosion -->
+  <circle cx="50" cy="73" r="8" fill="#FFD700" filter="url(#celebration)">
+    <animate attributeName="r" values="8;5;8" dur="0.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.6;1" dur="0.3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Celebration particle burst -->
+  <g opacity="1">
+    <!-- Large firework bursts -->
+    <circle cx="43" cy="70" r="4" fill="#FFD700"/>
+    <circle cx="57" cy="70" r="4" fill="#FF6B35"/>
+    <circle cx="36" cy="72" r="3.5" fill="#F7931E" opacity="0.9"/>
+    <circle cx="64" cy="72" r="3.5" fill="#7DD3FC" opacity="0.9"/>
+    <circle cx="46" cy="66" r="3" fill="#FFF700" opacity="0.9"/>
+    <circle cx="54" cy="66" r="3" fill="#0EA5E9" opacity="0.9"/>
+    <!-- Sparkle effects -->
+    <g filter="url(#sparkle)">
+      <circle cx="30" cy="68" r="2" fill="#FFD700" opacity="0.8"/>
+      <circle cx="70" cy="68" r="2" fill="#FF6B35" opacity="0.8"/>
+      <circle cx="25" cy="75" r="1.5" fill="#F7931E" opacity="0.7"/>
+      <circle cx="75" cy="75" r="1.5" fill="#7DD3FC" opacity="0.7"/>
+      <circle cx="35" cy="80" r="1" fill="#FFF700" opacity="0.6"/>
+      <circle cx="65" cy="80" r="1" fill="#0EA5E9" opacity="0.6"/>
+    </g>
+  </g>
+  
+  <!-- Celebration energy discharge -->
+  <g opacity="0.9">
+    <!-- Firework streamers -->
+    <path d="M 50,73 L 30,65 L 35,68 L 25,60 L 30,63" stroke="#FFD700" stroke-width="3" fill="none"/>
+    <path d="M 50,73 L 70,65 L 65,68 L 75,60 L 70,63" stroke="#FF6B35" stroke-width="3" fill="none"/>
+    <path d="M 50,73 L 40,55 L 45,60 L 35,50 L 40,55" stroke="#F7931E" stroke-width="2.5" fill="none"/>
+    <path d="M 50,73 L 60,55 L 55,60 L 65,50 L 60,55" stroke="#7DD3FC" stroke-width="2.5" fill="none"/>
+    <!-- Star bursts -->
+    <g transform="translate(35,65)">
+      <polygon points="0,-3 1,0 3,0 1,1 2,3 0,2 -2,3 -1,1 -3,0 -1,0" fill="#FFD700" opacity="0.8"/>
+    </g>
+    <g transform="translate(65,65)">
+      <polygon points="0,-3 1,0 3,0 1,1 2,3 0,2 -2,3 -1,1 -3,0 -1,0" fill="#FF6B35" opacity="0.8"/>
+    </g>
+    <g transform="translate(42,58)">
+      <polygon points="0,-2 0.5,0 2,0 1,1 1.5,2 0,1.5 -1.5,2 -1,1 -2,0 -0.5,0" fill="#F7931E" opacity="0.7"/>
+    </g>
+    <g transform="translate(58,58)">
+      <polygon points="0,-2 0.5,0 2,0 1,1 1.5,2 0,1.5 -1.5,2 -1,1 -2,0 -0.5,0" fill="#7DD3FC" opacity="0.7"/>
+    </g>
+  </g>
+  
+  <!-- Celebration wave rings -->
+  <g opacity="0.6">
+    <circle cx="50" cy="75" r="20" fill="none" stroke="#FFD700" stroke-width="2">
+      <animate attributeName="r" values="20;30;20" dur="1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="28" fill="none" stroke="#FF6B35" stroke-width="1.5">
+      <animate attributeName="r" values="28;38;28" dur="1.3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="36" fill="none" stroke="#F7931E" stroke-width="1">
+      <animate attributeName="r" values="36;46;36" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Floating celebration particles -->
+  <g opacity="0.7">
+    <circle cx="20" cy="60" r="1.5" fill="#FFD700">
+      <animate attributeName="cy" values="60;50;60" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="80" cy="60" r="1.5" fill="#FF6B35">
+      <animate attributeName="cy" values="60;50;60" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="25" cy="50" r="1" fill="#F7931E">
+      <animate attributeName="cy" values="50;40;50" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="75" cy="50" r="1" fill="#7DD3FC">
+      <animate attributeName="cy" values="50;40;50" dur="2.1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

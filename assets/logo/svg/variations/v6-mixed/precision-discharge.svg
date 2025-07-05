@@ -1,0 +1,60 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Chrome hammer gradient -->
+    <linearGradient id="hammerChrome19" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#CBD5E1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#94A3B8;stop-opacity:1" />
+    </linearGradient>
+    <!-- Dark handle -->
+    <linearGradient id="handle19" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Blue energy -->
+    <radialGradient id="blueEnergy19" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#3B82F6;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Blue energy field -->
+  <ellipse cx="50" cy="74" rx="22" ry="13" fill="url(#blueEnergy19)" opacity="0.7"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Dark handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#handle19)"/>
+    <!-- Chrome hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#hammerChrome19)"/>
+    <!-- Chrome reflection -->
+    <rect x="37" y="4" width="26" height="4" rx="2" fill="#F8FAFC" opacity="0.7"/>
+    <!-- Impact face -->
+    <rect x="38" y="14" width="24" height="2" fill="#94A3B8"/>
+  </g>
+  
+  <!-- Geometric energy rings -->
+  <g opacity="0.8">
+    <!-- Hexagonal ring -->
+    <polygon points="50,68 56,71 56,77 50,80 44,77 44,71" fill="none" stroke="#3B82F6" stroke-width="1"/>
+    <!-- Square ring -->
+    <rect x="46" y="70" width="8" height="8" fill="none" stroke="#60A5FA" stroke-width="0.8" transform="rotate(45 50 74)"/>
+    <!-- Triangle ring -->
+    <polygon points="50,70 54,78 46,78" fill="none" stroke="#93C5FD" stroke-width="0.6"/>
+  </g>
+  
+  <!-- Blue sparks at vertices -->
+  <circle cx="50" cy="72" r="2" fill="#DBEAFE" opacity="0.9"/>
+  <circle cx="44" cy="71" r="1.5" fill="#3B82F6" opacity="0.8"/>
+  <circle cx="56" cy="71" r="1.5" fill="#3B82F6" opacity="0.8"/>
+  <circle cx="44" cy="77" r="1.2" fill="#60A5FA" opacity="0.7"/>
+  <circle cx="56" cy="77" r="1.2" fill="#60A5FA" opacity="0.7"/>
+  <circle cx="50" cy="68" r="1" fill="#93C5FD" opacity="0.6"/>
+  <circle cx="50" cy="80" r="1" fill="#93C5FD" opacity="0.6"/>
+</svg>

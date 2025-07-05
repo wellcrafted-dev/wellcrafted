@@ -1,0 +1,56 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Hammer Glow -->
+    <radialGradient id="hammerGlow4" cx="50%" cy="35%" r="40%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Cascade Lightning Gradients -->
+    <linearGradient id="cascadeLightning1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="40%" style="stop-color:#00FFFF;stop-opacity:0.8"/>
+      <stop offset="80%" style="stop-color:#0080FF;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#4169E1;stop-opacity:0.2"/>
+    </linearGradient>
+    
+    <linearGradient id="cascadeLightning2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="40%" style="stop-color:#87CEEB;stop-opacity:0.7"/>
+      <stop offset="80%" style="stop-color:#4682B4;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#2F4F4F;stop-opacity:0.2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="25" ry="15" fill="url(#hammerGlow4)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Cascade Lightning Pattern - Stepped Emanation -->
+  <!-- First cascade level -->
+  <path d="M42 63 L40 66 L44 68 L42 72 L46 70 L44 75" stroke="url(#cascadeLightning1)" stroke-width="1.1" fill="none"/>
+  <path d="M50 63 L48 66 L52 68 L50 72 L54 70 L52 75 L56 73 L54 78" stroke="url(#cascadeLightning2)" stroke-width="1.3" fill="none"/>
+  <path d="M58 63 L60 66 L56 68 L58 72 L54 70 L56 75" stroke="url(#cascadeLightning1)" stroke-width="1.1" fill="none"/>
+  
+  <!-- Second cascade level -->
+  <path d="M35 68 L33 72 L37 74 L35 78 L39 76" stroke="url(#cascadeLightning2)" stroke-width="0.9" fill="none"/>
+  <path d="M65 68 L67 72 L63 74 L65 78 L61 76" stroke="url(#cascadeLightning1)" stroke-width="0.9" fill="none"/>
+  
+  <!-- Third cascade level -->
+  <path d="M30 74 L28 78 L32 80 L30 84" stroke="url(#cascadeLightning1)" stroke-width="0.8" fill="none"/>
+  <path d="M46 78 L44 82 L48 84 L46 88" stroke="url(#cascadeLightning2)" stroke-width="0.7" fill="none"/>
+  <path d="M54 78 L56 82 L52 84 L54 88" stroke="url(#cascadeLightning1)" stroke-width="0.7" fill="none"/>
+  <path d="M70 74 L72 78 L68 80 L70 84" stroke="url(#cascadeLightning2)" stroke-width="0.8" fill="none"/>
+  
+  <!-- Fourth cascade level -->
+  <path d="M25 82 L23 86 L27 88" stroke="url(#cascadeLightning1)" stroke-width="0.6" fill="none"/>
+  <path d="M75 82 L77 86 L73 88" stroke="url(#cascadeLightning2)" stroke-width="0.6" fill="none"/>
+</svg>

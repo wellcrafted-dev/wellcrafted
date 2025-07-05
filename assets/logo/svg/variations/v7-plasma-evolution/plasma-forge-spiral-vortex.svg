@@ -1,0 +1,216 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Plasma-forged steel gradient with teal -->
+    <linearGradient id="plasmaSpiral1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Spiral vortex gradient -->
+    <radialGradient id="spiralVortex1" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#7DD3FC;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#0EA5E9;stop-opacity:0.8" />
+      <stop offset="45%" style="stop-color:#0284C7;stop-opacity:0.6" />
+      <stop offset="60%" style="stop-color:#0369A1;stop-opacity:0.4" />
+      <stop offset="75%" style="stop-color:#0C4A6E;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Vortex arm gradient -->
+    <linearGradient id="vortexArm1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#0EA5E9;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0.5" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandleSpiral" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Vortex distortion filter -->
+    <filter id="vortexDistortion">
+      <feTurbulence baseFrequency="0.12" numOctaves="2" result="turbulence"/>
+      <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="6"/>
+      <feGaussianBlur stdDeviation="1"/>
+    </filter>
+    <!-- Energy core glow -->
+    <filter id="energyGlowSpiral">
+      <feGaussianBlur stdDeviation="4"/>
+      <feColorMatrix values="1.2 0 0 0 0  0 1.2 0 0 0  0 0 1.2 0 0  0 0 0 1 0"/>
+    </filter>
+    <!-- Spiral motion blur -->
+    <filter id="spiralMotion">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3,0.8"/>
+    </filter>
+  </defs>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0EA5E9" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#0EA5E9" stroke-width="0.3"/>
+  <!-- Tech surface pattern -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  
+  <!-- Massive spiral vortex energy field -->
+  <g transform="translate(50, 75)">
+    <!-- Background vortex field -->
+    <ellipse cx="0" cy="0" rx="42" ry="26" fill="url(#spiralVortex1)" opacity="0.95"/>
+    
+    <!-- Spiral vortex arms -->
+    <g opacity="0.8" filter="url(#vortexDistortion)">
+      <!-- Primary spiral arms -->
+      <g id="spiralArm">
+        <path d="M 0,0 Q 8,-16 20,-20 Q 32,-16 36,-8 Q 32,8 20,12 Q 8,8 0,0" 
+              fill="url(#vortexArm1)" opacity="0.7"/>
+        <path d="M 0,0 Q 12,-24 30,-30 Q 48,-24 54,-12 Q 48,12 30,18 Q 12,12 0,0" 
+              fill="none" stroke="url(#vortexArm1)" stroke-width="2" opacity="0.5"/>
+      </g>
+      <!-- Rotate spiral arms to create vortex -->
+      <use href="#spiralArm" transform="rotate(60)"/>
+      <use href="#spiralArm" transform="rotate(120)"/>
+      <use href="#spiralArm" transform="rotate(180)"/>
+      <use href="#spiralArm" transform="rotate(240)"/>
+      <use href="#spiralArm" transform="rotate(300)"/>
+    </g>
+    
+    <!-- Inner spiral core -->
+    <g opacity="0.9">
+      <!-- Tight spiral paths -->
+      <path d="M 0,0 Q 4,-8 10,-10 Q 16,-8 18,-4 Q 16,4 10,6 Q 4,4 0,0" 
+            fill="#F0F9FF" opacity="0.8"/>
+      <path d="M 0,0 Q 6,-12 15,-15 Q 24,-12 27,-6 Q 24,6 15,9 Q 6,6 0,0" 
+            fill="none" stroke="#7DD3FC" stroke-width="1.5" opacity="0.7"/>
+      <path d="M 0,0 Q 8,-16 20,-20 Q 32,-16 36,-8 Q 32,8 20,12 Q 8,8 0,0" 
+            fill="none" stroke="#0EA5E9" stroke-width="1" opacity="0.6"/>
+    </g>
+    
+    <!-- Rotating energy nodes -->
+    <g opacity="0.7">
+      <g id="energyNode">
+        <circle cx="0" cy="-12" r="1.5" fill="#F0F9FF">
+          <animate attributeName="opacity" values="0.7;0.3;0.7" dur="1.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="0" cy="-20" r="1" fill="#7DD3FC">
+          <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="0" cy="-28" r="0.8" fill="#0EA5E9">
+          <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.1s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+      <!-- Rotate energy nodes -->
+      <use href="#energyNode" transform="rotate(45)"/>
+      <use href="#energyNode" transform="rotate(90)"/>
+      <use href="#energyNode" transform="rotate(135)"/>
+      <use href="#energyNode" transform="rotate(180)"/>
+      <use href="#energyNode" transform="rotate(225)"/>
+      <use href="#energyNode" transform="rotate(270)"/>
+      <use href="#energyNode" transform="rotate(315)"/>
+      
+      <!-- Animate the entire node system rotation -->
+      <animateTransform attributeName="transform" type="rotate" 
+                       values="0 0 0;360 0 0" dur="8s" repeatCount="indefinite"/>
+    </g>
+  </g>
+  
+  <!-- Spiral quantum distortion trails -->
+  <g opacity="0.6" filter="url(#spiralMotion)">
+    <path d="M 15,15 Q 25,10 35,20 Q 45,30 50,75" stroke="#0EA5E9" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M 85,15 Q 75,10 65,20 Q 55,30 50,75" stroke="#0284C7" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M 50,0 Q 35,25 40,50 Q 45,62 50,75" stroke="#7DD3FC" stroke-width="2.5" fill="none" opacity="0.7"/>
+    <path d="M 50,0 Q 65,25 60,50 Q 55,62 50,75" stroke="#0369A1" stroke-width="2.5" fill="none" opacity="0.7"/>
+  </g>
+  
+  <!-- Main plasma hammer -->
+  <g transform="rotate(-38 50 36)">
+    <!-- Titanium handle with tech grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandleSpiral)"/>
+    <!-- Tech grip pattern -->
+    <rect x="47.2" y="14" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="18" width="5.6" height="1" fill="#7DD3FC" opacity="0.7"/>
+    <rect x="47.2" y="22" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="26" width="5.6" height="1" fill="#7DD3FC" opacity="0.7"/>
+    <rect x="47.2" y="30" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    
+    <!-- Teal hammer head -->
+    <g>
+      <!-- Main head shape -->
+      <rect x="35" y="-2" width="30" height="16" rx="2" fill="url(#plasmaSpiral1)"/>
+      <!-- Top face -->
+      <rect x="35" y="-2" width="30" height="4" fill="#0369A1" opacity="0.7"/>
+      <!-- Side faces -->
+      <rect x="35" y="-2" width="4" height="16" fill="#0C4A6E" opacity="0.6"/>
+      <rect x="61" y="-2" width="4" height="16" fill="#0C4A6E" opacity="0.6"/>
+      <!-- Bottom face -->
+      <rect x="35" y="10" width="30" height="4" fill="#0284C7" opacity="0.5"/>
+      
+      <!-- Spiral energy pattern on hammer face -->
+      <g transform="translate(50, 6)">
+        <path d="M 0,0 Q 2,-4 5,-5 Q 8,-4 9,-1 Q 8,2 5,3 Q 2,2 0,0" 
+              fill="#F0F9FF" opacity="0.8"/>
+        <path d="M 0,0 Q 3,-6 7.5,-7.5 Q 12,-6 13.5,-1.5 Q 12,3 7.5,4.5 Q 3,3 0,0" 
+              fill="none" stroke="#7DD3FC" stroke-width="0.6" opacity="0.7"/>
+        <circle cx="0" cy="0" r="1" fill="#0EA5E9" opacity="0.9"/>
+      </g>
+      
+      <!-- Energy spiral channels -->
+      <g stroke="#7DD3FC" stroke-width="0.5" fill="none" opacity="0.6">
+        <path d="M 38,6 Q 44,4 50,6 Q 56,8 62,6"/>
+        <path d="M 40,2 Q 46,1 50,2 Q 54,3 60,2"/>
+        <path d="M 40,10 Q 46,11 50,10 Q 54,9 60,10"/>
+      </g>
+    </g>
+  </g>
+  
+  <!-- Central vortex core explosion -->
+  <circle cx="50" cy="75" r="7" fill="#F0F9FF" filter="url(#energyGlowSpiral)" opacity="0.9">
+    <animate attributeName="r" values="7;5;7" dur="1.2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;0.5;0.9" dur="1.2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Spiral energy discharge -->
+  <g filter="url(#vortexDistortion)" opacity="0.7">
+    <path d="M 50,75 Q 45,70 40,65 Q 35,60 30,65 Q 25,70 30,75" 
+          stroke="#F0F9FF" stroke-width="2" fill="none"/>
+    <path d="M 50,75 Q 55,70 60,65 Q 65,60 70,65 Q 75,70 70,75" 
+          stroke="#7DD3FC" stroke-width="2" fill="none"/>
+    <path d="M 50,75 Q 48,62 45,55 Q 42,48 38,52 Q 35,58 40,62" 
+          stroke="#0EA5E9" stroke-width="1.5" fill="none"/>
+    <path d="M 50,75 Q 52,62 55,55 Q 58,48 62,52 Q 65,58 60,62" 
+          stroke="#0284C7" stroke-width="1.5" fill="none"/>
+  </g>
+  
+  <!-- Spiral particle streams -->
+  <g opacity="0.8">
+    <g transform="translate(50, 75)">
+      <!-- Rotating particle streams -->
+      <g id="particleStream">
+        <circle cx="0" cy="-18" r="2" fill="#7DD3FC"/>
+        <circle cx="0" cy="-22" r="1.5" fill="#0EA5E9" opacity="0.8"/>
+        <circle cx="0" cy="-26" r="1" fill="#0284C7" opacity="0.6"/>
+      </g>
+      <use href="#particleStream" transform="rotate(72)"/>
+      <use href="#particleStream" transform="rotate(144)"/>
+      <use href="#particleStream" transform="rotate(216)"/>
+      <use href="#particleStream" transform="rotate(288)"/>
+      
+      <!-- Animate spiral rotation -->
+      <animateTransform attributeName="transform" type="rotate" 
+                       values="0 0 0;360 0 0" dur="6s" repeatCount="indefinite"/>
+    </g>
+  </g>
+  
+  <!-- Spiral wave pulses -->
+  <g opacity="0.3" transform="translate(50, 75)">
+    <circle cx="0" cy="0" r="22" fill="none" stroke="url(#vortexArm1)" stroke-width="1">
+      <animate attributeName="r" values="22;32;22" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="0" cy="0" r="28" fill="none" stroke="#0EA5E9" stroke-width="0.8">
+      <animate attributeName="r" values="28;38;28" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.1;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

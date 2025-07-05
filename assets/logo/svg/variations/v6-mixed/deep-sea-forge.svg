@@ -1,0 +1,77 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Dark teal hammer gradient -->
+    <linearGradient id="deepSeaHammer10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891B2;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#0E7490;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#155E75;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#164E63;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandle10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F1F5F9;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#CBD5E1;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
+    </linearGradient>
+    <!-- Blue/green energy -->
+    <radialGradient id="seaEnergy10" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#67E8F9;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#22D3EE;stop-opacity:0.7" />
+      <stop offset="50%" style="stop-color:#10B981;stop-opacity:0.5" />
+      <stop offset="70%" style="stop-color:#059669;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#0F172A"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#1E293B"/>
+  
+  <!-- Blue/green energy field -->
+  <ellipse cx="50" cy="74" rx="26" ry="15" fill="url(#seaEnergy10)" opacity="0.8"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Titanium handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#titaniumHandle10)"/>
+    <!-- Precision machined surfaces -->
+    <rect x="48" y="20" width="4" height="2" fill="#F1F5F9" opacity="0.6"/>
+    <rect x="48" y="26" width="4" height="2" fill="#F1F5F9" opacity="0.6"/>
+    <rect x="48" y="32" width="4" height="2" fill="#F1F5F9" opacity="0.6"/>
+    <rect x="48" y="38" width="4" height="2" fill="#F1F5F9" opacity="0.6"/>
+    <!-- Dark teal hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#deepSeaHammer10)"/>
+    <!-- Sea foam highlight -->
+    <rect x="37" y="4" width="26" height="3" rx="1" fill="#67E8F9" opacity="0.5"/>
+    <!-- Deep impact face -->
+    <rect x="38" y="14" width="24" height="2" fill="#164E63"/>
+  </g>
+  
+  <!-- Blue/green mixed sparks -->
+  <circle cx="50" cy="72" r="3" fill="#67E8F9" opacity="0.9">
+    <animate attributeName="opacity" values="0.9;0.6;0.9" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="44" cy="69" r="2.2" fill="#22D3EE" opacity="0.9"/>
+  <circle cx="56" cy="69" r="2.2" fill="#22D3EE" opacity="0.9"/>
+  <circle cx="38" cy="71" r="1.8" fill="#10B981" opacity="0.8"/>
+  <circle cx="62" cy="71" r="1.8" fill="#10B981" opacity="0.8"/>
+  <circle cx="47" cy="66" r="1.2" fill="#0891B2" opacity="0.7"/>
+  <circle cx="53" cy="66" r="1.2" fill="#0891B2" opacity="0.7"/>
+  
+  <!-- Flowing energy waves -->
+  <g opacity="0.6">
+    <path d="M 40,72 Q 45,68 50,72 T 60,72" stroke="#22D3EE" stroke-width="1" fill="none"/>
+    <path d="M 35,74 Q 42,70 50,74 T 65,74" stroke="#10B981" stroke-width="0.8" fill="none"/>
+  </g>
+  
+  <!-- Bubble effects -->
+  <g opacity="0.5">
+    <circle cx="42" cy="76" r="0.8" fill="#67E8F9"/>
+    <circle cx="58" cy="76" r="0.8" fill="#67E8F9"/>
+    <circle cx="45" cy="78" r="0.6" fill="#22D3EE"/>
+    <circle cx="55" cy="78" r="0.6" fill="#22D3EE"/>
+    <circle cx="48" cy="79" r="0.4" fill="#10B981"/>
+    <circle cx="52" cy="79" r="0.4" fill="#10B981"/>
+  </g>
+</svg>

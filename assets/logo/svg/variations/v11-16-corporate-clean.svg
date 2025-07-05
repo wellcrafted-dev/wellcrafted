@@ -1,0 +1,17 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Corporate Clean: Business-ready simplicity -->
+  <!-- Professional hammer shape -->
+  <g fill="#0EA5E9">
+    <rect x="25" y="25" width="50" height="12" rx="2"/>
+    <rect x="47" y="35" width="6" height="30"/>
+    <rect x="40" y="63" width="20" height="4" rx="1"/>
+  </g>
+  
+  <!-- Subtle lightning accent -->
+  <path d="M50 42 L54 52 L50 52 L52 58 L46 52 L50 52 L48 42" 
+        fill="#F0F9FF" 
+        opacity="0.9"/>
+  
+  <!-- Professional base -->
+  <rect x="35" y="75" width="30" height="8" rx="1" fill="#0C4A6E"/>
+</svg>

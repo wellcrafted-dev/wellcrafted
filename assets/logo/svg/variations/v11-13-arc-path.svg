@@ -1,0 +1,21 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Arc Path: Curved lightning trajectory -->
+  <defs>
+    <path id="arc" d="M45 40 Q60 50 55 70" fill="none"/>
+  </defs>
+  
+  <!-- Hammer silhouette -->
+  <rect x="35" y="20" width="30" height="12" rx="2" fill="#0C4A6E"/>
+  <rect x="47" y="28" width="6" height="20" fill="#0C4A6E"/>
+  
+  <!-- Curved lightning arc -->
+  <use href="#arc" stroke="#0EA5E9" stroke-width="6" stroke-linecap="round"/>
+  <use href="#arc" stroke="#F0F9FF" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Energy rings at impact -->
+  <circle cx="55" cy="70" r="8" fill="none" stroke="#0EA5E9" stroke-width="1" opacity="0.5"/>
+  <circle cx="55" cy="70" r="4" fill="#F0F9FF"/>
+  
+  <!-- Curved anvil -->
+  <path d="M40 78 Q50 75 60 78 L60 83 Q50 86 40 83 Z" fill="#0C4A6E"/>
+</svg>

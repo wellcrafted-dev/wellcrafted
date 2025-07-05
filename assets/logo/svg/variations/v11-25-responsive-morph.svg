@@ -1,0 +1,40 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Responsive Morph: Shape that changes with context -->
+  <defs>
+    <!-- Define morphing shapes -->
+    <path id="morph-hammer" d="M30 25 Q50 15 70 25 L70 35 Q50 45 30 35 Z"/>
+    <path id="morph-lightning" d="M50 40 C45 50 55 50 50 60 C55 50 45 50 50 40"/>
+  </defs>
+  
+  <!-- Morphing hammer -->
+  <path d="M30 25 Q50 15 70 25 L70 35 Q50 45 30 35 Z" fill="#0EA5E9">
+    <animate attributeName="d" 
+             values="M30 25 Q50 15 70 25 L70 35 Q50 45 30 35 Z;
+                     M35 20 L65 20 L65 40 L35 40 Z;
+                     M30 25 Q50 15 70 25 L70 35 Q50 45 30 35 Z" 
+             dur="4s" 
+             repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Adaptive handle -->
+  <rect x="47" y="40" width="6" height="25" fill="#0C4A6E">
+    <animate attributeName="width" values="6;4;6" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="x" values="47;48;47" dur="4s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Responsive lightning -->
+  <path d="M50 45 L55 55 L45 55 Z" fill="#F0F9FF">
+    <animate attributeName="d" 
+             values="M50 45 L55 55 L45 55 Z;
+                     M50 45 L58 60 L42 60 Z;
+                     M50 45 L55 55 L45 55 Z" 
+             dur="4s" 
+             repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Flexible base -->
+  <rect x="40" y="75" width="20" height="8" rx="2" fill="#0C4A6E">
+    <animate attributeName="width" values="20;30;20" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="x" values="40;35;40" dur="4s" repeatCount="indefinite"/>
+  </rect>
+</svg>

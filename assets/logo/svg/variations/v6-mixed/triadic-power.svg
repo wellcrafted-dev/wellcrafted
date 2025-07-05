@@ -1,0 +1,66 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blue hammer (part of triadic scheme) -->
+    <linearGradient id="blueHammer23" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#60A5FA;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+    <!-- Red grip (triadic) -->
+    <linearGradient id="redGrip23" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FCA5A5;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#DC2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7F1D1D;stop-opacity:1" />
+    </linearGradient>
+    <!-- Yellow sparks (triadic) -->
+    <radialGradient id="yellowEnergy23" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#FCD34D;stop-opacity:0.7" />
+      <stop offset="60%" style="stop-color:#F59E0B;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Yellow energy field (triadic) -->
+  <ellipse cx="50" cy="74" rx="25" ry="14" fill="url(#yellowEnergy23)" opacity="0.8"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Red grip handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#redGrip23)"/>
+    <!-- Grip pattern -->
+    <path d="M 47.5,15 L 52.5,17 L 47.5,19 L 52.5,21 L 47.5,23 L 52.5,25 L 47.5,27 L 52.5,29 L 47.5,31 L 52.5,33 L 47.5,35 L 52.5,37 L 47.5,39" 
+          stroke="#7F1D1D" stroke-width="0.5" fill="none"/>
+    <!-- Blue hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#blueHammer23)"/>
+    <!-- Highlight -->
+    <rect x="37" y="4" width="26" height="3" rx="1" fill="#DBEAFE" opacity="0.7"/>
+    <!-- Impact face -->
+    <rect x="38" y="14" width="24" height="2" fill="#1E40AF"/>
+  </g>
+  
+  <!-- Triadic color sparks (red, blue, yellow) -->
+  <circle cx="50" cy="72" r="3" fill="#FCD34D" opacity="0.9"/>
+  <circle cx="44" cy="69" r="2.5" fill="#DC2626" opacity="0.9"/>
+  <circle cx="56" cy="69" r="2.5" fill="#3B82F6" opacity="0.9"/>
+  <circle cx="38" cy="71" r="2" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="62" cy="71" r="2" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="46" cy="66" r="1.5" fill="#FCA5A5" opacity="0.7"/>
+  <circle cx="54" cy="66" r="1.5" fill="#60A5FA" opacity="0.7"/>
+  <circle cx="41" cy="75" r="1" fill="#7F1D1D" opacity="0.6"/>
+  <circle cx="59" cy="75" r="1" fill="#1E40AF" opacity="0.6"/>
+  
+  <!-- Triadic energy pattern -->
+  <g opacity="0.6">
+    <!-- Triangle connecting triadic colors -->
+    <polygon points="50,66 38,78 62,78" fill="none" stroke="#FCD34D" stroke-width="0.8"/>
+    <line x1="50" y1="66" x2="50" y2="72" stroke="#FCD34D" stroke-width="0.6"/>
+    <line x1="38" y1="78" x2="44" y2="74" stroke="#DC2626" stroke-width="0.6"/>
+    <line x1="62" y1="78" x2="56" y2="74" stroke="#3B82F6" stroke-width="0.6"/>
+  </g>
+</svg>

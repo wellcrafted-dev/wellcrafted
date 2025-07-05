@@ -1,0 +1,59 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Orange hammer (complementary to blue) -->
+    <linearGradient id="orangeHammer21" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#FCD34D;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+    <!-- Dark handle -->
+    <linearGradient id="handle21" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Blue energy (complementary) -->
+    <radialGradient id="blueEnergy21" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#3B82F6;stop-opacity:0.7" />
+      <stop offset="60%" style="stop-color:#2563EB;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Blue energy field (complementary) -->
+  <ellipse cx="50" cy="74" rx="24" ry="14" fill="url(#blueEnergy21)" opacity="0.8"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Dark handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#handle21)"/>
+    <!-- Orange hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#orangeHammer21)"/>
+    <!-- Highlight -->
+    <rect x="37" y="4" width="26" height="3" rx="1" fill="#FEF3C7" opacity="0.7"/>
+    <!-- Impact face -->
+    <rect x="38" y="14" width="24" height="2" fill="#D97706"/>
+  </g>
+  
+  <!-- Complementary color sparks -->
+  <circle cx="50" cy="72" r="2.5" fill="#3B82F6" opacity="0.9"/>
+  <circle cx="44" cy="69" r="2" fill="#F59E0B" opacity="0.9"/>
+  <circle cx="56" cy="69" r="2" fill="#F59E0B" opacity="0.9"/>
+  <circle cx="38" cy="71" r="1.5" fill="#2563EB" opacity="0.8"/>
+  <circle cx="62" cy="71" r="1.5" fill="#2563EB" opacity="0.8"/>
+  <circle cx="47" cy="66" r="1" fill="#FCD34D" opacity="0.7"/>
+  <circle cx="53" cy="66" r="1" fill="#FCD34D" opacity="0.7"/>
+  
+  <!-- Energy lines -->
+  <g opacity="0.6">
+    <line x1="50" y1="72" x2="40" y2="64" stroke="#3B82F6" stroke-width="0.8"/>
+    <line x1="50" y1="72" x2="60" y2="64" stroke="#3B82F6" stroke-width="0.8"/>
+    <line x1="50" y1="72" x2="35" y2="72" stroke="#F59E0B" stroke-width="0.6"/>
+    <line x1="50" y1="72" x2="65" y2="72" stroke="#F59E0B" stroke-width="0.6"/>
+  </g>
+</svg>

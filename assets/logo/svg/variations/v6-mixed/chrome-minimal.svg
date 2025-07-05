@@ -1,0 +1,54 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Chrome hammer gradient -->
+    <linearGradient id="hammerChrome4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#CBD5E1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#94A3B8;stop-opacity:1" />
+    </linearGradient>
+    <!-- Dark handle -->
+    <linearGradient id="darkHandle4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Single blue spark burst -->
+    <radialGradient id="blueBurst4" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#3B82F6;stop-opacity:0.8" />
+      <stop offset="60%" style="stop-color:#1E40AF;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:0" />
+    </radialGradient>
+    <!-- Chrome reflection -->
+    <linearGradient id="chromeReflect4" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#CBD5E1;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#F8FAFC;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Single blue spark burst (minimal) -->
+  <ellipse cx="50" cy="74" rx="18" ry="10" fill="url(#blueBurst4)" opacity="0.6"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Dark handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#darkHandle4)"/>
+    <!-- Chrome hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#hammerChrome4)"/>
+    <!-- Chrome reflection highlight -->
+    <rect x="37" y="4" width="26" height="4" rx="2" fill="url(#chromeReflect4)" opacity="0.8"/>
+    <!-- Impact face detail -->
+    <rect x="38" y="14" width="24" height="2" fill="#94A3B8"/>
+  </g>
+  
+  <!-- Minimal spark pattern -->
+  <circle cx="50" cy="72" r="3" fill="#DBEAFE" opacity="0.9"/>
+  <circle cx="45" cy="70" r="1.5" fill="#3B82F6" opacity="0.8"/>
+  <circle cx="55" cy="70" r="1.5" fill="#3B82F6" opacity="0.8"/>
+  <circle cx="50" cy="67" r="1" fill="#60A5FA" opacity="0.7"/>
+</svg>

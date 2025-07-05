@@ -1,0 +1,101 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Plasma Hammer Glow -->
+    <radialGradient id="plasmaGlow1" cx="50%" cy="35%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="25%" style="stop-color:#FFD700;stop-opacity:0.8"/>
+      <stop offset="60%" style="stop-color:#FF6347;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <radialGradient id="plasmaGlow2" cx="50%" cy="35%" r="45%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.6"/>
+      <stop offset="50%" style="stop-color:#FF6347;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#8B0000;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Plasma Lightning Gradients -->
+    <linearGradient id="plasmaLightning1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="30%" style="stop-color:#FFD700;stop-opacity:0.9"/>
+      <stop offset="60%" style="stop-color:#FF6347;stop-opacity:0.7"/>
+      <stop offset="100%" style="stop-color:#8B0000;stop-opacity:0.4"/>
+    </linearGradient>
+    
+    <linearGradient id="plasmaLightning2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="30%" style="stop-color:#FFA500;stop-opacity:0.8"/>
+      <stop offset="60%" style="stop-color:#FF4500;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#8B0000;stop-opacity:0.3"/>
+    </linearGradient>
+    
+    <!-- Plasma Glow Effects -->
+    <filter id="plasmaGlowEffect">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <filter id="plasmaLightGlow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Plasma Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="38" ry="28" fill="url(#plasmaGlow2)"/>
+  <ellipse cx="50" cy="35" rx="22" ry="14" fill="url(#plasmaGlow1)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Plasma Lightning with Intense Glow -->
+  <!-- Central plasma lightning -->
+  <path d="M50 63 L48 68 L52 70 L50 75 L54 73 L52 78 L56 76 L54 82 L58 80" 
+        stroke="url(#plasmaLightning1)" stroke-width="1.8" fill="none" filter="url(#plasmaGlowEffect)"/>
+  
+  <!-- Major plasma branches -->
+  <path d="M43 63 L41 68 L45 70 L43 75 L47 73 L45 78 L49 76 L47 82" 
+        stroke="url(#plasmaLightning2)" stroke-width="1.5" fill="none" filter="url(#plasmaGlowEffect)"/>
+  
+  <path d="M57 63 L59 68 L55 70 L57 75 L53 73 L55 78 L51 76 L53 82" 
+        stroke="url(#plasmaLightning1)" stroke-width="1.5" fill="none" filter="url(#plasmaGlowEffect)"/>
+  
+  <!-- Secondary plasma lightning -->
+  <path d="M36 63 L34 68 L38 70 L36 75 L40 73 L38 78 L42 76" 
+        stroke="url(#plasmaLightning2)" stroke-width="1.2" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <path d="M64 63 L66 68 L62 70 L64 75 L60 73 L62 78 L58 76" 
+        stroke="url(#plasmaLightning1)" stroke-width="1.2" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <!-- Outer plasma branches -->
+  <path d="M29 68 L27 72 L31 74 L29 78 L33 76 L31 82" 
+        stroke="url(#plasmaLightning2)" stroke-width="1" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <path d="M71 68 L73 72 L69 74 L71 78 L67 76 L69 82" 
+        stroke="url(#plasmaLightning1)" stroke-width="1" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <!-- Edge plasma accents -->
+  <path d="M24 74 L22 78 L26 80 L24 84" 
+        stroke="url(#plasmaLightning2)" stroke-width="0.9" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <path d="M76 74 L78 78 L74 80 L76 84" 
+        stroke="url(#plasmaLightning1)" stroke-width="0.9" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <!-- Bottom plasma details -->
+  <path d="M40 85 L38 89 L42 91" 
+        stroke="url(#plasmaLightning2)" stroke-width="0.8" fill="none" filter="url(#plasmaLightGlow)"/>
+  
+  <path d="M60 85 L62 89 L58 91" 
+        stroke="url(#plasmaLightning1)" stroke-width="0.8" fill="none" filter="url(#plasmaLightGlow)"/>
+</svg>

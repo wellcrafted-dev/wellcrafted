@@ -1,0 +1,86 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Atomic gradient -->
+    <radialGradient id="atomicCore">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:0.4" />
+    </radialGradient>
+    
+    <!-- Electron orbital gradient -->
+    <linearGradient id="orbitalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Wrench gradient -->
+    <linearGradient id="wrenchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#475569;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#334155;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Energy field -->
+    <radialGradient id="energyField">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Energy field background -->
+  <circle cx="50" cy="50" r="45" fill="url(#energyField)"/>
+  
+  <!-- Electron orbitals -->
+  <g fill="none" stroke="url(#orbitalGrad)" stroke-width="2" opacity="0.7">
+    <ellipse cx="50" cy="50" rx="35" ry="15" transform="rotate(0 50 50)"/>
+    <ellipse cx="50" cy="50" rx="35" ry="15" transform="rotate(60 50 50)"/>
+    <ellipse cx="50" cy="50" rx="35" ry="15" transform="rotate(120 50 50)"/>
+  </g>
+  
+  <!-- Atomic nucleus/wrench head -->
+  <g transform="rotate(-30 50 40)">
+    <!-- Wrench head -->
+    <rect x="35" y="35" width="30" height="12" rx="6" fill="url(#wrenchGrad)"/>
+    <!-- Wrench jaw opening -->
+    <rect x="60" y="38" width="8" height="6" fill="none"/>
+    <path d="M 60,38 L 68,38 L 68,44 L 65,44 L 65,41 L 63,41 L 63,44 L 60,44 Z" fill="url(#wrenchGrad)"/>
+    
+    <!-- Wrench handle -->
+    <rect x="35" y="43" width="35" height="6" rx="3" fill="url(#wrenchGrad)"/>
+    
+    <!-- Handle grip -->
+    <rect x="40" y="44" width="2" height="4" fill="#475569"/>
+    <rect x="45" y="44" width="2" height="4" fill="#475569"/>
+    <rect x="50" y="44" width="2" height="4" fill="#475569"/>
+  </g>
+  
+  <!-- Atomic core -->
+  <circle cx="50" cy="50" r="8" fill="url(#atomicCore)"/>
+  
+  <!-- Electrons -->
+  <g fill="#06B6D4">
+    <!-- Orbital 1 electrons -->
+    <circle cx="15" cy="50" r="2"/>
+    <circle cx="85" cy="50" r="2"/>
+    
+    <!-- Orbital 2 electrons -->
+    <g transform="rotate(60 50 50)">
+      <circle cx="15" cy="50" r="1.5"/>
+      <circle cx="85" cy="50" r="1.5"/>
+    </g>
+    
+    <!-- Orbital 3 electrons -->
+    <g transform="rotate(120 50 50)">
+      <circle cx="15" cy="50" r="1.8"/>
+      <circle cx="85" cy="50" r="1.8"/>
+    </g>
+  </g>
+  
+  <!-- Quantum sparks -->
+  <g fill="#FBBF24" opacity="0.8">
+    <circle cx="30" cy="25" r="1"/>
+    <circle cx="70" cy="75" r="1.2"/>
+    <circle cx="25" cy="70" r="0.8"/>
+    <circle cx="75" cy="30" r="1"/>
+  </g>
+</svg>

@@ -1,0 +1,110 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Steel hammer gradient -->
+    <linearGradient id="steel6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Grip wrap handle -->
+    <linearGradient id="gripWrap6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#991B1B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#450A0A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Lightning energy -->
+    <radialGradient id="lightning6" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+      <stop offset="60%" style="stop-color:#D97706;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#92400E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Electric discharge filter -->
+    <filter id="electricDischarge6">
+      <feTurbulence baseFrequency="0.1" numOctaves="1"/>
+      <feDisplacementMap in="SourceGraphic" scale="3"/>
+    </filter>
+    <!-- Power strike effect -->
+    <filter id="powerStrike6">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3,0.8"/>
+      <feOffset dx="2" dy="1"/>
+    </filter>
+  </defs>
+  
+  <!-- Heavy-duty anvil -->
+  <path d="M 16,79 L 26,76 L 74,76 L 84,79 L 80,89 L 20,89 Z" fill="#0F172A"/>
+  <rect x="28" y="73" width="44" height="6" rx="2" fill="#1E293B"/>
+  <!-- Anvil horn -->
+  <path d="M 72,73 L 84,70 L 86,73 L 84,76 L 72,76 Z" fill="#374151"/>
+  
+  <!-- Massive energy discharge -->
+  <ellipse cx="52" cy="76" rx="38" ry="22" fill="url(#lightning6)" opacity="0.95"/>
+  
+  <!-- Power strike shockwave -->
+  <g opacity="0.6" filter="url(#powerStrike6)">
+    <rect x="44" y="0" width="12" height="60" fill="#F59E0B" transform="rotate(-40 50 30)"/>
+    <rect x="42" y="-5" width="12" height="60" fill="#D97706" transform="rotate(-35 47 25)"/>
+    <rect x="40" y="-10" width="12" height="60" fill="#92400E" transform="rotate(-30 46 20)"/>
+  </g>
+  
+  <!-- Main hammer with power grip -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Red grip-wrapped handle -->
+    <rect x="47" y="0" width="6" height="54" rx="3" fill="url(#gripWrap6)"/>
+    <!-- Grip texture spiral -->
+    <path d="M 47.5,8 Q 50,10 52.5,8 Q 50,12 47.5,14 Q 50,16 52.5,14 Q 50,18 47.5,20 Q 50,22 52.5,20 Q 50,24 47.5,26 Q 50,28 52.5,26 Q 50,30 47.5,32 Q 50,34 52.5,32 Q 50,36 47.5,38 Q 50,40 52.5,38 Q 50,42 47.5,44" 
+          stroke="#450A0A" stroke-width="0.5" fill="none"/>
+    <!-- Steel hammer head -->
+    <rect x="35" y="-5" width="30" height="18" rx="4" fill="url(#steel6)"/>
+    <!-- Strike face -->
+    <rect x="37" y="10" width="26" height="3" fill="#1E293B"/>
+    <!-- Edge bevel -->
+    <rect x="35" y="-2" width="30" height="2" fill="#F8FAFC" opacity="0.9"/>
+  </g>
+  
+  <!-- Electric arc sparks -->
+  <g filter="url(#electricDischarge6)" opacity="0.8">
+    <path d="M 52,74 L 45,65 L 48,68 L 42,60 L 46,63" stroke="#FBBF24" stroke-width="1.5" fill="none"/>
+    <path d="M 52,74 L 59,65 L 56,68 L 62,60 L 58,63" stroke="#FBBF24" stroke-width="1.5" fill="none"/>
+    <path d="M 52,74 L 35,70 L 38,72 L 30,68 L 34,70" stroke="#F59E0B" stroke-width="1" fill="none"/>
+    <path d="M 52,74 L 69,70 L 66,72 L 74,68 L 70,70" stroke="#F59E0B" stroke-width="1" fill="none"/>
+  </g>
+  
+  <!-- Impact explosion sparks -->
+  <circle cx="52" cy="74" r="4" fill="#FBBF24">
+    <animate attributeName="r" values="4;2;4" dur="0.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.5;1" dur="0.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="45" cy="71" r="2.5" fill="#F59E0B" opacity="0.9"/>
+  <circle cx="59" cy="71" r="2.5" fill="#F59E0B" opacity="0.9"/>
+  <circle cx="38" cy="73" r="2" fill="#D97706" opacity="0.8"/>
+  <circle cx="66" cy="73" r="2" fill="#D97706" opacity="0.8"/>
+  <circle cx="48" cy="67" r="1.5" fill="#FBBF24" opacity="0.7"/>
+  <circle cx="56" cy="67" r="1.5" fill="#FBBF24" opacity="0.7"/>
+  <circle cx="41" cy="77" r="1" fill="#F59E0B" opacity="0.6"/>
+  <circle cx="63" cy="77" r="1" fill="#F59E0B" opacity="0.6"/>
+  
+  <!-- Power discharge rings -->
+  <g opacity="0.4">
+    <circle cx="52" cy="76" r="16" fill="none" stroke="#F59E0B" stroke-width="1">
+      <animate attributeName="r" values="16;20;16" dur="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="52" cy="76" r="22" fill="none" stroke="#D97706" stroke-width="0.8">
+      <animate attributeName="r" values="22;26;22" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="52" cy="76" r="28" fill="none" stroke="#92400E" stroke-width="0.6">
+      <animate attributeName="r" values="28;32;28" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Molten metal spray -->
+  <g opacity="0.7">
+    <circle cx="32" cy="78" r="0.8" fill="#F59E0B"/>
+    <circle cx="72" cy="78" r="0.8" fill="#F59E0B"/>
+    <circle cx="28" cy="82" r="0.6" fill="#D97706"/>
+    <circle cx="76" cy="82" r="0.6" fill="#D97706"/>
+    <circle cx="35" cy="85" r="0.4" fill="#92400E"/>
+    <circle cx="69" cy="85" r="0.4" fill="#92400E"/>
+  </g>
+</svg>

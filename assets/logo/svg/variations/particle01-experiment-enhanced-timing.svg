@@ -1,0 +1,154 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Plasma-forged steel gradient -->
+    <linearGradient id="plasma9p1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandle9p1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Plasma energy field -->
+    <radialGradient id="plasmaField9p1" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#7DD3FC;stop-opacity:0.9" />
+      <stop offset="40%" style="stop-color:#0EA5E9;stop-opacity:0.7" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:0.5" />
+      <stop offset="80%" style="stop-color:#0369A1;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Subtle orange particle gradient -->
+    <radialGradient id="orangeParticle9p1" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FF3E00;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#F97316;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0EA5E9;stop-opacity:0.1" />
+    </radialGradient>
+    <!-- Quantum distortion -->
+    <filter id="quantumDistort9p1">
+      <feTurbulence baseFrequency="0.08" numOctaves="3"/>
+      <feDisplacementMap in="SourceGraphic" scale="4"/>
+    </filter>
+    <!-- Energy core glow -->
+    <filter id="energyGlow9p1">
+      <feGaussianBlur stdDeviation="3"/>
+      <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#0EA5E9" stroke-width="0.3"/>
+  <!-- Tech surface pattern -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  <rect x="36" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="44" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="52" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="60" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  
+  <!-- Massive plasma field -->
+  <ellipse cx="50" cy="75" rx="40" ry="24" fill="url(#plasmaField9p1)" opacity="0.95"/>
+  
+  <!-- Main plasma hammer -->
+  <g transform="rotate(-38 50 36)">
+    <!-- Titanium handle with tech grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle9p1)"/>
+    <!-- Tech grip pattern -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="#0EA5E9" opacity="0.7"/>
+    <!-- Plasma-forged hammer head -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#plasma9p1)"/>
+    <!-- Energy core -->
+    <rect x="38" y="1" width="24" height="3" fill="#F0F9FF" opacity="0.9"/>
+    <rect x="38" y="8" width="24" height="3" fill="#0C4A6E" opacity="0.8"/>
+    <!-- Tech details -->
+    <circle cx="42" cy="5" r="1" fill="#7DD3FC" opacity="0.8"/>
+    <circle cx="58" cy="5" r="1" fill="#7DD3FC" opacity="0.8"/>
+  </g>
+  
+  <!-- Plasma explosion core -->
+  <circle cx="50" cy="73" r="5" fill="#F0F9FF" filter="url(#energyGlow9p1)">
+    <animate attributeName="r" values="5;3;5" dur="0.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.6;1" dur="0.3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Improved particle animation timing -->
+  <g opacity="0.9">
+    <circle cx="43" cy="70" r="3" fill="#7DD3FC">
+      <animate attributeName="r" values="3;2.5;3" dur="0.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="57" cy="70" r="3" fill="#7DD3FC">
+      <animate attributeName="r" values="3;2.5;3" dur="1.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="36" cy="72" r="2.5" fill="#0EA5E9" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.5;0.9" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="64" cy="72" r="2.5" fill="#0EA5E9" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.5;0.9" dur="1.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="46" cy="66" r="2" fill="#F0F9FF" opacity="0.8">
+      <animate attributeName="cy" values="66;62;66" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="54" cy="66" r="2" fill="#F0F9FF" opacity="0.8">
+      <animate attributeName="cy" values="66;62;66" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="39" cy="76" r="1.5" fill="#0284C7" opacity="0.7">
+      <animate attributeName="r" values="1.5;1;1.5" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="61" cy="76" r="1.5" fill="#0284C7" opacity="0.7">
+      <animate attributeName="r" values="1.5;1;1.5" dur="2.1s" repeatCount="indefinite"/>
+    </circle>
+    <!-- Subtle orange particles with enhanced timing -->
+    <circle cx="34" cy="69" r="1" fill="url(#orangeParticle9p1)" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.3;0.6" dur="1.3s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1;0.7;1" dur="1.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="66" cy="69" r="1" fill="url(#orangeParticle9p1)" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.3;0.6" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1;0.7;1" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Plasma wave rings with improved timing -->
+  <g opacity="0.4">
+    <circle cx="50" cy="75" r="18" fill="none" stroke="#0EA5E9" stroke-width="1.5">
+      <animate attributeName="r" values="18;22;18" dur="1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="26" fill="none" stroke="#0284C7" stroke-width="1.2">
+      <animate attributeName="r" values="26;30;26" dur="1.3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="34" fill="none" stroke="#0369A1" stroke-width="0.8">
+      <animate attributeName="r" values="34;38;34" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Enhanced energy matrix particles with synchronized timing -->
+  <g opacity="0.6">
+    <rect x="28" y="76" width="2" height="2" fill="#7DD3FC" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 29 77;360 29 77" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="70" y="76" width="2" height="2" fill="#7DD3FC" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 71 77;360 71 77" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="44" y="58" width="1.5" height="1.5" fill="#0EA5E9" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 44.75 58.75;360 44.75 58.75" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="54" y="58" width="1.5" height="1.5" fill="#0EA5E9" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 54.75 58.75;360 54.75 58.75" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

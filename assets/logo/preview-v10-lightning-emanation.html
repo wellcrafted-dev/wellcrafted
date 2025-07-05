@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V10 Lightning Emanation Series - Logo Showcase</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: #E2E8F0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #F0F9FF;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px rgba(125, 211, 252, 0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7DD3FC;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+            font-style: italic;
+        }
+        
+        .description {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(125, 211, 252, 0.2);
+        }
+        
+        .description h2 {
+            color: #7DD3FC;
+            margin-top: 0;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .logo-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 2px solid rgba(125, 211, 252, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .logo-card:hover {
+            border-color: rgba(125, 211, 252, 0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(125, 211, 252, 0.2);
+        }
+        
+        .logo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #7DD3FC, transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .logo-card:hover::before {
+            left: 100%;
+        }
+        
+        .logo-display {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(125, 211, 252, 0.1) 0%, transparent 70%);
+            border-radius: 10px;
+        }
+        
+        .logo-display svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 10px rgba(125, 211, 252, 0.3));
+        }
+        
+        .logo-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #F0F9FF;
+            margin-bottom: 8px;
+        }
+        
+        .logo-description {
+            font-size: 0.9em;
+            color: #94A3B8;
+            line-height: 1.4;
+        }
+        
+        .pattern-section {
+            margin-bottom: 50px;
+        }
+        
+        .pattern-title {
+            color: #0EA5E9;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 2px solid rgba(14, 165, 233, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .lightning-note {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(125, 211, 252, 0.1));
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .lightning-note strong {
+            color: #7DD3FC;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>V10 Lightning Emanation Series</h1>
+        <p class="subtitle">Scattered Lightning from the Bottom - Replacing Dots with Electrical Discharge</p>
+        
+        <div class="description">
+            <h2>Lightning Emanation Concept</h2>
+            <p>The V10 series revolutionizes the particle aesthetic by replacing the traditional bottom dots with <strong>scattered lightning emanating from the anvil impact area</strong>. This creates an electrifying effect that maintains the beloved particle background feeling while introducing dynamic electrical discharge patterns.</p>
+            
+            <p><strong>Key Features:</strong></p>
+            <ul>
+                <li>🔥 <strong>Preserved Glowing Hammer:</strong> The beloved hammer glow effect remains prominent</li>
+                <li>⚡ <strong>Lightning from Bottom:</strong> Scattered electrical discharge replaces bottom particles</li>
+                <li>✨ <strong>Particle Background:</strong> Maintains the atmospheric particle field aesthetic</li>
+                <li>🎯 <strong>No Background Lightning:</strong> Lightning only emanates from the bottom impact area</li>
+                <li>🌟 <strong>Professional Quality:</strong> Developer icon grade with multiple intensity levels</li>
+            </ul>
+        </div>
+        
+        <div class="pattern-section">
+            <h3 class="pattern-title">Lightning Pattern Variations</h3>
+            <div class="grid">
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-scatter-01.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">01 - Scattered Lightning</div>
+                    <div class="logo-description">Basic scattered lightning bolts emanating from the anvil impact point with varied directions and intensities</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-radial-02.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">02 - Radial Lightning</div>
+                    <div class="logo-description">8-point radial lightning pattern creating a symmetric electrical discharge from the impact point</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-branched-03.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">03 - Branched Lightning</div>
+                    <div class="logo-description">Complex branching lightning with electrical forks creating realistic lightning tree patterns</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-burst-04.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">04 - Lightning Burst</div>
+                    <div class="logo-description">Dense burst pattern with multiple lightning bolts creating an explosive electrical effect</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-cascade-05.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">05 - Cascading Lightning</div>
+                    <div class="logo-description">Four-level cascading lightning effect with each level branching further from the impact point</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="pattern-section">
+            <h3 class="pattern-title">Intensity Variations</h3>
+            <div class="grid">
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-subtle-06.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">06 - Subtle Lightning</div>
+                    <div class="logo-description">Gentle, minimal lightning emanation with low opacity for professional, understated effect</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-medium-07.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">07 - Medium Lightning</div>
+                    <div class="logo-description">Balanced lightning intensity perfect for most applications with moderate visual impact</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-intense-08.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">08 - Intense Lightning</div>
+                    <div class="logo-description">High-intensity lightning display with maximum visual impact and dramatic electrical effects</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="pattern-section">
+            <h3 class="pattern-title">Enhanced Effects</h3>
+            <div class="grid">
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-glow-enhanced-09.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">09 - Glow Enhanced</div>
+                    <div class="logo-description">Enhanced hammer glow with amplified lighting effects and improved visual clarity</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-shimmer-10.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">10 - Shimmering Lightning</div>
+                    <div class="logo-description">Dynamic shimmering effects on lightning bolts with animated gradient sweeps</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-pulse-11.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">11 - Pulsing Lightning</div>
+                    <div class="logo-description">Rhythmic pulsing lightning emanation with varying timing for dynamic energy flow</div>
+                </div>
+                
+                <div class="logo-card">
+                    <div class="logo-display">
+                        <object data="svg/variations/v10-lightning-perfect-12.svg" type="image/svg+xml"></object>
+                    </div>
+                    <div class="logo-title">12 - Perfect Combination</div>
+                    <div class="logo-description">Ultimate fusion of all techniques: radial patterns, shimmer, pulse, enhanced glow, and cascading effects</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="lightning-note">
+            <strong>⚡ Lightning Emanation Success:</strong> All 12 variations successfully replace bottom dots with scattered lightning while preserving the beloved particle background aesthetic and glowing hammer effect!
+        </div>
+    </div>
+</body>
+</html>

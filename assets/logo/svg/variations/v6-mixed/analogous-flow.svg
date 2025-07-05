@@ -1,0 +1,62 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blue-green-cyan gradient (analogous colors) -->
+    <linearGradient id="analogousHammer22" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:1" />
+    </linearGradient>
+    <!-- Dark handle -->
+    <linearGradient id="handle22" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Matching analogous energy -->
+    <radialGradient id="analogousEnergy22" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#67E8F9;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#22D3EE;stop-opacity:0.7" />
+      <stop offset="50%" style="stop-color:#10B981;stop-opacity:0.5" />
+      <stop offset="70%" style="stop-color:#14B8A6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Anvil -->
+  <path d="M 20,77 L 30,74 L 70,74 L 80,77 L 76,87 L 24,87 Z" fill="#1E293B"/>
+  <rect x="32" y="71" width="36" height="6" rx="2" fill="#374151"/>
+  
+  <!-- Analogous energy field -->
+  <ellipse cx="50" cy="74" rx="26" ry="15" fill="url(#analogousEnergy22)" opacity="0.8"/>
+  
+  <!-- Main hammer -->
+  <g transform="rotate(-40 50 38)">
+    <!-- Dark handle -->
+    <rect x="47" y="8" width="6" height="52" rx="3" fill="url(#handle22)"/>
+    <!-- Analogous gradient hammer head -->
+    <rect x="35" y="2" width="30" height="18" rx="4" fill="url(#analogousHammer22)"/>
+    <!-- Wave highlight -->
+    <path d="M 37,6 Q 45,8 50,6 T 63,6" stroke="#67E8F9" stroke-width="2" fill="none" opacity="0.7"/>
+    <!-- Impact face -->
+    <rect x="38" y="14" width="24" height="2" fill="#0891B2"/>
+  </g>
+  
+  <!-- Analogous color sparks -->
+  <circle cx="50" cy="72" r="3" fill="#3B82F6" opacity="0.9"/>
+  <circle cx="44" cy="69" r="2.5" fill="#22D3EE" opacity="0.9"/>
+  <circle cx="56" cy="69" r="2.5" fill="#22D3EE" opacity="0.9"/>
+  <circle cx="38" cy="71" r="2" fill="#10B981" opacity="0.8"/>
+  <circle cx="62" cy="71" r="2" fill="#10B981" opacity="0.8"/>
+  <circle cx="46" cy="66" r="1.5" fill="#14B8A6" opacity="0.7"/>
+  <circle cx="54" cy="66" r="1.5" fill="#14B8A6" opacity="0.7"/>
+  <circle cx="42" cy="75" r="1" fill="#0891B2" opacity="0.6"/>
+  <circle cx="58" cy="75" r="1" fill="#0891B2" opacity="0.6"/>
+  
+  <!-- Flowing energy waves -->
+  <g opacity="0.6">
+    <path d="M 35,72 Q 42,68 50,72 T 65,72" stroke="#22D3EE" stroke-width="1" fill="none"/>
+    <path d="M 30,74 Q 40,70 50,74 T 70,74" stroke="#10B981" stroke-width="0.8" fill="none"/>
+    <path d="M 25,76 Q 37,72 50,76 T 75,76" stroke="#14B8A6" stroke-width="0.6" fill="none"/>
+  </g>
+</svg>

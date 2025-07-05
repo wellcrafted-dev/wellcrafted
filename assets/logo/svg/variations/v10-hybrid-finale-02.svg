@@ -1,0 +1,124 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Master Hammer Glow -->
+    <radialGradient id="masterGlow1" cx="50%" cy="35%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.95"/>
+      <stop offset="25%" style="stop-color:#FFD700;stop-opacity:0.85"/>
+      <stop offset="65%" style="stop-color:#FFA500;stop-opacity:0.55"/>
+      <stop offset="100%" style="stop-color:#FF4500;stop-opacity:0"/>
+    </radialGradient>
+    
+    <radialGradient id="masterGlow2" cx="50%" cy="35%" r="48%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.65"/>
+      <stop offset="55%" style="stop-color:#FFA500;stop-opacity:0.25"/>
+      <stop offset="100%" style="stop-color:#FF6347;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Master Lightning Gradients -->
+    <linearGradient id="masterLightning1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="30%" style="stop-color:#FFD700;stop-opacity:0.85"/>
+      <stop offset="55%" style="stop-color:#00FFFF;stop-opacity:0.65"/>
+      <stop offset="80%" style="stop-color:#0080FF;stop-opacity:0.45"/>
+      <stop offset="100%" style="stop-color:#4169E1;stop-opacity:0.25"/>
+    </linearGradient>
+    
+    <linearGradient id="masterLightning2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.95"/>
+      <stop offset="30%" style="stop-color:#FFA500;stop-opacity:0.8"/>
+      <stop offset="55%" style="stop-color:#87CEEB;stop-opacity:0.6"/>
+      <stop offset="80%" style="stop-color:#4682B4;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#2F4F4F;stop-opacity:0.2"/>
+    </linearGradient>
+    
+    <linearGradient id="masterLightning3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="40%" style="stop-color:#00BFFF;stop-opacity:0.75"/>
+      <stop offset="70%" style="stop-color:#1E90FF;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#4169E1;stop-opacity:0.3"/>
+    </linearGradient>
+    
+    <!-- Master Glow Effect -->
+    <filter id="masterGlowEffect">
+      <feGaussianBlur stdDeviation="2.2" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <filter id="masterLightGlow">
+      <feGaussianBlur stdDeviation="1.4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Master Hammer Glow -->
+  <ellipse cx="50" cy="35" rx="40" ry="30" fill="url(#masterGlow2)"/>
+  <ellipse cx="50" cy="35" rx="24" ry="15" fill="url(#masterGlow1)"/>
+  
+  <!-- Anvil -->
+  <path d="M35 50 L65 50 L63 55 L37 55 Z" fill="#4A4A4A"/>
+  <rect x="40" y="55" width="20" height="8" fill="#4A4A4A"/>
+  
+  <!-- Hammer -->
+  <rect x="45" y="25" width="10" height="15" fill="#8B4513" rx="2"/>
+  <rect x="42" y="38" width="16" height="8" fill="#A0A0A0" rx="2"/>
+  
+  <!-- Master Lightning Emanation - Perfect Synthesis -->
+  <!-- Central master lightning -->
+  <path d="M50 63 L48 68 L52 70 L50 75 L54 73 L52 78 L56 76 L54 82 L58 80 L56 86 L60 84" 
+        stroke="url(#masterLightning1)" stroke-width="1.6" fill="none" filter="url(#masterGlowEffect)"/>
+  
+  <!-- Primary master branches -->
+  <path d="M43 63 L41 68 L45 70 L43 75 L47 73 L45 78 L49 76 L47 82 L51 80" 
+        stroke="url(#masterLightning2)" stroke-width="1.4" fill="none" filter="url(#masterGlowEffect)"/>
+  
+  <path d="M57 63 L59 68 L55 70 L57 75 L53 73 L55 78 L51 76 L53 82 L49 80" 
+        stroke="url(#masterLightning3)" stroke-width="1.4" fill="none" filter="url(#masterGlowEffect)"/>
+  
+  <!-- Secondary master branches -->
+  <path d="M36 65 L34 70 L38 72 L36 77 L40 75 L38 80 L42 78 L40 84" 
+        stroke="url(#masterLightning1)" stroke-width="1.2" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <path d="M64 65 L66 70 L62 72 L64 77 L60 75 L62 80 L58 78 L60 84" 
+        stroke="url(#masterLightning2)" stroke-width="1.2" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <!-- Tertiary master branches -->
+  <path d="M29 70 L27 75 L31 77 L29 82 L33 80 L31 85 L35 83" 
+        stroke="url(#masterLightning3)" stroke-width="1" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <path d="M71 70 L73 75 L69 77 L71 82 L67 80 L69 85 L65 83" 
+        stroke="url(#masterLightning1)" stroke-width="1" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <!-- Edge master lightning -->
+  <path d="M23 76 L21 81 L25 83 L23 88 L27 86 L25 91" 
+        stroke="url(#masterLightning2)" stroke-width="0.9" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <path d="M77 76 L79 81 L75 83 L77 88 L73 86 L75 91" 
+        stroke="url(#masterLightning3)" stroke-width="0.9" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <!-- Bottom master details -->
+  <path d="M37 87 L35 92 L39 94 L37 99" 
+        stroke="url(#masterLightning1)" stroke-width="0.8" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <path d="M63 87 L65 92 L61 94 L63 99" 
+        stroke="url(#masterLightning2)" stroke-width="0.8" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <!-- Final master touches -->
+  <path d="M46 92 L44 97 L48 99" 
+        stroke="url(#masterLightning3)" stroke-width="0.7" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <path d="M54 94 L56 99 L52 101" 
+        stroke="url(#masterLightning1)" stroke-width="0.7" fill="none" filter="url(#masterLightGlow)"/>
+  
+  <!-- Master micro details -->
+  <path d="M18 83 L16 88" 
+        stroke="url(#masterLightning2)" stroke-width="0.6" fill="none"/>
+  
+  <path d="M82 83 L84 88" 
+        stroke="url(#masterLightning3)" stroke-width="0.6" fill="none"/>
+</svg>
