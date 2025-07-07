@@ -1,0 +1,106 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blue gradients for front faces -->
+    <linearGradient id="frontFace1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="100%" style="stop-color:#3B82F6"/>
+    </linearGradient>
+    
+    <linearGradient id="frontFace2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="100%" style="stop-color:#3B82F6"/>
+    </linearGradient>
+    
+    <linearGradient id="frontFace3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="100%" style="stop-color:#3B82F6"/>
+    </linearGradient>
+    
+    <!-- Purple gradients for side faces -->
+    <linearGradient id="sideFace1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    
+    <linearGradient id="sideFace2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    
+    <linearGradient id="sideFace3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="2" result="offsetblur"/>
+      <feFlood flood-color="#1E293B" flood-opacity="0.3"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle for visibility on dark backgrounds -->
+  <circle cx="128" cy="128" r="120" fill="white" opacity="0.05"/>
+  
+  <!-- Shadow layers -->
+  <g opacity="0.2">
+    <!-- Left fold shadow -->
+    <path d="M 40 180 L 70 120 L 70 160 L 40 220 Z" fill="#1E293B"/>
+    <!-- Center fold shadows -->
+    <path d="M 98 140 L 128 80 L 128 120 L 98 180 Z" fill="#1E293B"/>
+    <path d="M 158 140 L 128 80 L 128 120 L 158 180 Z" fill="#1E293B"/>
+    <!-- Right fold shadow -->
+    <path d="M 186 160 L 216 100 L 216 140 L 186 200 Z" fill="#1E293B"/>
+  </g>
+  
+  <!-- W shape formed by folded paper -->
+  <g filter="url(#shadow)">
+    <!-- Left fold -->
+    <!-- Front face -->
+    <path d="M 30 170 L 60 110 L 90 130 L 60 190 Z" fill="url(#frontFace1)"/>
+    <!-- Side face -->
+    <path d="M 60 110 L 60 150 L 90 170 L 90 130 Z" fill="url(#sideFace1)"/>
+    
+    <!-- Left-center fold -->
+    <!-- Front face -->
+    <path d="M 60 190 L 90 130 L 108 160 L 78 220 Z" fill="url(#frontFace2)"/>
+    <!-- Side face -->
+    <path d="M 90 130 L 90 170 L 108 200 L 108 160 Z" fill="url(#sideFace2)"/>
+    
+    <!-- Center peak -->
+    <!-- Left face -->
+    <path d="M 88 130 L 118 70 L 128 90 L 98 150 Z" fill="url(#frontFace3)"/>
+    <!-- Right face -->
+    <path d="M 138 70 L 168 130 L 158 150 L 128 90 Z" fill="url(#frontFace1)"/>
+    <!-- Top face -->
+    <path d="M 118 70 L 138 70 L 128 90 Z" fill="url(#sideFace3)"/>
+    
+    <!-- Right-center fold -->
+    <!-- Front face -->
+    <path d="M 148 160 L 166 130 L 196 190 L 178 220 Z" fill="url(#frontFace2)"/>
+    <!-- Side face -->
+    <path d="M 148 160 L 148 200 L 166 170 L 166 130 Z" fill="url(#sideFace1)"/>
+    
+    <!-- Right fold -->
+    <!-- Front face -->
+    <path d="M 166 130 L 196 110 L 226 170 L 196 190 Z" fill="url(#frontFace3)"/>
+    <!-- Side face -->
+    <path d="M 166 130 L 166 170 L 196 150 L 196 110 Z" fill="url(#sideFace2)"/>
+  </g>
+  
+  <!-- Paper fold lines -->
+  <g opacity="0.3">
+    <line x1="60" y1="110" x2="90" y2="130" stroke="#1E293B" stroke-width="0.5"/>
+    <line x1="90" y1="130" x2="118" y2="70" stroke="#1E293B" stroke-width="0.5"/>
+    <line x1="138" y1="70" x2="166" y2="130" stroke="#1E293B" stroke-width="0.5"/>
+    <line x1="166" y1="130" x2="196" y2="110" stroke="#1E293B" stroke-width="0.5"/>
+    <line x1="128" y1="90" x2="98" y2="150" stroke="#1E293B" stroke-width="0.5"/>
+    <line x1="128" y1="90" x2="158" y2="150" stroke="#1E293B" stroke-width="0.5"/>
+  </g>
+</svg>

@@ -1,0 +1,122 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Define gradient mesh points -->
+    <radialGradient id="meshPoint1" cx="30%" cy="25%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    
+    <radialGradient id="meshPoint2" cx="75%" cy="30%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    
+    <radialGradient id="meshPoint3" cx="70%" cy="75%">
+      <stop offset="0%" stop-color="#14B8A6" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#14B8A6" stop-opacity="0"/>
+    </radialGradient>
+    
+    <radialGradient id="meshPoint4" cx="25%" cy="70%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+    
+    <!-- Complex mesh gradient -->
+    <linearGradient id="meshGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.8"/>
+      <stop offset="25%" stop-color="#8B5CF6" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#14B8A6" stop-opacity="0.8"/>
+      <stop offset="75%" stop-color="#F59E0B" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.8"/>
+    </linearGradient>
+    
+    <!-- Feather and blur filters for smooth mesh effect -->
+    <filter id="meshBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8"/>
+      <feColorMatrix type="saturate" values="1.2"/>
+    </filter>
+    
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4"/>
+      <feComponentTransfer>
+        <feFuncA type="discrete" tableValues="0 .5 .5 .5 .5 .5 .5 .5 .5 .5 1"/>
+      </feComponentTransfer>
+    </filter>
+    
+    <!-- Clip path for the blob -->
+    <clipPath id="blobClip">
+      <path d="M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z">
+        <animate attributeName="d" 
+          values="M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z;
+                  M128,52 C164,46 194,68 210,92 C226,116 224,142 204,166 C184,190 160,202 128,204 C96,206 68,194 48,168 C28,142 26,112 44,86 C62,60 92,58 128,52 Z;
+                  M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z"
+          dur="12s"
+          repeatCount="indefinite"/>
+      </path>
+    </clipPath>
+  </defs>
+  
+  <!-- Background circle for better visibility on both light and dark backgrounds -->
+  <circle cx="128" cy="128" r="110" fill="#000" opacity="0.05"/>
+  <circle cx="128" cy="128" r="110" fill="#fff" opacity="0.05"/>
+  
+  <!-- Mesh gradient layers -->
+  <g clip-path="url(#blobClip)">
+    <!-- Base gradient -->
+    <rect x="0" y="0" width="256" height="256" fill="url(#meshGradient)" opacity="0.3"/>
+    
+    <!-- Individual mesh points -->
+    <ellipse cx="77" cy="64" rx="80" ry="80" fill="url(#meshPoint1)" filter="url(#meshBlur)">
+      <animate attributeName="rx" values="80;90;80" dur="8s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="80;70;80" dur="8s" repeatCount="indefinite"/>
+    </ellipse>
+    
+    <ellipse cx="192" cy="77" rx="80" ry="80" fill="url(#meshPoint2)" filter="url(#meshBlur)">
+      <animate attributeName="rx" values="80;70;80" dur="10s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="80;90;80" dur="10s" repeatCount="indefinite"/>
+    </ellipse>
+    
+    <ellipse cx="179" cy="192" rx="80" ry="80" fill="url(#meshPoint3)" filter="url(#meshBlur)">
+      <animate attributeName="rx" values="80;85;80" dur="9s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="80;75;80" dur="9s" repeatCount="indefinite"/>
+    </ellipse>
+    
+    <ellipse cx="64" cy="179" rx="80" ry="80" fill="url(#meshPoint4)" filter="url(#meshBlur)">
+      <animate attributeName="rx" values="80;75;80" dur="11s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="80;85;80" dur="11s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+  
+  <!-- Main blob shape -->
+  <path d="M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z" 
+    fill="none" 
+    stroke="url(#meshGradient)" 
+    stroke-width="2" 
+    opacity="0.6"
+    filter="url(#softGlow)">
+    <animate attributeName="d" 
+      values="M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z;
+              M128,52 C164,46 194,68 210,92 C226,116 224,142 204,166 C184,190 160,202 128,204 C96,206 68,194 48,168 C28,142 26,112 44,86 C62,60 92,58 128,52 Z;
+              M128,48 C168,48 196,62 212,88 C228,114 226,138 208,164 C190,190 164,204 132,208 C100,212 72,198 52,172 C32,146 28,116 42,88 C56,60 88,48 128,48 Z"
+      dur="12s"
+      repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Inner mesh network -->
+  <g opacity="0.3">
+    <path d="M77,64 L192,77 L179,192 L64,179 Z" fill="none" stroke="url(#meshGradient)" stroke-width="1" opacity="0.5">
+      <animate attributeName="d" 
+        values="M77,64 L192,77 L179,192 L64,179 Z;
+                M80,70 L188,82 L175,188 L68,175 Z;
+                M77,64 L192,77 L179,192 L64,179 Z"
+        dur="8s"
+        repeatCount="indefinite"/>
+    </path>
+    <path d="M77,64 L179,192 M192,77 L64,179" fill="none" stroke="url(#meshGradient)" stroke-width="1" opacity="0.3"/>
+  </g>
+  
+  <!-- Center highlight -->
+  <circle cx="128" cy="128" r="30" fill="url(#meshGradient)" opacity="0.2" filter="url(#softGlow)">
+    <animate attributeName="r" values="30;35;30" dur="6s" repeatCount="indefinite"/>
+  </circle>
+</svg>

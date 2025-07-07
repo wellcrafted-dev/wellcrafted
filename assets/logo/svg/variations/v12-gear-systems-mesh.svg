@@ -1,0 +1,218 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Radial gradient for large gear (slate) -->
+    <radialGradient id="largeGearGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#475569;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Radial gradient for small gear (amber) -->
+    <radialGradient id="smallGearGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Shadow filter for depth -->
+    <filter id="gearShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.15"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Highlight gradient for teeth -->
+    <linearGradient id="teethHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E5E7EB;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#E5E7EB;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Large gear (3 units) -->
+  <g transform="translate(96, 128)" filter="url(#gearShadow)">
+    <!-- Gear body -->
+    <circle cx="0" cy="0" r="48" fill="url(#largeGearGradient)"/>
+    
+    <!-- Center hole -->
+    <circle cx="0" cy="0" r="16" fill="#334155" opacity="0.3"/>
+    
+    <!-- Gear teeth (20 teeth for large gear) -->
+    <g id="largeGearTeeth">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        from="0 0 0"
+        to="360 0 0"
+        dur="20s"
+        repeatCount="indefinite"/>
+      
+      <!-- Generate teeth using paths -->
+      <g transform="rotate(0)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(18)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(36)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(54)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(72)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(90)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(108)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(126)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(144)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(162)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(180)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(198)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(216)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(234)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(252)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(270)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(288)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(306)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(324)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(342)">
+        <path d="M 48,0 L 54,-4 L 54,4 Z" fill="url(#largeGearGradient)"/>
+        <path d="M 48,0 L 54,-4 L 54,-2 L 48,0" fill="url(#teethHighlight)"/>
+      </g>
+    </g>
+    
+    <!-- Inner details -->
+    <circle cx="0" cy="0" r="12" fill="none" stroke="#334155" stroke-width="1" opacity="0.2"/>
+    <circle cx="0" cy="0" r="8" fill="#334155" opacity="0.4"/>
+  </g>
+  
+  <!-- Small gear (2 units) - positioned to mesh with large gear -->
+  <g transform="translate(160, 128)" filter="url(#gearShadow)">
+    <!-- Gear body -->
+    <circle cx="0" cy="0" r="32" fill="url(#smallGearGradient)"/>
+    
+    <!-- Center hole -->
+    <circle cx="0" cy="0" r="10" fill="#92400E" opacity="0.3"/>
+    
+    <!-- Gear teeth (12 teeth for small gear to maintain ratio) -->
+    <g id="smallGearTeeth">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        from="0 0 0"
+        to="-360 0 0"
+        dur="12s"
+        repeatCount="indefinite"/>
+      
+      <!-- Generate teeth using paths -->
+      <g transform="rotate(0)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(30)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(60)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(90)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(120)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(150)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(180)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(210)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(240)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(270)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(300)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+      <g transform="rotate(330)">
+        <path d="M 32,0 L 36,-3 L 36,3 Z" fill="url(#smallGearGradient)"/>
+        <path d="M 32,0 L 36,-3 L 36,-1.5 L 32,0" fill="url(#teethHighlight)"/>
+      </g>
+    </g>
+    
+    <!-- Inner details -->
+    <circle cx="0" cy="0" r="8" fill="none" stroke="#92400E" stroke-width="1" opacity="0.2"/>
+    <circle cx="0" cy="0" r="5" fill="#92400E" opacity="0.4"/>
+  </g>
+  
+  <!-- Mesh point indicator (subtle) -->
+  <circle cx="128" cy="128" r="2" fill="#E5E7EB" opacity="0.5"/>
+</svg>

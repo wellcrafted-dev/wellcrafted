@@ -1,0 +1,56 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient from amber to red -->
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#DC2626;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Glow backdrop -->
+  <path d="M 128 40 
+           L 148 40 
+           Q 168 40 168 60 
+           L 168 80 
+           Q 168 100 148 100 
+           L 136 100 
+           L 136 180 
+           Q 136 190 128 190 
+           Q 120 190 120 180 
+           L 120 100 
+           L 108 100 
+           Q 88 100 88 80 
+           L 88 60 
+           Q 88 40 108 40 
+           Z" 
+        fill="url(#hammerGradient)" 
+        opacity="0.3" 
+        filter="url(#glow)" />
+  
+  <!-- Main hammer shape -->
+  <path d="M 128 40 
+           L 148 40 
+           Q 168 40 168 60 
+           L 168 80 
+           Q 168 100 148 100 
+           L 136 100 
+           L 136 180 
+           Q 136 190 128 190 
+           Q 120 190 120 180 
+           L 120 100 
+           L 108 100 
+           Q 88 100 88 80 
+           L 88 60 
+           Q 88 40 108 40 
+           Z" 
+        fill="url(#hammerGradient)" />
+</svg>

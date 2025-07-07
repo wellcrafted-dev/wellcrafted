@@ -1,0 +1,208 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Amber gradient for highlighted pattern -->
+    <linearGradient id="amberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Radial gradient for glow effect -->
+    <radialGradient id="glowGradient">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:0.6" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Subtle background gradient for depth -->
+    <radialGradient id="bgGradient">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Glow filter for highlighted digits -->
+    <filter id="digitGlow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Shadow filter for depth -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle for subtle depth -->
+  <circle cx="128" cy="128" r="120" fill="url(#bgGradient)"/>
+  
+  <!-- 8x8 Binary Grid -->
+  <g font-family="monospace" font-size="22" font-weight="500" text-anchor="middle">
+    <!-- Row 1 -->
+    <text x="48" y="56" fill="#64748B">0</text>
+    <text x="80" y="56" fill="#10B981">1</text>
+    <text x="112" y="56" fill="#10B981">1</text>
+    <text x="144" y="56" fill="#10B981">1</text>
+    <text x="176" y="56" fill="#10B981">1</text>
+    <text x="208" y="56" fill="#64748B">0</text>
+    
+    <!-- Row 2 -->
+    <text x="48" y="88" fill="#10B981">1</text>
+    <text x="80" y="88" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" repeatCount="indefinite"/>
+    </text>
+    <text x="112" y="88" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="0.2s" repeatCount="indefinite"/>
+    </text>
+    <text x="144" y="88" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="0.4s" repeatCount="indefinite"/>
+    </text>
+    <text x="176" y="88" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+    </text>
+    <text x="208" y="88" fill="#10B981">1</text>
+    
+    <!-- Row 3 -->
+    <text x="48" y="120" fill="#10B981">1</text>
+    <text x="80" y="120" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+    </text>
+    <text x="112" y="120" fill="#10B981">1</text>
+    <text x="144" y="120" fill="#10B981">1</text>
+    <text x="176" y="120" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="1s" repeatCount="indefinite"/>
+    </text>
+    <text x="208" y="120" fill="#10B981">1</text>
+    
+    <!-- Row 4 -->
+    <text x="48" y="152" fill="#10B981">1</text>
+    <text x="80" y="152" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="1.2s" repeatCount="indefinite"/>
+    </text>
+    <text x="112" y="152" fill="#10B981">1</text>
+    <text x="144" y="152" fill="#10B981">1</text>
+    <text x="176" y="152" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="1.4s" repeatCount="indefinite"/>
+    </text>
+    <text x="208" y="152" fill="#10B981">1</text>
+    
+    <!-- Row 5 -->
+    <text x="48" y="184" fill="#10B981">1</text>
+    <text x="80" y="184" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="1.6s" repeatCount="indefinite"/>
+    </text>
+    <text x="112" y="184" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="1.8s" repeatCount="indefinite"/>
+    </text>
+    <text x="144" y="184" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="2s" repeatCount="indefinite"/>
+    </text>
+    <text x="176" y="184" fill="#64748B" filter="url(#digitGlow)">
+      <tspan fill="url(#amberGradient)">0</tspan>
+      <animate attributeName="opacity" values="1;0.7;1" dur="2s" begin="2.2s" repeatCount="indefinite"/>
+    </text>
+    <text x="208" y="184" fill="#10B981">1</text>
+    
+    <!-- Row 6 -->
+    <text x="48" y="216" fill="#64748B">0</text>
+    <text x="80" y="216" fill="#10B981">1</text>
+    <text x="112" y="216" fill="#10B981">1</text>
+    <text x="144" y="216" fill="#10B981">1</text>
+    <text x="176" y="216" fill="#10B981">1</text>
+    <text x="208" y="216" fill="#64748B">0</text>
+  </g>
+  
+  <!-- Subtle grid lines for matrix effect -->
+  <g stroke="#64748B" stroke-width="0.5" opacity="0.2">
+    <!-- Vertical lines -->
+    <line x1="32" y1="40" x2="32" y2="232"/>
+    <line x1="64" y1="40" x2="64" y2="232"/>
+    <line x1="96" y1="40" x2="96" y2="232"/>
+    <line x1="128" y1="40" x2="128" y2="232"/>
+    <line x1="160" y1="40" x2="160" y2="232"/>
+    <line x1="192" y1="40" x2="192" y2="232"/>
+    <line x1="224" y1="40" x2="224" y2="232"/>
+    
+    <!-- Horizontal lines -->
+    <line x1="32" y1="72" x2="224" y2="72"/>
+    <line x1="32" y1="104" x2="224" y2="104"/>
+    <line x1="32" y1="136" x2="224" y2="136"/>
+    <line x1="32" y1="168" x2="224" y2="168"/>
+    <line x1="32" y1="200" x2="224" y2="200"/>
+  </g>
+  
+  <!-- Highlighting glow for W pattern -->
+  <g opacity="0.3">
+    <circle cx="80" cy="88" r="20" fill="url(#glowGradient)"/>
+    <circle cx="112" cy="88" r="20" fill="url(#glowGradient)"/>
+    <circle cx="144" cy="88" r="20" fill="url(#glowGradient)"/>
+    <circle cx="176" cy="88" r="20" fill="url(#glowGradient)"/>
+    
+    <circle cx="80" cy="120" r="16" fill="url(#glowGradient)"/>
+    <circle cx="176" cy="120" r="16" fill="url(#glowGradient)"/>
+    
+    <circle cx="80" cy="152" r="16" fill="url(#glowGradient)"/>
+    <circle cx="176" cy="152" r="16" fill="url(#glowGradient)"/>
+    
+    <circle cx="80" cy="184" r="20" fill="url(#glowGradient)"/>
+    <circle cx="112" cy="184" r="20" fill="url(#glowGradient)"/>
+    <circle cx="144" cy="184" r="20" fill="url(#glowGradient)"/>
+    <circle cx="176" cy="184" r="20" fill="url(#glowGradient)"/>
+  </g>
+  
+  <!-- Additional matrix-style background digits -->
+  <g font-family="monospace" font-size="10" fill="#64748B" opacity="0.1">
+    <text x="16" y="32">1101</text>
+    <text x="200" y="32">0110</text>
+    <text x="16" y="240">1010</text>
+    <text x="200" y="240">0101</text>
+    
+    <text x="240" y="80">01</text>
+    <text x="240" y="96">10</text>
+    <text x="240" y="112">11</text>
+    <text x="240" y="128">00</text>
+    <text x="240" y="144">10</text>
+    <text x="240" y="160">01</text>
+    <text x="240" y="176">11</text>
+    <text x="240" y="192">00</text>
+    
+    <text x="8" y="80">10</text>
+    <text x="8" y="96">01</text>
+    <text x="8" y="112">00</text>
+    <text x="8" y="128">11</text>
+    <text x="8" y="144">01</text>
+    <text x="8" y="160">10</text>
+    <text x="8" y="176">00</text>
+    <text x="8" y="192">11</text>
+  </g>
+  
+  <!-- Subtle data flow particles -->
+  <g opacity="0.4">
+    <circle cx="48" cy="56" r="1" fill="#10B981">
+      <animate attributeName="cy" values="56;216" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.6;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    
+    <circle cx="208" cy="56" r="1" fill="#10B981">
+      <animate attributeName="cy" values="56;216" dur="4s" begin="1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.6;0" dur="4s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    
+    <circle cx="128" cy="40" r="1" fill="#F59E0B">
+      <animate attributeName="cy" values="40;232" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.8;0" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

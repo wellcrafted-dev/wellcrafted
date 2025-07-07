@@ -1,0 +1,42 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Modern gradient from amber to purple -->
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A78BFA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Subtle glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Soft shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  
+  <!-- Abstract hammer shape - minimal geometric interpretation -->
+  <g filter="url(#shadow)">
+    <!-- Main body - tilted rectangle representing hammer head and handle unified -->
+    <rect x="60" y="80" width="136" height="40" rx="20" 
+          transform="rotate(-45 128 128)" 
+          fill="url(#hammerGradient)" 
+          filter="url(#glow)"/>
+    
+    <!-- Accent circle - represents the hammer's striking surface abstractly -->
+    <circle cx="88" cy="88" r="24" 
+            fill="url(#hammerGradient)" 
+            opacity="0.9"/>
+    
+    <!-- Secondary accent - balance element -->
+    <rect x="148" y="148" width="32" height="32" rx="16" 
+          fill="url(#hammerGradient)" 
+          opacity="0.7"/>
+  </g>
+</svg>

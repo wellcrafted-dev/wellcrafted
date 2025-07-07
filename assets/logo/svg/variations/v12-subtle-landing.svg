@@ -1,0 +1,231 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Iridescent plasma-forged steel gradient with less white -->
+    <linearGradient id="iridescent12b" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#D1E7FF;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#A5D8FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#38BDF8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Perfect titanium handle -->
+    <linearGradient id="titaniumHandle12b" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Perfect plasma energy field -->
+    <radialGradient id="plasmaField12b" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#D1E7FF;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#A5D8FF;stop-opacity:0.95" />
+      <stop offset="30%" style="stop-color:#7DD3FC;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#38BDF8;stop-opacity:0.7" />
+      <stop offset="70%" style="stop-color:#0284C7;stop-opacity:0.5" />
+      <stop offset="85%" style="stop-color:#0369A1;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Perfect shimmer gradient -->
+    <linearGradient id="perfectShimmer12b" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#38BDF8;stop-opacity:0.3" />
+      <stop offset="25%" style="stop-color:#7DD3FC;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#D1E7FF;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#7DD3FC;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#38BDF8;stop-opacity:0.3" />
+      <animateTransform attributeName="gradientTransform" type="translate" values="-150 0;150 0;-150 0" dur="3s" repeatCount="indefinite"/>
+    </linearGradient>
+    <!-- Perfect hyper velocity blur -->
+    <filter id="hyperVelocity12b">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5,1.5"/>
+      <feColorMatrix values="1.2 0 0 0 0  0 1.2 0 0 0  0 0 1.2 0 0  0 0 0 1 0"/>
+    </filter>
+    <!-- Perfect energy core glow -->
+    <filter id="energyGlow12b">
+      <feGaussianBlur stdDeviation="4"/>
+      <feColorMatrix values="1.5 0 0 0 0  0 1.5 0 0 0  0 0 1.5 0 0  0 0 0 1 0"/>
+    </filter>
+    <!-- Perfect lightning glow -->
+    <filter id="perfectGlow12b">
+      <feGaussianBlur stdDeviation="3"/>
+      <feColorMatrix values="1.4 0 0 0 0  0 1.4 0 0 0  0 0 1.4 0 0  0 0 0 1 0"/>
+    </filter>
+    <!-- Perfect hammer super glow -->
+    <filter id="hammerSuperGlow12b">
+      <feGaussianBlur stdDeviation="7"/>
+      <feColorMatrix values="2 0 0 0 0  0 2 0 0 0  0 0 2 0 0  0 0 0 0.7 0"/>
+    </filter>
+  </defs>
+  
+  <!-- Enhanced distributed particle field background (starry) -->
+  <g opacity="0.4">
+    <circle cx="15" cy="20" r="1" fill="#38BDF8">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="85" cy="25" r="0.8" fill="#0284C7">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="25" cy="15" r="1.2" fill="#0369A1">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="75" cy="35" r="0.6" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="10" cy="40" r="0.8" fill="#0C4A6E">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="90" cy="45" r="1" fill="#38BDF8">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="20" cy="50" r="0.7" fill="#0284C7"/>
+    <circle cx="80" cy="55" r="0.9" fill="#0369A1"/>
+    <circle cx="12" cy="65" r="0.5" fill="#7DD3FC"/>
+    <circle cx="88" cy="15" r="0.8" fill="#0C4A6E"/>
+    <circle cx="30" cy="35" r="0.6" fill="#38BDF8"/>
+    <circle cx="70" cy="20" r="0.7" fill="#0284C7"/>
+    <circle cx="35" cy="10" r="0.9" fill="#0369A1"/>
+    <circle cx="65" cy="45" r="0.5" fill="#7DD3FC"/>
+    <circle cx="18" cy="30" r="0.8" fill="#0C4A6E"/>
+    <circle cx="82" cy="60" r="0.6" fill="#38BDF8"/>
+  </g>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#38BDF8" stroke-width="0.3"/>
+  <!-- Tech surface pattern -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  <rect x="36" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="44" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="52" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="60" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  
+  <!-- Perfect massive plasma field -->
+  <ellipse cx="50" cy="75" rx="45" ry="28" fill="url(#plasmaField12b)" opacity="0.98"/>
+  
+  <!-- Perfect hyper-velocity motion blur -->
+  <g opacity="0.6" filter="url(#hyperVelocity12b)">
+    <rect x="46" y="2" width="8" height="56" fill="#38BDF8" transform="rotate(-38 50 30)"/>
+    <rect x="44" y="-2" width="8" height="56" fill="#0284C7" transform="rotate(-34 48 26)"/>
+    <rect x="42" y="-6" width="8" height="56" fill="#0369A1" transform="rotate(-30 46 22)"/>
+  </g>
+  
+  <!-- Perfect hammer super glow background -->
+  <g transform="rotate(-38 50 36)" opacity="0.4" filter="url(#hammerSuperGlow12b)">
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="#D1E7FF"/>
+  </g>
+  
+  <!-- Perfect main plasma hammer -->
+  <g transform="rotate(-38 50 36)">
+    <!-- Perfect titanium handle with tech grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle12b)"/>
+    <!-- Perfect tech grip pattern -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="#38BDF8" opacity="0.9"/>
+    <!-- Perfect iridescent plasma-forged hammer head -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#iridescent12b)"/>
+    <!-- Perfect energy core -->
+    <rect x="38" y="1" width="24" height="3" fill="#D1E7FF" opacity="1"/>
+    <rect x="38" y="8" width="24" height="3" fill="#0C4A6E" opacity="0.9"/>
+    <!-- Perfect tech details -->
+    <circle cx="42" cy="5" r="1" fill="#D1E7FF" opacity="1"/>
+    <circle cx="58" cy="5" r="1" fill="#D1E7FF" opacity="1"/>
+    <!-- Perfect additional glow elements -->
+    <rect x="37" y="0" width="26" height="1" fill="#D1E7FF" opacity="0.8"/>
+    <rect x="37" y="11" width="26" height="1" fill="#D1E7FF" opacity="0.8"/>
+  </g>
+  
+  <!-- Perfect plasma explosion core -->
+  <circle cx="50" cy="73" r="6" fill="#D1E7FF" filter="url(#energyGlow12b)">
+    <animate attributeName="r" values="6;4;6" dur="0.4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.8;1" dur="0.4s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Perfect combination lightning effects -->
+  <g filter="url(#perfectGlow12b)">
+    <!-- Radial pattern with shimmer -->
+    <g opacity="0.9">
+      <path d="M 50,75 L 50,95 L 52,92 L 48,98 L 50,95" stroke="url(#perfectShimmer12b)" stroke-width="3" fill="none"/>
+      <path d="M 50,75 L 65,89 L 62,85 L 68,92 L 65,88" stroke="url(#perfectShimmer12b)" stroke-width="2.5" fill="none"/>
+      <path d="M 50,75 L 35,89 L 38,85 L 32,92 L 35,88" stroke="url(#perfectShimmer12b)" stroke-width="2.5" fill="none"/>
+    </g>
+    
+    <!-- Pulsing branches -->
+    <g opacity="0.8">
+      <path d="M 50,75 L 72,82 L 68,79 L 75,85 L 72,82" stroke="#D1E7FF" stroke-width="2" fill="none">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+        <animate attributeName="stroke-width" values="2;3.5;2" dur="1.5s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 50,75 L 28,82 L 32,79 L 25,85 L 28,82" stroke="#D1E7FF" stroke-width="2" fill="none">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="1.7s" repeatCount="indefinite"/>
+        <animate attributeName="stroke-width" values="2;3.5;2" dur="1.7s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    
+    <!-- Cascading secondary bolts -->
+    <g opacity="0.7">
+      <path d="M 65,89 L 75,95 L 73,92 L 80,98 L 77,95" stroke="#7DD3FC" stroke-width="1.5" fill="none">
+        <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 35,89 L 25,95 L 27,92 L 20,98 L 23,95" stroke="#7DD3FC" stroke-width="1.5" fill="none">
+        <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 72,82 L 85,88 L 82,85 L 90,92 L 87,89" stroke="#38BDF8" stroke-width="1.2" fill="none">
+        <animate attributeName="opacity" values="0.2;0.8;0.2" dur="2.4s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 28,82 L 15,88 L 18,85 L 10,92 L 13,89" stroke="#38BDF8" stroke-width="1.2" fill="none">
+        <animate attributeName="opacity" values="0.2;0.8;0.2" dur="2.6s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    
+    <!-- Intense micro discharges -->
+    <g opacity="0.6">
+      <path d="M 50,95 L 45,102 L 47,99 L 40,105 L 43,102" stroke="#0284C7" stroke-width="1" fill="none">
+        <animate attributeName="opacity" values="0.1;0.7;0.1" dur="2.8s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 50,95 L 55,102 L 53,99 L 60,105 L 57,102" stroke="#0284C7" stroke-width="1" fill="none">
+        <animate attributeName="opacity" values="0.1;0.7;0.1" dur="3s" repeatCount="indefinite"/>
+      </path>
+    </g>
+  </g>
+  
+  <!-- Perfect lightning energy sparks -->
+  <g>
+    <!-- Primary sparks with pulse -->
+    <circle cx="50" cy="95" r="1" fill="#D1E7FF">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1;1.8;1" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="65" cy="89" r="0.9" fill="#A5D8FF">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="0.9;1.6;0.9" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="35" cy="89" r="0.9" fill="#A5D8FF">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="0.9;1.6;0.9" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Secondary sparks -->
+    <circle cx="72" cy="82" r="0.7" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="28" cy="82" r="0.7" fill="#7DD3FC">
+      <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="75" cy="95" r="0.6" fill="#38BDF8"/>
+    <circle cx="25" cy="95" r="0.6" fill="#38BDF8"/>
+    <circle cx="85" cy="88" r="0.5" fill="#0284C7"/>
+    <circle cx="15" cy="88" r="0.5" fill="#0284C7"/>
+    <circle cx="45" cy="102" r="0.4" fill="#0369A1"/>
+    <circle cx="55" cy="102" r="0.4" fill="#0369A1"/>
+  </g>
+  
+  <!-- Single pulsating circle at impact point -->
+  <circle cx="50" cy="73" r="8" fill="#7DD3FC" opacity="0.3">
+    <animateTransform attributeName="transform" type="scale" values="0.9;1.1;0.9" dur="3s" repeatCount="indefinite" additive="sum"/>
+    <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite"/>
+  </circle>
+</svg>

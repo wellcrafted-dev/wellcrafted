@@ -1,0 +1,101 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Success gradient (emerald) -->
+    <radialGradient id="successGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#34D399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Error gradient (red) -->
+    <radialGradient id="errorGradient" cx="60%" cy="60%">
+      <stop offset="0%" style="stop-color:#F87171;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EF4444;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Lightning gradient -->
+    <linearGradient id="lightningGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FDE68A;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow filter for lightning -->
+    <filter id="lightningGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Masks for sphere halves -->
+    <mask id="leftMask">
+      <rect width="256" height="256" fill="white"/>
+      <path d="M 128 32 L 124 124 L 128 128 L 132 132 L 128 224 L 128 32" fill="black"/>
+    </mask>
+    
+    <mask id="rightMask">
+      <rect width="256" height="256" fill="black"/>
+      <path d="M 128 32 L 124 124 L 128 128 L 132 132 L 128 224 L 256 224 L 256 32 L 128 32" fill="white"/>
+    </mask>
+  </defs>
+  
+  <!-- Background circle for contrast -->
+  <circle cx="128" cy="128" r="112" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="1" opacity="0.5"/>
+  
+  <!-- Main sphere with shadow -->
+  <g filter="url(#shadow)">
+    <!-- Success half (left) -->
+    <circle cx="128" cy="128" r="96" fill="url(#successGradient)" mask="url(#leftMask)"/>
+    
+    <!-- Error half (right) -->
+    <circle cx="128" cy="128" r="96" fill="url(#errorGradient)" mask="url(#rightMask)"/>
+  </g>
+  
+  <!-- Lightning divider -->
+  <g filter="url(#lightningGlow)">
+    <path d="M 128 32 
+             L 118 96
+             L 130 96
+             L 120 128
+             L 136 128
+             L 126 160
+             L 138 160
+             L 128 224"
+          fill="none" 
+          stroke="url(#lightningGradient)" 
+          stroke-width="6" 
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    
+    <!-- Lightning bolt branches -->
+    <path d="M 120 128 L 108 140
+             M 136 128 L 148 140
+             M 126 160 L 114 172
+             M 138 160 L 150 172"
+          fill="none" 
+          stroke="url(#lightningGradient)" 
+          stroke-width="3" 
+          stroke-linecap="round"
+          opacity="0.7"/>
+  </g>
+  
+  <!-- Inner highlights -->
+  <circle cx="108" cy="88" r="20" fill="white" opacity="0.2"/>
+  <circle cx="148" cy="168" r="16" fill="white" opacity="0.15"/>
+  
+  <!-- Outer ring accent -->
+  <circle cx="128" cy="128" r="96" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+</svg>

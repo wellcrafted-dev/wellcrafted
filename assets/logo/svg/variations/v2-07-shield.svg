@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient for shield -->
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E40AF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Glow behind shield -->
+  <path d="M128 48 C128 48, 88 58, 88 58 C88 58, 88 118, 88 138 C88 178, 128 208, 128 208 C128 208, 168 178, 168 138 C168 118, 168 58, 168 58 C168 58, 128 48, 128 48 Z" 
+        fill="url(#shieldGradient)" 
+        opacity="0.3" 
+        filter="url(#glow)"/>
+  
+  <!-- Main shield shape -->
+  <path d="M128 48 C128 48, 88 58, 88 58 C88 58, 88 118, 88 138 C88 178, 128 208, 128 208 C128 208, 168 178, 168 138 C168 118, 168 58, 168 58 C168 58, 128 48, 128 48 Z" 
+        fill="url(#shieldGradient)"/>
+</svg>

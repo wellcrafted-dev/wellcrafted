@@ -1,0 +1,42 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient from amber to red -->
+    <linearGradient id="triangleGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FBBF24" />
+      <stop offset="100%" style="stop-color:#DC2626" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Shadow for depth -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Glow background -->
+  <path d="M 128 64 L 192 176 L 64 176 Z" 
+        fill="url(#triangleGradient)" 
+        opacity="0.3" 
+        filter="url(#glow)"
+        transform="translate(0, -4)"/>
+  
+  <!-- Main triangle with slightly rounded corners -->
+  <path d="M 128 64 
+           Q 130 64 131.5 66.5
+           L 190 173
+           Q 192 176 189 176
+           L 67 176
+           Q 64 176 66 173
+           L 124.5 66.5
+           Q 126 64 128 64 Z" 
+        fill="url(#triangleGradient)" 
+        filter="url(#shadow)"/>
+</svg>

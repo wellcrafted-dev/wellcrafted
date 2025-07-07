@@ -1,0 +1,45 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Hammer gradient -->
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626" />
+      <stop offset="100%" style="stop-color:#FBBF24" />
+    </linearGradient>
+    
+    <!-- Impact glow gradient -->
+    <radialGradient id="impactGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:0.8" />
+      <stop offset="40%" style="stop-color:#F59E0B;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#DC2626;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Blur filter for glow effect -->
+    <filter id="blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+    </filter>
+  </defs>
+  
+  <!-- Impact waves -->
+  <circle cx="156" cy="156" r="30" fill="none" stroke="url(#impactGlow)" stroke-width="2" opacity="0.3" />
+  <circle cx="156" cy="156" r="45" fill="none" stroke="url(#impactGlow)" stroke-width="1.5" opacity="0.2" />
+  <circle cx="156" cy="156" r="60" fill="none" stroke="url(#impactGlow)" stroke-width="1" opacity="0.1" />
+  
+  <!-- Impact burst glow -->
+  <circle cx="156" cy="156" r="40" fill="url(#impactGlow)" filter="url(#blur)" />
+  
+  <!-- Hammer shape -->
+  <g transform="rotate(-45, 128, 128)">
+    <!-- Handle -->
+    <rect x="124" y="80" width="8" height="80" fill="url(#hammerGradient)" />
+    
+    <!-- Hammer head -->
+    <rect x="116" y="60" width="24" height="40" rx="2" fill="url(#hammerGradient)" />
+    
+    <!-- Hammer head highlight -->
+    <rect x="116" y="60" width="24" height="8" rx="2" fill="#FBBF24" opacity="0.5" />
+  </g>
+  
+  <!-- Central impact point -->
+  <circle cx="156" cy="156" r="8" fill="#FBBF24" opacity="0.9" />
+  <circle cx="156" cy="156" r="4" fill="#FEF3C7" />
+</svg>

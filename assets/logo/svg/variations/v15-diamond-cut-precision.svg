@@ -1,0 +1,191 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Define gradients for each of the 8 main directions -->
+    <!-- 0° North -->
+    <linearGradient id="facetGrad0" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 45° NE -->
+    <linearGradient id="facetGrad45" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 90° East -->
+    <linearGradient id="facetGrad90" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 135° SE -->
+    <linearGradient id="facetGrad135" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 180° South -->
+    <linearGradient id="facetGrad180" x1="50%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 225° SW -->
+    <linearGradient id="facetGrad225" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 270° West -->
+    <linearGradient id="facetGrad270" x1="100%" y1="50%" x2="0%" y2="50%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 315° NW -->
+    <linearGradient id="facetGrad315" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338CA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Brilliant center gradient -->
+    <radialGradient id="centerBrilliance" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#FFFFFF;stop-opacity:0.9" />
+      <stop offset="60%" style="stop-color:#E0E7FF;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:0.2" />
+    </radialGradient>
+    
+    <!-- Edge definition gradient -->
+    <radialGradient id="edgeGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="70%" style="stop-color:#1E293B;stop-opacity:0" />
+      <stop offset="90%" style="stop-color:#1E293B;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:0.5" />
+    </radialGradient>
+    
+    <!-- Light refraction effect -->
+    <linearGradient id="refraction" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#E0E7FF;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background for contrast -->
+  <rect x="0" y="0" width="256" height="256" fill="none" />
+  
+  <!-- Main diamond structure with perfect 8-fold symmetry -->
+  <g transform="translate(128,128)">
+    <!-- Outer edge glow for depth -->
+    <circle cx="0" cy="0" r="88" fill="url(#edgeGlow)" />
+    
+    <!-- 32 Facets arranged in 4 rings -->
+    
+    <!-- Outer ring - 8 large facets -->
+    <g id="outerRing">
+      <!-- North facet -->
+      <polygon points="0,-88 -32,-76 0,-64 32,-76" fill="url(#facetGrad0)" opacity="0.9" />
+      <!-- NE facet -->
+      <polygon points="62,-62 32,-76 44,-44 76,-32" fill="url(#facetGrad45)" opacity="0.9" />
+      <!-- East facet -->
+      <polygon points="88,0 76,-32 64,0 76,32" fill="url(#facetGrad90)" opacity="0.9" />
+      <!-- SE facet -->
+      <polygon points="62,62 76,32 44,44 32,76" fill="url(#facetGrad135)" opacity="0.9" />
+      <!-- South facet -->
+      <polygon points="0,88 32,76 0,64 -32,76" fill="url(#facetGrad180)" opacity="0.9" />
+      <!-- SW facet -->
+      <polygon points="-62,62 -32,76 -44,44 -76,32" fill="url(#facetGrad225)" opacity="0.9" />
+      <!-- West facet -->
+      <polygon points="-88,0 -76,32 -64,0 -76,-32" fill="url(#facetGrad270)" opacity="0.9" />
+      <!-- NW facet -->
+      <polygon points="-62,-62 -76,-32 -44,-44 -32,-76" fill="url(#facetGrad315)" opacity="0.9" />
+    </g>
+    
+    <!-- Second ring - 8 medium facets -->
+    <g id="secondRing">
+      <!-- Cardinal direction facets -->
+      <polygon points="0,-64 -24,-52 0,-40 24,-52" fill="url(#facetGrad0)" opacity="0.85" />
+      <polygon points="64,0 52,-24 40,0 52,24" fill="url(#facetGrad90)" opacity="0.85" />
+      <polygon points="0,64 24,52 0,40 -24,52" fill="url(#facetGrad180)" opacity="0.85" />
+      <polygon points="-64,0 -52,24 -40,0 -52,-24" fill="url(#facetGrad270)" opacity="0.85" />
+      
+      <!-- Diagonal facets -->
+      <polygon points="44,-44 24,-52 32,-32 52,-24" fill="url(#facetGrad45)" opacity="0.85" />
+      <polygon points="44,44 52,24 32,32 24,52" fill="url(#facetGrad135)" opacity="0.85" />
+      <polygon points="-44,44 -24,52 -32,32 -52,24" fill="url(#facetGrad225)" opacity="0.85" />
+      <polygon points="-44,-44 -52,-24 -32,-32 -24,-52" fill="url(#facetGrad315)" opacity="0.85" />
+    </g>
+    
+    <!-- Third ring - 8 inner facets -->
+    <g id="thirdRing">
+      <!-- Star pattern facets -->
+      <polygon points="0,-40 -16,-32 0,-24 16,-32" fill="url(#facetGrad0)" opacity="0.8" />
+      <polygon points="40,0 32,-16 24,0 32,16" fill="url(#facetGrad90)" opacity="0.8" />
+      <polygon points="0,40 16,32 0,24 -16,32" fill="url(#facetGrad180)" opacity="0.8" />
+      <polygon points="-40,0 -32,16 -24,0 -32,-16" fill="url(#facetGrad270)" opacity="0.8" />
+      
+      <!-- Inner diagonal facets -->
+      <polygon points="28,-28 16,-32 20,-20 32,-16" fill="url(#facetGrad45)" opacity="0.8" />
+      <polygon points="28,28 32,16 20,20 16,32" fill="url(#facetGrad135)" opacity="0.8" />
+      <polygon points="-28,28 -16,32 -20,20 -32,16" fill="url(#facetGrad225)" opacity="0.8" />
+      <polygon points="-28,-28 -32,-16 -20,-20 -16,-32" fill="url(#facetGrad315)" opacity="0.8" />
+    </g>
+    
+    <!-- Center ring - 8 small facets around the brilliant center -->
+    <g id="centerRing">
+      <polygon points="0,-24 -8,-16 0,-8 8,-16" fill="url(#facetGrad0)" opacity="0.75" />
+      <polygon points="24,0 16,-8 8,0 16,8" fill="url(#facetGrad90)" opacity="0.75" />
+      <polygon points="0,24 8,16 0,8 -8,16" fill="url(#facetGrad180)" opacity="0.75" />
+      <polygon points="-24,0 -16,8 -8,0 -16,-8" fill="url(#facetGrad270)" opacity="0.75" />
+      
+      <polygon points="17,-17 8,-16 12,-12 16,-8" fill="url(#facetGrad45)" opacity="0.75" />
+      <polygon points="17,17 16,8 12,12 8,16" fill="url(#facetGrad135)" opacity="0.75" />
+      <polygon points="-17,17 -8,16 -12,12 -16,8" fill="url(#facetGrad225)" opacity="0.75" />
+      <polygon points="-17,-17 -16,-8 -12,-12 -8,-16" fill="url(#facetGrad315)" opacity="0.75" />
+    </g>
+    
+    <!-- Brilliant center -->
+    <circle cx="0" cy="0" r="8" fill="url(#centerBrilliance)" />
+    
+    <!-- Light refraction overlays for premium effect -->
+    <g opacity="0.4">
+      <polygon points="0,-88 0,0 32,-76" fill="url(#refraction)" />
+      <polygon points="88,0 0,0 76,32" fill="url(#refraction)" />
+      <polygon points="0,88 0,0 -32,76" fill="url(#refraction)" />
+      <polygon points="-88,0 0,0 -76,-32" fill="url(#refraction)" />
+    </g>
+    
+    <!-- Edge highlights for definition -->
+    <g stroke="#1E293B" stroke-width="0.5" fill="none" opacity="0.8">
+      <!-- Outer octagon -->
+      <polygon points="0,-88 62,-62 88,0 62,62 0,88 -62,62 -88,0 -62,-62" />
+      <!-- Middle octagon -->
+      <polygon points="0,-64 44,-44 64,0 44,44 0,64 -44,44 -64,0 -44,-44" />
+      <!-- Inner octagon -->
+      <polygon points="0,-40 28,-28 40,0 28,28 0,40 -28,28 -40,0 -28,-28" />
+      <!-- Center octagon -->
+      <polygon points="0,-24 17,-17 24,0 17,17 0,24 -17,17 -24,0 -17,-17" />
+    </g>
+    
+    <!-- Sparkle effects for brilliance -->
+    <g>
+      <circle cx="0" cy="-88" r="2" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="62" cy="-62" r="1.5" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="88" cy="0" r="1.5" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="62" cy="62" r="1.5" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="0" cy="88" r="2" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="-62" cy="62" r="1.5" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="-88" cy="0" r="1.5" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="-62" cy="-62" r="1.5" fill="#FFFFFF" opacity="0.8" />
+    </g>
+  </g>
+</svg>

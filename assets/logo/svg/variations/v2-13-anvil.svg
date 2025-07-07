@@ -1,0 +1,66 @@
+<svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Modern gradient from dark gray to indigo -->
+    <linearGradient id="anvilGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1F2937" />
+      <stop offset="100%" style="stop-color:#6366F1" />
+    </linearGradient>
+    
+    <!-- Subtle glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Softer glow for background -->
+    <filter id="bgGlow">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+  </defs>
+  
+  <!-- Background glow -->
+  <path d="M 40 120 
+           L 50 100 
+           Q 55 95, 65 95 
+           L 180 95 
+           Q 190 95, 195 100 
+           L 205 120 
+           L 205 130 
+           Q 205 135, 200 135 
+           L 195 135 
+           L 195 155 
+           Q 195 160, 190 160 
+           L 65 160 
+           Q 60 160, 60 155 
+           L 60 135 
+           L 45 135 
+           Q 40 135, 40 130 
+           Z" 
+        fill="url(#anvilGradient)" 
+        opacity="0.3" 
+        filter="url(#bgGlow)" />
+  
+  <!-- Main anvil shape -->
+  <path d="M 40 120 
+           L 50 100 
+           Q 55 95, 65 95 
+           L 180 95 
+           Q 190 95, 195 100 
+           L 205 120 
+           L 205 130 
+           Q 205 135, 200 135 
+           L 195 135 
+           L 195 155 
+           Q 195 160, 190 160 
+           L 65 160 
+           Q 60 160, 60 155 
+           L 60 135 
+           L 45 135 
+           Q 40 135, 40 130 
+           Z" 
+        fill="url(#anvilGradient)" 
+        filter="url(#glow)" />
+</svg>

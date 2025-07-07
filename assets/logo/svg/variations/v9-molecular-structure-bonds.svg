@@ -1,0 +1,95 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Node gradients for 3D sphere effect -->
+    <radialGradient id="tealNodeGradient" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#0D9488;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A7E74;stop-opacity:1" />
+    </radialGradient>
+    
+    <radialGradient id="activeNodeGradient" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#FCD34D;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Shadow filter for depth -->
+    <filter id="nodeShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="2" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Glow effect for active node -->
+    <filter id="activeGlow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle for contrast -->
+  <circle cx="128" cy="128" r="120" fill="none" stroke="#E5E7EB" stroke-width="0.5" opacity="0.2"/>
+  
+  <!-- Bonds (drawn first so they appear behind nodes) -->
+  <!-- Double bond: Top to Right -->
+  <g opacity="0.8">
+    <line x1="128" y1="60" x2="180" y2="110" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+    <line x1="128" y1="60" x2="180" y2="110" stroke="#64748B" stroke-width="3" stroke-linecap="round" transform="translate(-4,-4)"/>
+  </g>
+  
+  <!-- Single bond: Top to Left -->
+  <line x1="128" y1="60" x2="76" y2="110" stroke="#64748B" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  
+  <!-- Single bond: Top to Bottom (Active) -->
+  <line x1="128" y1="60" x2="128" y2="170" stroke="#94A3B8" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Double bond: Left to Bottom -->
+  <g opacity="0.8">
+    <line x1="76" y1="110" x2="128" y2="170" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+    <line x1="76" y1="110" x2="128" y2="170" stroke="#64748B" stroke-width="3" stroke-linecap="round" transform="translate(4,-2)"/>
+  </g>
+  
+  <!-- Single bond: Right to Bottom -->
+  <line x1="180" y1="110" x2="128" y2="170" stroke="#64748B" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  
+  <!-- Single bond: Left to Right -->
+  <line x1="76" y1="110" x2="180" y2="110" stroke="#64748B" stroke-width="3" stroke-linecap="round" opacity="0.6" stroke-dasharray="8,4"/>
+  
+  <!-- Nodes -->
+  <!-- Top node (teal) -->
+  <circle cx="128" cy="60" r="22" fill="url(#tealNodeGradient)" filter="url(#nodeShadow)"/>
+  <circle cx="122" cy="54" r="6" fill="#14B8A6" opacity="0.6"/>
+  
+  <!-- Left node (teal) -->
+  <circle cx="76" cy="110" r="20" fill="url(#tealNodeGradient)" filter="url(#nodeShadow)"/>
+  <circle cx="71" cy="105" r="5" fill="#14B8A6" opacity="0.6"/>
+  
+  <!-- Right node (teal) -->
+  <circle cx="180" cy="110" r="20" fill="url(#tealNodeGradient)" filter="url(#nodeShadow)"/>
+  <circle cx="175" cy="105" r="5" fill="#14B8A6" opacity="0.6"/>
+  
+  <!-- Bottom node (active - amber) -->
+  <circle cx="128" cy="170" r="24" fill="url(#activeNodeGradient)" filter="url(#activeGlow)"/>
+  <circle cx="122" cy="164" r="7" fill="#FCD34D" opacity="0.7"/>
+  
+  <!-- Additional small decorative molecules -->
+  <g opacity="0.3">
+    <circle cx="60" cy="180" r="8" fill="#64748B"/>
+    <circle cx="196" cy="180" r="8" fill="#64748B"/>
+    <circle cx="128" cy="210" r="6" fill="#64748B"/>
+    <line x1="60" y1="180" x2="128" y2="210" stroke="#64748B" stroke-width="1"/>
+    <line x1="196" y1="180" x2="128" y2="210" stroke="#64748B" stroke-width="1"/>
+  </g>
+  
+  <!-- Subtle orbital paths -->
+  <ellipse cx="128" cy="115" rx="90" ry="40" fill="none" stroke="#CBD5E1" stroke-width="0.5" opacity="0.2" transform="rotate(-20 128 115)"/>
+  <ellipse cx="128" cy="115" rx="70" ry="50" fill="none" stroke="#CBD5E1" stroke-width="0.5" opacity="0.2" transform="rotate(30 128 115)"/>
+</svg>

@@ -1,0 +1,139 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Outer facet gradients -->
+    <linearGradient id="outerFacetGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="outerFacetGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="outerFacetGrad3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Inner light gradients -->
+    <radialGradient id="innerLightGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#E0E7FF;stop-opacity:0.9" />
+      <stop offset="70%" style="stop-color:#C7D2FE;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#C7D2FE;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <!-- Refraction gradients -->
+    <linearGradient id="refractionGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#FFFFFF;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#C7D2FE;stop-opacity:0.3" />
+    </linearGradient>
+    
+    <linearGradient id="refractionGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E7FF;stop-opacity:0.7" />
+      <stop offset="50%" style="stop-color:#FFFFFF;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#C7D2FE;stop-opacity:0.4" />
+    </linearGradient>
+    
+    <!-- Shadow gradient for depth -->
+    <radialGradient id="shadowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="60%" style="stop-color:#000000;stop-opacity:0" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <!-- Bright core -->
+    <radialGradient id="coreGrad" cx="50%" cy="40%" r="30%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#E0E7FF;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#C7D2FE;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background subtle glow -->
+  <circle cx="128" cy="128" r="100" fill="url(#innerLightGrad)" opacity="0.2" />
+  
+  <!-- Main gem structure - 12 facets -->
+  <g id="gem">
+    <!-- Top section (crown) -->
+    <!-- Top center facet -->
+    <polygon points="128,40 108,80 148,80" fill="url(#outerFacetGrad3)" opacity="0.95" />
+    
+    <!-- Top left facets -->
+    <polygon points="128,40 88,60 108,80" fill="url(#outerFacetGrad1)" opacity="0.9" />
+    <polygon points="88,60 68,100 108,80" fill="url(#outerFacetGrad2)" opacity="0.85" />
+    
+    <!-- Top right facets -->
+    <polygon points="128,40 168,60 148,80" fill="url(#outerFacetGrad2)" opacity="0.9" />
+    <polygon points="168,60 188,100 148,80" fill="url(#outerFacetGrad1)" opacity="0.85" />
+    
+    <!-- Middle band -->
+    <polygon points="68,100 88,140 108,80" fill="url(#outerFacetGrad3)" opacity="0.8" />
+    <polygon points="188,100 168,140 148,80" fill="url(#outerFacetGrad3)" opacity="0.8" />
+    <polygon points="108,80 128,120 148,80" fill="url(#refractionGrad1)" opacity="0.7" />
+    
+    <!-- Bottom section (pavilion) -->
+    <polygon points="88,140 128,216 108,180" fill="url(#outerFacetGrad1)" opacity="0.75" />
+    <polygon points="168,140 128,216 148,180" fill="url(#outerFacetGrad2)" opacity="0.75" />
+    <polygon points="108,180 128,216 148,180" fill="url(#outerFacetGrad3)" opacity="0.7" />
+    <polygon points="68,100 88,140 108,180" fill="url(#outerFacetGrad2)" opacity="0.7" />
+    <polygon points="188,100 168,140 148,180" fill="url(#outerFacetGrad1)" opacity="0.7" />
+    
+    <!-- Internal refraction effects -->
+    <polygon points="108,80 128,120 88,140" fill="url(#refractionGrad2)" opacity="0.5" />
+    <polygon points="148,80 128,120 168,140" fill="url(#refractionGrad1)" opacity="0.5" />
+    <polygon points="128,120 108,180 148,180" fill="url(#innerLightGrad)" opacity="0.4" />
+    
+    <!-- Brilliant core -->
+    <ellipse cx="128" cy="100" rx="30" ry="20" fill="url(#coreGrad)" opacity="0.8" />
+    
+    <!-- Edge highlights for definition -->
+    <g stroke="#FFFFFF" stroke-width="1" fill="none" opacity="0.5">
+      <polyline points="128,40 108,80 128,120 108,180 128,216" />
+      <polyline points="128,40 148,80 128,120 148,180 128,216" />
+      <polyline points="88,60 68,100 88,140" />
+      <polyline points="168,60 188,100 168,140" />
+    </g>
+    
+    <!-- Shadow overlay for depth -->
+    <polygon points="68,100 88,140 128,216 168,140 188,100" fill="url(#shadowGrad)" opacity="0.5" />
+  </g>
+  
+  <!-- Sparkle effects -->
+  <g>
+    <!-- Primary sparkles -->
+    <circle cx="128" cy="40" r="3" fill="#FFFFFF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="88" cy="60" r="2" fill="#E0E7FF" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="168" cy="60" r="2" fill="#E0E7FF" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
+    </circle>
+    
+    <!-- Secondary sparkles -->
+    <circle cx="108" cy="80" r="1.5" fill="#FFFFFF" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="3s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="148" cy="80" r="1.5" fill="#FFFFFF" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="3s" repeatCount="indefinite" begin="0.7s" />
+    </circle>
+    
+    <!-- Ambient sparkles -->
+    <circle cx="68" cy="100" r="1" fill="#C7D2FE" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="188" cy="100" r="1" fill="#C7D2FE" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3.5s" repeatCount="indefinite" begin="1s" />
+    </circle>
+  </g>
+  
+  <!-- Light ray effects -->
+  <g opacity="0.3">
+    <rect x="126" y="0" width="4" height="40" fill="#FFFFFF" />
+    <rect x="0" y="126" width="68" height="4" fill="#E0E7FF" />
+    <rect x="188" y="126" width="68" height="4" fill="#E0E7FF" />
+  </g>
+</svg>

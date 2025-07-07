@@ -1,0 +1,145 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Iridescent plasma-forged steel gradient -->
+    <linearGradient id="iridescent12c" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#60A5FA;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#38BDF8;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle -->
+    <linearGradient id="titaniumHandle12c" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Plasma energy field -->
+    <radialGradient id="plasmaField12c" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#60A5FA;stop-opacity:0.9" />
+      <stop offset="40%" style="stop-color:#38BDF8;stop-opacity:0.7" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:0.5" />
+      <stop offset="80%" style="stop-color:#0369A1;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Hyper velocity blur -->
+    <filter id="hyperVelocity12c">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4,1.2"/>
+    </filter>
+    <!-- Energy core glow -->
+    <filter id="energyGlow12c">
+      <feGaussianBlur stdDeviation="3"/>
+      <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    </filter>
+    <!-- Lightning glow -->
+    <filter id="lightningGlow12c">
+      <feGaussianBlur stdDeviation="2"/>
+      <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+  
+  <!-- Distributed particle field background -->
+  <g opacity="0.3">
+    <circle cx="15" cy="20" r="1" fill="#38BDF8"/>
+    <circle cx="85" cy="25" r="0.8" fill="#0284C7"/>
+    <circle cx="25" cy="15" r="1.2" fill="#0369A1"/>
+    <circle cx="75" cy="35" r="0.6" fill="#7DD3FC"/>
+    <circle cx="10" cy="40" r="0.8" fill="#0C4A6E"/>
+    <circle cx="90" cy="45" r="1" fill="#38BDF8"/>
+    <circle cx="20" cy="50" r="0.7" fill="#0284C7"/>
+    <circle cx="80" cy="55" r="0.9" fill="#0369A1"/>
+    <circle cx="12" cy="65" r="0.5" fill="#7DD3FC"/>
+    <circle cx="88" cy="15" r="0.8" fill="#0C4A6E"/>
+    <circle cx="30" cy="35" r="0.6" fill="#38BDF8"/>
+    <circle cx="70" cy="20" r="0.7" fill="#0284C7"/>
+    <circle cx="35" cy="10" r="0.9" fill="#0369A1"/>
+    <circle cx="65" cy="45" r="0.5" fill="#7DD3FC"/>
+    <circle cx="18" cy="30" r="0.8" fill="#0C4A6E"/>
+    <circle cx="82" cy="60" r="0.6" fill="#38BDF8"/>
+  </g>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#38BDF8" stroke-width="0.3"/>
+  <!-- Tech surface pattern -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  <rect x="36" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="44" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="52" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="60" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  
+  <!-- Massive plasma field -->
+  <ellipse cx="50" cy="75" rx="40" ry="24" fill="url(#plasmaField12c)" opacity="0.95"/>
+  
+  <!-- Hyper-velocity motion blur -->
+  <g opacity="0.5" filter="url(#hyperVelocity12c)">
+    <rect x="46" y="12" width="8" height="56" fill="#38BDF8" transform="rotate(-38 50 40)"/>
+    <rect x="44" y="8" width="8" height="56" fill="#0284C7" transform="rotate(-34 48 36)"/>
+    <rect x="42" y="4" width="8" height="56" fill="#0369A1" transform="rotate(-30 46 32)"/>
+  </g>
+  
+  <!-- Main plasma hammer - moved closer to anvil -->
+  <g transform="rotate(-38 50 46)">
+    <!-- Titanium handle with tech grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle12c)"/>
+    <!-- Tech grip pattern -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="#38BDF8" opacity="0.7"/>
+    <!-- Iridescent plasma-forged hammer head -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#iridescent12c)"/>
+    <!-- Energy core -->
+    <rect x="38" y="1" width="24" height="3" fill="#93BBFC" opacity="0.9"/>
+    <rect x="38" y="8" width="24" height="3" fill="#0C4A6E" opacity="0.8"/>
+    <!-- Tech details -->
+    <circle cx="42" cy="5" r="1" fill="#BAE6FD" opacity="0.9"/>
+    <circle cx="58" cy="5" r="1" fill="#BAE6FD" opacity="0.9"/>
+  </g>
+  
+  <!-- Plasma explosion core -->
+  <circle cx="50" cy="73" r="5" fill="#7DD3FC" filter="url(#energyGlow12c)">
+    <animate attributeName="r" values="5;3;5" dur="0.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Branched lightning pattern -->
+  <g filter="url(#lightningGlow12c)">
+    <!-- Main trunk -->
+    <path d="M 50,75 L 50,95 L 52,92 L 48,98 L 50,95" stroke="#93BBFC" stroke-width="3" fill="none" opacity="0.9"/>
+    
+    <!-- Primary branches -->
+    <path d="M 50,80 L 65,88 L 62,85 L 68,92 L 65,88" stroke="#7DD3FC" stroke-width="2.5" fill="none" opacity="0.8"/>
+    <path d="M 50,80 L 35,88 L 38,85 L 32,92 L 35,88" stroke="#7DD3FC" stroke-width="2.5" fill="none" opacity="0.8"/>
+    
+    <!-- Secondary branches -->
+    <path d="M 65,88 L 75,92 L 72,90 L 78,95 L 75,92" stroke="#7DD3FC" stroke-width="2" fill="none" opacity="0.7"/>
+    <path d="M 35,88 L 25,92 L 28,90 L 22,95 L 25,92" stroke="#7DD3FC" stroke-width="2" fill="none" opacity="0.7"/>
+    
+    <!-- Tertiary branches -->
+    <path d="M 50,85 L 58,90 L 56,88 L 60,93 L 58,90" stroke="#38BDF8" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <path d="M 50,85 L 42,90 L 44,88 L 40,93 L 42,90" stroke="#38BDF8" stroke-width="1.5" fill="none" opacity="0.6"/>
+    
+    <!-- Fine branches -->
+    <path d="M 58,90 L 62,94 L 60,92 L 64,96 L 62,94" stroke="#0284C7" stroke-width="1" fill="none" opacity="0.5"/>
+    <path d="M 42,90 L 38,94 L 40,92 L 36,96 L 38,94" stroke="#0284C7" stroke-width="1" fill="none" opacity="0.5"/>
+    <path d="M 75,92 L 80,96 L 78,94 L 82,98 L 80,96" stroke="#0284C7" stroke-width="1" fill="none" opacity="0.4"/>
+    <path d="M 25,92 L 20,96 L 22,94 L 18,98 L 20,96" stroke="#0284C7" stroke-width="1" fill="none" opacity="0.4"/>
+  </g>
+  
+  <!-- Lightning energy sparks -->
+  <g>
+    <circle cx="50" cy="95" r="1.2" fill="#BAE6FD" opacity="0.9"/>
+    <circle cx="65" cy="88" r="1" fill="#93BBFC" opacity="0.8"/>
+    <circle cx="35" cy="88" r="1" fill="#93BBFC" opacity="0.8"/>
+    <circle cx="75" cy="92" r="0.8" fill="#7DD3FC" opacity="0.7"/>
+    <circle cx="25" cy="92" r="0.8" fill="#7DD3FC" opacity="0.7"/>
+    <circle cx="58" cy="90" r="0.6" fill="#38BDF8" opacity="0.6"/>
+    <circle cx="42" cy="90" r="0.6" fill="#38BDF8" opacity="0.6"/>
+    <circle cx="80" cy="96" r="0.5" fill="#0284C7" opacity="0.5"/>
+    <circle cx="20" cy="96" r="0.5" fill="#0284C7" opacity="0.5"/>
+  </g>
+</svg>

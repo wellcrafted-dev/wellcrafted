@@ -1,0 +1,121 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Linear gradient for lightning bolt core -->
+    <linearGradient id="boltGradient" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" style="stop-color:#FBBF24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Radial gradient for energy field -->
+    <radialGradient id="energyFieldGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:0.3" />
+      <stop offset="40%" style="stop-color:#3B82F6;stop-opacity:0.2" />
+      <stop offset="70%" style="stop-color:#1E40AF;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- White glow for edges -->
+    <filter id="whiteGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Energy field blur -->
+    <filter id="energyBlur">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+    
+    <!-- Inner glow for bolt -->
+    <filter id="innerGlow">
+      <feGaussianBlur stdDeviation="4" result="blurred"/>
+      <feComposite in2="blurred" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- Background energy field rings -->
+  <g opacity="0.8">
+    <!-- Outer energy ring -->
+    <circle cx="128" cy="128" r="110" fill="none" stroke="url(#energyFieldGradient)" stroke-width="2" opacity="0.5">
+      <animate attributeName="r" values="110;115;110" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.3;0.5" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Middle energy ring -->
+    <circle cx="128" cy="128" r="90" fill="none" stroke="#3B82F6" stroke-width="1.5" opacity="0.4" filter="url(#energyBlur)">
+      <animate attributeName="r" values="90;85;90" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.6;0.4" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Inner energy ring -->
+    <circle cx="128" cy="128" r="70" fill="none" stroke="#1E40AF" stroke-width="1" opacity="0.3">
+      <animate attributeName="r" values="70;75;70" dur="1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Energy field background -->
+  <circle cx="128" cy="128" r="120" fill="url(#energyFieldGradient)" opacity="0.4"/>
+  
+  <!-- Lightning bolt shadow -->
+  <path d="M 140 48 L 88 120 L 110 120 L 98 180 L 116 180 L 168 108 L 146 108 L 158 48 Z" 
+        fill="#000000" 
+        opacity="0.2" 
+        transform="translate(2, 2)"/>
+  
+  <!-- Main lightning bolt -->
+  <path d="M 140 48 L 88 120 L 110 120 L 98 180 L 116 180 L 168 108 L 146 108 L 158 48 Z" 
+        fill="url(#boltGradient)" 
+        filter="url(#innerGlow)"/>
+  
+  <!-- White hot edges -->
+  <path d="M 140 48 L 88 120 L 110 120 L 98 180 L 116 180 L 168 108 L 146 108 L 158 48 Z" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="2" 
+        opacity="0.8" 
+        filter="url(#whiteGlow)"/>
+  
+  <!-- Energy sparks -->
+  <g>
+    <!-- Top spark -->
+    <circle cx="140" cy="48" r="3" fill="#FFFFFF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Middle sparks -->
+    <circle cx="88" cy="120" r="2" fill="#3B82F6" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="0.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="168" cy="108" r="2" fill="#3B82F6" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="0.6s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Bottom spark -->
+    <circle cx="116" cy="180" r="3" fill="#FFFFFF" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Energy particles -->
+  <g opacity="0.6">
+    <circle cx="80" cy="80" r="1" fill="#3B82F6">
+      <animate attributeName="cy" values="80;60;80" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="176" cy="90" r="1" fill="#1E40AF">
+      <animate attributeName="cy" values="90;70;90" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="100" cy="160" r="1" fill="#3B82F6">
+      <animate attributeName="cy" values="160;140;160" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="156" cy="150" r="1" fill="#1E40AF">
+      <animate attributeName="cy" values="150;130;150" dur="2.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

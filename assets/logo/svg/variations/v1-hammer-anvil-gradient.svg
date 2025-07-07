@@ -1,0 +1,89 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Primary blue gradient for hammer -->
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E40AF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60A5FA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Radial gradient for impact glow -->
+    <radialGradient id="impactGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="2" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Spark filter for impact -->
+    <filter id="sparkGlow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Anvil base -->
+  <g id="anvil" filter="url(#shadow)">
+    <!-- Anvil body -->
+    <path d="M 80 160 L 176 160 L 170 190 L 86 190 Z" fill="#6B7280"/>
+    <!-- Anvil base -->
+    <rect x="90" y="190" width="76" height="20" fill="#4B5563"/>
+    <!-- Anvil top surface -->
+    <path d="M 80 160 L 176 160 L 168 155 L 88 155 Z" fill="#F3F4F6"/>
+    <!-- Anvil horn -->
+    <path d="M 80 160 L 88 155 L 65 155 C 60 155 58 158 60 160 Z" fill="#9CA3AF"/>
+  </g>
+  
+  <!-- Impact glow -->
+  <circle cx="128" cy="155" r="40" fill="url(#impactGlow)" opacity="0.6"/>
+  
+  <!-- Impact sparks -->
+  <g id="sparks" filter="url(#sparkGlow)">
+    <path d="M 128 155 L 135 140 L 132 145 Z" fill="#F59E0B" opacity="0.9"/>
+    <path d="M 128 155 L 142 148 L 138 150 Z" fill="#F59E0B" opacity="0.8"/>
+    <path d="M 128 155 L 145 158 L 140 156 Z" fill="#F59E0B" opacity="0.7"/>
+    <path d="M 128 155 L 115 140 L 118 145 Z" fill="#F59E0B" opacity="0.9"/>
+    <path d="M 128 155 L 108 148 L 112 150 Z" fill="#F59E0B" opacity="0.8"/>
+    <path d="M 128 155 L 105 158 L 110 156 Z" fill="#F59E0B" opacity="0.7"/>
+  </g>
+  
+  <!-- Hammer -->
+  <g id="hammer" transform="rotate(-45 128 128)" filter="url(#shadow)">
+    <!-- Hammer handle -->
+    <rect x="123" y="80" width="10" height="60" fill="#8B4513" rx="2"/>
+    <!-- Handle grip -->
+    <rect x="122" y="125" width="12" height="20" fill="#654321" rx="2"/>
+    
+    <!-- Hammer head -->
+    <g transform="translate(128, 70)">
+      <!-- Main head -->
+      <rect x="-20" y="-10" width="40" height="20" fill="url(#hammerGradient)" rx="3"/>
+      <!-- Striking face -->
+      <rect x="18" y="-8" width="4" height="16" fill="#60A5FA" rx="1"/>
+      <!-- Claw end -->
+      <path d="M -20 -10 L -24 -8 L -24 8 L -20 10 Z" fill="#1E40AF"/>
+    </g>
+  </g>
+  
+  <!-- Additional impact lines -->
+  <g id="impactLines" opacity="0.4">
+    <line x1="128" y1="155" x2="150" y2="133" stroke="#F59E0B" stroke-width="2"/>
+    <line x1="128" y1="155" x2="106" y2="133" stroke="#F59E0B" stroke-width="2"/>
+    <line x1="128" y1="155" x2="155" y2="155" stroke="#F59E0B" stroke-width="2"/>
+    <line x1="128" y1="155" x2="101" y2="155" stroke="#F59E0B" stroke-width="2"/>
+  </g>
+</svg>
