@@ -1,9 +1,0 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <!-- Single Stroke: One continuous line design -->
-  <path d="M30 30 L30 20 L70 20 L70 30 L70 40 L55 40 L55 65 L65 75 L35 75 L45 65 L45 40 L30 40 L30 30 M50 45 L60 60 L50 60 L55 70 L40 55 L50 55 L45 45"
-        fill="none" 
-        stroke="#0EA5E9" 
-        stroke-width="3" 
-        stroke-linecap="round" 
-        stroke-linejoin="round"/>
-</svg>

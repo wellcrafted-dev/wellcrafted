@@ -1,7 +1,0 @@
-<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <!-- Ultra-minimalist hammer - single color -->
-  <g transform="rotate(-38 12 12)">
-    <!-- Combined hammer shape -->
-    <path d="M 11,8 L 11,18 L 13,18 L 13,8 L 16,8 L 16,5 L 8,5 L 8,9 L 11,9 Z" fill="#0C4A6E" stroke="none"/>
-  </g>
-</svg>
