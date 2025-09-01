@@ -145,7 +145,13 @@ export function createOrderService(
       }
       
       // 4. Send confirmation email (don't fail order if email fails)
-      await emailService.sendOrderConfirmation(orderResult.data);
+      await tryAsync({
+        try: () => emailService.sendOrderConfirmation(orderResult.data),
+        catch: () => {
+          console.warn('Email notification failed, but order is complete');
+          return Ok(undefined); // Gracefully handle email failure
+        }
+      });
       
       return Ok(orderResult.data);
     }
@@ -230,6 +236,182 @@ export const NotificationServiceLive = typeof window !== 'undefined'
   ? createNotificationServiceWeb()
   : createNotificationServiceDesktop();
 ```
+
+## The Flexible Catch Pattern
+
+One of the most powerful features of `tryAsync` and `trySync` is the flexibility of the `catch` function. You can return either `Ok` for graceful recovery or `Err` for error propagation:
+
+### Pattern 1: Graceful Degradation with Ok(undefined)
+
+When an operation fails but doesn't affect the overall success:
+
+```typescript
+export function createAnalyticsService(endpoint: string) {
+  return {
+    async trackEvent(event: AnalyticsEvent): Promise<Ok<void>> {
+      // Analytics should never break the app
+      return tryAsync({
+        try: async () => {
+          await fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(event)
+          });
+        },
+        catch: (error) => {
+          console.warn('Analytics failed:', error);
+          return Ok(undefined); // Always succeed - analytics is non-critical
+        }
+      });
+    }
+  };
+}
+```
+
+### Pattern 2: Fallback Values with Ok(fallback)
+
+Return a default value when the primary operation fails:
+
+```typescript
+export function createConfigService() {
+  return {
+    async loadConfig(): Promise<Ok<Config>> {
+      return tryAsync({
+        try: () => fetch('/api/config').then(r => r.json()),
+        catch: (error) => {
+          console.warn('Using default config:', error);
+          return Ok({
+            theme: 'light',
+            language: 'en',
+            features: ['basic']
+          }); // Return default config on failure
+        }
+      });
+    }
+  };
+}
+```
+
+### Pattern 3: Conditional Error Handling
+
+Decide whether to recover or propagate based on the error:
+
+```typescript
+export function createFileService() {
+  return {
+    async ensureDirectory(path: string): Promise<Result<void, FileServiceError>> {
+      return tryAsync({
+        try: () => mkdir(path, { recursive: true }),
+        catch: (error: any) => {
+          // Directory exists? That's success!
+          if (error.code === 'EEXIST') {
+            return Ok(undefined);
+          }
+          
+          // Permission denied? That's a real error
+          if (error.code === 'EACCES') {
+            return FileServiceErr({
+              message: "Permission denied",
+              context: { path },
+              cause: error
+            });
+          }
+          
+          // Unknown error - propagate
+          return FileServiceErr({
+            message: "Failed to create directory",
+            context: { path },
+            cause: error
+          });
+        }
+      });
+    }
+  };
+}
+```
+
+### Pattern 4: Cleanup and Recovery
+
+Perform cleanup operations that should always succeed:
+
+```typescript
+export function createSessionService(db: Database) {
+  return {
+    async cleanup(sessionId: string): Promise<Ok<void>> {
+      // Multiple cleanup operations, all gracefully handled
+      await tryAsync({
+        try: () => db.sessions.delete(sessionId),
+        catch: () => Ok(undefined) // Session already deleted? Fine.
+      });
+      
+      await tryAsync({
+        try: () => db.tempFiles.deleteBySession(sessionId),
+        catch: () => Ok(undefined) // No temp files? Fine.
+      });
+      
+      await tryAsync({
+        try: () => db.logs.archiveBySession(sessionId),
+        catch: () => Ok(undefined) // Can't archive? Not critical.
+      });
+      
+      return Ok(undefined);
+    }
+  };
+}
+```
+
+### Pattern 5: Retry Logic with Fallback
+
+Implement retry with eventual graceful failure:
+
+```typescript
+export function createResilientService() {
+  return {
+    async fetchWithRetry<T>(
+      url: string,
+      retries = 3
+    ): Promise<Result<T | null, NetworkError>> {
+      for (let i = 0; i < retries; i++) {
+        const result = await tryAsync({
+          try: () => fetch(url).then(r => r.json() as Promise<T>),
+          catch: (error) => {
+            if (i < retries - 1) {
+              console.log(`Attempt ${i + 1} failed, retrying...`);
+              return Ok(null as T); // Continue loop
+            }
+            // Final attempt failed - now we can decide
+            return Ok(null); // Graceful degradation
+            // OR return NetworkErr(...) for propagation
+          }
+        });
+        
+        if (result.data !== null) return result;
+      }
+      
+      return Ok(null); // All retries exhausted
+    }
+  };
+}
+```
+
+### Best Practices for Catch Decisions
+
+**Use `Ok(undefined)` when:**
+- The operation is non-critical (analytics, telemetry)
+- The desired state is already achieved (deleting non-existent file)
+- You're doing cleanup or teardown
+- The operation is best-effort (notifications, emails)
+
+**Use `Ok(fallback)` when:**
+- You have a sensible default value
+- The operation is for enhancement, not core functionality
+- You're loading configuration or preferences
+- Cache misses should use primary data
+
+**Use `Err` when:**
+- The operation is critical to the business logic
+- The error needs to bubble up for user feedback
+- You need to preserve error context for debugging
+- The caller needs to make decisions based on the failure
 
 ## Service Composition
 

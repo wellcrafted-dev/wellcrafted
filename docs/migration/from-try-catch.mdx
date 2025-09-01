@@ -654,6 +654,144 @@ async function fetchUser(id: string): Promise<User> {
 }
 ```
 
+### Pattern 4: Graceful Error Handling with Ok(undefined)
+
+One powerful pattern with `tryAsync` is treating certain "errors" as successful outcomes. This is perfect for operations where the exception doesn't represent a true failure from a business logic perspective.
+
+```typescript
+// Before - treating all exceptions as errors
+async function cleanupProcess(pid: number): Promise<void> {
+  try {
+    const process = getProcess(pid);
+    await process.kill();
+    console.log(`Process ${pid} terminated`);
+  } catch (error) {
+    // Is this really an error if the process is already dead?
+    console.error(`Failed to kill process ${pid}:`, error);
+    throw error; // Propagating an "error" that might not be one
+  }
+}
+
+// After - explicitly defining what success means
+async function cleanupProcess(pid: number): Promise<Ok<void>> {
+  return tryAsync({
+    try: async () => {
+      const process = getProcess(pid);
+      await process.kill();
+      console.log(`Process ${pid} terminated`);
+    },
+    catch: (error) => {
+      // Process already dead? That's what we wanted!
+      console.log(`Process ${pid} was already terminated`);
+      return Ok(undefined); // Explicitly marking this as success
+    }
+  });
+}
+```
+
+**Key insight**: By returning `Ok(undefined)` in the catch block, you're saying "this exception is actually fine." The operation succeeded from the user's perspective.
+
+#### Common Use Cases for Ok(undefined)
+
+```typescript
+// Deleting a file that might not exist
+async function deleteFile(path: string): Promise<Ok<void>> {
+  return tryAsync({
+    try: () => unlink(path),
+    catch: () => {
+      // File doesn't exist? Goal achieved!
+      return Ok(undefined);
+    }
+  });
+}
+
+// Creating a directory that might already exist
+async function ensureDirectory(path: string): Promise<Ok<void>> {
+  return tryAsync({
+    try: () => mkdir(path),
+    catch: (error) => {
+      // Directory exists? Perfect!
+      if (error.code === 'EEXIST') {
+        return Ok(undefined);
+      }
+      // Other errors are real failures
+      return Err({
+        name: "FileSystemError",
+        message: "Failed to create directory",
+        context: { path },
+        cause: error
+      });
+    }
+  });
+}
+
+// Graceful cleanup in service shutdown
+async function cleanup(): Promise<void> {
+  await tryAsync({
+    try: async () => {
+      await session.close();
+      await connection.end();
+    },
+    catch: () => {
+      // Already cleaned up? That's fine
+      return Ok(undefined);
+    }
+  });
+}
+```
+
+#### When to Use Ok(undefined) vs Err
+
+Use `Ok(undefined)` when:
+- The end goal is achieved regardless of the exception
+- The exception represents an acceptable alternative path
+- You're doing cleanup or ensuring a state
+- The operation is idempotent
+
+Return `Err` when:
+- The exception represents actual failure
+- The operation needs to be retried or escalated
+- You need to preserve error context for debugging
+- The caller needs to know specifically what went wrong
+
+```typescript
+// Example showing both patterns
+async function saveUserPreference(
+  userId: string, 
+  pref: Preference
+): Promise<Result<void, SaveError>> {
+  return tryAsync({
+    try: async () => {
+      await db.upsert('preferences', { userId, ...pref });
+    },
+    catch: (error) => {
+      // Network errors are real failures
+      if (error.code === 'ENETUNREACH') {
+        return Err({
+          name: "SaveError",
+          message: "Network unreachable",
+          context: { userId },
+          cause: error
+        });
+      }
+      
+      // Duplicate key? Upsert semantics mean that's success
+      if (error.code === 'DUPLICATE_KEY') {
+        return Ok(undefined);
+      }
+      
+      // Unknown errors should propagate
+      return Err({
+        name: "SaveError",
+        message: "Failed to save preference",
+        context: { userId },
+        cause: error
+      });
+    }
+  });
+}
+```
+
 ## Summary
 
 Migrating from try-catch to Results is a journey that pays dividends in:

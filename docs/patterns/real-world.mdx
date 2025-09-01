@@ -668,6 +668,304 @@ function UserProfile({ userId }: { userId: string }) {
 }
 ```
 
+## Graceful Degradation Patterns
+
+Real-world applications need to handle failures gracefully. The flexibility of `tryAsync`'s catch function enables sophisticated error recovery strategies:
+
+### Media Processing Pipeline
+
+Process media with fallbacks at each stage:
+
+```typescript
+export function createMediaProcessor(
+  processors: {
+    highQuality: Processor;
+    standard: Processor;
+    basic: Processor;
+  }
+) {
+  return {
+    async processVideo(
+      file: File
+    ): Promise<Result<ProcessedMedia, MediaError>> {
+      // Try high quality first
+      const highQualityResult = await tryAsync({
+        try: () => processors.highQuality.process(file),
+        catch: (error) => {
+          console.warn('High quality processing failed, trying standard:', error);
+          return Ok(null); // Signal to try next option
+        }
+      });
+      
+      if (highQualityResult.data) {
+        return Ok(highQualityResult.data);
+      }
+      
+      // Fall back to standard quality
+      const standardResult = await tryAsync({
+        try: () => processors.standard.process(file),
+        catch: (error) => {
+          console.warn('Standard processing failed, using basic:', error);
+          return Ok(null); // Signal to try next option
+        }
+      });
+      
+      if (standardResult.data) {
+        return Ok(standardResult.data);
+      }
+      
+      // Last resort: basic processing
+      return tryAsync({
+        try: () => processors.basic.process(file),
+        catch: (error) => MediaErr({
+          message: "All processing methods failed",
+          context: { fileName: file.name },
+          cause: error
+        })
+      });
+    }
+  };
+}
+```
+
+### Distributed Cache Service
+
+Handle cache failures without breaking the application:
+
+```typescript
+export function createCacheService(
+  redis: RedisClient,
+  memcached: MemcachedClient,
+  localStorage: Storage
+) {
+  return {
+    async get<T>(key: string): Promise<Result<T | null, never>> {
+      // Try Redis first (fastest)
+      const redisResult = await tryAsync({
+        try: () => redis.get<T>(key),
+        catch: () => Ok(null) // Redis down? Try next cache
+      });
+      
+      if (redisResult.data) return redisResult;
+      
+      // Try Memcached
+      const memcachedResult = await tryAsync({
+        try: () => memcached.get<T>(key),
+        catch: () => Ok(null) // Memcached down? Try localStorage
+      });
+      
+      if (memcachedResult.data) {
+        // Backfill to Redis for next time
+        tryAsync({
+          try: () => redis.set(key, memcachedResult.data),
+          catch: () => Ok(undefined) // Don't care if backfill fails
+        });
+        return memcachedResult;
+      }
+      
+      // Last resort: localStorage
+      return tryAsync({
+        try: () => {
+          const stored = localStorage.getItem(key);
+          return stored ? JSON.parse(stored) as T : null;
+        },
+        catch: () => Ok(null) // Even localStorage failed? Return null
+      });
+    },
+    
+    async set<T>(key: string, value: T): Promise<Ok<void>> {
+      // Try to set in all caches, but don't fail if some are down
+      await tryAsync({
+        try: () => redis.set(key, value),
+        catch: () => Ok(undefined)
+      });
+      
+      await tryAsync({
+        try: () => memcached.set(key, value),
+        catch: () => Ok(undefined)
+      });
+      
+      await tryAsync({
+        try: () => localStorage.setItem(key, JSON.stringify(value)),
+        catch: () => Ok(undefined)
+      });
+      
+      return Ok(undefined); // Always succeeds
+    }
+  };
+}
+```
+
+### Notification Delivery System
+
+Ensure messages reach users through multiple channels:
+
+```typescript
+export function createNotificationService(
+  channels: {
+    push: PushService;
+    email: EmailService;
+    sms: SmsService;
+    inApp: InAppService;
+  }
+) {
+  return {
+    async notify(
+      userId: UserId,
+      message: NotificationMessage
+    ): Promise<Result<DeliveryReport, NotificationError>> {
+      const report: DeliveryReport = {
+        attempted: [],
+        delivered: [],
+        failed: []
+      };
+      
+      // Try push notification (preferred)
+      const pushResult = await tryAsync({
+        try: async () => {
+          await channels.push.send(userId, message);
+          return 'push' as const;
+        },
+        catch: (error) => {
+          report.failed.push({ channel: 'push', error });
+          return Ok(null); // Continue to next channel
+        }
+      });
+      
+      if (pushResult.data) {
+        report.delivered.push(pushResult.data);
+        return Ok(report); // Success - no need for other channels
+      }
+      
+      // Try email as fallback
+      const emailResult = await tryAsync({
+        try: async () => {
+          await channels.email.send(userId, message);
+          return 'email' as const;
+        },
+        catch: (error) => {
+          report.failed.push({ channel: 'email', error });
+          return Ok(null); // Continue to next channel
+        }
+      });
+      
+      if (emailResult.data) {
+        report.delivered.push(emailResult.data);
+        return Ok(report);
+      }
+      
+      // Try SMS as another fallback
+      const smsResult = await tryAsync({
+        try: async () => {
+          await channels.sms.send(userId, message);
+          return 'sms' as const;
+        },
+        catch: (error) => {
+          report.failed.push({ channel: 'sms', error });
+          return Ok(null); // Continue to in-app
+        }
+      });
+      
+      if (smsResult.data) {
+        report.delivered.push(smsResult.data);
+        return Ok(report);
+      }
+      
+      // Last resort: in-app notification (always succeeds)
+      await tryAsync({
+        try: () => channels.inApp.send(userId, message),
+        catch: () => Ok(undefined) // Even if this fails, we tried
+      });
+      
+      report.delivered.push('inApp');
+      return Ok(report);
+    }
+  };
+}
+```
+
+### Resource Cleanup Service
+
+Ensure cleanup always completes, even with partial failures:
+
+```typescript
+export function createCleanupService(
+  resources: {
+    database: Database;
+    storage: Storage;
+    cache: Cache;
+    queue: Queue;
+  }
+) {
+  return {
+    async cleanupUserData(userId: UserId): Promise<Ok<CleanupReport>> {
+      const report: CleanupReport = {
+        cleaned: [],
+        failed: []
+      };
+      
+      // Clean database records
+      await tryAsync({
+        try: async () => {
+          await resources.database.deleteUser(userId);
+          report.cleaned.push('database');
+        },
+        catch: (error) => {
+          report.failed.push({ resource: 'database', error });
+          return Ok(undefined); // Continue cleanup
+        }
+      });
+      
+      // Clean storage files
+      await tryAsync({
+        try: async () => {
+          await resources.storage.deleteUserFiles(userId);
+          report.cleaned.push('storage');
+        },
+        catch: (error) => {
+          report.failed.push({ resource: 'storage', error });
+          return Ok(undefined); // Continue cleanup
+        }
+      });
+      
+      // Clear cache entries
+      await tryAsync({
+        try: async () => {
+          await resources.cache.evictUser(userId);
+          report.cleaned.push('cache');
+        },
+        catch: (error) => {
+          report.failed.push({ resource: 'cache', error });
+          return Ok(undefined); // Continue cleanup
+        }
+      });
+      
+      // Cancel queued jobs
+      await tryAsync({
+        try: async () => {
+          await resources.queue.cancelUserJobs(userId);
+          report.cleaned.push('queue');
+        },
+        catch: (error) => {
+          report.failed.push({ resource: 'queue', error });
+          return Ok(undefined); // Continue cleanup
+        }
+      });
+      
+      return Ok(report); // Always return the report
+    }
+  };
+}
+```
+
+### Key Patterns in Graceful Degradation
+
+1. **Progressive Fallback**: Try the best option first, then progressively degrade to simpler alternatives
+2. **Partial Success Reporting**: Track what succeeded and what failed for transparency
+3. **Silent Recovery**: Use `Ok(undefined)` for operations that shouldn't break the flow
+4. **Best Effort Delivery**: Attempt multiple channels/methods before giving up
+5. **Cleanup Guarantees**: Ensure cleanup operations always complete, even with failures
+
 ## Key Takeaways
 
 ### 1. Type Safety Throughout
