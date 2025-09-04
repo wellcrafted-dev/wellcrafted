@@ -145,13 +145,12 @@ Mix and match utilities
 The Result type makes error handling explicit and type-safe:
 
 ```typescript
-// The entire implementation
 type Ok<T> = { data: T; error: null };
 type Err<E> = { error: E; data: null };
 type Result<T, E> = Ok<T> | Err<E>;
 ```
 
-**The Magic**: This creates a discriminated union where TypeScript automatically narrows types:
+This creates a discriminated union where TypeScript automatically narrows types:
 
 ```typescript
 if (result.error) {
@@ -493,11 +492,16 @@ function useUser(id: number) {
 
 | | wellcrafted | fp-ts | Effect | neverthrow |
 |---|---|---|---|---|
+| **Bundle Size** | < 2KB | ~30KB | ~50KB | ~5KB |
 | **Learning Curve** | Minimal | Steep | Steep | Moderate |
 | **Syntax** | Native async/await | Pipe operators | Generators | Method chains |
-| **Bundle Size** | < 2KB | ~30KB | ~50KB | ~5KB |
 | **Type Safety** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
 | **Serializable Errors** | ✅ Built-in | ❌ Classes | ❌ Classes | ❌ Classes |
+| **Runtime Overhead** | Zero | Minimal | Moderate | Minimal |
+
+## Advanced Usage
+
+For comprehensive examples, service layer patterns, framework integrations, and migration guides, see the **[full documentation →](https://docs.wellcrafted.dev)**
 
 ## API Reference
 
