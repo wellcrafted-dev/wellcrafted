@@ -62,6 +62,34 @@ const { ApiError, ApiErr } = createTaggedError("ApiError");
 // ApiError() creates error object, ApiErr() creates Err-wrapped error
 ```
 
+### 🔄 Query Integration
+Seamless TanStack Query integration with dual interfaces
+```typescript
+import { createQueryFactories } from "wellcrafted/query";
+import { QueryClient } from "@tanstack/query-core";
+
+const queryClient = new QueryClient();
+const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+
+// Define operations that return Result types
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  resultQueryFn: () => getUserFromAPI(userId) // Returns Result<User, ApiError>
+});
+
+// Use reactively in components with automatic state management
+const query = createQuery(userQuery.options());
+// query.data, query.error, query.isPending all managed automatically
+
+// Or use imperatively for direct execution (perfect for event handlers)
+const { data, error } = await userQuery.fetch();
+if (error) {
+  showErrorToast(error.message);
+  return;
+}
+// Use data...
+```
+
 ## Installation
 
 ```bash
@@ -201,60 +229,114 @@ const result = await tryAsync({
 });
 ```
 
-### Service Layer Example
+### Real-World Service + Query Layer Example
 
 ```typescript
-import { Result, Ok, tryAsync } from "wellcrafted/result";
+// 1. Service Layer - Pure business logic
 import { createTaggedError } from "wellcrafted/error";
+import { tryAsync, Result } from "wellcrafted/result";
 
-// Define service-specific errors
-const { ValidationError, ValidationErr } = createTaggedError("ValidationError");
-const { DatabaseError, DatabaseErr } = createTaggedError("DatabaseError");
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError");
+type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
-type ValidationError = ReturnType<typeof ValidationError>;
-type DatabaseError = ReturnType<typeof DatabaseError>;
+export function createRecorderService() {
+  let isRecording = false;
+  let currentBlob: Blob | null = null;
 
-// Factory function pattern - no classes!
-export function createUserService(db: Database) {
   return {
-    async createUser(input: CreateUserInput): Promise<Result<User, ValidationError | DatabaseError>> {
-      // Direct return with Err variant
-      if (!input.email.includes('@')) {
-        return ValidationErr({
-          message: "Invalid email format",
-          context: { field: 'email', value: input.email },
+    async startRecording(): Promise<Result<void, RecorderServiceError>> {
+      if (isRecording) {
+        return RecorderServiceErr({
+          message: "Already recording",
+          context: { currentState: 'recording' },
           cause: undefined
         });
       }
 
       return tryAsync({
-        try: () => db.save(input),
-        catch: (error) => DatabaseErr({
-          message: "Failed to save user",
-          context: { operation: 'createUser', input },
+        try: async () => {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(stream);
+          // ... recording setup
+          isRecording = true;
+        },
+        catch: (error) => RecorderServiceErr({
+          message: "Failed to start recording",
+          context: { permissions: 'microphone' },
           cause: error
         })
       });
     },
 
-    async getUser(id: string): Promise<Result<User | null, DatabaseError>> {
-      return tryAsync({
-        try: () => db.findById(id),
-        catch: (error) => DatabaseErr({
-          message: "Failed to fetch user",
-          context: { userId: id },
-          cause: error
-        })
-      });
+    async stopRecording(): Promise<Result<Blob, RecorderServiceError>> {
+      if (!isRecording) {
+        return RecorderServiceErr({
+          message: "Not currently recording",
+          context: { currentState: 'idle' },
+          cause: undefined
+        });
+      }
+      
+      // Stop recording and return blob...
+      isRecording = false;
+      return Ok(currentBlob!);
     }
   };
 }
 
-// Export type for the service
-export type UserService = ReturnType<typeof createUserService>;
+// 2. Query Layer - Adds caching, reactivity, and UI error handling
+import { createQueryFactories } from "wellcrafted/query";
 
-// Create a live instance (dependency injection at build time)
-export const UserServiceLive = createUserService(databaseInstance);
+const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+
+export const recorder = {
+  getRecorderState: defineQuery({
+    queryKey: ['recorder', 'state'],
+    resultQueryFn: async () => {
+      const { data, error } = await services.recorder.getState();
+      if (error) {
+        // Transform service error to UI-friendly error
+        return Err({
+          title: "❌ Failed to get recorder state",
+          description: error.message,
+          action: { type: 'retry' }
+        });
+      }
+      return Ok(data);
+    },
+    refetchInterval: 1000, // Poll for state changes
+  }),
+
+  startRecording: defineMutation({
+    mutationKey: ['recorder', 'start'],
+    resultMutationFn: async () => {
+      const { error } = await services.recorder.startRecording();
+      if (error) {
+        return Err({
+          title: "❌ Failed to start recording",  
+          description: error.message,
+          action: { type: 'more-details', error }
+        });
+      }
+
+      // Optimistically update cache
+      queryClient.setQueryData(['recorder', 'state'], 'recording');
+      return Ok(undefined);
+    }
+  })
+};
+
+// 3. Component Usage - Choose reactive or imperative based on needs
+// Reactive: Automatic state management
+const recorderState = createQuery(recorder.getRecorderState.options());
+
+// Imperative: Direct execution for event handlers
+async function handleStartRecording() {
+  const { error } = await recorder.startRecording.execute();
+  if (error) {
+    showToast(error.title, { description: error.description });
+  }
+}
 ```
 
 ## Smart Return Type Narrowing
@@ -512,18 +594,32 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 - **`isErr(result)`** - Type guard for failure
 - **`trySync(options)`** - Wrap throwing function
 - **`tryAsync(options)`** - Wrap async function
+- **`unwrap(result)`** - Extract data or throw error
+- **`resolve(value)`** - Handle values that may or may not be Results
 - **`partitionResults(results)`** - Split array into oks/errs
+
+### Query Functions
+- **`createQueryFactories(client)`** - Create query/mutation factories for TanStack Query
+- **`defineQuery(options)`** - Define a query with dual interface (`.options()` + `.fetch()`)
+- **`defineMutation(options)`** - Define a mutation with dual interface (`.options()` + `.execute()`)
 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions
   - Returns two functions: `{ErrorName}` and `{ErrorName}Err`
   - The first creates plain error objects
   - The second creates Err-wrapped errors
+- **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
 ### Types
 - **`Result<T, E>`** - Union of Ok<T> | Err<E>
+- **`Ok<T>`** - Success result type
+- **`Err<E>`** - Error result type
 - **`TaggedError<T>`** - Structured error type
 - **`Brand<T, B>`** - Branded type wrapper
+- **`ExtractOkFromResult<R>`** - Extract Ok variant from Result union
+- **`ExtractErrFromResult<R>`** - Extract Err variant from Result union
+- **`UnwrapOk<R>`** - Extract success value type from Result
+- **`UnwrapErr<R>`** - Extract error value type from Result
 
 ## License
 

@@ -1,0 +1,547 @@
+---
+title: 'Error Transformation Patterns'
+description: 'Learn how to transform service errors into user-friendly UI errors using wellcrafted'
+icon: 'triangle-exclamation'
+---
+
+# Error Transformation Patterns
+
+One of the most powerful patterns in wellcrafted applications is **error transformation** - the practice of converting low-level service errors into user-friendly UI errors at the query layer. This creates a clean separation between business logic concerns and user interface requirements.
+
+## The Three-Layer Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌──────────────┐
+│     UI      │ --> │  Query      │ --> │   Service    │
+│   Layer     │     │  Layer      │     │   Layer      │
+└─────────────┘     └─────────────┘     └──────────────┘
+      ↑                    │                     │
+      └─── UI Errors ──────┤                     │
+                           │                     │
+                           │── Service Errors ───┘
+```
+
+### 1. Service Layer: Domain-Specific Errors
+
+Services return detailed, domain-specific errors using `createTaggedError`:
+
+```typescript
+import { createTaggedError } from 'wellcrafted/error';
+import { tryAsync, Result } from 'wellcrafted/result';
+
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError');
+type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
+
+export function createRecorderService() {
+  return {
+    async startRecording(): Promise<Result<void, RecorderServiceError>> {
+      return tryAsync({
+        try: async () => {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // ... recording logic
+        },
+        catch: (error) => RecorderServiceErr({
+          message: "Failed to access microphone", // Technical message
+          context: { 
+            userAgent: navigator.userAgent,
+            permissions: 'microphone',
+            errorCode: error.code 
+          },
+          cause: error
+        })
+      });
+    }
+  };
+}
+```
+
+**Service errors are:**
+- Technical and detailed
+- Domain-specific (RecorderServiceError, DatabaseError, etc.)
+- Include debugging context
+- Preserve original error causes
+- **Not suitable for direct UI display**
+
+### 2. Query Layer: Transform to UI Errors
+
+The query layer transforms service errors into UI-friendly formats:
+
+```typescript
+import { defineQuery, defineMutation } from './client';
+
+// Define UI-friendly error type
+type UIError = {
+  title: string;
+  description: string;
+  action?: {
+    type: 'retry' | 'more-details' | 'settings';
+    error?: any;
+  };
+};
+
+export const recorder = {
+  startRecording: defineMutation({
+    mutationKey: ['recorder', 'start'],
+    resultMutationFn: async (): Promise<Result<void, UIError>> => {
+      const { error } = await services.recorder.startRecording();
+      if (error) {
+        // Transform service error to UI error
+        return Err({
+          title: "❌ Unable to start recording",
+          description: "Please check your microphone permissions and try again.",
+          action: { 
+            type: 'more-details', 
+            error // Preserve original for debugging
+          }
+        });
+      }
+      return Ok(undefined);
+    }
+  })
+};
+```
+
+**UI errors are:**
+- User-friendly and actionable
+- Consistent format across the app
+- Include suggested actions
+- Preserve original errors for debugging
+- **Ready for toast notifications and error displays**
+
+### 3. UI Layer: Display UI Errors
+
+Components receive UI-ready errors that can be displayed directly:
+
+```typescript
+// Component usage - no additional error transformation needed
+const startRecordingMutation = createMutation(recorder.startRecording.options);
+
+startRecordingMutation.mutate(undefined, {
+  onError: (uiError) => {
+    // uiError is already UI-ready
+    showToast(uiError.title, { 
+      description: uiError.description,
+      action: uiError.action 
+    });
+  }
+});
+```
+
+## Real-World Example: Database Service
+
+Let's see a complete example with a database service:
+
+### Service Layer Implementation
+
+```typescript
+// services/db.ts
+const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError');
+type DbServiceError = ReturnType<typeof DbServiceError>;
+
+export async function getAllRecordings(): Promise<Result<Recording[], DbServiceError>> {
+  return tryAsync({
+    try: async () => {
+      const recordings = await database.recordings.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+      return recordings;
+    },
+    catch: (error) => DbServiceErr({
+      message: `Database query failed: ${error.message}`,
+      context: { 
+        operation: 'getAllRecordings',
+        table: 'recordings',
+        query: 'findMany with orderBy',
+        timestamp: new Date().toISOString()
+      },
+      cause: error
+    })
+  });
+}
+
+export async function createRecording(recording: Recording): Promise<Result<Recording, DbServiceError>> {
+  return tryAsync({
+    try: () => database.recordings.create({ data: recording }),
+    catch: (error) => {
+      // Different error messages based on error type
+      if (error.code === 'P2002') {
+        return DbServiceErr({
+          message: "Recording with this ID already exists",
+          context: { 
+            operation: 'createRecording',
+            duplicateField: 'id',
+            attemptedId: recording.id
+          },
+          cause: error
+        });
+      }
+      
+      return DbServiceErr({
+        message: `Failed to create recording: ${error.message}`,
+        context: { 
+          operation: 'createRecording',
+          recordingId: recording.id 
+        },
+        cause: error
+      });
+    }
+  });
+}
+```
+
+### Query Layer Transformation
+
+```typescript
+// query/recordings.ts
+type RecordingUIError = {
+  title: string;
+  description: string;
+  action?: {
+    type: 'retry' | 'more-details' | 'contact-support';
+    error?: DbServiceError;
+  };
+};
+
+export const recordings = {
+  getAllRecordings: defineQuery({
+    queryKey: ['recordings'],
+    resultQueryFn: async (): Promise<Result<Recording[], RecordingUIError>> => {
+      const { data, error } = await services.db.getAllRecordings();
+      if (error) {
+        return Err({
+          title: "❌ Failed to load recordings",
+          description: "Unable to fetch your recordings. Please check your connection and try again.",
+          action: { 
+            type: 'retry',
+            error // Keep original for debugging
+          }
+        });
+      }
+      return Ok(data);
+    }
+  }),
+
+  createRecording: defineMutation({
+    mutationKey: ['recordings', 'create'],
+    resultMutationFn: async (recording: Recording): Promise<Result<Recording, RecordingUIError>> => {
+      const { data, error } = await services.db.createRecording(recording);
+      if (error) {
+        // Customize UI message based on service error
+        if (error.message.includes('already exists')) {
+          return Err({
+            title: "❌ Recording already exists",
+            description: "A recording with this ID already exists. Please try again.",
+            action: { type: 'retry', error }
+          });
+        }
+        
+        return Err({
+          title: "❌ Failed to save recording", 
+          description: "Unable to save your recording. Please try again or contact support.",
+          action: { type: 'more-details', error }
+        });
+      }
+
+      // Optimistically update cache
+      queryClient.setQueryData<Recording[]>(['recordings'], (old) => 
+        old ? [...old, data] : [data]
+      );
+
+      return Ok(data);
+    }
+  })
+};
+```
+
+### UI Layer Usage
+
+```svelte
+<!-- RecordingsList.svelte -->
+<script lang="ts">
+  import { createQuery, createMutation } from '@tanstack/svelte-query';
+  import { rpc } from '$lib/query';
+  
+  const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+  const createRecordingMutation = createMutation(rpc.recordings.createRecording.options);
+
+  async function handleSaveRecording(recording: Recording) {
+    createRecordingMutation.mutate(recording, {
+      onSuccess: () => {
+        showToast("✅ Recording saved successfully!");
+      },
+      onError: (uiError) => {
+        // uiError is already UI-ready - no transformation needed
+        showToast(uiError.title, { 
+          description: uiError.description,
+          action: uiError.action?.type === 'more-details' ? {
+            label: 'Show Details',
+            onClick: () => showErrorDetails(uiError.action.error)
+          } : undefined
+        });
+      }
+    });
+  }
+</script>
+
+{#if recordingsQuery.isPending}
+  <LoadingSpinner />
+{:else if recordingsQuery.error}
+  <!-- Error is UI-ready -->
+  <ErrorBanner 
+    title={recordingsQuery.error.title}
+    description={recordingsQuery.error.description}
+    action={recordingsQuery.error.action}
+  />
+{:else if recordingsQuery.data}
+  {#each recordingsQuery.data as recording}
+    <RecordingCard {recording} />
+  {/each}
+{/if}
+```
+
+## Advanced Error Transformation Patterns
+
+### Contextual Error Messages
+
+Transform the same service error differently based on context:
+
+```typescript
+// Different contexts can produce different UI messages
+export const auth = {
+  signIn: defineMutation({
+    resultMutationFn: async (credentials) => {
+      const { error } = await services.auth.signIn(credentials);
+      if (error) {
+        return Err({
+          title: "❌ Sign in failed",
+          description: "Please check your email and password.",
+          action: { type: 'retry' }
+        });
+      }
+      return Ok(undefined);
+    }
+  }),
+
+  changePassword: defineMutation({
+    resultMutationFn: async (passwords) => {
+      const { error } = await services.auth.changePassword(passwords);
+      if (error) {
+        // Same service error, different UI message
+        return Err({
+          title: "❌ Password change failed", 
+          description: "Your current password is incorrect.",
+          action: { type: 'retry' }
+        });
+      }
+      return Ok(undefined);
+    }
+  })
+};
+```
+
+### Error Severity Levels
+
+Transform errors with different severity levels:
+
+```typescript
+type UIError = {
+  title: string;
+  description: string;
+  severity: 'error' | 'warning' | 'info';
+  action?: ErrorAction;
+};
+
+const validateInput = defineMutation({
+  resultMutationFn: async (input): Promise<Result<ValidatedInput, UIError>> => {
+    const { data, error } = await services.validation.validateInput(input);
+    if (error) {
+      // Transform validation errors to warnings
+      if (error.message.includes('format')) {
+        return Err({
+          title: "⚠️ Format issue detected",
+          description: "The input format is unusual but will be processed.",
+          severity: 'warning',
+          action: { type: 'continue' }
+        });
+      }
+      
+      // Transform critical errors as errors
+      return Err({
+        title: "❌ Validation failed",
+        description: "The input contains invalid data.",
+        severity: 'error',
+        action: { type: 'retry' }
+      });
+    }
+    return Ok(data);
+  }
+});
+```
+
+### Batch Error Transformation
+
+Handle multiple errors from batch operations:
+
+```typescript
+const processBatch = defineMutation({
+  resultMutationFn: async (items): Promise<Result<BatchResult, UIError>> => {
+    const { data, error } = await services.batch.processItems(items);
+    if (error) {
+      const successCount = data?.results.filter(r => r.success).length ?? 0;
+      const totalCount = items.length;
+      
+      if (successCount === 0) {
+        return Err({
+          title: "❌ Batch processing failed",
+          description: "None of the items could be processed.",
+          action: { type: 'retry', error }
+        });
+      }
+      
+      return Err({
+        title: "⚠️ Partial success",
+        description: `${successCount} of ${totalCount} items processed successfully.`,
+        severity: 'warning',
+        action: { type: 'view-details', error }
+      });
+    }
+    return Ok(data);
+  }
+});
+```
+
+## Common Anti-Patterns to Avoid
+
+### ❌ Double Wrapping
+
+```typescript
+// DON'T: Wrap an already UI-ready error
+if (error) {
+  const uiError = transformToUIError(error); // error is already UI-ready
+  showToast(uiError.title, { description: uiError.description });
+}
+```
+
+### ❌ Inconsistent Query Layer
+
+```typescript
+// DON'T: Return raw service errors from query layer
+export const getUser = defineQuery({
+  resultQueryFn: () => services.getUser(id), // Missing error transformation!
+});
+```
+
+### ❌ Component-Level Transformation
+
+```typescript
+// DON'T: Transform errors in components
+const userQuery = createQuery(rawUserQuery.options());
+if (userQuery.error) {
+  // Component shouldn't handle service error transformation
+  const uiMessage = transformServiceError(userQuery.error);
+  showToast(uiMessage);
+}
+```
+
+## Error Action Patterns
+
+Define standard error actions across your application:
+
+```typescript
+type ErrorAction = 
+  | { type: 'retry'; retryFn?: () => void }
+  | { type: 'more-details'; error: any }
+  | { type: 'contact-support'; supportUrl?: string }
+  | { type: 'settings'; settingsPath?: string }
+  | { type: 'refresh'; refreshFn?: () => void };
+
+// Standard error transformation helper
+function createUIError(
+  title: string, 
+  description: string, 
+  action?: ErrorAction
+): UIError {
+  return { title, description, action };
+}
+
+// Usage in query transformations
+const { error } = await services.permissions.requestMicrophone();
+if (error) {
+  return Err(createUIError(
+    "❌ Microphone access denied",
+    "Recording requires microphone permissions.",
+    { type: 'settings', settingsPath: '/settings/permissions' }
+  ));
+}
+```
+
+## Integration with Notification Systems
+
+Error transformations work perfectly with toast notification systems:
+
+```typescript
+// Universal error handler
+function handleUIError(error: UIError) {
+  showToast(error.title, {
+    description: error.description,
+    variant: error.severity || 'error',
+    action: error.action ? {
+      label: getActionLabel(error.action.type),
+      onClick: () => handleErrorAction(error.action)
+    } : undefined
+  });
+}
+
+function getActionLabel(actionType: string): string {
+  switch (actionType) {
+    case 'retry': return 'Try Again';
+    case 'more-details': return 'Show Details';
+    case 'contact-support': return 'Contact Support';
+    case 'settings': return 'Open Settings';
+    default: return 'OK';
+  }
+}
+
+// Use in mutation callbacks
+createRecordingMutation.mutate(recording, {
+  onError: handleUIError // Works with any UI error
+});
+```
+
+## Testing Error Transformations
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('Recording query error transformations', () => {
+  it('transforms database connection error to user-friendly message', async () => {
+    // Mock service to return specific error
+    const mockError = DbServiceError({
+      message: "Connection timeout",
+      context: { operation: 'getAllRecordings' },
+      cause: new Error("ETIMEDOUT")
+    });
+    vi.mocked(services.db.getAllRecordings).mockResolvedValue(Err(mockError));
+
+    // Test query transformation
+    const result = await recordings.getAllRecordings.fetch();
+    
+    expect(result.error).toEqual({
+      title: "❌ Failed to load recordings",
+      description: "Unable to fetch your recordings. Please check your connection and try again.",
+      action: { type: 'retry', error: mockError }
+    });
+  });
+});
+```
+
+## Benefits of This Pattern
+
+1. **Separation of Concerns**: Services focus on business logic, queries handle UI concerns
+2. **Consistent UX**: All errors follow the same UI format
+3. **Debugging Context**: Original errors preserved for development/debugging
+4. **Type Safety**: TypeScript ensures proper error handling at each layer
+5. **Testability**: Each layer can be tested independently
+6. **Maintainability**: UI error messages centralized in query layer
+
+This pattern creates a robust, maintainable error handling system that provides excellent user experience while preserving technical detail for debugging.
