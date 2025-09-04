@@ -1,0 +1,582 @@
+---
+title: 'TanStack Query Integration'
+description: 'Complete guide to using wellcrafted with TanStack Query for reactive data management'
+icon: 'database'
+---
+
+# TanStack Query Integration
+
+Wellcrafted provides seamless integration with TanStack Query through the `wellcrafted/query` module. This integration combines the type safety of Result patterns with the reactive power of TanStack Query.
+
+## Quick Start
+
+```typescript
+import { createQueryFactories } from 'wellcrafted/query';
+import { QueryClient } from '@tanstack/query-core';
+
+// 1. Create your QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 5 * 60 * 1000 } // 5 minutes
+  }
+});
+
+// 2. Create factory functions bound to your client
+const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+
+// 3. Define your operations
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  resultQueryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
+  staleTime: 10 * 60 * 1000, // Override default for this query
+});
+
+// 4. Use in components or imperatively
+const query = createQuery(userQuery.options()); // Reactive
+const { data, error } = await userQuery.fetch(); // Imperative
+```
+
+## The Dual Interface Pattern
+
+Every query and mutation provides **two ways to use them**:
+
+### 1. Reactive Interface (`.options()`) 
+**Perfect for components that need automatic state management**
+
+```typescript
+import { createQuery } from '@tanstack/svelte-query';
+
+// Reactive usage in Svelte components
+const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+
+// Template automatically updates when data changes
+{#if recordingsQuery.isPending}
+  <LoadingSpinner />
+{:else if recordingsQuery.error}
+  <ErrorMessage error={recordingsQuery.error} />
+{:else if recordingsQuery.data}
+  {#each recordingsQuery.data as recording}
+    <RecordingCard {recording} />
+  {/each}
+{/if}
+```
+
+**Benefits:**
+- Automatic state management (`isPending`, `isError`, `isSuccess`)
+- Component re-renders on data changes
+- Built-in loading and error states
+- Cache synchronization across components
+- Background refetching and stale-while-revalidate
+
+### 2. Imperative Interface (`.fetch()` / `.execute()`)
+**Perfect for event handlers, utilities, and performance-critical code**
+
+```typescript
+// Event handlers
+async function handleRefresh() {
+  const { data, error } = await rpc.recordings.getAllRecordings.fetch();
+  if (error) {
+    showErrorToast(error.message);
+    return;
+  }
+  // Use data...
+}
+
+// Sequential operations
+async function processWorkflow() {
+  const { data: user, error: userError } = await userQuery.fetch();
+  if (userError) return handleError(userError);
+  
+  const { data: result, error: processError } = await processUserMutation.execute(user);
+  if (processError) return handleError(processError);
+  
+  // Success!
+}
+```
+
+**Benefits:**
+- No reactive overhead (no subscriptions or observers)
+- Still uses TanStack Query cache (respects `staleTime`, etc.)
+- Perfect for one-time operations
+- Lightweight and fast
+- Works outside of component context
+
+## Performance Comparison
+
+### When Creating Reactive Observers is Overkill
+
+```typescript
+// ❌ Unnecessary overhead for simple event handlers
+const mutation = createMutation(rpc.recordings.deleteRecording.options());
+mutation.mutate(recordingId, {
+  onSuccess: () => showToast('Deleted!'),
+  onError: (error) => showToast(error.message)
+});
+
+// ✅ Direct execution - much faster
+const { error } = await rpc.recordings.deleteRecording.execute(recordingId);
+if (error) {
+  showToast(error.message);
+} else {
+  showToast('Deleted!');
+}
+```
+
+### When Reactive State is Essential
+
+```typescript
+// ✅ Reactive state needed for UI feedback
+const deleteRecordingMutation = createMutation(
+  rpc.recordings.deleteRecording.options
+);
+
+// Template shows loading state
+{#if deleteRecordingMutation.isPending}
+  <Button disabled>
+    <Spinner /> Deleting...
+  </Button>
+{:else}
+  <Button onclick={() => deleteRecordingMutation.mutate(recordingId)}>
+    Delete Recording
+  </Button>
+{/if}
+```
+
+## Query Definitions
+
+### Basic Query
+
+```typescript
+const getAllUsers = defineQuery({
+  queryKey: ['users'],
+  resultQueryFn: () => services.db.getAllUsers(),
+  staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+});
+```
+
+### Parameterized Queries
+
+```typescript
+// For dynamic parameters, use accessor functions
+const getUserById = (userId: Accessor<string>) => defineQuery({
+  queryKey: ['users', userId()],
+  resultQueryFn: () => services.db.getUserById(userId()),
+  enabled: userId() !== '', // Only run when userId is provided
+});
+
+// Usage
+const userId = () => route.params.id;
+const userQuery = createQuery(getUserById(userId).options());
+```
+
+### Dependent Queries
+
+```typescript
+const userProfileQuery = (userId: Accessor<string>) => defineQuery({
+  queryKey: ['users', userId(), 'profile'],
+  resultQueryFn: async () => {
+    // First get basic user data
+    const { data: user, error: userError } = await services.db.getUserById(userId());
+    if (userError) return Err(userError);
+    
+    // Then get profile data
+    const { data: profile, error: profileError } = await services.api.getUserProfile(user.profileId);
+    if (profileError) return Err(profileError);
+    
+    return Ok({ ...user, profile });
+  },
+  enabled: userId() !== '',
+});
+```
+
+## Mutation Definitions
+
+### Basic Mutation with Cache Updates
+
+```typescript
+const createRecording = defineMutation({
+  mutationKey: ['recordings', 'create'],
+  resultMutationFn: async (recording: Recording) => {
+    const { data, error } = await services.db.createRecording(recording);
+    if (error) return Err(error);
+
+    // Optimistically update cache
+    queryClient.setQueryData<Recording[]>(['recordings'], (old) => {
+      if (!old) return [recording];
+      return [...old, recording];
+    });
+
+    // Invalidate related queries
+    queryClient.invalidateQueries({ queryKey: ['recordings', 'latest'] });
+
+    return Ok(data);
+  },
+});
+```
+
+### Multi-Step Mutations
+
+```typescript
+const transcribeRecording = defineMutation({
+  mutationKey: ['recordings', 'transcribe'],
+  resultMutationFn: async (recordingId: string) => {
+    // Step 1: Update status to 'transcribing'
+    const { error: updateError } = await recordings.updateRecording.execute({
+      id: recordingId,
+      transcriptionStatus: 'TRANSCRIBING',
+    });
+    if (updateError) return Err(updateError);
+
+    // Step 2: Perform actual transcription
+    const { data: transcription, error: transcribeError } = await services.ai.transcribe(recordingId);
+    if (transcribeError) {
+      // Revert status on failure
+      await recordings.updateRecording.execute({
+        id: recordingId,
+        transcriptionStatus: 'FAILED',
+      });
+      return Err(transcribeError);
+    }
+
+    // Step 3: Save transcription results
+    const { error: saveError } = await recordings.updateRecording.execute({
+      id: recordingId,
+      transcribedText: transcription,
+      transcriptionStatus: 'COMPLETED',
+    });
+    if (saveError) return Err(saveError);
+
+    return Ok(transcription);
+  },
+});
+```
+
+## Error Transformation Pattern
+
+A critical responsibility of the query layer is transforming service-specific errors into UI-friendly formats:
+
+```typescript
+// Service layer returns domain-specific errors
+const { RecorderServiceError } = createTaggedError("RecorderServiceError");
+
+// Query layer transforms them for UI consumption
+const startRecording = defineMutation({
+  resultMutationFn: async () => {
+    const { error } = await services.recorder.startRecording();
+    if (error) {
+      // Transform service error to UI error
+      return Err({
+        title: "❌ Failed to start recording",
+        description: error.message, // Keep original message
+        action: { type: 'more-details', error }, // Preserve original error
+      });
+    }
+    return Ok(undefined);
+  },
+  onError: (uiError) => {
+    // uiError is now UI-ready
+    showToast(uiError.title, { description: uiError.description });
+  },
+});
+```
+
+## Advanced Patterns
+
+### Query Key Factories
+
+Organize your query keys with factories to avoid magic strings:
+
+```typescript
+const recordingKeys = {
+  all: ['recordings'] as const,
+  lists: () => [...recordingKeys.all, 'list'] as const,
+  list: (filters: string) => [...recordingKeys.lists(), filters] as const,
+  details: () => [...recordingKeys.all, 'detail'] as const,
+  detail: (id: string) => [...recordingKeys.details(), id] as const,
+};
+
+const getAllRecordings = defineQuery({
+  queryKey: recordingKeys.all,
+  resultQueryFn: () => services.db.getAllRecordings(),
+});
+```
+
+### Optimistic Updates with Rollback
+
+```typescript
+const updateRecording = defineMutation({
+  resultMutationFn: async (recording: Recording) => {
+    const { data, error } = await services.db.updateRecording(recording);
+    if (error) return Err(error);
+
+    // Update cache immediately
+    queryClient.setQueryData(['recordings'], (old: Recording[]) => 
+      old?.map(r => r.id === recording.id ? recording : r) ?? []
+    );
+
+    return Ok(data);
+  },
+  onError: (error, recording, context) => {
+    // Rollback optimistic update on error
+    if (context?.previousRecordings) {
+      queryClient.setQueryData(['recordings'], context.previousRecordings);
+    }
+  },
+  onMutate: async (recording) => {
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries({ queryKey: ['recordings'] });
+
+    // Snapshot previous value
+    const previousRecordings = queryClient.getQueryData<Recording[]>(['recordings']);
+
+    // Return context for rollback
+    return { previousRecordings };
+  },
+});
+```
+
+### Settings-Dependent Operations
+
+Perfect for operations that depend on user settings:
+
+```typescript
+const transcribeBlob = defineMutation({
+  resultMutationFn: async (blob: Blob) => {
+    // Access reactive settings at runtime
+    const selectedService = settings.value['transcription.selectedService'];
+    const apiKey = settings.value[`apiKeys.${selectedService.toLowerCase()}`];
+    
+    switch (selectedService) {
+      case 'OpenAI':
+        return services.transcription.openai.transcribe(blob, { 
+          apiKey, 
+          model: settings.value['transcription.openai.model'] 
+        });
+      case 'Groq':
+        return services.transcription.groq.transcribe(blob, { 
+          apiKey,
+          model: settings.value['transcription.groq.model']
+        });
+      default:
+        return Err({ message: `Unsupported service: ${selectedService}` });
+    }
+  },
+});
+```
+
+## Organizing Your Query Layer
+
+### File Structure
+
+```
+src/
+├── lib/
+│   ├── query/
+│   │   ├── _client.ts          # QueryClient setup and factory functions
+│   │   ├── index.ts            # Unified RPC namespace export
+│   │   ├── recordings.ts       # Recording-related queries/mutations
+│   │   ├── transcription.ts    # Transcription operations
+│   │   ├── auth.ts            # Authentication queries/mutations
+│   │   └── notifications.ts    # Notification operations
+│   └── services/              # Pure business logic (no TanStack Query)
+```
+
+### RPC Namespace Pattern
+
+Create a unified namespace for all operations:
+
+```typescript
+// query/index.ts
+import { recordings } from './recordings';
+import { transcription } from './transcription';
+import { auth } from './auth';
+import { notifications } from './notifications';
+
+export const rpc = {
+  recordings,
+  transcription,
+  auth,
+  notifications,
+};
+
+// Usage throughout app
+import { rpc } from '$lib/query';
+
+// Everything is available through one import
+const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+await rpc.transcription.transcribeBlob.execute(blob);
+```
+
+### Component Usage Patterns
+
+```typescript
+// Reactive pattern for data display
+const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+
+// Imperative pattern for actions
+async function handleDelete(recording: Recording) {
+  const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  if (error) {
+    showErrorToast(error.message);
+  } else {
+    showSuccessToast('Recording deleted');
+  }
+}
+```
+
+## Best Practices
+
+### 1. Choose the Right Interface
+
+**Use `.options()` when:**
+- Component needs to display loading states
+- Data changes should trigger re-renders  
+- You want automatic error boundaries
+- Background refetching is beneficial
+
+**Use `.execute()` / `.fetch()` when:**
+- Event handlers that just need the result
+- Sequential operations in workflows
+- Performance is critical
+- Working outside component context
+
+### 2. Transform Errors at the Right Layer
+
+```typescript
+// ✅ Good: Transform at query layer
+const getUser = defineQuery({
+  resultQueryFn: async () => {
+    const { data, error } = await services.db.getUser(id);
+    if (error) {
+      return Err({
+        title: "Failed to load user",
+        description: error.message,
+      });
+    }
+    return Ok(data);
+  },
+});
+
+// ❌ Avoid: Transforming in components
+const userQuery = createQuery({
+  queryFn: () => services.db.getUser(id),
+});
+// Component has to handle raw service errors
+```
+
+### 3. Use Query Key Factories
+
+```typescript
+// ✅ Good: Organized and maintainable
+const userKeys = {
+  all: ['users'] as const,
+  detail: (id: string) => [...userKeys.all, id] as const,
+};
+
+// ❌ Avoid: Magic strings everywhere
+queryKey: ['users', id, 'details', 'profile']
+```
+
+### 4. Leverage Direct Client Access
+
+Unlike SSR applications, static sites can access the QueryClient directly:
+
+```typescript
+// Available because we're client-side only
+const cachedUser = queryClient.getQueryData(['users', userId]);
+const isUserCached = queryClient.getQueryState(['users', userId])?.status === 'success';
+
+// Execute mutations directly without hooks
+const result = await executeMutation(queryClient, mutationOptions, variables);
+```
+
+## Migration from Other Patterns
+
+### From Raw TanStack Query
+
+```typescript
+// Before: Manual Result unwrapping
+const userQuery = useQuery({
+  queryKey: ['users', id],
+  queryFn: async () => {
+    const result = await getUserFromAPI(id);
+    if (result.error) throw result.error;
+    return result.data;
+  },
+});
+
+// After: Automatic Result handling
+const userQuery = createQuery(rpc.users.getUserById(id).options());
+// Result unwrapping handled automatically by wellcrafted
+```
+
+### From Service Layer Direct Calls
+
+```typescript
+// Before: No caching or reactivity
+async function loadUserData() {
+  const { data, error } = await services.getUser(id);
+  if (error) setError(error);
+  else setUser(data);
+}
+
+// After: Cached and reactive
+const userQuery = createQuery(rpc.users.getUserById(id).options());
+// Automatic state management, caching, background updates
+```
+
+## Framework-Specific Examples
+
+### Svelte with wellcrafted
+
+```typescript
+// Define once, use everywhere
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  resultQueryFn: () => services.getUserById(userId),
+});
+
+// Reactive component usage
+const query = createQuery(userQuery.options());
+
+// Imperative usage in actions
+async function refreshUser() {
+  const { data, error } = await userQuery.fetch();
+  // Handle result...
+}
+```
+
+### React with wellcrafted
+
+```typescript
+// Same query definition works across frameworks
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  resultQueryFn: () => services.getUserById(userId),
+});
+
+// React component usage
+function UserProfile({ userId }) {
+  const query = useQuery(userQuery.options());
+  
+  if (query.isPending) return <Loading />;
+  if (query.error) return <Error error={query.error} />;
+  return <UserCard user={query.data} />;
+}
+```
+
+## See Also
+
+<CardGroup>
+  <Card title="Result Pattern" icon="code-branch" href="/core/result-pattern">
+    Learn the fundamentals of Result types and error handling
+  </Card>
+  <Card title="Error System" icon="triangle-exclamation" href="/core/error-system">
+    Understanding TaggedErrors and structured error handling
+  </Card>
+  <Card title="Service Layer Pattern" icon="layer-group" href="/patterns/service-layer">
+    Building services that work perfectly with queries
+  </Card>
+</CardGroup>
+
+This integration provides the perfect balance of type safety, performance, and developer experience for modern reactive applications.
