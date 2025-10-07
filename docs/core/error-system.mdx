@@ -105,32 +105,62 @@ function processUser(id: number, options: UserOptions): Result<User, ProcessErro
 }
 ```
 
-### 4. `cause` - Root Cause Bubbling
+### 4. `cause` - JSON-Serializable Call Stack
 
-- **For new errors**: Set `cause: undefined`
-- **For wrapping existing errors**: Pass the original error as `cause`
+The `cause` property accepts another `TaggedError`, enabling error chaining. This creates a **JSON-serializable call stack** that traces how an error propagated through your application layers:
 
 ```typescript
-// Creating a new error
+// Low-level network error
+const networkError = {
+  name: "NetworkError",
+  message: "Socket timeout after 5000ms",
+  context: { host: "db.example.com", port: 5432, timeout: 5000 }
+} satisfies TaggedError;
+
+// Wrapped by database layer
+const dbError = {
+  name: "DatabaseError",
+  message: "Failed to connect to database",
+  context: { operation: "connect", retries: 3 },
+  cause: networkError  // Chain the network error
+} satisfies TaggedError;
+
+// Wrapped by service layer
+const serviceError = {
+  name: "UserServiceError",
+  message: "Could not fetch user profile",
+  context: { userId: "123", method: "getUserById" },
+  cause: dbError  // Chain the database error
+} satisfies TaggedError;
+
+// Wrapped by API handler
+const apiError = {
+  name: "APIError",
+  message: "Internal server error",
+  context: { endpoint: "/api/users/123", statusCode: 500 },
+  cause: serviceError  // Chain the service error
+} satisfies TaggedError;
+
+// The entire error chain is JSON-serializable!
+console.log(JSON.stringify(apiError, null, 2));
+// Outputs a complete trace: API → Service → Database → Network
+```
+
+This chaining pattern provides:
+- **Complete error trace**: See exactly how an error bubbled up through your stack
+- **Layer-specific context**: Each layer adds its own debugging information
+- **JSON-serializable**: Unlike JavaScript stack traces, this survives any serialization
+- **Type-safe**: Each error in the chain maintains full TypeScript typing
+
+For simple errors without an underlying cause, omit the `cause` property entirely:
+
+```typescript
 return Err({
   name: "ValidationError",
-  message: "Invalid user data",
-  context: { input },
-  cause: undefined  // New error, no underlying cause
+  message: "Invalid email format",
+  context: { email: userInput }
+  // No cause - this is where the error originated
 });
-
-// Wrapping an existing error
-try {
-  await database.save(user);
-} catch (dbError) {
-  return Err({
-    name: "SaveError", 
-    message: "Failed to save user",
-    context: { userId: user.id },
-    cause: dbError  // Bubble up the original database error
-  });
-}
-```
 
 ## Creating Domain-Specific Errors
 
