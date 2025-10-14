@@ -207,9 +207,9 @@ Every `TaggedError` contains four essential properties that work together to cre
 ```ts
 type TaggedError<T extends string> = {
   readonly name: T;                    // 1. The discriminant
-  message: string;                     // 2. Human-readable description  
-  context?: Record<string, unknown>;    // 3. Function inputs & debugging data (optional)
-  cause: unknown;                     // 4. Root cause
+  message: string;                     // 2. Human-readable description
+  context?: Record<string, unknown>;   // 3. Function inputs & debugging data (optional)
+  cause?: TaggedError;                 // 4. Root cause (another TaggedError)
 };
 ```
 

@@ -72,7 +72,10 @@ export function extractErrorMessage(error: unknown): string {
 /**
  * Input type for creating a tagged error (everything except the name)
  */
-type TaggedErrorWithoutName<T extends string> = Omit<TaggedError<T>, "name">;
+type TaggedErrorWithoutName<
+	TName extends string,
+	TCause extends TaggedError<string, any> = TaggedError<string, any>
+> = Omit<TaggedError<TName, TCause>, "name">;
 
 /**
  * Replaces the "Error" suffix with "Err" suffix in error type names.
@@ -100,12 +103,15 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
  * - One that creates plain TaggedError objects (named with "Error" suffix)
  * - One that creates Err-wrapped TaggedError objects (named with "Err" suffix)
  */
-type TaggedErrorFactories<TErrorName extends `${string}Error`> = {
-	[K in TErrorName]: (input: TaggedErrorWithoutName<K>) => TaggedError<K>;
+type TaggedErrorFactories<
+	TErrorName extends `${string}Error`,
+	TCause extends TaggedError<string, any> = TaggedError<string, any>
+> = {
+	[K in TErrorName]: (input: TaggedErrorWithoutName<K, TCause>) => TaggedError<K, TCause>;
 } & {
 	[K in ReplaceErrorWithErr<TErrorName>]: (
-		input: TaggedErrorWithoutName<TErrorName>,
-	) => Err<TaggedError<TErrorName>>;
+		input: TaggedErrorWithoutName<TErrorName, TCause>,
+	) => Err<TaggedError<TErrorName, TCause>>;
 };
 
 /**
@@ -125,41 +131,53 @@ type TaggedErrorFactories<TErrorName extends `${string}Error`> = {
  *
  * @example
  * ```ts
+ * // Simple error without typed cause
  * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
  *
  * // NetworkError: Creates just the error object
  * const error = NetworkError({
  *   message: 'Connection failed',
- *   context: { url: 'https://api.example.com' },
- *   cause: undefined
+ *   context: { url: 'https://api.example.com' }
  * });
  * // Returns: { name: 'NetworkError', message: 'Connection failed', ... }
  *
  * // NetworkErr: Creates error and wraps in Err result
  * return NetworkErr({
  *   message: 'Connection failed',
- *   context: { url: 'https://api.example.com' },
- *   cause: undefined
+ *   context: { url: 'https://api.example.com' }
  * });
  * // Returns: Err({ name: 'NetworkError', message: 'Connection failed', ... })
+ *
+ * // Type-safe error chaining with specific cause types
+ * type NetworkError = TaggedError<"NetworkError">;
+ * const { DatabaseError, DatabaseErr } = createTaggedError<"DatabaseError", NetworkError>('DatabaseError');
+ *
+ * const networkError: NetworkError = { name: "NetworkError", message: "Timeout" };
+ * const dbError = DatabaseError({
+ *   message: 'Connection failed',
+ *   cause: networkError // TypeScript enforces NetworkError type
+ * });
  * ```
  */
-export function createTaggedError<TErrorName extends `${string}Error`>(
+export function createTaggedError<
+	TErrorName extends `${string}Error`,
+	TCause extends TaggedError<string, any> = TaggedError<string, any>
+>(
 	name: TErrorName,
-): TaggedErrorFactories<TErrorName> {
+): TaggedErrorFactories<TErrorName, TCause> {
 	const errorConstructor = (
-		error: TaggedErrorWithoutName<TErrorName>,
-	): TaggedError<TErrorName> => ({ name, ...error }) as TaggedError<TErrorName>;
+		error: TaggedErrorWithoutName<TErrorName, TCause>,
+	): TaggedError<TErrorName, TCause> => ({ name, ...error }) as TaggedError<TErrorName, TCause>;
 
 	const errName = name.replace(
 		/Error$/,
 		"Err",
 	) as ReplaceErrorWithErr<TErrorName>;
-	const errConstructor = (error: TaggedErrorWithoutName<TErrorName>) =>
+	const errConstructor = (error: TaggedErrorWithoutName<TErrorName, TCause>) =>
 		Err(errorConstructor(error));
 
 	return {
 		[name]: errorConstructor,
 		[errName]: errConstructor,
-	} as TaggedErrorFactories<TErrorName>;
+	} as TaggedErrorFactories<TErrorName, TCause>;
 }

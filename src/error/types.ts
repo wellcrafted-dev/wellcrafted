@@ -11,42 +11,71 @@
  *
  * @example
  * ```ts
- * // Error chaining creates a JSON-serializable call stack
- * const networkError = {
+ * // Simple error without cause
+ * type ValidationError = TaggedError<"ValidationError">;
+ * const validationError: ValidationError = {
+ *   name: "ValidationError",
+ *   message: "Input is required"
+ * };
+ *
+ * // Type-safe error chaining with specific cause types
+ * type NetworkError = TaggedError<"NetworkError">;
+ * type DatabaseError = TaggedError<"DatabaseError", NetworkError>;
+ * type ServiceError = TaggedError<"ServiceError", DatabaseError>;
+ * type APIError = TaggedError<"APIError", ServiceError>;
+ *
+ * const networkError: NetworkError = {
  *   name: "NetworkError",
  *   message: "Socket timeout after 5000ms",
  *   context: { host: "db.example.com", port: 5432, timeout: 5000 }
- * } satisfies TaggedError;
+ * };
  *
- * const dbError = {
+ * const dbError: DatabaseError = {
  *   name: "DatabaseError",
  *   message: "Failed to connect to database",
  *   context: { operation: "connect", retries: 3 },
- *   cause: networkError
- * } satisfies TaggedError;
+ *   cause: networkError // TypeScript enforces this must be NetworkError
+ * };
  *
- * const serviceError = {
+ * const serviceError: ServiceError = {
  *   name: "UserServiceError",
  *   message: "Could not fetch user profile",
  *   context: { userId: "123", method: "getUserById" },
- *   cause: dbError
- * } satisfies TaggedError;
+ *   cause: dbError // TypeScript enforces this must be DatabaseError
+ * };
  *
- * const apiError = {
+ * const apiError: APIError = {
  *   name: "APIError",
  *   message: "Internal server error",
  *   context: { endpoint: "/api/users/123", statusCode: 500 },
- *   cause: serviceError
- * } satisfies TaggedError;
+ *   cause: serviceError // TypeScript enforces this must be ServiceError
+ * };
  *
- * // The entire error chain is JSON-serializable
+ * // The entire error chain is JSON-serializable and type-safe
  * console.log(JSON.stringify(apiError, null, 2));
- * // Outputs a complete trace from API → Service → Database → Network
+ * // Outputs:
+ * // {
+ * //   "name": "APIError",
+ * //   "message": "Internal server error",
+ * //   "context": { "endpoint": "/api/users/123", "statusCode": 500 },
+ * //   "cause": {
+ * //     "name": "UserServiceError",
+ * //     "message": "Could not fetch user profile",
+ * //     "context": { "userId": "123", "method": "getUserById" },
+ * //     "cause": {
+ * //       "name": "DatabaseError",
+ * //       "message": "Failed to connect to database",
+ * //       "context": { "operation": "connect", "retries": 3 },
+ * //       "cause": {
+ * //         "name": "NetworkError",
+ * //         "message": "Socket timeout after 5000ms",
+ * //         "context": { "host": "db.example.com", "port": 5432, "timeout": 5000 }
+ * //       }
+ * //     }
+ * //   }
+ * // }
  *
- * // Specific tagged errors for discriminated unions
- * type ValidationError = TaggedError<"ValidationError">
- * type NetworkError = TaggedError<"NetworkError">
- *
+ * // Discriminated unions still work
  * function handleError(error: ValidationError | NetworkError) {
  *   switch (error.name) {
  *     case "ValidationError": // TypeScript knows this is ValidationError
@@ -80,9 +109,12 @@
  * }
  * ```
  */
-export type TaggedError<T extends string = string> = Readonly<{
-	name: T;
+export type TaggedError<
+	TName extends string = string,
+	TCause extends TaggedError<string, any> = TaggedError<string, any>
+> = Readonly<{
+	name: TName;
 	message: string;
 	context?: Record<string, unknown>;
-	cause?: TaggedError;
+	cause?: TCause;
 }>;
