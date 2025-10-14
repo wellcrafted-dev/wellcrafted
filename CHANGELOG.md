@@ -1,5 +1,45 @@
 # wellcrafted
 
+## 0.23.0
+
+### Minor Changes
+
+- ae5792f: feat: simplify error system with unified TaggedError type
+
+  - Combined `BaseError` and `TaggedError` into a single unified type
+  - Made `cause` property optional and strongly typed as `TaggedError` for error chaining
+  - Created JSON-serializable call stacks through error chaining
+  - Each error in the chain maintains full TypeScript typing and context
+  - Updated documentation with comprehensive examples of error chaining patterns
+
+  BREAKING CHANGE: `BaseError` type has been removed. Use `TaggedError` or `TaggedError<string>` instead.
+
+- 1c0d30f: feat: add typed cause generic to TaggedError for type-safe error chaining
+
+  - Add second generic parameter `TCause` to `TaggedError` type
+  - Enable compile-time validation of error cause relationships
+  - Use `TaggedError<string, any>` constraint to avoid circular references
+  - Add comprehensive JSDoc with JSON serialization examples
+  - Update all documentation to show typed cause
+  - Maintain full backward compatibility with existing single-generic usage
+
+  Example:
+
+  ```typescript
+  type NetworkError = TaggedError<"NetworkError">;
+  type DatabaseError = TaggedError<"DatabaseError", NetworkError>;
+
+  const dbError: DatabaseError = {
+    name: "DatabaseError",
+    message: "Connection failed",
+    cause: networkError, // TypeScript enforces NetworkError type
+  };
+  ```
+
+### Patch Changes
+
+- cb062a9: chore: upgrade Biome to v2.2.6 and migrate configuration
+
 ## 0.22.0
 
 ### Minor Changes
