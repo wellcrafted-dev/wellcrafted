@@ -114,7 +114,7 @@ type TaggedError<T extends string> = {
   readonly name: T;                    // Discriminant for TypeScript
   message: string;                     // Human-readable description
   context?: Record<string, unknown>;   // Debugging information
-  cause?: unknown;                     // Original error, if any
+  cause?: TaggedError;                 // Root cause (another TaggedError)
 }
 ```
 
