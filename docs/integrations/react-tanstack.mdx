@@ -60,7 +60,7 @@ With wellcrafted, the same component becomes:
 ```tsx
 // After: Type-safe, robust error handling
 function UserProfile({ userId }: { userId: string }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options());
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
 
   if (userQuery.isPending) return <Spinner />;
   if (userQuery.error) return <ErrorDisplay error={userQuery.error} />;
@@ -319,7 +319,7 @@ interface UserProfileProps {
 
 export function UserProfile({ userId }: UserProfileProps) {
   // Reactive interface - automatic subscriptions
-  const userQuery = useQuery(rpc.users.getUser(userId).options());
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
 
   if (userQuery.isPending) {
     return <UserProfileSkeleton />;
@@ -368,8 +368,8 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
   });
 
   // Reactive mutation - provides loading states
-  const createMutation = useMutation(rpc.users.createUser.options());
-  const updateMutation = useMutation(rpc.users.updateUser.options());
+  const createMutation = useMutation(rpc.users.createUser.options);
+  const updateMutation = useMutation(rpc.users.updateUser.options);
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
@@ -458,13 +458,13 @@ export function useUserManagement(userId?: string) {
 
   // Get user data
   const userQuery = useQuery({
-    ...rpc.users.getUser(userId!).options(),
+    ...rpc.users.getUser(userId!).options,
     enabled: !!userId,
   });
 
   // Create user mutation
   const createUser = useMutation({
-    ...rpc.users.createUser.options(),
+    ...rpc.users.createUser.options,
     onSuccess: (user) => {
       toast.success(`User ${user.name} created successfully`);
     },
@@ -475,7 +475,7 @@ export function useUserManagement(userId?: string) {
 
   // Update user mutation
   const updateUser = useMutation({
-    ...rpc.users.updateUser.options(),
+    ...rpc.users.updateUser.options,
     onSuccess: (user) => {
       toast.success(`User ${user.name} updated successfully`);
     },
@@ -793,7 +793,7 @@ function UserProfile({ userId }) {
 
 // After: Query hook
 function UserProfile({ userId }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options());
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
   // Automatic loading/error/data state management
 }
 ```
@@ -882,7 +882,7 @@ Use reactive for UI state, imperative for workflows:
 ```tsx
 function UserManagementPage() {
   // Reactive - automatic UI updates
-  const usersQuery = useQuery(rpc.users.getAllUsers.options());
+  const usersQuery = useQuery(rpc.users.getAllUsers.options);
   
   // Imperative - direct action execution
   async function handleBulkDelete(userIds: string[]) {
@@ -940,13 +940,13 @@ export const users = {
 
 ```tsx
 function UserPostsPage({ userId }: { userId: string }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options());
-  
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
+
   const postsQuery = useQuery({
-    ...rpc.posts.getUserPosts(userId).options(),
+    ...rpc.posts.getUserPosts(userId).options,
     enabled: !!userQuery.data, // Only run when user is loaded
   });
-  
+
   // ... render logic
 }
 ```
