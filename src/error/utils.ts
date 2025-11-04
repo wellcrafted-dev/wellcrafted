@@ -167,7 +167,7 @@ export function createTaggedError<
 ): TaggedErrorFactories<TErrorName, TCause> {
 	const errorConstructor = (
 		error: TaggedErrorWithoutName<TErrorName, TCause>,
-	): TaggedError<TErrorName, TCause> => ({ name, ...error }) as TaggedError<TErrorName, TCause>;
+	): TaggedError<TErrorName, TCause> => ({ name, ...error });
 
 	const errName = name.replace(
 		/Error$/,
