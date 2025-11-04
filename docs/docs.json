@@ -1,94 +1,92 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "theme": "maple",
-  "name": "WellCrafted",
-  "colors": {
-    "primary": "#3B82F6",
-    "light": "#60A5FA",
-    "dark": "#1E40AF"
-  },
-  "font": {
-    "family": "Inter",
-    "source": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-  },
-  "favicon": "/favicon.svg",
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navigation": {
-    "tabs": [
-      {
-        "tab": "Documentation",
-        "groups": [
-          {
-            "group": "🚀 Getting Started",
-            "pages": [
-              "index",
-              "getting-started/installation",
-              "getting-started/quick-start",
-              "getting-started/core-concepts"
-            ]
-          },
-          {
-            "group": "⚡ Core",
-            "pages": [
-              "core/result-pattern",
-              "core/error-system",
-              "core/brand-types",
-              "core/implementation"
-            ]
-          },
-          {
-            "group": "🛠️ Patterns",
-            "pages": [
-              "patterns/real-world",
-              "patterns/service-layer",
-              "case-studies/whispering-architecture"
-            ]
-          },
-          {
-            "group": "🔌 Integrations",
-            "pages": [
-              "integrations/svelte-tanstack",
-              "integrations/react-tanstack",
-              "integrations/nextjs-app-router",
-              "integrations/nodejs-express",
-              "integrations/testing"
-            ]
-          },
-          {
-            "group": "💭 Philosophy",
-            "pages": [
-              "philosophy/design-principles",
-              "philosophy/developer-experience",
-              "philosophy/production-reliability"
-            ]
-          },
-          {
-            "group": "🔄 Migration",
-            "pages": [
-              "migration/from-try-catch"
-            ]
-          }
-        ]
-      }
-    ],
-    "global": {
-      "anchors": []
-    }
-  },
-  "navbar": {
-    "links": [],
-    "primary": {
-      "type": "button",
-      "label": "GitHub",
-      "href": "https://github.com/wellcrafted-dev/wellcrafted"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/wellcrafted-dev/wellcrafted"
-    }
-  }
+	"$schema": "https://mintlify.com/docs.json",
+	"theme": "maple",
+	"name": "WellCrafted",
+	"colors": {
+		"primary": "#3B82F6",
+		"light": "#60A5FA",
+		"dark": "#1E40AF"
+	},
+	"font": {
+		"family": "Inter",
+		"source": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+	},
+	"favicon": "/favicon.svg",
+	"logo": {
+		"light": "/logo/light.svg",
+		"dark": "/logo/dark.svg"
+	},
+	"navigation": {
+		"tabs": [
+			{
+				"tab": "Documentation",
+				"groups": [
+					{
+						"group": "🚀 Getting Started",
+						"pages": [
+							"index",
+							"getting-started/installation",
+							"getting-started/quick-start",
+							"getting-started/core-concepts"
+						]
+					},
+					{
+						"group": "⚡ Core",
+						"pages": [
+							"core/result-pattern",
+							"core/error-system",
+							"core/brand-types",
+							"core/implementation"
+						]
+					},
+					{
+						"group": "🛠️ Patterns",
+						"pages": [
+							"patterns/real-world",
+							"patterns/service-layer",
+							"case-studies/whispering-architecture"
+						]
+					},
+					{
+						"group": "🔌 Integrations",
+						"pages": [
+							"integrations/svelte-tanstack",
+							"integrations/react-tanstack",
+							"integrations/nextjs-app-router",
+							"integrations/nodejs-express",
+							"integrations/testing"
+						]
+					},
+					{
+						"group": "💭 Philosophy",
+						"pages": [
+							"philosophy/design-principles",
+							"philosophy/developer-experience",
+							"philosophy/production-reliability"
+						]
+					},
+					{
+						"group": "🔄 Migration",
+						"pages": ["migration/from-try-catch"]
+					}
+				]
+			}
+		],
+		"global": {
+			"anchors": []
+		}
+	},
+	"navbar": {
+		"links": [],
+		"primary": {
+			"type": "button",
+			"label": "GitHub",
+			"href": "https://github.com/wellcrafted-dev/wellcrafted"
+		}
+	},
+	"footer": {
+		"socials": {
+			"github": "https://github.com/wellcrafted-dev/wellcrafted"
+		}
+	}
 }

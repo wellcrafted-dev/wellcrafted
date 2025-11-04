@@ -111,7 +111,7 @@
  */
 export type TaggedError<
 	TName extends string = string,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>
+	TCause extends TaggedError<string, any> = TaggedError<string, any>,
 > = Readonly<{
 	name: TName;
 	message: string;

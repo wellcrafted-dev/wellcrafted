@@ -44,7 +44,12 @@ export function extractErrorMessage(error: unknown): string {
 
 	// Handle primitives
 	if (typeof error === "string") return error;
-	if (typeof error === "number" || typeof error === "boolean" || typeof error === "bigint") return String(error);
+	if (
+		typeof error === "number" ||
+		typeof error === "boolean" ||
+		typeof error === "bigint"
+	)
+		return String(error);
 	if (typeof error === "symbol") return error.toString();
 	if (error === null) return "null";
 	if (error === undefined) return "undefined";
@@ -52,13 +57,19 @@ export function extractErrorMessage(error: unknown): string {
 	// Handle arrays
 	if (Array.isArray(error)) return JSON.stringify(error);
 
-
 	// Handle plain objects
 	if (typeof error === "object") {
 		const errorObj = error as Record<string, unknown>;
 
 		// Check common error properties
-		const messageProps = ["message", "error", "description", "title", "reason", "details"] as const;
+		const messageProps = [
+			"message",
+			"error",
+			"description",
+			"title",
+			"reason",
+			"details",
+		] as const;
 		for (const prop of messageProps) {
 			if (prop in errorObj && typeof errorObj[prop] === "string") {
 				return errorObj[prop];
@@ -82,7 +93,7 @@ export function extractErrorMessage(error: unknown): string {
  */
 type TaggedErrorWithoutName<
 	TName extends string,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>
+	TCause extends TaggedError<string, any> = TaggedError<string, any>,
 > = Omit<TaggedError<TName, TCause>, "name">;
 
 /**
@@ -113,14 +124,16 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
  */
 type TaggedErrorFactories<
 	TErrorName extends `${string}Error`,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>
+	TCause extends TaggedError<string, any> = TaggedError<string, any>,
 > = {
-	[K in TErrorName]: (input: TaggedErrorWithoutName<K, TCause>) => TaggedError<K, TCause>;
+	[K in TErrorName]: (
+		input: TaggedErrorWithoutName<K, TCause>,
+	) => TaggedError<K, TCause>;
 } & {
-		[K in ReplaceErrorWithErr<TErrorName>]: (
-			input: TaggedErrorWithoutName<TErrorName, TCause>,
-		) => Err<TaggedError<TErrorName, TCause>>;
-	};
+	[K in ReplaceErrorWithErr<TErrorName>]: (
+		input: TaggedErrorWithoutName<TErrorName, TCause>,
+	) => Err<TaggedError<TErrorName, TCause>>;
+};
 
 /**
  * Returns two different factory functions for tagged errors.
@@ -169,10 +182,8 @@ type TaggedErrorFactories<
  */
 export function createTaggedError<
 	TErrorName extends `${string}Error`,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>
->(
-	name: TErrorName,
-): TaggedErrorFactories<TErrorName, TCause> {
+	TCause extends TaggedError<string, any> = TaggedError<string, any>,
+>(name: TErrorName): TaggedErrorFactories<TErrorName, TCause> {
 	const errorConstructor = (
 		error: TaggedErrorWithoutName<TErrorName, TCause>,
 	): TaggedError<TErrorName, TCause> => ({ name, ...error });
