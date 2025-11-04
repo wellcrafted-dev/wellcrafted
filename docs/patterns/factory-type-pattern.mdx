@@ -1,0 +1,166 @@
+---
+title: The .type Property Pattern for TypeScript Factories
+description: A cleaner way to extract types from factory functions
+---
+
+# The `.type` Property Pattern for TypeScript Factories
+
+I was building error factories in wellcrafted and kept running into this annoying pattern:
+
+```typescript
+const { ApiError, ApiErr } = createTaggedError("ApiError");
+
+// Later, when I need the type...
+type ApiError = ReturnType<typeof createTaggedError<"ApiError">>;
+// Wait, that's not right. Let me try...
+type ApiError = ReturnType<typeof ApiError>;
+// No, that's the function type, not the error type...
+```
+
+Every time I needed to extract the type from a factory function, I'd have to do this awkward dance with `ReturnType` and generics. It felt like I was fighting TypeScript instead of working with it.
+
+## The Problem
+
+Here's what I had:
+
+```typescript
+export function createTaggedError<TErrorName extends `${string}Error`>(
+  name: TErrorName
+) {
+  const errorConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>
+    ({ name, ...error });
+
+  const errConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>
+    Err(errorConstructor(error));
+
+  return {
+    [name]: errorConstructor,
+    [name.replace(/Error$/, "Err")]: errConstructor,
+  };
+}
+
+// Using it
+const factories = createTaggedError("ApiError");
+const { ApiError, ApiErr } = factories;
+
+// But how do I get the ApiError type?
+// This is ugly:
+type ApiError = ReturnType<typeof factories.ApiError>;
+```
+
+The type exists. TypeScript knows about it. But extracting it requires this verbose, indirect approach.
+
+## The Realization
+
+Then I noticed how Drizzle ORM handles this. When you define a table, you can access its type with `.type`:
+
+```typescript
+const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name'),
+});
+
+type User = typeof users.$inferSelect;  // Or sometimes .type
+```
+
+Here's the thing that took me too long to realize: **The `.type` property doesn't actually exist at runtime**. It's just an empty object. Its entire purpose is to give TypeScript a clean way to extract types.
+
+## The Solution
+
+So I added a `.type` property to my factory:
+
+```typescript
+export function createTaggedError<TErrorName extends `${string}Error`>(
+  name: TErrorName
+) {
+  const errorConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>
+    ({ name, ...error });
+
+  const errConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>
+    Err(errorConstructor(error));
+
+  const factories = {
+    [name]: errorConstructor,
+    [name.replace(/Error$/, "Err")]: errConstructor,
+  };
+
+  // Here's the magic
+  return Object.assign(factories, {
+    type: {} as TaggedError<TErrorName>
+  });
+}
+```
+
+Now look how clean the usage is:
+
+```typescript
+const apiError = createTaggedError("ApiError");
+type ApiError = typeof apiError.type;  // That's it!
+
+// Still works with destructuring
+const { ApiError, ApiErr } = apiError;
+```
+
+## The Empty Object Trick
+
+The weirdest part? The `.type` property is literally just an empty object:
+
+```typescript
+return Object.assign(factories, {
+  type: {} as TaggedError<TErrorName>  // Empty object, cast to our type
+});
+```
+
+At runtime, if you logged `apiError.type`, you'd get `{}`. Completely useless.
+
+But TypeScript doesn't care about the runtime value. It only cares about the type. And `{} as TaggedError<TErrorName>` tells TypeScript everything it needs to know.
+
+## Why This Works
+
+This pattern exploits the gap between TypeScript's type system and JavaScript's runtime. The `.type` property exists purely in TypeScript's world. It's like a type-level marker that says "Hey, if you want the type this factory produces, look here."
+
+You're never supposed to actually use `.type` in your code:
+
+```typescript
+// DON'T do this
+const error = apiError.type;  // This is just an empty object!
+
+// DO this
+type ApiError = typeof apiError.type;  // Extract the type
+const error = apiError.ApiError({ message: "Failed" });  // Use the factory
+```
+
+## Other Places This Pattern Shows Up
+
+Once I noticed this pattern, I started seeing it everywhere:
+
+```typescript
+// Zod schemas
+const userSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+type User = z.infer<typeof userSchema>;  // Or userSchema._type
+
+// tRPC
+const appRouter = router({
+  getUser: procedure.query(() => ({ name: "Alice" })),
+});
+type AppRouter = typeof appRouter._def;  // Internal type marker
+
+// Custom query builders
+const query = createQuery("users");
+type QueryResult = typeof query._result;  // Another phantom property
+```
+
+These libraries all solved the same problem: How do you give developers a clean way to extract types from runtime values?
+
+Answer: Add a property that exists only for TypeScript.
+
+## The Lesson
+
+Not every property needs a runtime purpose. Sometimes a property exists purely to make TypeScript's life easier. And that's fine.
+
+The `.type` pattern is about accepting that TypeScript and JavaScript are different languages with different needs. Instead of fighting that difference, embrace it. Use empty objects as type markers. Add properties that only TypeScript can see.
+
+It feels weird at first. But once you get it, you realize it's just another tool for making TypeScript more ergonomic. And that's what good library design is about: making the right thing easy to do.

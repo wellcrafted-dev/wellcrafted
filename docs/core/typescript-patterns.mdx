@@ -1,0 +1,634 @@
+---
+title: 'TypeScript Best Practices'
+description: 'Advanced TypeScript patterns and best practices for wellcrafted applications'
+icon: 'code'
+---
+
+# TypeScript Best Practices with wellcrafted
+
+Wellcrafted provides excellent TypeScript support through discriminated unions, advanced type inference, and utility types. This guide covers best practices and advanced patterns for maximum type safety.
+
+## Result Type Inference
+
+### Basic Type Inference
+
+TypeScript automatically infers Result types from your functions:
+
+```typescript
+// TypeScript infers: Result<User, DatabaseError>
+async function getUser(id: string) {
+  const user = await database.findUser(id);
+  if (!user) {
+    return Err(DatabaseError({
+      message: "User not found",
+      context: { userId: id },
+      cause: undefined
+    }));
+  }
+  return Ok(user);
+}
+
+// Usage with proper type narrowing
+const userResult = await getUser("123");
+if (userResult.error) {
+  // userResult.error is DatabaseError
+  console.log(userResult.error.message);
+} else {
+  // userResult.data is User  
+  console.log(userResult.data.email);
+}
+```
+
+### Function Return Type Annotations
+
+Always annotate function return types for public APIs:
+
+```typescript
+// ✅ Good: Explicit return type makes API clear
+export async function createUser(
+  input: CreateUserInput
+): Promise<Result<User, ValidationError | DatabaseError>> {
+  // Implementation...
+}
+
+// ❌ Avoid: Inferred types are unclear to API consumers
+export async function createUser(input: CreateUserInput) {
+  // Return type is inferred but not obvious
+}
+```
+
+### Generic Constraints with Results
+
+Use generic constraints for flexible, type-safe functions:
+
+```typescript
+// Generic function that works with any Result type
+function logResult<T, E extends { message: string }>(
+  result: Result<T, E>,
+  operation: string
+): T | undefined {
+  if (result.error) {
+    console.error(`${operation} failed: ${result.error.message}`);
+    return undefined;
+  }
+  console.log(`${operation} succeeded`);
+  return result.data;
+}
+
+// Works with any error type that has a message property
+const user = logResult(await getUser("123"), "Get User");
+const order = logResult(await getOrder("456"), "Get Order");
+```
+
+## Advanced Error Type Patterns
+
+### Union Error Types
+
+Create flexible error unions for functions that can fail in multiple ways:
+
+```typescript
+import { createTaggedError } from 'wellcrafted/error';
+
+// Define specific error types
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+const { AuthError, AuthErr } = createTaggedError('AuthError');
+
+type ValidationError = ReturnType<typeof ValidationError>;
+type NetworkError = ReturnType<typeof NetworkError>;
+type AuthError = ReturnType<typeof AuthError>;
+
+// Union type for operations that can fail in multiple ways
+type UserOperationError = ValidationError | NetworkError | AuthError;
+
+export async function updateUserProfile(
+  userId: string,
+  updates: UserProfileUpdates
+): Promise<Result<UserProfile, UserOperationError>> {
+  // Validation
+  if (!updates.email?.includes('@')) {
+    return ValidationErr({
+      message: "Invalid email format",
+      context: { field: 'email', value: updates.email },
+      cause: undefined
+    });
+  }
+
+  // Authentication check
+  if (!isAuthenticated()) {
+    return AuthErr({
+      message: "Authentication required",
+      context: { operation: 'updateUserProfile' },
+      cause: undefined
+    });
+  }
+
+  // Network operation
+  return tryAsync({
+    try: () => api.updateUser(userId, updates),
+    catch: (error) => NetworkErr({
+      message: "Failed to update user profile",
+      context: { userId, updates },
+      cause: error
+    })
+  });
+}
+```
+
+### Discriminated Error Handling
+
+Use TypeScript's discriminated unions for exhaustive error handling:
+
+```typescript
+async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
+  const result = await updateUserProfile(userId, updates);
+  
+  if (result.error) {
+    // TypeScript knows result.error is UserOperationError
+    switch (result.error.name) {
+      case 'ValidationError':
+        // TypeScript knows this is ValidationError
+        showFieldError(result.error.context.field, result.error.message);
+        break;
+      case 'NetworkError':
+        // TypeScript knows this is NetworkError  
+        showNetworkError(result.error.message);
+        break;
+      case 'AuthError':
+        // TypeScript knows this is AuthError
+        redirectToLogin();
+        break;
+      default:
+        // TypeScript ensures this is never reached
+        const _exhaustive: never = result.error;
+    }
+    return;
+  }
+
+  // result.data is UserProfile
+  showSuccessMessage(`Profile updated: ${result.data.email}`);
+}
+```
+
+## Service Function Typing Patterns
+
+### Factory Function Types
+
+Export types for factory-created services:
+
+```typescript
+export function createRecorderService(options: RecorderOptions) {
+  return {
+    async startRecording(): Promise<Result<RecordingSession, RecorderServiceError>> {
+      // Implementation...
+    },
+    
+    async stopRecording(): Promise<Result<Blob, RecorderServiceError>> {
+      // Implementation...
+    },
+    
+    getRecordingState(): RecordingState {
+      // Implementation...
+    }
+  };
+}
+
+// Export the service type for dependency injection and testing
+export type RecorderService = ReturnType<typeof createRecorderService>;
+
+// Use in other services or components
+export function createTranscriptionService(
+  recorder: RecorderService, // Type-safe dependency
+  options: TranscriptionOptions
+) {
+  return {
+    async transcribeCurrentRecording() {
+      const recordingResult = await recorder.stopRecording();
+      if (recordingResult.error) {
+        return Err(recordingResult.error);
+      }
+      // Continue with transcription...
+    }
+  };
+}
+```
+
+### Interface vs Implementation
+
+Define interfaces for complex services with multiple implementations:
+
+```typescript
+// Interface definition
+export interface TranscriptionService {
+  transcribe(blob: Blob, options: TranscriptionOptions): Promise<Result<string, TranscriptionError>>;
+  getSupportedLanguages(): string[];
+  isAvailable(): boolean;
+}
+
+// OpenAI implementation
+export function createOpenAITranscriptionService(apiKey: string): TranscriptionService {
+  return {
+    async transcribe(blob, options) {
+      return tryAsync({
+        try: () => openai.audio.transcriptions.create({
+          file: blob,
+          model: options.model,
+          language: options.language,
+        }),
+        catch: (error) => TranscriptionErr({
+          message: "OpenAI transcription failed",
+          context: { provider: 'openai', model: options.model },
+          cause: error
+        })
+      });
+    },
+    
+    getSupportedLanguages: () => ['en', 'es', 'fr', 'de'],
+    isAvailable: () => Boolean(apiKey)
+  };
+}
+
+// Groq implementation
+export function createGroqTranscriptionService(apiKey: string): TranscriptionService {
+  // Similar implementation...
+}
+```
+
+## Query Layer Type Patterns
+
+### Parameterized Query Types
+
+Type-safe parameterized queries with proper inference:
+
+```typescript
+// Accessor type for reactive parameters
+type Accessor<T> = () => T;
+
+// Parameterized query with proper typing
+function createUserQuery<T extends string>(
+  userId: Accessor<T>
+) {
+  return defineQuery({
+    queryKey: ['users', userId()] as const,
+    resultQueryFn: (): Promise<Result<User, UserServiceError>> => {
+      return services.users.getUserById(userId());
+    },
+    enabled: userId() !== '', // Type-safe check
+  });
+}
+
+// Usage with type inference
+const userId: Accessor<string> = () => route.params.id;
+const userQuery = createQuery(createUserQuery(userId).options());
+// userQuery.data is User | undefined
+// userQuery.error is UserServiceError | null
+```
+
+### Query Key Type Safety
+
+Create type-safe query key factories:
+
+```typescript
+// Query key factory with proper typing
+const createQueryKeys = <T extends readonly unknown[]>(baseKey: T) => ({
+  all: baseKey,
+  lists: () => [...baseKey, 'list'] as const,
+  list: (filters: string) => [...baseKey, 'list', filters] as const,
+  details: () => [...baseKey, 'detail'] as const,
+  detail: (id: string) => [...baseKey, 'detail', id] as const,
+});
+
+// Usage with type safety
+const recordingKeys = createQueryKeys(['recordings'] as const);
+
+// TypeScript knows these are properly typed query keys
+const allRecordings = recordingKeys.all; // readonly ['recordings']
+const recordingDetail = recordingKeys.detail('123'); // readonly ['recordings', 'detail', '123']
+
+// Use in queries
+const recordingQuery = defineQuery({
+  queryKey: recordingKeys.detail(recordingId),
+  resultQueryFn: () => services.recordings.getById(recordingId),
+});
+```
+
+## Utility Type Usage
+
+### Extracting Types from Results
+
+Use wellcrafted's utility types for type extraction:
+
+```typescript
+import type { UnwrapOk, UnwrapErr, ExtractOkFromResult } from 'wellcrafted/result';
+
+// Extract success type from Result
+type UserResult = Result<User, DatabaseError>;
+type User = UnwrapOk<UserResult>; // User
+type DatabaseError = UnwrapErr<UserResult>; // DatabaseError
+
+// Extract from complex nested Results
+type ServiceResponse = Result<{
+  users: User[];
+  pagination: PaginationInfo;
+}, NetworkError | ValidationError>;
+
+type ResponseData = UnwrapOk<ServiceResponse>; 
+// { users: User[]; pagination: PaginationInfo; }
+```
+
+### Conditional Types with Results
+
+Create conditional types based on Result patterns:
+
+```typescript
+// Conditional type that extracts data or provides fallback
+type ResultDataOr<T, Fallback> = T extends Result<infer U, any> ? U : Fallback;
+
+// Helper type for optional Result unwrapping
+type OptionalResultData<T> = T extends Result<infer U, any> ? U | undefined : T;
+
+// Usage in function signatures
+function processApiResponse<T extends Result<any, any>>(
+  result: T
+): OptionalResultData<T> {
+  if (isResult(result) && isOk(result)) {
+    return result.data;
+  }
+  return undefined;
+}
+```
+
+## Advanced Query Patterns
+
+### Settings-Dependent Query Typing
+
+Type-safe queries that depend on settings:
+
+```typescript
+// Settings type
+interface AppSettings {
+  'transcription.provider': 'openai' | 'groq' | 'whisper';
+  'transcription.openai.model': string;
+  'transcription.groq.model': string;
+  'apiKeys.openai': string;
+  'apiKeys.groq': string;
+}
+
+// Settings accessor with proper typing
+interface SettingsStore {
+  value: AppSettings;
+}
+
+// Query that uses settings with type safety
+const transcribeBlob = defineMutation({
+  mutationKey: ['transcription', 'transcribe'],
+  resultMutationFn: async (
+    blob: Blob
+  ): Promise<Result<string, TranscriptionError>> => {
+    const provider = settings.value['transcription.provider'];
+    
+    switch (provider) {
+      case 'openai': {
+        const apiKey = settings.value['apiKeys.openai'];
+        const model = settings.value['transcription.openai.model'];
+        return services.transcription.openai.transcribe(blob, { apiKey, model });
+      }
+      case 'groq': {
+        const apiKey = settings.value['apiKeys.groq'];
+        const model = settings.value['transcription.groq.model'];
+        return services.transcription.groq.transcribe(blob, { apiKey, model });
+      }
+      case 'whisper': {
+        return services.transcription.whisper.transcribe(blob);
+      }
+      default: {
+        // TypeScript ensures exhaustive checking
+        const _exhaustive: never = provider;
+        return Err(TranscriptionError({
+          message: `Unsupported provider: ${provider}`,
+          context: { provider },
+          cause: undefined
+        }));
+      }
+    }
+  },
+});
+```
+
+### Generic Service Wrappers
+
+Create generic wrappers for common service patterns:
+
+```typescript
+// Generic CRUD service wrapper
+interface CRUDService<T, ID, CreateInput, UpdateInput, TError> {
+  create(input: CreateInput): Promise<Result<T, TError>>;
+  getById(id: ID): Promise<Result<T | null, TError>>;
+  update(id: ID, input: UpdateInput): Promise<Result<T, TError>>;
+  delete(id: ID): Promise<Result<void, TError>>;
+  getAll(): Promise<Result<T[], TError>>;
+}
+
+// Implementation for recordings
+export function createRecordingService(): CRUDService<
+  Recording,
+  string,
+  CreateRecordingInput,
+  UpdateRecordingInput,
+  DatabaseError
+> {
+  return {
+    async create(input) {
+      return tryAsync({
+        try: () => database.recordings.create(input),
+        catch: (error) => DatabaseErr({
+          message: "Failed to create recording",
+          context: { operation: 'create', input },
+          cause: error
+        })
+      });
+    },
+    
+    async getById(id) {
+      return tryAsync({
+        try: () => database.recordings.findById(id),
+        catch: (error) => DatabaseErr({
+          message: "Failed to get recording",
+          context: { operation: 'getById', id },
+          cause: error
+        })
+      });
+    },
+    
+    // ... other methods
+  };
+}
+```
+
+## Testing Type Patterns
+
+### Mock Service Types
+
+Create properly typed mocks for testing:
+
+```typescript
+import { vi, type MockedFunction } from 'vitest';
+
+// Create mock with proper typing
+const mockRecorderService: RecorderService = {
+  startRecording: vi.fn(),
+  stopRecording: vi.fn(),
+  getRecordingState: vi.fn(),
+};
+
+// Type-safe mock implementation
+const startRecordingMock = mockRecorderService.startRecording as MockedFunction<
+  typeof mockRecorderService.startRecording
+>;
+
+startRecordingMock.mockResolvedValue(Ok(undefined));
+
+// Test with proper typing
+test('handles recording start success', async () => {
+  const result = await mockRecorderService.startRecording();
+  expect(isOk(result)).toBe(true);
+  if (isOk(result)) {
+    // TypeScript knows result.data is void
+    expect(result.data).toBeUndefined();
+  }
+});
+```
+
+### Test Type Assertions
+
+Use type assertions for comprehensive testing:
+
+```typescript
+import { expectType, type Equal, type Expect } from 'tsd';
+
+// Test that function returns correct Result type
+const userResult = await getUser("123");
+type UserResultType = typeof userResult;
+type _UserResultTest = Expect<Equal<UserResultType, Result<User, DatabaseError>>>;
+
+// Test discriminated union narrowing
+if (userResult.error) {
+  expectType<DatabaseError>(userResult.error);
+  expectType<null>(userResult.data);
+} else {
+  expectType<User>(userResult.data);
+  expectType<null>(userResult.error);
+}
+```
+
+## Performance and Type Optimization
+
+### Type Assertion Patterns
+
+Use type assertions carefully with Results:
+
+```typescript
+// ✅ Good: Type assertion with runtime check
+function assertOk<T, E>(result: Result<T, E>): T {
+  if (result.error) {
+    throw new Error(`Expected Ok but got Err: ${result.error}`);
+  }
+  return result.data;
+}
+
+// Usage in tests or scenarios where you know result is Ok
+const user = assertOk(await getUser("123"));
+
+// ❌ Avoid: Unsafe type assertion
+const unsafeUser = (await getUser("123")) as Ok<User>;
+```
+
+### Lazy Type Evaluation
+
+Use lazy evaluation for expensive type computations:
+
+```typescript
+// Lazy type evaluation for complex computations
+type LazyResult<T> = () => Promise<Result<T, Error>>;
+
+function createLazyQuery<T>(
+  computation: LazyResult<T>
+): { execute: LazyResult<T> } {
+  return {
+    execute: computation
+  };
+}
+
+// Usage
+const expensiveQuery = createLazyQuery(async () => {
+  // Expensive computation only runs when called
+  return Ok(await performExpensiveOperation());
+});
+```
+
+## Common TypeScript Mistakes
+
+### ❌ Over-Specific Error Types
+
+```typescript
+// DON'T: Too specific, hard to handle
+type SpecificError = 
+  | { type: 'NETWORK_TIMEOUT'; timeout: number }
+  | { type: 'NETWORK_CONNECTION_REFUSED'; port: number }
+  | { type: 'NETWORK_DNS_ERROR'; hostname: string };
+
+// DO: Broad categories, specific context
+const { NetworkError } = createTaggedError('NetworkError');
+// Use context field for specifics
+```
+
+### ❌ Missing Result Annotations
+
+```typescript
+// DON'T: Unclear what errors can occur
+export async function updateUser(id: string, updates: any) {
+  // What can go wrong here?
+}
+
+// DO: Explicit error types in signature
+export async function updateUser(
+  id: string, 
+  updates: UserUpdates
+): Promise<Result<User, ValidationError | DatabaseError | AuthError>> {
+  // Clear what can go wrong
+}
+```
+
+### ❌ Ignoring Discriminated Unions
+
+```typescript
+// DON'T: Missing discriminated union benefits
+if (result.error) {
+  handleError(result.error); // Generic error handling
+}
+
+// DO: Use discriminated unions for specific handling
+if (result.error) {
+  switch (result.error.name) {
+    case 'ValidationError':
+      showValidationErrors(result.error.context);
+      break;
+    case 'NetworkError':
+      showRetryOption();
+      break;
+  }
+}
+```
+
+## Best Practices Summary
+
+1. **Always annotate public function return types** with explicit Result types
+2. **Use discriminated unions** for comprehensive error handling
+3. **Export service types** from factory functions for dependency injection
+4. **Leverage TypeScript's type narrowing** with Result type guards
+5. **Create type-safe query key factories** for maintainable query keys
+6. **Use utility types** to extract types from complex Result unions
+7. **Test your types** with type-level assertions
+8. **Prefer broad error categories** with specific context over hyper-specific error types
+
+These patterns ensure you get maximum type safety and excellent developer experience when working with wellcrafted in TypeScript applications.

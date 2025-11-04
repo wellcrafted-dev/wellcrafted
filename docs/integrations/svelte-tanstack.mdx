@@ -93,7 +93,7 @@ The same component with Whispering's proven patterns:
   import { createQuery } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
 
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options());
+  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
 
   async function handleDelete(id: string) {
     const { error } = await rpc.recordings.deleteRecording.execute(id);
@@ -448,7 +448,7 @@ Perfect for component state that needs to track loading/error states:
   import ErrorDisplay from './ErrorDisplay.svelte';
 
   // Automatically syncs: isPending, data, error, isStale
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options());
+  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
 </script>
 
 {#if $recordings.isPending}
@@ -514,7 +514,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
   import { goto } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
 
-  export let recording: Recording;
+  let { recording } = $props<{ recording: Recording }>();
 
   // Sequential operations without reactive overhead
   async function handleTranscribeAndEdit() {
@@ -584,8 +584,8 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
   let currentRecordingId: string | null = null;
 
   // Reactive mutations provide loading states
-  const startRecording = createMutation(rpc.recorder.startRecording.options());
-  const stopRecording = createMutation(rpc.recorder.stopRecording.options());
+  const startRecording = createMutation(rpc.recorder.startRecording.options);
+  const stopRecording = createMutation(rpc.recorder.stopRecording.options);
 
   // Complex workflow: Record → Save → Transcribe
   async function handleStartRecording() {
@@ -744,9 +744,15 @@ Whispering's error handling system prevents runtime crashes through comprehensiv
 ```svelte
 <!-- components/ErrorDisplay.svelte -->
 <script lang="ts">
-  export let error: any;
-  export let onRetry: (() => void) | undefined = undefined;
-  export let className = '';
+  let {
+    error,
+    onRetry = undefined,
+    className = ''
+  } = $props<{
+    error: any;
+    onRetry?: () => void;
+    className?: string;
+  }>();
 
   function getErrorAction() {
     if (!error || typeof error !== 'object') return null;
@@ -780,7 +786,7 @@ Whispering's error handling system prevents runtime crashes through comprehensiv
     return onRetry ? { label: 'Try again', onClick: onRetry } : null;
   }
 
-  $: action = getErrorAction();
+  let action = $derived(getErrorAction());
 </script>
 
 <div class="error-display {className}">
@@ -1073,12 +1079,14 @@ export const load: PageLoad = async () => {
   import RecordingCard from '$lib/components/RecordingCard.svelte';
 
   // Data is preloaded, but query provides reactivity
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options());
+  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
 
   // Use preloaded data as initial data
-  $: if ($page.data.recordings && !$recordings.data) {
-    queryClient.setQueryData(['recordings'], $page.data.recordings);
-  }
+  $effect(() => {
+    if ($page.data.recordings && !$recordings.data) {
+      queryClient.setQueryData(['recordings'], $page.data.recordings);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -1348,7 +1356,7 @@ export const recordings = {
   import { createQuery } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
 
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options());
+  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
 </script>
 
 {#if $recordings.isPending}
@@ -1438,7 +1446,7 @@ Use reactive for UI state, imperative for workflows:
 ```svelte
 <script lang="ts">
   // Reactive - automatic UI updates
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options());
+  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
   
   // Imperative - direct action execution
   async function handleBulkDelete(recordingIds: string[]) {

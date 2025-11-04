@@ -40,7 +40,7 @@ export type DefineQueryInput<
  * Output of defineQuery function.
  *
  * Provides both reactive and imperative interfaces for data fetching:
- * - `options()`: Returns config for use with createQuery() in components
+ * - `options()`: Returns config for use with useQuery() or createQuery()
  * - `fetch()`: Always attempts to fetch data (from cache if fresh, network if stale)
  * - `ensure()`: Guarantees data availability, preferring cached data (recommended for preloaders)
  *
@@ -93,7 +93,7 @@ export type DefineMutationInput<
  * Output of defineMutation function.
  *
  * Provides both reactive and imperative interfaces for data mutations:
- * - `options()`: Returns config for use with createMutation() in Svelte components
+ * - `options()`: Returns config for use with useMutation() or createMutation()
  * - `execute()`: Directly executes the mutation and returns a Result
  *
  * @template TData - The type of data returned by the mutation
@@ -146,7 +146,7 @@ export type DefineMutationOutput<
  * });
  *
  * // Use in components
- * const query = createQuery(userQuery.options());
+ * const query = createQuery(userQuery.options);
  *
  * // Or imperatively
  * const { data, error } = await userQuery.fetch();
@@ -161,7 +161,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 *
 	 * ## Why use defineQuery?
 	 *
-	 * 1. **Dual Interface**: Provides both reactive (`.options()`) and imperative (`.fetch()`) APIs
+	 * 1. **Dual Interface**: Provides both reactive (`.options`) and imperative (`.fetch()`) APIs
 	 * 2. **Automatic Error Handling**: Service functions return `Result<T, E>` types which are automatically
 	 *    unwrapped by TanStack Query, giving you proper error states in your components
 	 * 3. **Type Safety**: Full TypeScript support with proper inference for data and error types
@@ -178,7 +178,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * @param options.* - Any other TanStack Query options (staleTime, refetchInterval, etc.)
 	 *
 	 * @returns Query definition object with three methods:
-	 *   - `options()`: Returns config for use with createQuery() in Svelte components
+	 *   - `options()`: Returns config for use with useQuery() or createQuery()
 	 *   - `fetch()`: Always attempts to fetch data (from cache if fresh, network if stale)
 	 *   - `ensure()`: Guarantees data availability, preferring cached data (recommended for preloaders)
 	 *
@@ -192,7 +192,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * });
 	 *
 	 * // Step 2a: Use reactively in a Svelte component
-	 * const query = createQuery(userQuery.options());
+	 * const query = createQuery(userQuery.options);
 	 * // $query.data is User | undefined
 	 * // $query.error is ApiError | null
 	 *
@@ -245,7 +245,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 		return {
 			/**
 			 * Returns the query options for reactive usage with TanStack Query hooks.
-			 * Use this with `createQuery()` in Svelte components for automatic subscriptions.
+			 * Use this with `useQuery()` or `createQuery()` for automatic subscriptions.
 			 * @returns The query options object configured for TanStack Query
 			 */
 			options: () => newOptions,
@@ -368,7 +368,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * @param options.* - Any other TanStack Mutation options (onSuccess, onError, etc.)
 	 *
 	 * @returns Mutation definition object with two methods:
-	 *   - `options()`: Returns config for use with createMutation() in Svelte components
+	 *   - `options()`: Returns config for use with useMutation() or createMutation()
 	 *   - `execute()`: Directly executes the mutation and returns a Result
 	 *
 	 * @example
@@ -391,7 +391,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * });
 	 *
 	 * // Step 2a: Use reactively in a component
-	 * const mutation = createMutation(createRecording.options());
+	 * const mutation = createMutation(createRecording.options);
 	 * // Call with: $mutation.mutate(recordingData)
 	 *
 	 * // Step 2b: Use imperatively in an action
@@ -423,7 +423,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 		return {
 			/**
 			 * Returns the mutation options for reactive usage with TanStack Query hooks.
-			 * Use this with `createMutation()` in Svelte components for reactive mutation state.
+			 * Use this with `useMutation()` or `createMutation()` for reactive mutation state.
 			 * @returns The mutation options object configured for TanStack Query
 			 */
 			options: () => newOptions,

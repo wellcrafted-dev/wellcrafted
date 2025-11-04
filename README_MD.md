@@ -809,7 +809,7 @@ type TaggedError<T extends string> = {
   readonly name: T;
   message: string;
   context?: Record<string, unknown>;
-  cause?: unknown;
+  cause?: TaggedError;
 };
 ```
 

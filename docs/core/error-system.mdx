@@ -35,9 +35,9 @@ Every `TaggedError` contains four essential properties that work together to cre
 ```typescript
 type TaggedError<T extends string> = {
   readonly name: T;                    // 1. The discriminant
-  message: string;                     // 2. Human-readable description  
+  message: string;                     // 2. Human-readable description
   context?: Record<string, unknown>;   // 3. Function inputs & debugging data
-  cause?: unknown;                     // 4. Root cause
+  cause?: TaggedError;                 // 4. Root cause (another TaggedError)
 };
 ```
 
@@ -143,8 +143,49 @@ const apiError = {
 
 // The entire error chain is JSON-serializable!
 console.log(JSON.stringify(apiError, null, 2));
-// Outputs a complete trace: API → Service → Database → Network
 ```
+
+**The serialized output shows the complete call stack:**
+
+```json
+{
+  "name": "APIError",
+  "message": "Internal server error",
+  "context": {
+    "endpoint": "/api/users/123",
+    "statusCode": 500
+  },
+  "cause": {
+    "name": "UserServiceError",
+    "message": "Could not fetch user profile",
+    "context": {
+      "userId": "123",
+      "method": "getUserById"
+    },
+    "cause": {
+      "name": "DatabaseError",
+      "message": "Failed to connect to database",
+      "context": {
+        "operation": "connect",
+        "retries": 3
+      },
+      "cause": {
+        "name": "NetworkError",
+        "message": "Socket timeout after 5000ms",
+        "context": {
+          "host": "db.example.com",
+          "port": 5432,
+          "timeout": 5000
+        }
+      }
+    }
+  }
+}
+```
+
+You can traverse this error chain in either direction:
+- **Top-down**: Start at the API error and drill into the root cause
+- **Bottom-up**: Each layer wraps the layer below, preserving the full context
 
 This chaining pattern provides:
 - **Complete error trace**: See exactly how an error bubbled up through your stack

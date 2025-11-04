@@ -70,8 +70,8 @@ The library establishes `BaseError` as the foundation for all error types:
 export type BaseError = Readonly<{
   name: string;
   message: string;
-  context: Record<string, unknown>;
-  cause: unknown;
+  context?: Record<string, unknown>;
+  cause?: TaggedError;
 }>;
 
 export type TaggedError<T extends string> = BaseError & {
