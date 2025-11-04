@@ -37,25 +37,32 @@ import { Err } from "../result/result.js";
  * ```
  */
 export function extractErrorMessage(error: unknown): string {
+	// Handle Error instances
 	if (error instanceof Error) {
 		return error.message;
 	}
 
-	if (typeof error === "string") {
-		return error;
-	}
+	// Handle primitives
+	if (typeof error === "string") return error;
+	if (typeof error === "number" || typeof error === "boolean" || typeof error === "bigint") return String(error);
+	if (typeof error === "symbol") return error.toString();
+	if (error === null) return "null";
+	if (error === undefined) return "undefined";
 
-	if (typeof error === "object" && error !== null) {
-		// Check for common error properties
+	// Handle arrays
+	if (Array.isArray(error)) return JSON.stringify(error);
+
+
+	// Handle plain objects
+	if (typeof error === "object") {
 		const errorObj = error as Record<string, unknown>;
-		if (typeof errorObj.message === "string") {
-			return errorObj.message;
-		}
-		if (typeof errorObj.error === "string") {
-			return errorObj.error;
-		}
-		if (typeof errorObj.description === "string") {
-			return errorObj.description;
+
+		// Check common error properties
+		const messageProps = ["message", "error", "description", "title", "reason", "details"] as const;
+		for (const prop of messageProps) {
+			if (prop in errorObj && typeof errorObj[prop] === "string") {
+				return errorObj[prop];
+			}
 		}
 
 		// Fallback to JSON stringification
@@ -66,6 +73,7 @@ export function extractErrorMessage(error: unknown): string {
 		}
 	}
 
+	// Final fallback
 	return String(error);
 }
 
@@ -109,10 +117,10 @@ type TaggedErrorFactories<
 > = {
 	[K in TErrorName]: (input: TaggedErrorWithoutName<K, TCause>) => TaggedError<K, TCause>;
 } & {
-	[K in ReplaceErrorWithErr<TErrorName>]: (
-		input: TaggedErrorWithoutName<TErrorName, TCause>,
-	) => Err<TaggedError<TErrorName, TCause>>;
-};
+		[K in ReplaceErrorWithErr<TErrorName>]: (
+			input: TaggedErrorWithoutName<TErrorName, TCause>,
+		) => Err<TaggedError<TErrorName, TCause>>;
+	};
 
 /**
  * Returns two different factory functions for tagged errors.
