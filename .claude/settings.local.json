@@ -124,6 +124,5 @@
 		"deny": [],
 		"ask": [],
 		"additionalDirectories": ["../whispering"]
-	},
-	"model": "opus"
+	}
 }
