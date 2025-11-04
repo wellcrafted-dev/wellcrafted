@@ -1,5 +1,11 @@
 # wellcrafted
 
+## 0.23.1
+
+### Patch Changes
+
+- 0e5f291: Improve extractErrorMessage with comprehensive primitive handling and extended error property checking
+
 ## 0.23.0
 
 ### Minor Changes
