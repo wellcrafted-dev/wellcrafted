@@ -13,8 +13,10 @@
 
 		// /* If transpiling with TypeScript: */
 		"module": "NodeNext",
-		"outDir": "dist",
-		"sourceMap": true,
+			"outDir": "dist",
+			"sourceMap": true,
+			// Embed original TypeScript in the sourcemap so editors can jump to real sources.
+			"inlineSources": true,
 
 		/* AND if you're building for a library: */
 		"declaration": true,
