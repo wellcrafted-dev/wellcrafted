@@ -54,6 +54,7 @@
 							"integrations/react-tanstack",
 							"integrations/nextjs-app-router",
 							"integrations/nodejs-express",
+							"integrations/hono-serialization",
 							"integrations/testing"
 						]
 					},

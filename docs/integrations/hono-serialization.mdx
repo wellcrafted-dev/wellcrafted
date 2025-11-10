@@ -1,0 +1,140 @@
+---
+title: 'Hono: Result Types Across Serialization Boundaries'
+description: 'Use Result types directly in HTTP responses with zero transformation'
+icon: 'hono'
+---
+
+# Hono: Result Types at Serialization Boundaries
+
+wellcrafted's Result types are plain objects that serialize perfectly over JSON. This means you can return `Ok()` and `Err()` directly from Hono endpoints, and they work on the client with zero transformation.
+
+## The Pattern
+
+```typescript
+import { Hono } from 'hono';
+import { Ok, Err, type Result } from 'wellcrafted/result';
+import { type TaggedError } from 'wellcrafted/error';
+
+type UserNotFoundError = TaggedError<'UserNotFoundError'>;
+
+async function getUser(id: string): Promise<Result<User, UserNotFoundError>> {
+  if (!id) {
+    return Err({
+      name: 'UserNotFoundError',
+      message: 'User not found',
+      context: { userId: id },
+      cause: undefined,
+    });
+  }
+  return Ok({ id, name: 'Alice' });
+}
+
+const app = new Hono();
+
+// Return Result directly from endpoint
+app.get('/api/users/:id', async (c) => {
+  const id = c.req.param('id');
+  const result = await getUser(id);
+
+  // Error case
+  if (result.error) return c.json(Err(result.error), 500);
+
+  // Success case
+  return c.json(Ok(result.data));
+});
+```
+
+That's it. The HTTP response body contains the complete Result type:
+
+**Error response:**
+```json
+{
+  "error": {
+    "name": "UserNotFoundError",
+    "message": "User not found",
+    "context": { "userId": "123" },
+    "cause": null
+  },
+  "data": null
+}
+```
+
+**Success response:**
+```json
+{
+  "data": { "id": "123", "name": "Alice" },
+  "error": null
+}
+```
+
+## Client Side
+
+The client receives the same Result type structure:
+
+```typescript
+// Fetch the endpoint
+const response = await fetch('/api/users/123');
+const result = await response.json();
+
+// TypeScript knows the shape
+if (result.error) {
+  console.error(`${result.error.name}: ${result.error.message}`);
+  console.log('Context:', result.error.context);
+} else {
+  console.log('User:', result.data);
+}
+```
+
+
+## Auto-Wrapping Results
+
+If your service functions return either Results or bare data, normalize them:
+
+```typescript
+import { isResult } from 'wellcrafted/result';
+
+app.post('/api/users', async (c) => {
+  const body = await c.req.json();
+  const maybeResult = await createUser(body);
+
+  // Extract data and error regardless of what was returned
+  const data = isResult(maybeResult) ? maybeResult.data : maybeResult;
+  const error = isResult(maybeResult) ? maybeResult.error : undefined;
+
+  if (error) return c.json(Err(error), 500);
+  return c.json(Ok(data), 201);
+});
+```
+
+## Why This Works
+
+- **Plain objects**: Result types are just `{ data: T, error: null }` or `{ data: null, error: E }` - they serialize perfectly
+- **No transformation needed**: The exact object created on the server arrives on the client
+- **Type-safe across boundaries**: Client knows the exact error types the endpoint can return
+- **Works anywhere**: Express, Next.js, Fastify, etc. - just return `res.json(Ok(...))` or `response.json(Err(...))`
+
+## Real-World Example
+
+Here's how Epicenter (used in Whispering) implements this across all endpoints:
+
+```typescript
+// For every workspace action
+forEachAction(client, ({ workspaceId, actionName, action }) => {
+  const path = `/${workspaceId}/${actionName}`;
+
+  app.get(path, async (c) => {
+    const query = c.req.query();
+    const input = Object.keys(query).length > 0 ? query : undefined;
+
+    const maybeResult = await action(input) as Result<unknown, TaggedError> | unknown;
+
+    const data = isResult(maybeResult) ? maybeResult.data : maybeResult;
+    const error = isResult(maybeResult) ? maybeResult.error : undefined;
+
+    if (error) return c.json(Err(error), 500);
+    return c.json(Ok(data));
+  });
+});
+```
+
+Every endpoint follows the same pattern. New endpoints automatically get consistent error handling.
