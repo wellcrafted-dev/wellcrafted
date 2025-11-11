@@ -89,12 +89,87 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * Input type for creating a tagged error (everything except the name)
+ * Creates two factory functions for building tagged errors with type-safe error chaining.
+ *
+ * Given an error name like "NetworkError", this returns:
+ * - `NetworkError`: Creates a plain TaggedError object
+ * - `NetworkErr`: Creates a TaggedError object wrapped in an Err result
+ *
+ * The naming pattern automatically replaces the "Error" suffix with "Err" suffix
+ * for the Result-wrapped version.
+ *
+ * @template TErrorName - The name of the error type (must end with "Error")
+ * @param name - The name of the error type (must end with "Error")
+ * @returns An object with two factory functions:
+ *   - [name]: Function that creates plain TaggedError objects
+ *   - [name with "Error" replaced by "Err"]: Function that creates Err-wrapped TaggedError objects
+ *
+ * @example
+ * ```ts
+ * // Create error factories
+ * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+ * const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError');
+ *
+ * // NetworkError: Creates just the error object
+ * const error = NetworkError({
+ *   message: 'Connection failed',
+ *   context: { url: 'https://api.example.com' }
+ * });
+ * // Returns: { name: 'NetworkError', message: 'Connection failed', ... }
+ *
+ * // NetworkErr: Creates error and wraps in Err result
+ * return NetworkErr({
+ *   message: 'Connection failed',
+ *   context: { url: 'https://api.example.com' }
+ * });
+ * // Returns: Err({ name: 'NetworkError', message: 'Connection failed', ... })
+ *
+ * // Type-safe error chaining with automatic type inference
+ * const networkError = NetworkError({
+ *   message: "Timeout",
+ *   context: { host: "db.example.com", port: 5432 }
+ * });
+ *
+ * const dbError = DatabaseError({
+ *   message: 'Connection failed',
+ *   cause: networkError // TypeScript infers the full networkError type automatically!
+ * });
+ * // dbError type: TaggedError<"DatabaseError", typeof networkError, { ... }>
+ * // The cause type is fully inferred with all nested properties
+ * ```
  */
-type TaggedErrorWithoutName<
-	TName extends string,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>,
-> = Omit<TaggedError<TName, TCause>, "name">;
+export function createTaggedError<TErrorName extends `${string}Error`>(
+	name: TErrorName,
+): TaggedErrorFactories<TErrorName> {
+	const errorConstructor = <
+		// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
+		TCause extends TaggedError<string, any, any> = never,
+		TContext extends Record<string, unknown> = Record<string, unknown>,
+	>(input: {
+		message: string;
+		context?: TContext;
+		cause?: TCause;
+	}): TaggedError<TErrorName, TCause, TContext> => ({ name, ...input });
+
+	const errName = name.replace(
+		/Error$/,
+		"Err",
+	) as ReplaceErrorWithErr<TErrorName>;
+	const errConstructor = <
+		// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
+		TCause extends TaggedError<string, any, any> = never,
+		TContext extends Record<string, unknown> = Record<string, unknown>,
+	>(input: {
+		message: string;
+		context?: TContext;
+		cause?: TCause;
+	}) => Err(errorConstructor(input));
+
+	return {
+		[name]: errorConstructor,
+		[errName]: errConstructor,
+	} as TaggedErrorFactories<TErrorName>;
+}
 
 /**
  * Replaces the "Error" suffix with "Err" suffix in error type names.
@@ -116,87 +191,58 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
 	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
 
 /**
- * Return type for createTaggedError - contains both factory functions.
+ * Return type for createTaggedError - combines both factory functions.
  *
  * Provides two factory functions:
  * - One that creates plain TaggedError objects (named with "Error" suffix)
  * - One that creates Err-wrapped TaggedError objects (named with "Err" suffix)
+ *
+ * @template TErrorName - The name of the error type (must end with "Error")
  */
-type TaggedErrorFactories<
-	TErrorName extends `${string}Error`,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>,
-> = {
-	[K in TErrorName]: (
-		input: TaggedErrorWithoutName<K, TCause>,
-	) => TaggedError<K, TCause>;
+type TaggedErrorFactories<TErrorName extends `${string}Error`> = {
+	[K in TErrorName]: TaggedErrorConstructorFn<K>;
 } & {
-	[K in ReplaceErrorWithErr<TErrorName>]: (
-		input: TaggedErrorWithoutName<TErrorName, TCause>,
-	) => Err<TaggedError<TErrorName, TCause>>;
+	[K in ReplaceErrorWithErr<TErrorName>]: TaggedErrConstructorFn<TErrorName>;
 };
 
 /**
- * Returns two different factory functions for tagged errors.
+ * Function signature that creates plain TaggedError objects.
  *
- * Given an error name like "NetworkError", this returns:
- * - `NetworkError`: Creates a plain TaggedError object
- * - `NetworkErr`: Creates a TaggedError object wrapped in an Err result
+ * This represents a generic function where the caller can provide:
+ * - `TCause`: The type of the error that caused this error (defaults to never for no cause)
+ * - `TContext`: The type of additional context data (defaults to Record<string, unknown>)
  *
- * The naming pattern automatically replaces the "Error" suffix with "Err" suffix
- * for the Result-wrapped version.
+ * The function automatically infers these types from the input provided.
  *
- * @param name - The name of the error type (must end with "Error")
- * @returns An object with two factory functions:
- *   - [name]: Function that creates plain TaggedError objects
- *   - [name with "Error" replaced by "Err"]: Function that creates Err-wrapped TaggedError objects
- *
- * @example
- * ```ts
- * // Simple error without typed cause
- * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
- *
- * // NetworkError: Creates just the error object
- * const error = NetworkError({
- *   message: 'Connection failed',
- *   context: { url: 'https://api.example.com' }
- * });
- * // Returns: { name: 'NetworkError', message: 'Connection failed', ... }
- *
- * // NetworkErr: Creates error and wraps in Err result
- * return NetworkErr({
- *   message: 'Connection failed',
- *   context: { url: 'https://api.example.com' }
- * });
- * // Returns: Err({ name: 'NetworkError', message: 'Connection failed', ... })
- *
- * // Type-safe error chaining with specific cause types
- * type NetworkError = TaggedError<"NetworkError">;
- * const { DatabaseError, DatabaseErr } = createTaggedError<"DatabaseError", NetworkError>('DatabaseError');
- *
- * const networkError: NetworkError = { name: "NetworkError", message: "Timeout" };
- * const dbError = DatabaseError({
- *   message: 'Connection failed',
- *   cause: networkError // TypeScript enforces NetworkError type
- * });
- * ```
+ * @template TErrorName - The name of the error type
  */
-export function createTaggedError<
-	TErrorName extends `${string}Error`,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>,
->(name: TErrorName): TaggedErrorFactories<TErrorName, TCause> {
-	const errorConstructor = (
-		error: TaggedErrorWithoutName<TErrorName, TCause>,
-	): TaggedError<TErrorName, TCause> => ({ name, ...error });
+type TaggedErrorConstructorFn<TErrorName extends string> = <
+	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
+	TCause extends TaggedError<string, any, any> = never,
+	TContext extends Record<string, unknown> = Record<string, unknown>,
+>(input: {
+	message: string;
+	context?: TContext;
+	cause?: TCause;
+}) => TaggedError<TErrorName, TCause, TContext>;
 
-	const errName = name.replace(
-		/Error$/,
-		"Err",
-	) as ReplaceErrorWithErr<TErrorName>;
-	const errConstructor = (error: TaggedErrorWithoutName<TErrorName, TCause>) =>
-		Err(errorConstructor(error));
-
-	return {
-		[name]: errorConstructor,
-		[errName]: errConstructor,
-	} as TaggedErrorFactories<TErrorName, TCause>;
-}
+/**
+ * Function signature that creates Err-wrapped TaggedError objects.
+ *
+ * This represents a generic function where the caller can provide:
+ * - `TCause`: The type of the error that caused this error (defaults to never for no cause)
+ * - `TContext`: The type of additional context data (defaults to Record<string, unknown>)
+ *
+ * The function automatically infers these types from the input provided.
+ *
+ * @template TErrorName - The name of the error type
+ */
+type TaggedErrConstructorFn<TErrorName extends string> = <
+	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
+	TCause extends TaggedError<string, any, any> = never,
+	TContext extends Record<string, unknown> = Record<string, unknown>,
+>(input: {
+	message: string;
+	context?: TContext;
+	cause?: TCause;
+}) => Err<TaggedError<TErrorName, TCause, TContext>>;

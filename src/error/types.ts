@@ -111,10 +111,12 @@
  */
 export type TaggedError<
 	TName extends string = string,
-	TCause extends TaggedError<string, any> = TaggedError<string, any>,
+	// biome-ignore lint/suspicious/noExplicitAny: Recursive type definition requires any for self-reference
+	TCause extends TaggedError<string, any, any> = TaggedError<string, any, any>,
+	TContext extends Record<string, unknown> = Record<string, unknown>,
 > = Readonly<{
 	name: TName;
 	message: string;
-	context?: Record<string, unknown>;
+	context?: TContext;
 	cause?: TCause;
 }>;
