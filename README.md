@@ -345,13 +345,24 @@ The `catch` parameter in `trySync` and `tryAsync` enables smart return type narr
 
 ### Recovery Pattern (Always Succeeds)
 ```typescript
-// When catch always returns Ok<T>, function returns Ok<T>
-const alwaysSucceeds = trySync({
+// ❌ Before: Mutable variable required
+let parsed: unknown;
+try {
+  parsed = JSON.parse(riskyJson);
+} catch {
+  parsed = [];
+}
+// Now use parsed...
+
+// ✅ After: Clean, immutable pattern
+const { data: parsed } = trySync({
   try: () => JSON.parse(riskyJson),
-  catch: () => Ok({ fallback: "default" }) // Always recover with fallback
+  catch: () => Ok([])
 });
-// alwaysSucceeds: Ok<object> - No error checking needed!
-console.log(alwaysSucceeds.data); // Safe to access directly
+// parsed is always defined and type-safe!
+
+// When catch always returns Ok<T>, the function returns Ok<T>
+// This means no error checking needed - you can safely destructure and use data directly
 ```
 
 ### Propagation Pattern (May Fail)
