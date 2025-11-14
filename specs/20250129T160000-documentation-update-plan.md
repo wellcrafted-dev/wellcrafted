@@ -68,10 +68,10 @@ Update all documentation across the wellcrafted repository to:
 ### 1. Parameter Replacement
 ```typescript
 // Before
-mapErr: (error) => Err(ServiceError({...}))
+mapErr: (error) => ServiceErr({...})
 
 // After  
-catch: (error) => Err(ServiceError({...}))
+catch: (error) => ServiceErr({...})
 ```
 
 ### 2. Add Recovery Pattern Examples
@@ -87,7 +87,7 @@ const alwaysSucceeds = trySync({
 // Propagation Pattern (returns Result<T, E>)  
 const mayFail = trySync({
   try: () => riskyOperation(),
-  catch: (error) => Err(ServiceError({...})) // May propagate errors
+  catch: (error) => ServiceErr({...}) // May propagate errors
 });  
 // mayFail: Result<string, ServiceError> - must check for errors
 ```

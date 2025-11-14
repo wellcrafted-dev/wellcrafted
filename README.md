@@ -370,7 +370,7 @@ const { data: parsed } = trySync({
 // When catch can return Err<E>, function returns Result<T, E>  
 const mayFail = trySync({
   try: () => JSON.parse(riskyJson),
-  catch: (error) => Err(ParseError({ message: "Invalid JSON", cause: error }))
+  catch: (error) => ParseErr({ message: "Invalid JSON", cause: error })
 });
 // mayFail: Result<object, ParseError> - Must check for errors
 if (isOk(mayFail)) {
@@ -388,7 +388,7 @@ const smartParse = trySync({
       return Ok({}); // Return Ok<T> for fallback
     }
     // Propagate other errors  
-    return Err(ParseError({ message: "Parse failed", cause: error }));
+    return ParseErr({ message: "Parse failed", cause: error });
   }
 });
 // smartParse: Result<object, ParseError> - Mixed handling = Result type

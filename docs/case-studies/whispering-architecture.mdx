@@ -297,7 +297,7 @@ async function startRecording(): Promise<Result<Blob, RecorderServiceError>> {
 // Query layer: Transform to UI errors
 const { data, error: serviceError } = await services.recorder.startRecording();
 if (serviceError) {
-  return Err(WhisperingError({
+  return WhisperingErr({
     title: '❌ Failed to start recording',
     description: serviceError.message, // Preserve detailed message
     action: { type: 'more-details', error: serviceError },

@@ -36,11 +36,11 @@ return tryAsync({
 return tryAsync({
     try: () => db.recordings.count(),
     catch: (error) =>
-        Err(DbServiceError({
-            message: 'Unable to get recording count', 
+        DbServiceErr({
+            message: 'Unable to get recording count',
             context: { maxRecordingCount },
             cause: error,
-        })),
+        }),
 });
 ```
 
@@ -107,7 +107,7 @@ For each file:
    mapErr: (error) => DbServiceErr({...})
    
    // After  
-   catch: (error) => Err(DbServiceError({...}))
+   catch: (error) => DbServiceErr({...})
    ```
 
 3. **Leverage return type narrowing** (where applicable):

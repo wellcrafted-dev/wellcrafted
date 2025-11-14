@@ -19,11 +19,11 @@ TypeScript automatically infers Result types from your functions:
 async function getUser(id: string) {
   const user = await database.findUser(id);
   if (!user) {
-    return Err(DatabaseError({
+    return DatabaseErr({
       message: "User not found",
       context: { userId: id },
       cause: undefined
-    }));
+    });
   }
   return Ok(user);
 }
@@ -404,11 +404,11 @@ const transcribeBlob = defineMutation({
       default: {
         // TypeScript ensures exhaustive checking
         const _exhaustive: never = provider;
-        return Err(TranscriptionError({
+        return TranscriptionErr({
           message: `Unsupported provider: ${provider}`,
           context: { provider },
           cause: undefined
-        }));
+        });
       }
     }
   },
