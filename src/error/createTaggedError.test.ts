@@ -1,13 +1,13 @@
 import { describe, it, expect, expectTypeOf } from "vitest";
-import { taggedError, createTaggedError } from "./utils.js";
+import { createTaggedError } from "./utils.js";
 import type { TaggedError } from "./types.js";
 
 // =============================================================================
 // Mode 1: Flexible Mode Tests
 // =============================================================================
 
-describe("taggedError - Flexible Mode", () => {
-	const { NetworkError, NetworkErr } = taggedError("NetworkError");
+describe("createTaggedError - Flexible Mode", () => {
+	const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
 
 	describe("NetworkError (plain constructor)", () => {
 		it("creates error with just message", () => {
@@ -91,14 +91,14 @@ describe("taggedError - Flexible Mode", () => {
 // Mode 2: Fixed Context Mode Tests
 // =============================================================================
 
-describe("taggedError - Fixed Context Mode", () => {
+describe("createTaggedError - Fixed Context Mode", () => {
 	type BlobContext = {
 		filename: string;
 		code: "INVALID_FILENAME" | "FILE_TOO_LARGE" | "PERMISSION_DENIED";
 	};
 
 	const { BlobError, BlobErr } =
-		taggedError<"BlobError", BlobContext>("BlobError");
+		createTaggedError<"BlobError", BlobContext>("BlobError");
 
 	describe("BlobError (plain constructor)", () => {
 		it("creates error with required context", () => {
@@ -116,7 +116,7 @@ describe("taggedError - Fixed Context Mode", () => {
 		});
 
 		it("creates error with context and cause", () => {
-			const { NetworkError } = taggedError("NetworkError");
+			const { NetworkError } = createTaggedError("NetworkError");
 			const cause = NetworkError({ message: "Upload failed" });
 
 			const error = BlobError({
@@ -166,7 +166,7 @@ describe("taggedError - Fixed Context Mode", () => {
 // Mode 3: Both Fixed Mode Tests
 // =============================================================================
 
-describe("taggedError - Both Fixed Mode", () => {
+describe("createTaggedError - Both Fixed Mode", () => {
 	// For "Both Fixed Mode", we define the cause type explicitly as a TaggedError type
 	// This mode is for when you want to constrain BOTH context shape AND cause type
 
@@ -174,7 +174,7 @@ describe("taggedError - Both Fixed Mode", () => {
 	type NetworkErrorType = TaggedError<"NetworkError", never, NetworkContext>;
 
 	type ApiContext = { endpoint: string; method: string };
-	const { ApiError, ApiErr } = taggedError<
+	const { ApiError, ApiErr } = createTaggedError<
 		"ApiError",
 		ApiContext,
 		NetworkErrorType
@@ -182,7 +182,7 @@ describe("taggedError - Both Fixed Mode", () => {
 
 	// Also create flexible NetworkError for producing cause values
 	const { NetworkError } =
-		taggedError<"NetworkError", NetworkContext>("NetworkError");
+		createTaggedError<"NetworkError", NetworkContext>("NetworkError");
 
 	describe("ApiError (plain constructor)", () => {
 		it("creates error with context (no cause)", () => {
@@ -244,17 +244,17 @@ describe("taggedError - Both Fixed Mode", () => {
 // Error Chaining Tests
 // =============================================================================
 
-describe("taggedError - Error Chaining", () => {
+describe("createTaggedError - Error Chaining", () => {
 	it("supports multi-level error chains", () => {
 		// Level 1: Database error
-		const { DatabaseError } = taggedError("DatabaseError");
+		const { DatabaseError } = createTaggedError("DatabaseError");
 		const dbError = DatabaseError({
 			message: "Query failed",
 			context: { query: "SELECT * FROM users", table: "users" },
 		});
 
 		// Level 2: Repository error wrapping database error
-		const { RepositoryError } = taggedError("RepositoryError");
+		const { RepositoryError } = createTaggedError("RepositoryError");
 		const repoError = RepositoryError({
 			message: "Failed to fetch user",
 			context: { entity: "User", operation: "findById" },
@@ -262,7 +262,7 @@ describe("taggedError - Error Chaining", () => {
 		});
 
 		// Level 3: Service error wrapping repository error
-		const { ServiceError } = taggedError("ServiceError");
+		const { ServiceError } = createTaggedError("ServiceError");
 		const serviceError = ServiceError({
 			message: "User service failed",
 			context: { service: "UserService", method: "getProfile" },
@@ -279,8 +279,8 @@ describe("taggedError - Error Chaining", () => {
 	});
 
 	it("errors are JSON serializable", () => {
-		const { NetworkError } = taggedError("NetworkError");
-		const { ApiError } = taggedError("ApiError");
+		const { NetworkError } = createTaggedError("NetworkError");
+		const { ApiError } = createTaggedError("ApiError");
 
 		const networkError = NetworkError({
 			message: "Connection failed",
@@ -304,35 +304,6 @@ describe("taggedError - Error Chaining", () => {
 	});
 });
 
-// =============================================================================
-// Backward Compatibility Tests
-// =============================================================================
-
-describe("createTaggedError (deprecated alias)", () => {
-	it("works as an alias for taggedError", () => {
-		const { TestError, TestErr } = createTaggedError("TestError");
-
-		const error = TestError({ message: "Test message" });
-		expect(error.name).toBe("TestError");
-		expect(error.message).toBe("Test message");
-
-		const result = TestErr({ message: "Test message" });
-		expect(result.error?.name).toBe("TestError");
-	});
-
-	it("supports fixed context mode", () => {
-		type TestContext = { code: number };
-		const { TestError } =
-			createTaggedError<"TestError", TestContext>("TestError");
-
-		const error = TestError({
-			message: "Error",
-			context: { code: 500 },
-		});
-
-		expect(error.context.code).toBe(500);
-	});
-});
 
 // =============================================================================
 // Type Tests (compile-time checks)
@@ -340,7 +311,7 @@ describe("createTaggedError (deprecated alias)", () => {
 
 describe("Type Safety", () => {
 	it("flexible mode has correct types", () => {
-		const { NetworkError } = taggedError("NetworkError");
+		const { NetworkError } = createTaggedError("NetworkError");
 
 		// Just message
 		const e1 = NetworkError({ message: "Error" });
@@ -356,7 +327,7 @@ describe("Type Safety", () => {
 
 	it("fixed context mode requires context", () => {
 		type Ctx = { filename: string };
-		const { FileError } = taggedError<"FileError", Ctx>("FileError");
+		const { FileError } = createTaggedError<"FileError", Ctx>("FileError");
 
 		const error = FileError({
 			message: "Error",
@@ -370,14 +341,14 @@ describe("Type Safety", () => {
 		// Define the cause type explicitly
 		type CauseType = TaggedError<"CauseError", never, never>;
 
-		const { WrapperError } = taggedError<
+		const { WrapperError } = createTaggedError<
 			"WrapperError",
 			{ wrap: boolean },
 			CauseType
 		>("WrapperError");
 
 		// Create a cause that matches CauseType
-		const { CauseError } = taggedError("CauseError");
+		const { CauseError } = createTaggedError("CauseError");
 		const cause = CauseError({ message: "Root cause" });
 
 		const wrapper = WrapperError({
@@ -396,14 +367,14 @@ describe("Type Safety", () => {
 
 describe("Edge Cases", () => {
 	it("handles empty context object", () => {
-		const { TestError } = taggedError("TestError");
+		const { TestError } = createTaggedError("TestError");
 		const error = TestError({ message: "Error", context: {} });
 
 		expect(error.context).toEqual({});
 	});
 
 	it("handles complex nested context", () => {
-		const { TestError } = taggedError("TestError");
+		const { TestError } = createTaggedError("TestError");
 		const error = TestError({
 			message: "Error",
 			context: {
@@ -419,7 +390,7 @@ describe("Edge Cases", () => {
 	});
 
 	it("error objects are readonly", () => {
-		const { TestError } = taggedError("TestError");
+		const { TestError } = createTaggedError("TestError");
 		const error = TestError({ message: "Original" });
 
 		// TypeScript should prevent this, but verify at runtime the object shape
