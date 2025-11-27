@@ -1,5 +1,63 @@
 # wellcrafted
 
+## 0.24.0
+
+### Minor Changes
+
+- e724405: Add function overloads to `createTaggedError` for opt-in type strictness
+
+  The `createTaggedError` function now supports three overload signatures:
+
+  1. **Fully flexible (default)**: No generics required, both context and cause are optional
+  2. **Context fixed**: Specify `TContext` generic to require context, cause remains flexible
+  3. **Both fixed**: Specify both `TContext` and `TCause` generics to require both
+
+  This allows callers to opt-in to stricter type safety when needed while maintaining backward compatibility with the flexible default behavior. When a type is explicitly specified at factory creation time, it becomes required at every call site.
+
+  Updated type definitions:
+
+  - `FlexibleTaggedErrorFactories`, `ContextFixedTaggedErrorFactories`, `BothFixedTaggedErrorFactories`
+  - `FlexibleTaggedErrorConstructorFn`, `ContextFixedTaggedErrorConstructorFn`, `BothFixedTaggedErrorConstructorFn`
+  - And corresponding `Err` constructor function variants
+
+- 60e3439: feat(error): add typed context and cause support to createTaggedError
+
+  Introduces three usage modes for `createTaggedError`:
+
+  1. **Flexible mode**: Context and cause are optional with any shape
+  2. **Fixed context mode**: Context is required with an exact type
+  3. **Both fixed mode**: Context required, cause constrained to specific type
+
+  The `TaggedError` type now uses conditional types so that `context` and `cause` properties only exist when specified, making the types more precise.
+
+  ```typescript
+  // Mode 1: Flexible
+  const { NetworkError } = createTaggedError("NetworkError");
+  NetworkError({ message: "Timeout" });
+  NetworkError({ message: "Timeout", context: { url: "..." } });
+
+  // Mode 2: Fixed context (context required)
+  type BlobContext = { filename: string; code: "INVALID" | "TOO_LARGE" };
+  const { BlobError } = createTaggedError<"BlobError", BlobContext>(
+    "BlobError"
+  );
+  BlobError({
+    message: "Invalid",
+    context: { filename: "x", code: "INVALID" },
+  });
+
+  // Mode 3: Both fixed
+  const { ApiError } = createTaggedError<"ApiError", ApiContext, NetworkError>(
+    "ApiError"
+  );
+  ```
+
+### Patch Changes
+
+- a95c8f8: Improve type inference for tagged error factories
+
+  Refactored `createTaggedError` to automatically infer cause and context types from input, eliminating the need for explicit generic parameters. Added `TContext` generic parameter to `TaggedError` type for better type safety. Reorganized internal type structure with separate `TaggedErrorConstructorFn` and `TaggedErrConstructorFn` types for improved modularity.
+
 ## 0.23.1
 
 ### Patch Changes
