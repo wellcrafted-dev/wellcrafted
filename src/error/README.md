@@ -1,249 +1,154 @@
 # Tagged Errors
 
-Type-safe error handling with discriminated unions and error chaining.
+Type-safe error handling without throw/catch. Return errors as values with full type inference.
 
-## Why Tagged Errors?
+## Why This Folder Exists
 
-Traditional `throw`/`catch` loses type information. Tagged errors give you:
-
-- **Discriminated unions**: Switch on `error.name` with full type narrowing
-- **Required context**: Enforce that errors always include necessary debugging info
-- **Error chaining**: Build JSON-serializable error stacks with `cause`
-- **Result integration**: Return `Err<TaggedError>` instead of throwing
-
-## Quick Start
+Traditional error handling with `throw`/`catch` has a fundamental problem: you lose all type information. When you catch an error, TypeScript gives you `unknown`. You have to manually check types, guess at properties, and hope you didn't miss an error case.
 
 ```typescript
-import { taggedError } from 'wellcrafted/error';
-
-const { NetworkError, NetworkErr } = taggedError('NetworkError');
-
-// Plain error object
-const error = NetworkError({ message: 'Connection failed' });
-
-// Wrapped in Err result (for Result-based flows)
-const result = NetworkErr({ message: 'Connection failed' });
+try {
+  await apiCall();
+} catch (error) {
+  // What is error? Who knows! TypeScript can't help you.
+  if (error.statusCode === 404) { /* hope this property exists */ }
+}
 ```
 
-## Three Modes
+Tagged errors solve this by treating errors as plain data structures instead of exceptions:
 
-### Mode 1: Flexible (No Constraints)
+- **Discriminated unions**: Switch on `error.name` and TypeScript narrows the type automatically
+- **Explicit in signatures**: `Result<Data, NetworkError | ValidationError>` tells you exactly what can go wrong
+- **Required context**: Force yourself to always include the debugging info you'll need
+- **JSON-serializable chains**: Build error stacks that survive serialization, unlike Error objects
 
-Context and cause are optional. Any shape accepted.
+We use plain objects instead of Error classes because they serialize cleanly to JSON, work everywhere without special handling, and integrate naturally with discriminated unions.
+
+## The Three Modes (And When to Use Each)
+
+### Flexible Mode: Exploring and Prototyping
+
+Use this when you don't know what context you need yet, or when context varies wildly between call sites.
 
 ```typescript
 const { NetworkError, NetworkErr } = taggedError('NetworkError');
 
-// Just message
+// Just a message
 NetworkError({ message: 'Timeout' });
 
-// With any context shape
-NetworkError({
-  message: 'DNS failed',
-  context: { host: 'example.com', resolver: '8.8.8.8' }
-});
+// Add context as you discover what's useful
+NetworkError({ message: 'DNS failed', context: { host: 'example.com' } });
 
-// With cause (error chaining)
-NetworkError({
-  message: 'Request failed',
-  context: { url: 'https://api.example.com' },
-  cause: someOtherError
-});
+// Chain errors when debugging
+NetworkError({ message: 'Request failed', cause: someOtherError });
 ```
 
-### Mode 2: Fixed Context
+**When to use:** Early development, wrapping unpredictable third-party code, or when different call sites genuinely need different context shapes.
 
-Context is **required** with a specific shape. Cause remains optional.
+### Fixed Context Mode: Enforcing Essential Information
+
+Use this when you know what debugging information is ALWAYS needed for this error type.
 
 ```typescript
-type BlobContext = {
-  filename: string;
-  code: 'INVALID_FILENAME' | 'FILE_TOO_LARGE' | 'PERMISSION_DENIED';
+type FileContext = {
+  path: string;
+  operation: 'read' | 'write' | 'delete';
 };
 
-const { BlobError, BlobErr } = taggedError<'BlobError', BlobContext>('BlobError');
+const { FileError, FileErr } = taggedError<'FileError', FileContext>('FileError');
 
-// Context is required and type-checked
-BlobError({
-  message: 'Invalid filename',
-  context: { filename: 'test.txt', code: 'INVALID_FILENAME' }
+// TypeScript REQUIRES context now
+FileError({
+  message: 'Permission denied',
+  context: { path: '/etc/passwd', operation: 'write' }
 });
 
-// Type error: context is missing
-// BlobError({ message: 'Error' });
-
-// Type error: 'WRONG_CODE' is not valid
-// BlobError({ message: 'Error', context: { filename: 'x', code: 'WRONG_CODE' } });
+// FileError({ message: 'Oops' }); // Type error! context is missing
 ```
 
-### Mode 3: Fixed Context + Cause
+Every file error without a path is useless for debugging. Every API error without an endpoint is useless. Fixed context mode makes it impossible to forget this information.
 
-Both context and cause types are constrained.
+**When to use:** Application-level errors where you know exactly what context matters. File operations need paths. API calls need endpoints. Database queries need SQL.
+
+### Both Fixed Mode: Type-Safe Error Hierarchies
+
+Use this when errors have predictable causes. An API error wraps a network error. A service error wraps a repository error. Some errors cause other errors in consistent, meaningful ways.
 
 ```typescript
-// Define the cause error type
 type NetworkErrorType = TaggedError<'NetworkError', never, { url: string }>;
 
-// ApiError requires context and constrains cause type
 const { ApiError, ApiErr } = taggedError<
   'ApiError',
-  { endpoint: string; method: string },
+  { endpoint: string },
   NetworkErrorType
 >('ApiError');
 
-// Context required, cause optional but must be NetworkErrorType if provided
+// Cause is optional, but if provided, MUST be NetworkErrorType
 ApiError({
-  message: 'Request failed',
-  context: { endpoint: '/users', method: 'GET' }
+  message: 'Failed to fetch user',
+  context: { endpoint: '/users/123' }
 });
 
 ApiError({
-  message: 'Request failed',
-  context: { endpoint: '/users', method: 'GET' },
-  cause: networkError  // Must match NetworkErrorType
+  message: 'Failed to fetch user',
+  context: { endpoint: '/users/123' },
+  cause: networkError  // Type-checked!
 });
 ```
 
-## Type Behavior
+This encodes domain knowledge: "API errors fail because of network issues, not validation issues." If you find yourself passing a ValidationError as the cause of an ApiError, that's a sign your error architecture is wrong.
 
-| Mode | Context | Cause |
-|------|---------|-------|
-| Flexible | Optional, any shape | Optional, any TaggedError |
-| Fixed Context | **Required**, exact shape | Optional, any TaggedError |
-| Both Fixed | **Required**, exact shape | Optional, must match type |
+**When to use:** Building error hierarchies in layered architectures. Network → API → Repository → Service. Each layer wraps the layer below with its own context.
 
 ## Error Chaining
 
-Build structured error chains for debugging:
+Tagged error chains are just nested objects that serialize perfectly to JSON:
 
 ```typescript
-const { DatabaseError } = taggedError('DatabaseError');
-const { RepositoryError } = taggedError('RepositoryError');
+const { DbError } = taggedError('DbError');
+const { RepoError } = taggedError('RepoError');
 const { ServiceError } = taggedError('ServiceError');
 
-// Level 1: Root cause
-const dbError = DatabaseError({
-  message: 'Query failed',
-  context: { query: 'SELECT * FROM users', table: 'users' }
+const dbError = DbError({
+  message: 'Connection timeout',
+  context: { host: 'localhost', port: 5432 }
 });
 
-// Level 2: Wrap database error
-const repoError = RepositoryError({
+const repoError = RepoError({
   message: 'Failed to fetch user',
-  context: { entity: 'User', operation: 'findById' },
+  context: { userId: '123' },
   cause: dbError
 });
 
-// Level 3: Wrap repository error
 const serviceError = ServiceError({
-  message: 'User service failed',
-  context: { service: 'UserService', method: 'getProfile' },
+  message: 'User profile unavailable',
+  context: { operation: 'getProfile' },
   cause: repoError
 });
 
-// The entire chain is JSON-serializable
+// The whole chain serializes to JSON
 console.log(JSON.stringify(serviceError, null, 2));
 ```
 
-## Result Integration
+Each layer adds its own context while preserving the full chain.
 
-Use with the Result type for explicit error handling:
+## Quick Reference
 
 ```typescript
 import { taggedError } from 'wellcrafted/error';
-import { Ok, type Result } from 'wellcrafted/result';
 
-type ValidationContext = { field: string; value: unknown };
-const { ValidationError, ValidationErr } = taggedError<
-  'ValidationError',
-  ValidationContext
->('ValidationError');
+// Flexible: context and cause optional, any shape
+const { NetworkError, NetworkErr } = taggedError('NetworkError');
 
-function validateEmail(email: string): Result<string, ValidationError> {
-  if (!email.includes('@')) {
-    return ValidationErr({
-      message: 'Invalid email format',
-      context: { field: 'email', value: email }
-    });
-  }
-  return Ok(email);
-}
+// Fixed context: shape required
+type Ctx = { filename: string };
+const { FileError, FileErr } = taggedError<'FileError', Ctx>('FileError');
 
-// Usage
-const result = validateEmail('invalid');
-if (result.error) {
-  console.error(`${result.error.context.field}: ${result.error.message}`);
-}
+// Both fixed: context required, cause constrained
+type NetworkErr = TaggedError<'NetworkError', never, { url: string }>;
+const { ApiError, ApiErr } = taggedError<'ApiError', { endpoint: string }, NetworkErr>('ApiError');
 ```
 
-## Discriminated Unions
-
-Switch on error types with full type narrowing:
-
-```typescript
-const { NetworkError } = taggedError('NetworkError');
-const { ValidationError } = taggedError('ValidationError');
-const { AuthError } = taggedError('AuthError');
-
-type AppError =
-  | ReturnType<typeof NetworkError>
-  | ReturnType<typeof ValidationError>
-  | ReturnType<typeof AuthError>;
-
-function handleError(error: AppError) {
-  switch (error.name) {
-    case 'NetworkError':
-      // TypeScript knows this is NetworkError
-      console.error('Network issue');
-      break;
-    case 'ValidationError':
-      // TypeScript knows this is ValidationError
-      console.error('Validation failed');
-      break;
-    case 'AuthError':
-      // TypeScript knows this is AuthError
-      console.error('Authentication required');
-      break;
-  }
-}
-```
-
-## API Reference
-
-### `taggedError(name)`
-
-Creates error factory functions.
-
-**Parameters:**
-- `name`: String ending in "Error" (e.g., `'NetworkError'`, `'ValidationError'`)
-
-**Type Parameters:**
-- `TName`: The error name (inferred from `name` parameter)
-- `TContext`: Optional fixed context shape
-- `TCause`: Optional fixed cause type
-
-**Returns:**
-- `[Name]`: Factory that creates plain error objects
-- `[Name with 'Err' suffix]`: Factory that creates `Err<TaggedError>` results
-
-### `TaggedError<TName, TCause, TContext>`
-
-The error type itself.
-
-**Properties:**
-- `name`: The discriminator string
-- `message`: Human-readable error message
-- `context`: Additional data (exists only if `TContext !== never`)
-- `cause`: Wrapped error (exists only if `TCause !== never`)
-
-## Migration from `createTaggedError`
-
-`createTaggedError` is now deprecated but still works as an alias:
-
-```typescript
-// Old (still works)
-const { NetworkError } = createTaggedError('NetworkError');
-
-// New (preferred)
-const { NetworkError } = taggedError('NetworkError');
-```
+Each factory returns two functions:
+- `NetworkError`: Creates a plain tagged error object
+- `NetworkErr`: Wraps it in `Err` for use with Result types
