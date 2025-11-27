@@ -315,42 +315,42 @@ type BothFixedErrConstructor<
  * @example
  * ```ts
  * // Mode 1: Flexible - context optional, any shape
- * const { NetworkError, NetworkErr } = taggedError('NetworkError');
+ * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
  * NetworkError({ message: 'Connection failed' });
  * NetworkError({ message: 'Timeout', context: { url: 'https://...' } });
  *
  * // Mode 2: Fixed context - context REQUIRED with exact shape
  * type BlobContext = { filename: string; code: 'INVALID' | 'TOO_LARGE' };
- * const { BlobError, BlobErr } = taggedError<'BlobError', BlobContext>('BlobError');
+ * const { BlobError, BlobErr } = createTaggedError<'BlobError', BlobContext>('BlobError');
  * BlobError({ message: 'Invalid', context: { filename: 'x', code: 'INVALID' } });
  * // BlobError({ message: 'Error' }); // Type error - context required
  *
  * // Mode 3: Fixed context + cause - context required, cause constrained
- * const { ApiError, ApiErr } = taggedError<'ApiError', { endpoint: string }, NetworkError>('ApiError');
+ * const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkError>('ApiError');
  * ApiError({ message: 'Failed', context: { endpoint: '/users' } });
  * ApiError({ message: 'Failed', context: { endpoint: '/users' }, cause: networkError });
  * ```
  */
 // Overload 1: Flexible (no type constraints)
-export function taggedError<TName extends `${string}Error`>(
+export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
 ): FlexibleFactories<TName>;
 
 // Overload 2: Context fixed, cause flexible
-export function taggedError<
+export function createTaggedError<
 	TName extends `${string}Error`,
 	TContext extends Record<string, unknown>,
 >(name: TName): ContextFixedFactories<TName, TContext>;
 
 // Overload 3: Both context and cause fixed
-export function taggedError<
+export function createTaggedError<
 	TName extends `${string}Error`,
 	TContext extends Record<string, unknown>,
 	TCause extends AnyTaggedError,
 >(name: TName): BothFixedFactories<TName, TContext, TCause>;
 
 // Implementation
-export function taggedError<
+export function createTaggedError<
 	TName extends `${string}Error`,
 	TContext extends Record<string, unknown> = Record<string, unknown>,
 	TCause extends AnyTaggedError = never,
@@ -374,7 +374,3 @@ export function taggedError<
 	};
 }
 
-/**
- * @deprecated Use `taggedError` instead. This is an alias for backward compatibility.
- */
-export const createTaggedError = taggedError;

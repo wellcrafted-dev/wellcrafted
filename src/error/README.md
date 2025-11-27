@@ -31,7 +31,7 @@ We use plain objects instead of Error classes because they serialize cleanly to 
 Use this when you don't know what context you need yet, or when context varies wildly between call sites.
 
 ```typescript
-const { NetworkError, NetworkErr } = taggedError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 
 // Just a message
 NetworkError({ message: 'Timeout' });
@@ -55,7 +55,7 @@ type FileContext = {
   operation: 'read' | 'write' | 'delete';
 };
 
-const { FileError, FileErr } = taggedError<'FileError', FileContext>('FileError');
+const { FileError, FileErr } = createTaggedError<'FileError', FileContext>('FileError');
 
 // TypeScript REQUIRES context now
 FileError({
@@ -77,7 +77,7 @@ Use this when errors have predictable causes. An API error wraps a network error
 ```typescript
 type NetworkErrorType = TaggedError<'NetworkError', never, { url: string }>;
 
-const { ApiError, ApiErr } = taggedError<
+const { ApiError, ApiErr } = createTaggedError<
   'ApiError',
   { endpoint: string },
   NetworkErrorType
@@ -105,9 +105,9 @@ This encodes domain knowledge: "API errors fail because of network issues, not v
 Tagged error chains are just nested objects that serialize perfectly to JSON:
 
 ```typescript
-const { DbError } = taggedError('DbError');
-const { RepoError } = taggedError('RepoError');
-const { ServiceError } = taggedError('ServiceError');
+const { DbError } = createTaggedError('DbError');
+const { RepoError } = createTaggedError('RepoError');
+const { ServiceError } = createTaggedError('ServiceError');
 
 const dbError = DbError({
   message: 'Connection timeout',
@@ -135,18 +135,18 @@ Each layer adds its own context while preserving the full chain.
 ## Quick Reference
 
 ```typescript
-import { taggedError } from 'wellcrafted/error';
+import { createTaggedError } from 'wellcrafted/error';
 
 // Flexible: context and cause optional, any shape
-const { NetworkError, NetworkErr } = taggedError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 
 // Fixed context: shape required
 type Ctx = { filename: string };
-const { FileError, FileErr } = taggedError<'FileError', Ctx>('FileError');
+const { FileError, FileErr } = createTaggedError<'FileError', Ctx>('FileError');
 
 // Both fixed: context required, cause constrained
 type NetworkErr = TaggedError<'NetworkError', never, { url: string }>;
-const { ApiError, ApiErr } = taggedError<'ApiError', { endpoint: string }, NetworkErr>('ApiError');
+const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkErr>('ApiError');
 ```
 
 Each factory returns two functions:

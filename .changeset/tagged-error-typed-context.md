@@ -2,9 +2,9 @@
 "wellcrafted": minor
 ---
 
-feat(error): add typed context and cause support to taggedError
+feat(error): add typed context and cause support to createTaggedError
 
-Introduces three usage modes for `taggedError` (renamed from `createTaggedError`):
+Introduces three usage modes for `createTaggedError`:
 
 1. **Flexible mode**: Context and cause are optional with any shape
 2. **Fixed context mode**: Context is required with an exact type
@@ -14,17 +14,15 @@ The `TaggedError` type now uses conditional types so that `context` and `cause` 
 
 ```typescript
 // Mode 1: Flexible
-const { NetworkError } = taggedError('NetworkError');
+const { NetworkError } = createTaggedError('NetworkError');
 NetworkError({ message: 'Timeout' });
 NetworkError({ message: 'Timeout', context: { url: '...' } });
 
 // Mode 2: Fixed context (context required)
 type BlobContext = { filename: string; code: 'INVALID' | 'TOO_LARGE' };
-const { BlobError } = taggedError<'BlobError', BlobContext>('BlobError');
+const { BlobError } = createTaggedError<'BlobError', BlobContext>('BlobError');
 BlobError({ message: 'Invalid', context: { filename: 'x', code: 'INVALID' } });
 
 // Mode 3: Both fixed
-const { ApiError } = taggedError<'ApiError', ApiContext, NetworkError>('ApiError');
+const { ApiError } = createTaggedError<'ApiError', ApiContext, NetworkError>('ApiError');
 ```
-
-`createTaggedError` is now a deprecated alias for `taggedError`.
