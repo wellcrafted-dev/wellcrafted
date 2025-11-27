@@ -89,96 +89,279 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
+ * Base type for any tagged error, used as a constraint for cause parameters.
+ */
+type AnyTaggedError = { name: string; message: string };
+
+/**
+ * Replaces the "Error" suffix with "Err" suffix in error type names.
+ *
+ * @template T - An error type name that must end with "Error"
+ * @returns The type name with "Error" replaced by "Err"
+ *
+ * @example
+ * ```ts
+ * type NetworkErr = ReplaceErrorWithErr<"NetworkError">; // "NetworkErr"
+ * type ValidationErr = ReplaceErrorWithErr<"ValidationError">; // "ValidationErr"
+ * ```
+ */
+type ReplaceErrorWithErr<T extends `${string}Error`> =
+	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
+
+// =============================================================================
+// Factory Return Types
+// =============================================================================
+
+/**
+ * Return type when neither context nor cause are constrained.
+ * Both factory functions accept any context and cause at call time.
+ */
+type FlexibleFactories<TName extends `${string}Error`> = {
+	[K in TName]: FlexibleErrorConstructor<K>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: FlexibleErrConstructor<TName>;
+};
+
+/**
+ * Return type when context is fixed but cause is flexible.
+ * Context shape is locked, but cause can be any TaggedError at call time.
+ */
+type ContextFixedFactories<
+	TName extends `${string}Error`,
+	TContext extends Record<string, unknown>,
+> = {
+	[K in TName]: ContextFixedErrorConstructor<K, TContext>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: ContextFixedErrConstructor<TName, TContext>;
+};
+
+/**
+ * Return type when both context and cause are fixed.
+ * Both shapes are locked at factory creation time.
+ */
+type BothFixedFactories<
+	TName extends `${string}Error`,
+	TContext extends Record<string, unknown>,
+	TCause extends AnyTaggedError,
+> = {
+	[K in TName]: BothFixedErrorConstructor<K, TContext, TCause>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: BothFixedErrConstructor<
+		TName,
+		TContext,
+		TCause
+	>;
+};
+
+// =============================================================================
+// Flexible Mode Constructor Types (using function overloads)
+// =============================================================================
+
+/**
+ * Creates plain TaggedError objects with flexible context and cause.
+ * Uses function overloads to precisely match return types to inputs.
+ */
+type FlexibleErrorConstructor<TName extends string> = {
+	// Just message - no context or cause
+	(input: { message: string }): TaggedError<TName, never, never>;
+	// With context only
+	<TContext extends Record<string, unknown>>(input: {
+		message: string;
+		context: TContext;
+	}): TaggedError<TName, never, TContext>;
+	// With cause only
+	<TCause extends AnyTaggedError>(input: {
+		message: string;
+		cause: TCause;
+	}): TaggedError<TName, TCause, never>;
+	// With both context and cause
+	<TContext extends Record<string, unknown>, TCause extends AnyTaggedError>(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): TaggedError<TName, TCause, TContext>;
+};
+
+/**
+ * Creates Err-wrapped TaggedError objects with flexible context and cause.
+ */
+type FlexibleErrConstructor<TName extends string> = {
+	(input: { message: string }): Err<TaggedError<TName, never, never>>;
+	<TContext extends Record<string, unknown>>(input: {
+		message: string;
+		context: TContext;
+	}): Err<TaggedError<TName, never, TContext>>;
+	<TCause extends AnyTaggedError>(input: {
+		message: string;
+		cause: TCause;
+	}): Err<TaggedError<TName, TCause, never>>;
+	<TContext extends Record<string, unknown>, TCause extends AnyTaggedError>(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): Err<TaggedError<TName, TCause, TContext>>;
+};
+
+// =============================================================================
+// Context-Fixed Mode Constructor Types
+// =============================================================================
+
+/**
+ * Creates plain TaggedError objects with fixed context but flexible cause.
+ * Context is always required. Cause is optional and inferred at call site.
+ */
+type ContextFixedErrorConstructor<
+	TName extends string,
+	TContext extends Record<string, unknown>,
+> = {
+	// Without cause
+	(input: { message: string; context: TContext }): TaggedError<
+		TName,
+		never,
+		TContext
+	>;
+	// With cause
+	<TCause extends AnyTaggedError>(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): TaggedError<TName, TCause, TContext>;
+};
+
+/**
+ * Creates Err-wrapped TaggedError objects with fixed context but flexible cause.
+ */
+type ContextFixedErrConstructor<
+	TName extends string,
+	TContext extends Record<string, unknown>,
+> = {
+	(input: { message: string; context: TContext }): Err<
+		TaggedError<TName, never, TContext>
+	>;
+	<TCause extends AnyTaggedError>(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): Err<TaggedError<TName, TCause, TContext>>;
+};
+
+// =============================================================================
+// Both-Fixed Mode Constructor Types
+// =============================================================================
+
+/**
+ * Creates plain TaggedError objects with both context and cause fixed.
+ * Context is required. Cause is optional but must match the specified type.
+ */
+type BothFixedErrorConstructor<
+	TName extends string,
+	TContext extends Record<string, unknown>,
+	TCause extends AnyTaggedError,
+> = {
+	// Without cause
+	(input: { message: string; context: TContext }): TaggedError<
+		TName,
+		never,
+		TContext
+	>;
+	// With cause (must match TCause)
+	(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): TaggedError<TName, TCause, TContext>;
+};
+
+/**
+ * Creates Err-wrapped TaggedError objects with both context and cause fixed.
+ */
+type BothFixedErrConstructor<
+	TName extends string,
+	TContext extends Record<string, unknown>,
+	TCause extends AnyTaggedError,
+> = {
+	(input: { message: string; context: TContext }): Err<
+		TaggedError<TName, never, TContext>
+	>;
+	(input: {
+		message: string;
+		context: TContext;
+		cause: TCause;
+	}): Err<TaggedError<TName, TCause, TContext>>;
+};
+
+// =============================================================================
+// Main Factory Function
+// =============================================================================
+
+/**
  * Creates two factory functions for building tagged errors with type-safe error chaining.
  *
  * Given an error name like "NetworkError", this returns:
  * - `NetworkError`: Creates a plain TaggedError object
  * - `NetworkErr`: Creates a TaggedError object wrapped in an Err result
  *
- * The naming pattern automatically replaces the "Error" suffix with "Err" suffix
- * for the Result-wrapped version.
+ * **Three usage modes:**
  *
- * @template TErrorName - The name of the error type (must end with "Error")
- * @template TContext - Optional fixed context shape for this error type (defaults to any object)
- * @template TCause - Optional fixed cause type for this error type (defaults to no cause)
+ * 1. **Flexible mode** (no type params): Context and cause are optional, any shape accepted
+ * 2. **Fixed context mode** (TContext specified): Context is required with that exact shape
+ * 3. **Both fixed mode** (TContext + TCause): Context required, cause (if provided) must match
+ *
+ * @template TName - The name of the error type (must end with "Error")
+ * @template TContext - Optional fixed context shape (makes context required)
+ * @template TCause - Optional fixed cause type (constrains cause type if provided)
  * @param name - The name of the error type (must end with "Error")
- * @returns An object with two factory functions:
- *   - [name]: Function that creates plain TaggedError objects
- *   - [name with "Error" replaced by "Err"]: Function that creates Err-wrapped TaggedError objects
  *
  * @example
  * ```ts
- * // Simple usage - flexible context
- * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+ * // Mode 1: Flexible - context optional, any shape
+ * const { NetworkError, NetworkErr } = taggedError('NetworkError');
  * NetworkError({ message: 'Connection failed' });
- * NetworkError({ message: 'Connection failed', context: { url: 'https://api.example.com' } });
+ * NetworkError({ message: 'Timeout', context: { url: 'https://...' } });
  *
- * // With fixed context shape - context is required and type-safe
- * const { DatabaseError, DatabaseErr } = createTaggedError<
- *   'DatabaseError',
- *   { host: string; port: number }
- * >('DatabaseError');
+ * // Mode 2: Fixed context - context REQUIRED with exact shape
+ * type BlobContext = { filename: string; code: 'INVALID' | 'TOO_LARGE' };
+ * const { BlobError, BlobErr } = taggedError<'BlobError', BlobContext>('BlobError');
+ * BlobError({ message: 'Invalid', context: { filename: 'x', code: 'INVALID' } });
+ * // BlobError({ message: 'Error' }); // Type error - context required
  *
- * DatabaseError({
- *   message: 'Connection failed',
- *   context: { host: 'localhost', port: 5432 }
- * });
- *
- * // With fixed context and cause type - both are hard-coded
- * const networkError = NetworkError({ message: 'Timeout' });
- * const { ApiError, ApiErr } = createTaggedError<
- *   'ApiError',
- *   { endpoint: string },
- *   typeof networkError
- * >('ApiError');
- *
- * ApiError({
- *   message: 'Request failed',
- *   context: { endpoint: '/users' },
- *   cause: networkError
- * });
+ * // Mode 3: Fixed context + cause - context required, cause constrained
+ * const { ApiError, ApiErr } = taggedError<'ApiError', { endpoint: string }, NetworkError>('ApiError');
+ * ApiError({ message: 'Failed', context: { endpoint: '/users' } });
+ * ApiError({ message: 'Failed', context: { endpoint: '/users' }, cause: networkError });
  * ```
  */
-// Overload 1: Fully flexible (no context or cause constraints)
-export function createTaggedError<TErrorName extends `${string}Error`>(
-	name: TErrorName,
-): FlexibleTaggedErrorFactories<TErrorName>;
+// Overload 1: Flexible (no type constraints)
+export function taggedError<TName extends `${string}Error`>(
+	name: TName,
+): FlexibleFactories<TName>;
 
 // Overload 2: Context fixed, cause flexible
-export function createTaggedError<
-	TErrorName extends `${string}Error`,
+export function taggedError<
+	TName extends `${string}Error`,
 	TContext extends Record<string, unknown>,
->(
-	name: TErrorName,
-): ContextFixedTaggedErrorFactories<TErrorName, TContext>;
+>(name: TName): ContextFixedFactories<TName, TContext>;
 
 // Overload 3: Both context and cause fixed
-export function createTaggedError<
-	TErrorName extends `${string}Error`,
+export function taggedError<
+	TName extends `${string}Error`,
 	TContext extends Record<string, unknown>,
-	TCause extends TaggedError<string, any, any>,
->(
-	name: TErrorName,
-): BothFixedTaggedErrorFactories<TErrorName, TContext, TCause>;
+	TCause extends AnyTaggedError,
+>(name: TName): BothFixedFactories<TName, TContext, TCause>;
 
 // Implementation
-export function createTaggedError<
-	TErrorName extends `${string}Error`,
+export function taggedError<
+	TName extends `${string}Error`,
 	TContext extends Record<string, unknown> = Record<string, unknown>,
-	TCause extends TaggedError<string, any, any> = never,
->(
-	name: TErrorName,
-): any {
+	TCause extends AnyTaggedError = never,
+>(name: TName): unknown {
 	const errorConstructor = (input: {
 		message: string;
 		context?: TContext;
 		cause?: TCause;
-	}): TaggedError<TErrorName, TCause, TContext> => ({ name, ...input });
+	}) => ({ name, ...input });
 
-	const errName = name.replace(
-		/Error$/,
-		"Err",
-	) as ReplaceErrorWithErr<TErrorName>;
+	const errName = name.replace(/Error$/, "Err") as ReplaceErrorWithErr<TName>;
 	const errConstructor = (input: {
 		message: string;
 		context?: TContext;
@@ -192,163 +375,6 @@ export function createTaggedError<
 }
 
 /**
- * Replaces the "Error" suffix with "Err" suffix in error type names.
- *
- * This utility type is used to create companion function names for error constructors
- * that return Err-wrapped results, maintaining consistent naming conventions.
- *
- * @template T - An error type name that must end with "Error"
- * @returns The type name with "Error" replaced by "Err"
- *
- * @example
- * ```ts
- * type NetworkErr = ReplaceErrorWithErr<"NetworkError">; // "NetworkErr"
- * type ValidationErr = ReplaceErrorWithErr<"ValidationError">; // "ValidationErr"
- * type AuthErr = ReplaceErrorWithErr<"AuthError">; // "AuthErr"
- * ```
+ * @deprecated Use `taggedError` instead. This is an alias for backward compatibility.
  */
-type ReplaceErrorWithErr<T extends `${string}Error`> =
-	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
-
-/**
- * Return type when neither context nor cause are constrained.
- * Both factory functions accept any context and cause at call time.
- */
-type FlexibleTaggedErrorFactories<TErrorName extends `${string}Error`> = {
-	[K in TErrorName]: FlexibleTaggedErrorConstructorFn<K>;
-} & {
-	[K in ReplaceErrorWithErr<TErrorName>]: FlexibleTaggedErrConstructorFn<
-		TErrorName
-	>;
-};
-
-/**
- * Return type when context is fixed but cause is flexible.
- * Context shape is locked, but cause can be any TaggedError at call time.
- */
-type ContextFixedTaggedErrorFactories<
-	TErrorName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
-> = {
-	[K in TErrorName]: ContextFixedTaggedErrorConstructorFn<K, TContext>;
-} & {
-	[K in ReplaceErrorWithErr<TErrorName>]: ContextFixedTaggedErrConstructorFn<
-		TErrorName,
-		TContext
-	>;
-};
-
-/**
- * Return type when both context and cause are fixed.
- * Both shapes are locked at factory creation time.
- */
-type BothFixedTaggedErrorFactories<
-	TErrorName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
-	TCause extends TaggedError<string, any, any>,
-> = {
-	[K in TErrorName]: BothFixedTaggedErrorConstructorFn<
-		K,
-		TContext,
-		TCause
-	>;
-} & {
-	[K in ReplaceErrorWithErr<TErrorName>]: BothFixedTaggedErrConstructorFn<
-		TErrorName,
-		TContext,
-		TCause
-	>;
-};
-
-/**
- * Creates plain TaggedError objects with flexible context and cause.
- * Call-time generics allow any context and cause shape.
- */
-type FlexibleTaggedErrorConstructorFn<TErrorName extends string> = <
-	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
-	TCause extends TaggedError<string, any, any> = never,
-	TContext extends Record<string, unknown> = Record<string, unknown>,
->(input: {
-	message: string;
-	context?: TContext;
-	cause?: TCause;
-}) => TaggedError<TErrorName, TCause, TContext>;
-
-/**
- * Creates Err-wrapped TaggedError objects with flexible context and cause.
- * Call-time generics allow any context and cause shape.
- */
-type FlexibleTaggedErrConstructorFn<TErrorName extends string> = <
-	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
-	TCause extends TaggedError<string, any, any> = never,
-	TContext extends Record<string, unknown> = Record<string, unknown>,
->(input: {
-	message: string;
-	context?: TContext;
-	cause?: TCause;
-}) => Err<TaggedError<TErrorName, TCause, TContext>>;
-
-/**
- * Creates plain TaggedError objects with fixed context but flexible cause.
- * Context is required since the shape is locked at factory creation.
- * Cause can vary at call time.
- */
-type ContextFixedTaggedErrorConstructorFn<
-	TErrorName extends string,
-	TContext extends Record<string, unknown>,
-> = <
-	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
-	TCause extends TaggedError<string, any, any> = never,
->(input: {
-	message: string;
-	context: TContext;
-	cause?: TCause;
-}) => TaggedError<TErrorName, TCause, TContext>;
-
-/**
- * Creates Err-wrapped TaggedError objects with fixed context but flexible cause.
- * Context is required since the shape is locked at factory creation.
- * Cause can vary at call time.
- */
-type ContextFixedTaggedErrConstructorFn<
-	TErrorName extends string,
-	TContext extends Record<string, unknown>,
-> = <
-	// biome-ignore lint/suspicious/noExplicitAny: Generic constraint requires any to match TaggedError definition
-	TCause extends TaggedError<string, any, any> = never,
->(input: {
-	message: string;
-	context: TContext;
-	cause?: TCause;
-}) => Err<TaggedError<TErrorName, TCause, TContext>>;
-
-/**
- * Creates plain TaggedError objects with both context and cause fixed.
- * Both context and cause are required since their shapes are locked.
- */
-type BothFixedTaggedErrorConstructorFn<
-	TErrorName extends string,
-	TContext extends Record<string, unknown>,
-	// biome-ignore lint/suspicious/noExplicitAny: TaggedError type requires any for flexible cause and context
-	TCause extends TaggedError<string, any, any>,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause: TCause;
-}) => TaggedError<TErrorName, TCause, TContext>;
-
-/**
- * Creates Err-wrapped TaggedError objects with both context and cause fixed.
- * Both context and cause are required since their shapes are locked.
- */
-type BothFixedTaggedErrConstructorFn<
-	TErrorName extends string,
-	TContext extends Record<string, unknown>,
-	// biome-ignore lint/suspicious/noExplicitAny: TaggedError type requires any for flexible cause and context
-	TCause extends TaggedError<string, any, any>,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause: TCause;
-}) => Err<TaggedError<TErrorName, TCause, TContext>>;
-
+export const createTaggedError = taggedError;
