@@ -171,7 +171,7 @@ describe("createTaggedError - Both Fixed Mode", () => {
 	// This mode is for when you want to constrain BOTH context shape AND cause type
 
 	type NetworkContext = { url: string; statusCode?: number };
-	type NetworkErrorType = TaggedError<"NetworkError", never, NetworkContext>;
+	type NetworkErrorType = TaggedError<"NetworkError", NetworkContext>;
 
 	type ApiContext = { endpoint: string; method: string };
 	const { ApiError, ApiErr } = createTaggedError<

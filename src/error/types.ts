@@ -31,8 +31,8 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  * - When `TCause` is specified: `cause` is a **required** property
  *
  * @template TName - The error name (discriminator for tagged unions)
- * @template TCause - The type of error that caused this error (default: never = no cause property)
  * @template TContext - Additional context data for the error (default: never = no context property)
+ * @template TCause - The type of error that caused this error (default: never = no cause property)
  *
  * @example
  * ```ts
@@ -45,7 +45,7 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  * // validationError.context // Property 'context' does not exist
  *
  * // Error with required context
- * type NetworkError = TaggedError<"NetworkError", never, { host: string; port: number }>;
+ * type NetworkError = TaggedError<"NetworkError", { host: string; port: number }>;
  * const networkError: NetworkError = {
  *   name: "NetworkError",
  *   message: "Socket timeout",
@@ -54,7 +54,7 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  * const host = networkError.context.host; // No optional chaining needed
  *
  * // Type-safe error chaining with required cause
- * type DatabaseError = TaggedError<"DatabaseError", NetworkError, { operation: string }>;
+ * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError>;
  * const dbError: DatabaseError = {
  *   name: "DatabaseError",
  *   message: "Failed to connect to database",
@@ -75,8 +75,8 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  */
 export type TaggedError<
 	TName extends string = string,
-	TCause = never,
 	TContext = never,
+	TCause = never,
 > = Readonly<
 	{
 		name: TName;

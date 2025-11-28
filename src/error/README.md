@@ -75,7 +75,7 @@ Every file error without a path is useless for debugging. Every API error withou
 Use this when errors have predictable causes. An API error wraps a network error. A service error wraps a repository error. Some errors cause other errors in consistent, meaningful ways.
 
 ```typescript
-type NetworkErrorType = TaggedError<'NetworkError', never, { url: string }>;
+type NetworkErrorType = TaggedError<'NetworkError', { url: string }>;
 
 const { ApiError, ApiErr } = createTaggedError<
   'ApiError',
@@ -145,7 +145,7 @@ type Ctx = { filename: string };
 const { FileError, FileErr } = createTaggedError<'FileError', Ctx>('FileError');
 
 // Both fixed: context required, cause constrained
-type NetworkErr = TaggedError<'NetworkError', never, { url: string }>;
+type NetworkErr = TaggedError<'NetworkError', { url: string }>;
 const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkErr>('ApiError');
 ```
 
