@@ -168,18 +168,18 @@ type FlexibleErrorConstructor<TName extends string> = {
 	<TContext extends Record<string, unknown>>(input: {
 		message: string;
 		context: TContext;
-	}): TaggedError<TName, never, TContext>;
+	}): TaggedError<TName, TContext, never>;
 	// With cause only
 	<TCause extends AnyTaggedError>(input: {
 		message: string;
 		cause: TCause;
-	}): TaggedError<TName, TCause, never>;
+	}): TaggedError<TName, never, TCause>;
 	// With both context and cause
 	<TContext extends Record<string, unknown>, TCause extends AnyTaggedError>(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): TaggedError<TName, TCause, TContext>;
+	}): TaggedError<TName, TContext, TCause>;
 };
 
 /**
@@ -190,16 +190,16 @@ type FlexibleErrConstructor<TName extends string> = {
 	<TContext extends Record<string, unknown>>(input: {
 		message: string;
 		context: TContext;
-	}): Err<TaggedError<TName, never, TContext>>;
+	}): Err<TaggedError<TName, TContext, never>>;
 	<TCause extends AnyTaggedError>(input: {
 		message: string;
 		cause: TCause;
-	}): Err<TaggedError<TName, TCause, never>>;
+	}): Err<TaggedError<TName, never, TCause>>;
 	<TContext extends Record<string, unknown>, TCause extends AnyTaggedError>(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): Err<TaggedError<TName, TCause, TContext>>;
+	}): Err<TaggedError<TName, TContext, TCause>>;
 };
 
 // =============================================================================
@@ -217,15 +217,15 @@ type ContextFixedErrorConstructor<
 	// Without cause
 	(input: { message: string; context: TContext }): TaggedError<
 		TName,
-		never,
-		TContext
+		TContext,
+		never
 	>;
 	// With cause
 	<TCause extends AnyTaggedError>(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): TaggedError<TName, TCause, TContext>;
+	}): TaggedError<TName, TContext, TCause>;
 };
 
 /**
@@ -236,13 +236,13 @@ type ContextFixedErrConstructor<
 	TContext extends Record<string, unknown>,
 > = {
 	(input: { message: string; context: TContext }): Err<
-		TaggedError<TName, never, TContext>
+		TaggedError<TName, TContext, never>
 	>;
 	<TCause extends AnyTaggedError>(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): Err<TaggedError<TName, TCause, TContext>>;
+	}): Err<TaggedError<TName, TContext, TCause>>;
 };
 
 // =============================================================================
@@ -261,15 +261,15 @@ type BothFixedErrorConstructor<
 	// Without cause
 	(input: { message: string; context: TContext }): TaggedError<
 		TName,
-		never,
-		TContext
+		TContext,
+		never
 	>;
 	// With cause (must match TCause)
 	(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): TaggedError<TName, TCause, TContext>;
+	}): TaggedError<TName, TContext, TCause>;
 };
 
 /**
@@ -281,13 +281,13 @@ type BothFixedErrConstructor<
 	TCause extends AnyTaggedError,
 > = {
 	(input: { message: string; context: TContext }): Err<
-		TaggedError<TName, never, TContext>
+		TaggedError<TName, TContext, never>
 	>;
 	(input: {
 		message: string;
 		context: TContext;
 		cause: TCause;
-	}): Err<TaggedError<TName, TCause, TContext>>;
+	}): Err<TaggedError<TName, TContext, TCause>>;
 };
 
 // =============================================================================
