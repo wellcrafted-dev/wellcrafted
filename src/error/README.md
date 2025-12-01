@@ -132,21 +132,52 @@ console.log(JSON.stringify(serviceError, null, 2));
 
 Each layer adds its own context while preserving the full chain.
 
+## Type Annotations with ReturnType
+
+`ReturnType` works correctly for all modes:
+
+```typescript
+// Flexible mode
+const { NetworkError } = createTaggedError('NetworkError');
+type NetworkError = ReturnType<typeof NetworkError>;
+// = TaggedError<'NetworkError'> with optional context/cause
+
+// Fixed context mode
+const { FileError } = createTaggedError<'FileError', { path: string }>('FileError');
+type FileError = ReturnType<typeof FileError>;
+// = TaggedError<'FileError', { path: string }> with required context
+
+// Use in function signatures
+function handleErrors(error: NetworkError | FileError) {
+  switch (error.name) {
+    case 'NetworkError':
+      console.log('Network failed:', error.message);
+      break;
+    case 'FileError':
+      console.log('File failed:', error.context.path);
+      break;
+  }
+}
+```
+
 ## Quick Reference
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { createTaggedError, TaggedError } from 'wellcrafted/error';
 
-// Flexible: context and cause optional, any shape
+// Flexible: context and cause optional, loosely typed
 const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+type NetworkError = ReturnType<typeof NetworkError>;
 
-// Fixed context: shape required
+// Fixed context: context required with exact shape
 type Ctx = { filename: string };
 const { FileError, FileErr } = createTaggedError<'FileError', Ctx>('FileError');
+type FileError = ReturnType<typeof FileError>;
 
-// Both fixed: context required, cause constrained
-type NetworkErr = TaggedError<'NetworkError', { url: string }>;
-const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkErr>('ApiError');
+// Both fixed: context required, cause constrained to specific type
+type NetworkErrorType = TaggedError<'NetworkError', { url: string }>;
+const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkErrorType>('ApiError');
+type ApiError = ReturnType<typeof ApiError>;
 ```
 
 Each factory returns two functions:
