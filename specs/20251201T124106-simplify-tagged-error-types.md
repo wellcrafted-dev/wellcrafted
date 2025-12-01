@@ -247,4 +247,34 @@ const err = ApiError({ message: 'x', context: { endpoint: '/users' } });
 
 ### Test Results
 
-All 23 tests pass. TypeScript compilation succeeds (only unrelated vitest type declaration warning).
+All 25 tests pass. TypeScript compilation succeeds.
+
+### Follow-up: Optional Typed Context (Separate Changeset)
+
+After the initial simplification, we added support for "optional but typed" context via union with `undefined`.
+
+**The Pattern:**
+```typescript
+type LogContext = { file: string; line: number } | undefined;
+const { LogError } = createTaggedError<'LogError', LogContext>('LogError');
+
+// Can omit context
+LogError({ message: 'Parse failed' });
+
+// But when provided, it's typed
+LogError({ message: 'Parse failed', context: { file: 'app.ts', line: 42 } });
+```
+
+**Implementation:**
+- Updated `WithContext` helper to detect `undefined` in the union: `[undefined] extends [TContext]`
+- Uses bracket notation to prevent distributive conditional types
+- `Exclude<TContext, undefined>` strips the undefined from the union to get the typed part
+- Same pattern applied to `WithCause` for consistency
+
+**New Tests:**
+- `optional typed context via union with undefined` - verifies both runtime behavior and compile-time types
+- `TaggedError type with optional typed context` - verifies the pattern works directly with the type
+
+**Documentation:**
+- Added "Optional Typed Context: Best of Both Worlds" section to README
+- Added example to Quick Reference

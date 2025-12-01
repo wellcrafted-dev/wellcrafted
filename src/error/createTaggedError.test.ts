@@ -66,9 +66,8 @@ describe("createTaggedError - Flexible Mode", () => {
 		it("returns Err with just message", () => {
 			const result = NetworkErr({ message: "Connection failed" });
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("NetworkError");
-			expect(result.error?.message).toBe("Connection failed");
+			expect(result.error.name).toBe("NetworkError");
+			expect(result.error.message).toBe("Connection failed");
 			expect(result.data).toBeNull();
 		});
 
@@ -78,9 +77,8 @@ describe("createTaggedError - Flexible Mode", () => {
 				context: { url: "https://api.example.com" },
 			});
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("NetworkError");
-			expect(result.error?.context).toEqual({
+			expect(result.error.name).toBe("NetworkError");
+			expect(result.error.context).toEqual({
 				url: "https://api.example.com",
 			});
 		});
@@ -155,9 +153,8 @@ describe("createTaggedError - Fixed Context Mode", () => {
 				context: { filename: "secret.txt", code: "PERMISSION_DENIED" },
 			});
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.context.filename).toBe("secret.txt");
-			expect(result.error?.context.code).toBe("PERMISSION_DENIED");
+			expect(result.error.context.filename).toBe("secret.txt");
+			expect(result.error.context.code).toBe("PERMISSION_DENIED");
 		});
 	});
 });
@@ -235,8 +232,8 @@ describe("createTaggedError - Both Fixed Mode", () => {
 			});
 
 			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("ApiError");
-			expect(result.error?.cause?.name).toBe("NetworkError");
+			expect(result.error.name).toBe("ApiError");
+			expect(result.error.cause?.name).toBe("NetworkError");
 		});
 	});
 });
@@ -394,6 +391,43 @@ describe("Type Safety", () => {
 			message: string;
 			context: { endpoint: string };
 		}>();
+	});
+
+	it("optional typed context via union with undefined", () => {
+		// Use union with undefined to get optional but typed context
+		type OptionalCtx = { file: string; line: number } | undefined;
+		const { LogError } = createTaggedError<"LogError", OptionalCtx>("LogError");
+
+		// Can create without context
+		const err1 = LogError({ message: "Parse failed" });
+		expectTypeOf(err1.context).toEqualTypeOf<{ file: string; line: number } | undefined>();
+
+		// Can create with typed context
+		const err2 = LogError({ message: "Parse failed", context: { file: "app.ts", line: 42 } });
+		expectTypeOf(err2.context).toEqualTypeOf<{ file: string; line: number } | undefined>();
+
+		// Runtime verification
+		expect(err1.name).toBe("LogError");
+		expect(err1.context).toBeUndefined();
+		expect(err2.context?.file).toBe("app.ts");
+		expect(err2.context?.line).toBe(42);
+	});
+
+	it("TaggedError type with optional typed context", () => {
+		// Direct use of TaggedError type with union
+		type OptionalContextError = TaggedError<"OptionalError", { code: string } | undefined>;
+
+		// The context should be optional but typed
+		const err1: OptionalContextError = { name: "OptionalError", message: "No context" };
+		const err2: OptionalContextError = {
+			name: "OptionalError",
+			message: "With context",
+			context: { code: "E001" },
+		};
+
+		expectTypeOf(err1.context).toEqualTypeOf<{ code: string } | undefined>();
+		expect(err1.context).toBeUndefined();
+		expect(err2.context?.code).toBe("E001");
 	});
 });
 

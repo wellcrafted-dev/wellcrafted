@@ -6,23 +6,32 @@ export type AnyTaggedError = { name: string; message: string };
 /**
  * Helper type that adds a context property.
  * - When TContext is undefined (default): context is OPTIONAL with loose typing
- * - When TContext is a specific type: context is REQUIRED with that exact type
+ * - When TContext includes undefined (e.g., `{ foo: string } | undefined`): context is OPTIONAL but typed
+ * - When TContext is a specific type without undefined: context is REQUIRED with that exact type
+ *
+ * This allows users to specify "optional but typed" context by passing a union with undefined.
  */
-type WithContext<TContext> = TContext extends undefined
+type WithContext<TContext> = [TContext] extends [undefined]
 	? { context?: Record<string, unknown> }
-	: { context: TContext };
+	: [undefined] extends [TContext]
+		? { context?: Exclude<TContext, undefined> }
+		: { context: TContext };
 
 /**
  * Helper type that adds a cause property.
  * - When TCause is undefined (default): cause is OPTIONAL, any tagged error allowed
+ * - When TCause includes undefined (e.g., `NetworkError | undefined`): cause is OPTIONAL, constrained
  * - When TCause is a specific type: cause is OPTIONAL but constrained to that type
  *
  * Note: cause is always optional at runtime (errors can be created without causes),
  * but when TCause is specified, it constrains what cause types are allowed.
+ * Using brackets to prevent distributive conditional behavior with union types.
  */
-type WithCause<TCause> = TCause extends undefined
+type WithCause<TCause> = [TCause] extends [undefined]
 	? { cause?: AnyTaggedError }
-	: { cause?: TCause };
+	: [undefined] extends [TCause]
+		? { cause?: Exclude<TCause, undefined> }
+		: { cause?: TCause };
 
 /**
  * Creates a tagged error type for type-safe error handling.
@@ -34,7 +43,8 @@ type WithCause<TCause> = TCause extends undefined
  *
  * **Type Parameter Behavior:**
  * - When `TContext` is `undefined` (default): `context` is OPTIONAL with type `Record<string, unknown>`
- * - When `TContext` is specified: `context` is REQUIRED with that exact type
+ * - When `TContext` is `{ ... } | undefined`: `context` is OPTIONAL but typed (use union for optional typed context)
+ * - When `TContext` is specified without undefined: `context` is REQUIRED with that exact type
  * - When `TCause` is `undefined` (default): `cause` is OPTIONAL, any `AnyTaggedError` allowed
  * - When `TCause` is specified: `cause` is OPTIONAL but constrained to that type
  *
@@ -60,6 +70,11 @@ type WithCause<TCause> = TCause extends undefined
  *   context: { host: "db.example.com", port: 5432 } // Required!
  * };
  * const host = networkError.context.host; // Type-safe, no optional chaining needed
+ *
+ * // Error with OPTIONAL but TYPED context (union with undefined)
+ * type LogError = TaggedError<"LogError", { file: string; line: number } | undefined>;
+ * const logError1: LogError = { name: "LogError", message: "Parse failed" }; // OK - no context
+ * const logError2: LogError = { name: "LogError", message: "Parse failed", context: { file: "app.ts", line: 42 } }; // OK - typed context
  *
  * // Error with fixed context and constrained cause type
  * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError>;

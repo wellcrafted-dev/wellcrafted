@@ -70,6 +70,26 @@ Every file error without a path is useless for debugging. Every API error withou
 
 **When to use:** Application-level errors where you know exactly what context matters. File operations need paths. API calls need endpoints. Database queries need SQL.
 
+### Optional Typed Context: Best of Both Worlds
+
+Sometimes you want context to be optional (not every error needs it), but when provided, it should be typed. Use a union with `undefined`:
+
+```typescript
+type LogContext = { file: string; line: number } | undefined;
+const { LogError, LogErr } = createTaggedError<'LogError', LogContext>('LogError');
+
+// Context is optional
+LogError({ message: 'Parse failed' });
+
+// But when provided, it's fully typed
+LogError({ message: 'Parse failed', context: { file: 'app.ts', line: 42 } });
+// LogError({ message: 'x', context: { wrong: true } }); // Type error!
+```
+
+This differs from flexible mode: flexible mode accepts any shape, while optional typed mode enforces the exact shape when context is present.
+
+**When to use:** Errors where context is helpful but not always available. Log messages where you sometimes have source location. API errors where you sometimes have request details.
+
 ### Both Fixed Mode: Type-Safe Error Hierarchies
 
 Use this when errors have predictable causes. An API error wraps a network error. A service error wraps a repository error. Some errors cause other errors in consistent, meaningful ways.
@@ -173,6 +193,11 @@ type NetworkError = ReturnType<typeof NetworkError>;
 type Ctx = { filename: string };
 const { FileError, FileErr } = createTaggedError<'FileError', Ctx>('FileError');
 type FileError = ReturnType<typeof FileError>;
+
+// Optional typed context: context optional but typed when provided
+type LogCtx = { file: string; line: number } | undefined;
+const { LogError, LogErr } = createTaggedError<'LogError', LogCtx>('LogError');
+type LogError = ReturnType<typeof LogError>;
 
 // Both fixed: context required, cause constrained to specific type
 type NetworkErrorType = TaggedError<'NetworkError', { url: string }>;
