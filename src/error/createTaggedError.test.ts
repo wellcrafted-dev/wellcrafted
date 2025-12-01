@@ -66,9 +66,8 @@ describe("createTaggedError - Flexible Mode", () => {
 		it("returns Err with just message", () => {
 			const result = NetworkErr({ message: "Connection failed" });
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("NetworkError");
-			expect(result.error?.message).toBe("Connection failed");
+			expect(result.error.name).toBe("NetworkError");
+			expect(result.error.message).toBe("Connection failed");
 			expect(result.data).toBeNull();
 		});
 
@@ -78,9 +77,8 @@ describe("createTaggedError - Flexible Mode", () => {
 				context: { url: "https://api.example.com" },
 			});
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("NetworkError");
-			expect(result.error?.context).toEqual({
+			expect(result.error.name).toBe("NetworkError");
+			expect(result.error.context).toEqual({
 				url: "https://api.example.com",
 			});
 		});
@@ -155,9 +153,8 @@ describe("createTaggedError - Fixed Context Mode", () => {
 				context: { filename: "secret.txt", code: "PERMISSION_DENIED" },
 			});
 
-			expect(result.error).toBeDefined();
-			expect(result.error?.context.filename).toBe("secret.txt");
-			expect(result.error?.context.code).toBe("PERMISSION_DENIED");
+			expect(result.error.context.filename).toBe("secret.txt");
+			expect(result.error.context.code).toBe("PERMISSION_DENIED");
 		});
 	});
 });
@@ -209,14 +206,15 @@ describe("createTaggedError - Both Fixed Mode", () => {
 			const error = ApiError({
 				message: "API unavailable",
 				context: { endpoint: "/health", method: "GET" },
-				cause: networkError as NetworkErrorType,
+				cause: networkError,
 			});
 
 			expect(error.name).toBe("ApiError");
 			expect(error.context.endpoint).toBe("/health");
-			expect(error.cause.name).toBe("NetworkError");
-			expect(error.cause.context.url).toBe("https://api.example.com");
-			expect(error.cause.context.statusCode).toBe(503);
+			// cause is optional, so we need to check it exists first
+			expect(error.cause?.name).toBe("NetworkError");
+			expect(error.cause?.context.url).toBe("https://api.example.com");
+			expect(error.cause?.context.statusCode).toBe(503);
 		});
 	});
 
@@ -230,12 +228,12 @@ describe("createTaggedError - Both Fixed Mode", () => {
 			const result = ApiErr({
 				message: "Request timed out",
 				context: { endpoint: "/data", method: "POST" },
-				cause: networkError as NetworkErrorType,
+				cause: networkError,
 			});
 
 			expect(result.error).toBeDefined();
-			expect(result.error?.name).toBe("ApiError");
-			expect(result.error?.cause.name).toBe("NetworkError");
+			expect(result.error.name).toBe("ApiError");
+			expect(result.error.cause?.name).toBe("NetworkError");
 		});
 	});
 });
@@ -269,13 +267,14 @@ describe("createTaggedError - Error Chaining", () => {
 			cause: repoError,
 		});
 
-		// Verify the chain
+		// Verify the chain (using optional chaining since cause is optional at type level)
 		expect(serviceError.name).toBe("ServiceError");
-		expect(serviceError.cause.name).toBe("RepositoryError");
-		expect(serviceError.cause.cause.name).toBe("DatabaseError");
-		expect(serviceError.cause.cause.context.query).toBe(
-			"SELECT * FROM users",
-		);
+		expect(serviceError.cause?.name).toBe("RepositoryError");
+		// For deep chain access, we need to cast or use runtime checks
+		const repoCause = serviceError.cause as typeof repoError;
+		expect(repoCause?.cause?.name).toBe("DatabaseError");
+		const dbCause = repoCause?.cause as typeof dbError;
+		expect(dbCause?.context?.query).toBe("SELECT * FROM users");
 	});
 
 	it("errors are JSON serializable", () => {
@@ -313,16 +312,19 @@ describe("Type Safety", () => {
 	it("flexible mode has correct types", () => {
 		const { NetworkError } = createTaggedError("NetworkError");
 
-		// Just message
+		// Just message - context is optional
 		const e1 = NetworkError({ message: "Error" });
 		expectTypeOf(e1).toMatchTypeOf<{ name: "NetworkError"; message: string }>();
+		// Context is optional and loosely typed in flexible mode
+		expectTypeOf(e1.context).toEqualTypeOf<Record<string, unknown> | undefined>();
 
-		// With context
+		// With context - still loosely typed (this is the trade-off for simpler types)
 		const e2 = NetworkError({
 			message: "Error",
 			context: { url: "https://..." },
 		});
-		expectTypeOf(e2.context).toMatchTypeOf<{ url: string }>();
+		// In flexible mode, context is Record<string, unknown>, not precisely inferred
+		expectTypeOf(e2.context).toEqualTypeOf<Record<string, unknown> | undefined>();
 	});
 
 	it("fixed context mode requires context", () => {
@@ -334,12 +336,13 @@ describe("Type Safety", () => {
 			context: { filename: "test.txt" },
 		});
 
+		// Fixed context mode has precise typing
 		expectTypeOf(error.context).toEqualTypeOf<{ filename: string }>();
 	});
 
 	it("both fixed mode constrains cause type", () => {
 		// Define the cause type explicitly
-		type CauseType = TaggedError<"CauseError", never, never>;
+		type CauseType = TaggedError<"CauseError">;
 
 		const { WrapperError } = createTaggedError<
 			"WrapperError",
@@ -354,10 +357,77 @@ describe("Type Safety", () => {
 		const wrapper = WrapperError({
 			message: "Wrapped",
 			context: { wrap: true },
-			cause: cause as CauseType,
+			cause: cause,
 		});
 
-		expectTypeOf(wrapper.cause).toMatchTypeOf<CauseType>();
+		// Cause is optional but constrained to CauseType when provided
+		expectTypeOf(wrapper.cause).toEqualTypeOf<CauseType | undefined>();
+	});
+
+	it("ReturnType works correctly in flexible mode", () => {
+		const { NetworkError } = createTaggedError("NetworkError");
+
+		// This is the key test - ReturnType should give a useful type
+		type NetworkErrorType = ReturnType<typeof NetworkError>;
+
+		// The type should have optional context and cause
+		expectTypeOf<NetworkErrorType>().toMatchTypeOf<{
+			name: "NetworkError";
+			message: string;
+			context?: Record<string, unknown>;
+			cause?: { name: string; message: string };
+		}>();
+	});
+
+	it("ReturnType works correctly in fixed context mode", () => {
+		type Ctx = { endpoint: string };
+		const { ApiError } = createTaggedError<"ApiError", Ctx>("ApiError");
+
+		type ApiErrorType = ReturnType<typeof ApiError>;
+
+		// Context should be required and typed
+		expectTypeOf<ApiErrorType>().toMatchTypeOf<{
+			name: "ApiError";
+			message: string;
+			context: { endpoint: string };
+		}>();
+	});
+
+	it("optional typed context via union with undefined", () => {
+		// Use union with undefined to get optional but typed context
+		type OptionalCtx = { file: string; line: number } | undefined;
+		const { LogError } = createTaggedError<"LogError", OptionalCtx>("LogError");
+
+		// Can create without context
+		const err1 = LogError({ message: "Parse failed" });
+		expectTypeOf(err1.context).toEqualTypeOf<{ file: string; line: number } | undefined>();
+
+		// Can create with typed context
+		const err2 = LogError({ message: "Parse failed", context: { file: "app.ts", line: 42 } });
+		expectTypeOf(err2.context).toEqualTypeOf<{ file: string; line: number } | undefined>();
+
+		// Runtime verification
+		expect(err1.name).toBe("LogError");
+		expect(err1.context).toBeUndefined();
+		expect(err2.context?.file).toBe("app.ts");
+		expect(err2.context?.line).toBe(42);
+	});
+
+	it("TaggedError type with optional typed context", () => {
+		// Direct use of TaggedError type with union
+		type OptionalContextError = TaggedError<"OptionalError", { code: string } | undefined>;
+
+		// The context should be optional but typed
+		const err1: OptionalContextError = { name: "OptionalError", message: "No context" };
+		const err2: OptionalContextError = {
+			name: "OptionalError",
+			message: "With context",
+			context: { code: "E001" },
+		};
+
+		expectTypeOf(err1.context).toEqualTypeOf<{ code: string } | undefined>();
+		expect(err1.context).toBeUndefined();
+		expect(err2.context?.code).toBe("E001");
 	});
 });
 
@@ -374,7 +444,13 @@ describe("Edge Cases", () => {
 	});
 
 	it("handles complex nested context", () => {
-		const { TestError } = createTaggedError("TestError");
+		// Use fixed context mode for type-safe nested access
+		type NestedContext = {
+			nested: { deeply: { value: number } };
+			array: number[];
+			nullable: null;
+		};
+		const { TestError } = createTaggedError<"TestError", NestedContext>("TestError");
 		const error = TestError({
 			message: "Error",
 			context: {
