@@ -1,5 +1,76 @@
 # wellcrafted
 
+## 0.25.1
+
+### Patch Changes
+
+- 5d72453: feat(error): support optional typed context via union with undefined
+
+  You can now specify context that is optional but still type-checked when provided by using a union with `undefined`:
+
+  ```typescript
+  type LogContext = { file: string; line: number } | undefined;
+  const { LogError } = createTaggedError<"LogError", LogContext>("LogError");
+
+  // Context is optional
+  LogError({ message: "Parse failed" });
+
+  // But when provided, it's typed
+  LogError({ message: "Parse failed", context: { file: "app.ts", line: 42 } });
+  ```
+
+  This gives you the best of both worlds: optional context like flexible mode, but with type enforcement like fixed context mode.
+
+  The same pattern works for `cause`:
+
+  ```typescript
+  type NetworkError = TaggedError<"NetworkError">;
+  type CauseType = NetworkError | undefined;
+  const { ApiError } = createTaggedError<
+    "ApiError",
+    { endpoint: string },
+    CauseType
+  >("ApiError");
+  ```
+
+- 5d72453: fix(error): simplify TaggedError types for better ReturnType inference
+
+  Previously, `createTaggedError` used function overloads to provide precise call-site type inference. While this worked well for constructing errors, it broke `ReturnType<typeof MyError>` because TypeScript picks the last overload (the most constrained signature).
+
+  This change simplifies to single signatures per mode:
+
+  1. **Flexible mode** (no type params): context and cause are optional with loose typing
+  2. **Fixed context mode** (TContext specified): context is required with exact type
+  3. **Both fixed mode** (TContext + TCause): context required, cause optional but constrained
+
+  `ReturnType` now works correctly:
+
+  ```typescript
+  const { NetworkError } = createTaggedError("NetworkError");
+  type NetworkError = ReturnType<typeof NetworkError>;
+  // = TaggedError<'NetworkError'> with optional context/cause
+  ```
+
+  **BREAKING CHANGE**: In flexible mode, `context` is now typed as `Record<string, unknown> | undefined` instead of precisely inferred at call sites. Users who need typed context should use fixed context mode:
+
+  ```typescript
+  // Before (flexible with inference - no longer works)
+  const { ApiError } = createTaggedError("ApiError");
+  const err = ApiError({ message: "x", context: { endpoint: "/users" } });
+
+  // After (fixed context mode)
+  const { ApiError } = createTaggedError<"ApiError", { endpoint: string }>(
+    "ApiError"
+  );
+  const err = ApiError({ message: "x", context: { endpoint: "/users" } });
+  ```
+
+- 2388e95: fix(result): add overload for trySync/tryAsync when catch returns Ok | Err union
+
+  Previously, trySync and tryAsync only had overloads for catch handlers that returned exclusively Ok<T> or exclusively Err<E>. This caused type errors when a catch handler could return either based on runtime conditions (conditional recovery pattern).
+
+  Added a third overload to both functions that accepts catch handlers returning `Ok<T> | Err<E>`, properly typing the return as `Result<T, E>`.
+
 ## 0.25.0
 
 ### Minor Changes
