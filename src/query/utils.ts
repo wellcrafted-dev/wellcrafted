@@ -39,8 +39,12 @@ export type DefineQueryInput<
 /**
  * Output of defineQuery function.
  *
+ * The query definition is directly callable and defaults to `ensure()` behavior,
+ * which is recommended for most imperative use cases like preloaders.
+ *
  * Provides both reactive and imperative interfaces for data fetching:
- * - `options()`: Returns config for use with useQuery() or createQuery()
+ * - `()` (callable): Same as `ensure()` - returns cached data if available, fetches if not
+ * - `options`: Returns config for use with useQuery() or createQuery()
  * - `fetch()`: Always attempts to fetch data (from cache if fresh, network if stale)
  * - `ensure()`: Guarantees data availability, preferring cached data (recommended for preloaders)
  *
@@ -48,6 +52,21 @@ export type DefineQueryInput<
  * @template TError - The type of error that can be thrown
  * @template TData - The type of data returned by the query (after select transform)
  * @template TQueryKey - The type of the query key
+ *
+ * @example
+ * ```typescript
+ * const userQuery = defineQuery({...});
+ *
+ * // Directly callable (same as .ensure())
+ * const { data, error } = await userQuery();
+ *
+ * // Or use explicit methods
+ * const { data, error } = await userQuery.ensure();
+ * const { data, error } = await userQuery.fetch();
+ *
+ * // For reactive usage
+ * const query = createQuery(userQuery.options);
+ * ```
  */
 export type DefineQueryOutput<
 	TQueryFnData = unknown,
@@ -55,8 +74,8 @@ export type DefineQueryOutput<
 	TData = TQueryFnData,
 	TQueryData = TQueryFnData,
 	TQueryKey extends QueryKey = QueryKey,
-> = {
-	options: () => QueryObserverOptions<
+> = (() => Promise<Result<TQueryData, TError>>) & {
+	options: QueryObserverOptions<
 		TQueryFnData,
 		TError,
 		TData,
@@ -92,22 +111,40 @@ export type DefineMutationInput<
 /**
  * Output of defineMutation function.
  *
+ * The mutation definition is directly callable, which executes the mutation
+ * and returns a Result. This is equivalent to calling `.execute()`.
+ *
  * Provides both reactive and imperative interfaces for data mutations:
- * - `options()`: Returns config for use with useMutation() or createMutation()
- * - `execute()`: Directly executes the mutation and returns a Result
+ * - `(variables)` (callable): Same as `execute()` - directly executes the mutation
+ * - `options`: Returns config for use with useMutation() or createMutation()
+ * - `execute(variables)`: Directly executes the mutation and returns a Result
  *
  * @template TData - The type of data returned by the mutation
  * @template TError - The type of error that can be thrown
  * @template TVariables - The type of variables passed to the mutation
  * @template TContext - The type of context data for optimistic updates
+ *
+ * @example
+ * ```typescript
+ * const createUser = defineMutation({...});
+ *
+ * // Directly callable (same as .execute())
+ * const { data, error } = await createUser({ name: 'John' });
+ *
+ * // Or use explicit method
+ * const { data, error } = await createUser.execute({ name: 'John' });
+ *
+ * // For reactive usage
+ * const mutation = createMutation(createUser.options);
+ * ```
  */
 export type DefineMutationOutput<
 	TData,
 	TError,
 	TVariables = void,
 	TContext = unknown,
-> = {
-	options: () => MutationOptions<TData, TError, TVariables, TContext>;
+> = ((variables: TVariables) => Promise<Result<TData, TError>>) & {
+	options: MutationOptions<TData, TError, TVariables, TContext>;
 	execute: (variables: TVariables) => Promise<Result<TData, TError>>;
 };
 
@@ -159,13 +196,17 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * This factory function is the cornerstone of our data fetching architecture. It wraps service calls
 	 * with TanStack Query superpowers while maintaining type safety through Result types.
 	 *
+	 * The returned query definition is **directly callable** and defaults to `ensure()` behavior,
+	 * which is recommended for most imperative use cases like preloaders.
+	 *
 	 * ## Why use defineQuery?
 	 *
-	 * 1. **Dual Interface**: Provides both reactive (`.options`) and imperative (`.fetch()`) APIs
-	 * 2. **Automatic Error Handling**: Service functions return `Result<T, E>` types which are automatically
+	 * 1. **Callable**: Call directly like `userQuery()` for imperative data fetching
+	 * 2. **Dual Interface**: Also provides reactive (`.options`) and explicit imperative (`.fetch()`, `.ensure()`) APIs
+	 * 3. **Automatic Error Handling**: Service functions return `Result<T, E>` types which are automatically
 	 *    unwrapped by TanStack Query, giving you proper error states in your components
-	 * 3. **Type Safety**: Full TypeScript support with proper inference for data and error types
-	 * 4. **Consistency**: Every query in the app follows the same pattern, making it easy to understand
+	 * 4. **Type Safety**: Full TypeScript support with proper inference for data and error types
+	 * 5. **Consistency**: Every query in the app follows the same pattern, making it easy to understand
 	 *
 	 * @template TQueryFnData - The type of data returned by the query function
 	 * @template TError - The type of error that can be thrown
@@ -177,10 +218,11 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * @param options.resultQueryFn - Function that fetches data and returns a Result type
 	 * @param options.* - Any other TanStack Query options (staleTime, refetchInterval, etc.)
 	 *
-	 * @returns Query definition object with three methods:
-	 *   - `options()`: Returns config for use with useQuery() or createQuery()
-	 *   - `fetch()`: Always attempts to fetch data (from cache if fresh, network if stale)
-	 *   - `ensure()`: Guarantees data availability, preferring cached data (recommended for preloaders)
+	 * @returns Callable query definition with:
+	 *   - `()` (callable): Same as `ensure()` - returns cached data if available, fetches if not
+	 *   - `.options`: Config for use with useQuery() or createQuery()
+	 *   - `.fetch()`: Always attempts to fetch (from cache if fresh, network if stale)
+	 *   - `.ensure()`: Guarantees data availability, preferring cached data (recommended for preloaders)
 	 *
 	 * @example
 	 * ```typescript
@@ -196,16 +238,16 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * // $query.data is User | undefined
 	 * // $query.error is ApiError | null
 	 *
-	 * // Step 2b: Use imperatively in preloaders (recommended)
+	 * // Step 2b: Call directly in preloaders (recommended)
 	 * export const load = async () => {
-	 *   const { data, error } = await userQuery.ensure();
+	 *   const { data, error } = await userQuery(); // Same as userQuery.ensure()
 	 *   if (error) throw error;
 	 *   return { user: data };
 	 * };
 	 *
-	 * // Step 2c: Use imperatively for explicit refresh
+	 * // Step 2c: Use explicit methods when needed
 	 * async function refreshUser() {
-	 *   const { data, error } = await userQuery.fetch();
+	 *   const { data, error } = await userQuery.fetch(); // Force fresh fetch
 	 *   if (error) {
 	 *     console.error('Failed to fetch user:', error);
 	 *   }
@@ -242,103 +284,105 @@ export function createQueryFactories(queryClient: QueryClient) {
 			TQueryKey
 		>;
 
-		return {
-			/**
-			 * Returns the query options for reactive usage with TanStack Query hooks.
-			 * Use this with `useQuery()` or `createQuery()` for automatic subscriptions.
-			 * @returns The query options object configured for TanStack Query
-			 */
-			options: () => newOptions,
+		/**
+		 * Fetches data for this query using queryClient.fetchQuery().
+		 *
+		 * This method ALWAYS evaluates freshness and will refetch if data is stale.
+		 * It wraps TanStack Query's fetchQuery method, which returns cached data if fresh
+		 * or makes a network request if the data is stale or missing.
+		 *
+		 * **When to use fetch():**
+		 * - When you explicitly want to check data freshness
+		 * - For user-triggered refresh actions
+		 * - When you need the most up-to-date data
+		 *
+		 * **For preloaders, use ensure() instead** - it's more efficient for initial data loading.
+		 *
+		 * @returns Promise that resolves with a Result containing either the data or an error
+		 *
+		 * @example
+		 * // Good for user-triggered refresh
+		 * const { data, error } = await userQuery.fetch();
+		 * if (error) {
+		 *   console.error('Failed to load user:', error);
+		 * }
+		 */
+		async function fetch(): Promise<Result<TQueryData, TError>> {
+			try {
+				return Ok(
+					await queryClient.fetchQuery<
+						TQueryFnData,
+						TError,
+						TQueryData,
+						TQueryKey
+					>({
+						queryKey: newOptions.queryKey,
+						queryFn: newOptions.queryFn,
+					}),
+				);
+			} catch (error) {
+				return Err(error as TError);
+			}
+		}
 
-			/**
-			 * Fetches data for this query using queryClient.fetchQuery().
-			 *
-			 * This method ALWAYS evaluates freshness and will refetch if data is stale.
-			 * It wraps TanStack Query's fetchQuery method, which returns cached data if fresh
-			 * or makes a network request if the data is stale or missing.
-			 *
-			 * **When to use fetch():**
-			 * - When you explicitly want to check data freshness
-			 * - For user-triggered refresh actions
-			 * - When you need the most up-to-date data
-			 *
-			 * **For preloaders, use ensure() instead** - it's more efficient for initial data loading.
-			 *
-			 * @returns Promise that resolves with a Result containing either the data or an error
-			 *
-			 * @example
-			 * // Good for user-triggered refresh
-			 * const { data, error } = await userQuery.fetch();
-			 * if (error) {
-			 *   console.error('Failed to load user:', error);
-			 * }
-			 */
-			async fetch(): Promise<Result<TQueryData, TError>> {
-				try {
-					return Ok(
-						await queryClient.fetchQuery<
-							TQueryFnData,
-							TError,
-							TQueryData,
-							TQueryKey
-						>({
-							queryKey: newOptions.queryKey,
-							queryFn: newOptions.queryFn,
-						}),
-					);
-				} catch (error) {
-					return Err(error as TError);
-				}
-			},
+		/**
+		 * Ensures data is available for this query using queryClient.ensureQueryData().
+		 *
+		 * This method PRIORITIZES cached data and only calls fetchQuery internally if no cached
+		 * data exists. It wraps TanStack Query's ensureQueryData method, which is perfect for
+		 * guaranteeing data availability with minimal network requests.
+		 *
+		 * **This is the RECOMMENDED method for preloaders** because:
+		 * - It returns cached data immediately if available
+		 * - It updates the query client cache properly
+		 * - It minimizes network requests during navigation
+		 * - It ensures components have data ready when they mount
+		 *
+		 * **When to use ensure():**
+		 * - Route preloaders and data loading functions
+		 * - Initial component data requirements
+		 * - When cached data is acceptable for immediate display
+		 *
+		 * This is also the default behavior when calling the query directly.
+		 *
+		 * @returns Promise that resolves with a Result containing either the data or an error
+		 *
+		 * @example
+		 * // Perfect for preloaders
+		 * export const load = async () => {
+		 *   const { data, error } = await userQuery.ensure();
+		 *   // Or simply: await userQuery();
+		 *   if (error) {
+		 *     throw error;
+		 *   }
+		 *   return { user: data };
+		 * };
+		 */
+		async function ensure(): Promise<Result<TQueryData, TError>> {
+			try {
+				return Ok(
+					await queryClient.ensureQueryData<
+						TQueryFnData,
+						TError,
+						TQueryData,
+						TQueryKey
+					>({
+						queryKey: newOptions.queryKey,
+						queryFn: newOptions.queryFn,
+					}),
+				);
+			} catch (error) {
+				return Err(error as TError);
+			}
+		}
 
-			/**
-			 * Ensures data is available for this query using queryClient.ensureQueryData().
-			 *
-			 * This method PRIORITIZES cached data and only calls fetchQuery internally if no cached
-			 * data exists. It wraps TanStack Query's ensureQueryData method, which is perfect for
-			 * guaranteeing data availability with minimal network requests.
-			 *
-			 * **This is the RECOMMENDED method for preloaders** because:
-			 * - It returns cached data immediately if available
-			 * - It updates the query client cache properly
-			 * - It minimizes network requests during navigation
-			 * - It ensures components have data ready when they mount
-			 *
-			 * **When to use ensure():**
-			 * - Route preloaders and data loading functions
-			 * - Initial component data requirements
-			 * - When cached data is acceptable for immediate display
-			 *
-			 * @returns Promise that resolves with a Result containing either the data or an error
-			 *
-			 * @example
-			 * // Perfect for preloaders
-			 * export const load = async () => {
-			 *   const { data, error } = await userQuery.ensure();
-			 *   if (error) {
-			 *     throw error;
-			 *   }
-			 *   return { user: data };
-			 * };
-			 */
-			async ensure(): Promise<Result<TQueryData, TError>> {
-				try {
-					return Ok(
-						await queryClient.ensureQueryData<
-							TQueryFnData,
-							TError,
-							TQueryData,
-							TQueryKey
-						>({
-							queryKey: newOptions.queryKey,
-							queryFn: newOptions.queryFn,
-						}),
-					);
-				} catch (error) {
-					return Err(error as TError);
-				}
-			},
-		};
+		// Create a callable function that defaults to ensure() behavior
+		// and attach options, fetch, and ensure as properties
+		return Object.assign(ensure, {
+			options: newOptions,
+			fetch,
+			ensure,
+		});
 	};
 
 	/**
@@ -348,11 +392,13 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * wrap service functions that perform side effects, while maintaining the same dual interface
 	 * pattern for maximum flexibility.
 	 *
+	 * The returned mutation definition is **directly callable**, which executes the mutation
+	 * and returns a Result. This is equivalent to calling `.execute()`.
+	 *
 	 * ## Why use defineMutation?
 	 *
-	 * 1. **Dual Interface**: Just like queries, mutations can be used reactively or imperatively
-	 * 2. **Direct Execution**: The `.execute()` method lets you run mutations without creating hooks,
-	 *    perfect for event handlers and non-component code
+	 * 1. **Callable**: Call directly like `createUser({ name: 'John' })` for imperative execution
+	 * 2. **Dual Interface**: Also provides reactive (`.options`) and explicit imperative (`.execute()`) APIs
 	 * 3. **Consistent Error Handling**: Service functions return `Result<T, E>` types, ensuring
 	 *    errors are handled consistently throughout the app
 	 * 4. **Cache Management**: Mutations often update the cache after success (see examples)
@@ -367,9 +413,10 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * @param options.resultMutationFn - Function that performs the mutation and returns a Result type
 	 * @param options.* - Any other TanStack Mutation options (onSuccess, onError, etc.)
 	 *
-	 * @returns Mutation definition object with two methods:
-	 *   - `options()`: Returns config for use with useMutation() or createMutation()
-	 *   - `execute()`: Directly executes the mutation and returns a Result
+	 * @returns Callable mutation definition with:
+	 *   - `(variables)` (callable): Same as `execute()` - directly executes the mutation
+	 *   - `.options`: Config for use with useMutation() or createMutation()
+	 *   - `.execute(variables)`: Directly executes the mutation and returns a Result
 	 *
 	 * @example
 	 * ```typescript
@@ -394,18 +441,18 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * const mutation = createMutation(createRecording.options);
 	 * // Call with: $mutation.mutate(recordingData)
 	 *
-	 * // Step 2b: Use imperatively in an action
+	 * // Step 2b: Call directly in an action (recommended)
 	 * async function saveRecording(data: Recording) {
-	 *   const { error } = await createRecording.execute(data);
+	 *   const { error } = await createRecording(data); // Same as createRecording.execute(data)
 	 *   if (error) {
-	 *     notify.error.execute({ title: 'Failed to save', description: error.message });
+	 *     notify.error({ title: 'Failed to save', description: error.message });
 	 *   } else {
-	 *     notify.success.execute({ title: 'Recording saved!' });
+	 *     notify.success({ title: 'Recording saved!' });
 	 *   }
 	 * }
 	 * ```
 	 *
-	 * @tip The imperative `.execute()` method is especially useful for:
+	 * @tip Calling directly is especially useful for:
 	 * - Event handlers that need to await the result
 	 * - Sequential operations that depend on each other
 	 * - Non-component code that needs to trigger mutations
@@ -420,47 +467,49 @@ export function createQueryFactories(queryClient: QueryClient) {
 			},
 		} satisfies MutationOptions<TData, TError, TVariables, TContext>;
 
-		return {
-			/**
-			 * Returns the mutation options for reactive usage with TanStack Query hooks.
-			 * Use this with `useMutation()` or `createMutation()` for reactive mutation state.
-			 * @returns The mutation options object configured for TanStack Query
-			 */
-			options: () => newOptions,
-			/**
-			 * Bypasses the reactive mutation hooks and executes the mutation imperatively.
-			 *
-			 * This is the recommended way to trigger mutations from:
-			 * - Button click handlers
-			 * - Form submissions
-			 * - Keyboard shortcuts
-			 * - Any non-component code
-			 *
-			 * The method automatically wraps the result in a Result type, so you always
-			 * get back `{ data, error }` for consistent error handling.
-			 *
-			 * @param variables - The variables to pass to the mutation function
-			 * @returns Promise that resolves with a Result containing either the data or an error
-			 *
-			 * @example
-			 * // In an event handler
-			 * async function handleSubmit(formData: FormData) {
-			 *   const { data, error } = await createUser.execute(formData);
-			 *   if (error) {
-			 *     notify.error.execute({ title: 'Failed to create user', description: error.message });
-			 *     return;
-			 *   }
-			 *   goto(`/users/${data.id}`);
-			 * }
-			 */
-			async execute(variables: TVariables) {
-				try {
-					return Ok(await executeMutation(queryClient, newOptions, variables));
-				} catch (error) {
-					return Err(error as TError);
-				}
-			},
-		};
+		/**
+		 * Executes the mutation imperatively and returns a Result.
+		 *
+		 * This is the recommended way to trigger mutations from:
+		 * - Button click handlers
+		 * - Form submissions
+		 * - Keyboard shortcuts
+		 * - Any non-component code
+		 *
+		 * The method automatically wraps the result in a Result type, so you always
+		 * get back `{ data, error }` for consistent error handling.
+		 *
+		 * This is also the default behavior when calling the mutation directly.
+		 *
+		 * @param variables - The variables to pass to the mutation function
+		 * @returns Promise that resolves with a Result containing either the data or an error
+		 *
+		 * @example
+		 * // In an event handler
+		 * async function handleSubmit(formData: FormData) {
+		 *   const { data, error } = await createUser.execute(formData);
+		 *   // Or simply: await createUser(formData);
+		 *   if (error) {
+		 *     notify.error({ title: 'Failed to create user', description: error.message });
+		 *     return;
+		 *   }
+		 *   goto(`/users/${data.id}`);
+		 * }
+		 */
+		async function execute(variables: TVariables) {
+			try {
+				return Ok(await runMutation(queryClient, newOptions, variables));
+			} catch (error) {
+				return Err(error as TError);
+			}
+		}
+
+		// Create a callable function that executes the mutation
+		// and attach options and execute as properties
+		return Object.assign(execute, {
+			options: newOptions,
+			execute,
+		});
 	};
 
 	return {
@@ -472,9 +521,9 @@ export function createQueryFactories(queryClient: QueryClient) {
 /**
  * Internal helper that executes a mutation directly using the query client's mutation cache.
  *
- * This is what powers the `.execute()` method on mutations. It bypasses the reactive
- * mutation hooks and runs the mutation imperatively, which is perfect for event handlers
- * and other imperative code.
+ * This is what powers the callable behavior and `.execute()` method on mutations.
+ * It bypasses the reactive mutation hooks and runs the mutation imperatively,
+ * which is perfect for event handlers and other imperative code.
  *
  * @internal
  * @template TData - The type of data returned by the mutation
@@ -486,7 +535,7 @@ export function createQueryFactories(queryClient: QueryClient) {
  * @param variables - The variables to pass to the mutation function
  * @returns Promise that resolves with the mutation result
  */
-function executeMutation<TData, TError, TVariables, TContext>(
+function runMutation<TData, TError, TVariables, TContext>(
 	queryClient: QueryClient,
 	options: MutationOptions<TData, TError, TVariables, TContext>,
 	variables: TVariables,
