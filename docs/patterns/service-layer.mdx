@@ -22,10 +22,10 @@ Here's the recommended pattern for creating services:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
 // 1. Define service-specific errors
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError");
+const { UserServiceError, UserServiceErr } = defineError("UserServiceError");
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // 2. Create service with factory function
@@ -96,8 +96,8 @@ export const UserServiceLive = createUserService(databaseInstance);
 Services often need multiple dependencies:
 
 ```typescript
-const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError");
-const { EmailServiceError, EmailServiceErr } = createTaggedError("EmailServiceError");
+const { PaymentServiceError, PaymentServiceErr } = defineError("PaymentServiceError");
+const { EmailServiceError, EmailServiceErr } = defineError("EmailServiceError");
 
 type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
 type EmailServiceError = ReturnType<typeof EmailServiceError>;
@@ -171,7 +171,7 @@ export type NotificationService = {
 };
 
 const { NotificationServiceError, NotificationServiceErr } = 
-  createTaggedError("NotificationServiceError");
+  defineError("NotificationServiceError");
   
 type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
 
@@ -504,10 +504,10 @@ Keep error types focused:
 
 ```typescript
 // ✅ Good - specific error type
-const { UserServiceError } = createTaggedError("UserServiceError");
+const { UserServiceError } = defineError("UserServiceError");
 
 // ❌ Bad - too generic
-const { ServiceError } = createTaggedError("ServiceError");
+const { ServiceError } = defineError("ServiceError");
 ```
 
 ### 2. Include Context in Errors

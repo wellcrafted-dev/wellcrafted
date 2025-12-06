@@ -14,10 +14,10 @@ Let's start by replacing a throwing function with a Result-returning one:
 
 ```typescript
 import { Result, Ok } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
 // Define your error with the factory function
-const { ParseError, ParseErr } = createTaggedError("ParseError");
+const { ParseError, ParseErr } = defineError("ParseError");
 type ParseError = ReturnType<typeof ParseError>;
 
 // Instead of throwing...
@@ -80,9 +80,9 @@ Most code you work with throws exceptions. Here's how to wrap it:
 
 ```typescript
 import { trySync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
-const { JsonError, JsonErr } = createTaggedError("JsonError");
+const { JsonError, JsonErr } = defineError("JsonError");
 type JsonError = ReturnType<typeof JsonError>;
 
 function parseJson<T>(text: string): Result<T, JsonError> {
@@ -109,9 +109,9 @@ if (error) {
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
-const { ApiError, ApiErr } = createTaggedError("ApiError");
+const { ApiError, ApiErr } = defineError("ApiError");
 type ApiError = ReturnType<typeof ApiError>;
 
 interface User {
