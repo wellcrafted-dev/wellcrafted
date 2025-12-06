@@ -232,13 +232,13 @@ function createFileNotFoundError(path: string, cause?: unknown): FileNotFoundErr
 
 ## Error Factory Pattern
 
-wellcrafted provides a powerful `createTaggedError` factory function that eliminates boilerplate and provides two convenient ways to create errors:
+wellcrafted provides a powerful `defineError` factory function that eliminates boilerplate and provides two convenient ways to create errors:
 
 ```typescript
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
 // Define your error with the factory
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+const { NetworkError, NetworkErr } = defineError('NetworkError');
 type NetworkError = ReturnType<typeof NetworkError>;
 
 // Two ways to use it:
@@ -273,9 +273,9 @@ return NetworkErr({
 
 ```typescript
 // Define your service errors
-const { UserNotFoundError, UserNotFoundErr } = createTaggedError('UserNotFoundError');
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
-const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError');
+const { UserNotFoundError, UserNotFoundErr } = defineError('UserNotFoundError');
+const { ValidationError, ValidationErr } = defineError('ValidationError');
+const { DatabaseError, DatabaseErr } = defineError('DatabaseError');
 
 // Type alias for convenience
 type UserNotFoundError = ReturnType<typeof UserNotFoundError>;
@@ -325,7 +325,7 @@ function validateEmail(email: string) {
 The factory pattern works seamlessly with error mapping:
 
 ```typescript
-const { ApiError, ApiErr } = createTaggedError('ApiError');
+const { ApiError, ApiErr } = defineError('ApiError');
 type ApiError = ReturnType<typeof ApiError>;
 
 const result = await tryAsync({

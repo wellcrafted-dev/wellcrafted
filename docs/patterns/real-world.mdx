@@ -32,7 +32,7 @@ A complete authentication service showing error propagation and transformation:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 // Brand types for safety
@@ -40,7 +40,7 @@ type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
 // Service-specific errors
-const { AuthServiceError, AuthServiceErr } = createTaggedError("AuthServiceError");
+const { AuthServiceError, AuthServiceErr } = defineError("AuthServiceError");
 type AuthServiceError = ReturnType<typeof AuthServiceError>;
 
 interface AuthenticatedUser {
@@ -169,7 +169,7 @@ A complete file upload service with size limits, type checking, and progress tra
 
 ```typescript
 import { Result, Ok, tryAsync, trySync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 // Brand types
@@ -177,7 +177,7 @@ type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
 // Service errors
-const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError");
+const { FileServiceError, FileServiceErr } = defineError("FileServiceError");
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 interface UploadedFile {
@@ -427,10 +427,10 @@ Combining wellcrafted with Zod for comprehensive form validation:
 ```typescript
 import { z } from 'zod';
 import { Result, Ok, trySync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineError } from "wellcrafted/error";
 
 // Form validation errors
-const { ValidationError, ValidationErr } = createTaggedError("ValidationError");
+const { ValidationError, ValidationErr } = defineError("ValidationError");
 type ValidationError = ReturnType<typeof ValidationError>;
 
 // Zod schemas

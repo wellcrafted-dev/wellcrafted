@@ -98,9 +98,9 @@ Create services that return Result types:
 ```typescript
 // services/api/users.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
+const { UserServiceError, UserServiceErr } = defineError('UserServiceError');
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {

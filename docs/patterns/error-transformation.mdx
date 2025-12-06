@@ -23,13 +23,13 @@ One of the most powerful patterns in wellcrafted applications is **error transfo
 
 ### 1. Service Layer: Domain-Specific Errors
 
-Services return detailed, domain-specific errors using `createTaggedError`:
+Services return detailed, domain-specific errors using `defineError`:
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 import { tryAsync, Result } from 'wellcrafted/result';
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError');
+const { RecorderServiceError, RecorderServiceErr } = defineError('RecorderServiceError');
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -135,7 +135,7 @@ Let's see a complete example with a database service:
 
 ```typescript
 // services/db.ts
-const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError');
+const { DbServiceError, DbServiceErr } = defineError('DbServiceError');
 type DbServiceError = ReturnType<typeof DbServiceError>;
 
 export async function getAllRecordings(): Promise<Result<Recording[], DbServiceError>> {

@@ -133,10 +133,10 @@ Create services that handle business logic with comprehensive error handling:
 ```typescript
 // src/services/users.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 import { db } from '../db';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
+const { UserServiceError, UserServiceErr } = defineError('UserServiceError');
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
@@ -416,9 +416,9 @@ Create middleware for validation, error handling, and response formatting:
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { trySync } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
+const { ValidationError, ValidationErr } = defineError('ValidationError');
 type ValidationError = ReturnType<typeof ValidationError>;
 
 export function validateBody<T>(schema: z.ZodSchema<T>) {
@@ -714,9 +714,9 @@ Create a database wrapper that handles connection errors:
 // src/db/index.ts
 import { PrismaClient } from '@prisma/client';
 import { tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 
-const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError');
+const { DatabaseError, DatabaseErr } = defineError('DatabaseError');
 type DatabaseError = ReturnType<typeof DatabaseError>;
 
 class Database {
@@ -941,10 +941,10 @@ Add authentication with proper error handling:
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { trySync } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 import { sendErrorResponse } from './errorHandler';
 
-const { AuthError, AuthErr } = createTaggedError('AuthError');
+const { AuthError, AuthErr } = defineError('AuthError');
 type AuthError = ReturnType<typeof AuthError>;
 
 export interface AuthenticatedRequest extends Request {
@@ -1242,9 +1242,9 @@ Set up environment configuration with validation:
 // src/config/env.ts
 import { z } from 'zod';
 import { trySync } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 
-const { ConfigError, ConfigErr } = createTaggedError('ConfigError');
+const { ConfigError, ConfigErr } = defineError('ConfigError');
 type ConfigError = ReturnType<typeof ConfigError>;
 
 const EnvSchema = z.object({

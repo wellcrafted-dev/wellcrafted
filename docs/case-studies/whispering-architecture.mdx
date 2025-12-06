@@ -599,10 +599,10 @@ To implement similar architecture in your application:
 Create pure functions that return Result types:
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineError } from 'wellcrafted/error';
 import { tryAsync, type Result } from 'wellcrafted/result';
 
-const { ApiError, ApiErr } = createTaggedError('ApiError');
+const { ApiError, ApiErr } = defineError('ApiError');
 type ApiError = ReturnType<typeof ApiError>;
 
 export function createUserService(config: { apiUrl: string }) {
