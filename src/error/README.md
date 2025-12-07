@@ -65,6 +65,29 @@ Both `.withContext<T>()` and `.withCause<T>()` determine optionality from the ty
 
 This is consistent with TypeScript idioms and requires no separate "optional" methods.
 
+### Defaults When Called Without Generics
+
+When you call `.withContext()` or `.withCause()` without providing a type argument, they default to permissive optional types:
+
+- **`.withContext()`** → defaults to `Record<string, unknown> | undefined` (any context shape, optional)
+- **`.withCause()`** → defaults to `AnyTaggedError | undefined` (any tagged error, optional)
+
+This provides an easy way to opt into having context or cause without specifying exact types:
+
+```typescript
+// Quick permissive mode - just chain without generics
+const { FlexError } = createTaggedError('FlexError')
+  .withContext()   // Defaults to Record<string, unknown> | undefined
+  .withCause();    // Defaults to AnyTaggedError | undefined
+
+FlexError({ message: 'Error' });  // OK - both optional
+FlexError({
+  message: 'Error',
+  context: { anything: 'works' },
+  cause: someTaggedError
+});  // OK
+```
+
 ## Usage Modes
 
 ### Minimal Mode: Simple Errors

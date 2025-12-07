@@ -621,4 +621,69 @@ describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 		expect(err4.context).toEqual({ any: "data" });
 		expect(err4.cause?.name).toBe("CauseError");
 	});
+
+	it(".withContext() without generic defaults to optional permissive context", () => {
+		// When called without a generic, defaults to Record<string, unknown> | undefined
+		const { FlexError } = createTaggedError("FlexError").withContext();
+
+		// Context is optional
+		const err1 = FlexError({ message: "Error" });
+		expect(err1.context).toBeUndefined();
+
+		// Context accepts any shape
+		const err2 = FlexError({
+			message: "Error",
+			context: { anything: "works", nested: { value: 123 } },
+		});
+		expect(err2.context).toEqual({ anything: "works", nested: { value: 123 } });
+	});
+
+	it(".withCause() without generic defaults to optional any tagged error", () => {
+		// When called without a generic, defaults to AnyTaggedError | undefined
+		const { FlexError } = createTaggedError("FlexError").withCause();
+
+		const { SomeError } = createTaggedError("SomeError");
+		const { OtherError } = createTaggedError("OtherError");
+
+		// Cause is optional
+		const err1 = FlexError({ message: "Error" });
+		expect(err1.cause).toBeUndefined();
+
+		// Cause accepts any tagged error
+		const err2 = FlexError({
+			message: "Error",
+			cause: SomeError({ message: "Some" }),
+		});
+		expect(err2.cause?.name).toBe("SomeError");
+
+		const err3 = FlexError({
+			message: "Error",
+			cause: OtherError({ message: "Other" }),
+		});
+		expect(err3.cause?.name).toBe("OtherError");
+	});
+
+	it(".withContext().withCause() without generics gives fully permissive error", () => {
+		// Chaining both without generics gives the old permissive behavior
+		const { FlexError } = createTaggedError("FlexError").withContext().withCause();
+
+		const { CauseError } = createTaggedError("CauseError");
+
+		// All combinations work
+		const err1 = FlexError({ message: "Error" });
+		const err2 = FlexError({ message: "Error", context: { any: "data" } });
+		const err3 = FlexError({ message: "Error", cause: CauseError({ message: "Cause" }) });
+		const err4 = FlexError({
+			message: "Error",
+			context: { any: "data" },
+			cause: CauseError({ message: "Cause" }),
+		});
+
+		expect(err1.context).toBeUndefined();
+		expect(err1.cause).toBeUndefined();
+		expect(err2.context).toEqual({ any: "data" });
+		expect(err3.cause?.name).toBe("CauseError");
+		expect(err4.context).toEqual({ any: "data" });
+		expect(err4.cause?.name).toBe("CauseError");
+	});
 });

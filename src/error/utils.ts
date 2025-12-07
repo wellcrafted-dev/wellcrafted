@@ -186,12 +186,19 @@ type ErrorBuilder<
 	 * LogError({ message: 'Parse error' })  // OK
 	 * LogError({ message: 'Parse error', context: { file: 'app.ts', line: 42 } })  // OK
 	 * ```
+	 *
+	 * @example Default (no generic): permissive optional context
+	 * ```ts
+	 * const { FlexError } = createTaggedError('FlexError')
+	 *   .withContext()  // Defaults to Record<string, unknown> | undefined
+	 *
+	 * FlexError({ message: 'Error' })  // OK - context is optional
+	 * FlexError({ message: 'Error', context: { anything: 'works' } })  // OK
+	 * ```
 	 */
-	withContext<T extends Record<string, unknown> | undefined>(): ErrorBuilder<
-		TName,
-		T,
-		TCause
-	>;
+	withContext<
+		T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+	>(): ErrorBuilder<TName, T, TCause>;
 
 	/**
 	 * Constrains the cause type for this error.
@@ -221,12 +228,19 @@ type ErrorBuilder<
 	 * UnhandledError({ message: 'Unexpected', cause: originalError })  // OK
 	 * UnhandledError({ message: 'Unexpected' })  // Type error: cause required
 	 * ```
+	 *
+	 * @example Default (no generic): permissive optional cause
+	 * ```ts
+	 * const { FlexError } = createTaggedError('FlexError')
+	 *   .withCause()  // Defaults to AnyTaggedError | undefined
+	 *
+	 * FlexError({ message: 'Error' })  // OK - cause is optional
+	 * FlexError({ message: 'Error', cause: anyTaggedError })  // OK
+	 * ```
 	 */
-	withCause<T extends AnyTaggedError | undefined>(): ErrorBuilder<
-		TName,
-		TContext,
-		T
-	>;
+	withCause<
+		T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
+	>(): ErrorBuilder<TName, TContext, T>;
 };
 
 // =============================================================================
@@ -319,10 +333,14 @@ export function createTaggedError<TName extends `${string}Error`>(
 		return {
 			[name]: errorConstructor,
 			[errName]: errConstructor,
-			withContext<T extends Record<string, unknown> | undefined>() {
+			withContext<
+				T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+			>() {
 				return createBuilder<T, TCause>();
 			},
-			withCause<T extends AnyTaggedError | undefined>() {
+			withCause<
+				T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
+			>() {
 				return createBuilder<TContext, T>();
 			},
 		} as ErrorBuilder<TName, TContext, TCause>;
