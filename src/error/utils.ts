@@ -118,15 +118,20 @@ type OptionalIfUndefined<T, TKey extends string> = undefined extends T
 
 /**
  * Input type for error constructors with fluent API context/cause handling.
+ *
+ * Follows explicit opt-in philosophy:
+ * - When TContext/TCause is undefined: property doesn't exist
+ * - When TContext/TCause includes undefined: property is optional but typed
+ * - When TContext/TCause is a specific type: property is required
  */
 type ErrorInput<
 	TContext extends Record<string, unknown> | undefined,
 	TCause extends AnyTaggedError | undefined,
 > = { message: string } & (TContext extends undefined
-	? { context?: Record<string, unknown> }
+	? {}
 	: OptionalIfUndefined<TContext, "context">) &
 	(TCause extends undefined
-		? { cause?: AnyTaggedError }
+		? {}
 		: OptionalIfUndefined<TCause, "cause">);
 
 /**
@@ -181,12 +186,19 @@ type ErrorBuilder<
 	 * LogError({ message: 'Parse error' })  // OK
 	 * LogError({ message: 'Parse error', context: { file: 'app.ts', line: 42 } })  // OK
 	 * ```
+	 *
+	 * @example Default (no generic): permissive optional context
+	 * ```ts
+	 * const { FlexError } = createTaggedError('FlexError')
+	 *   .withContext()  // Defaults to Record<string, unknown> | undefined
+	 *
+	 * FlexError({ message: 'Error' })  // OK - context is optional
+	 * FlexError({ message: 'Error', context: { anything: 'works' } })  // OK
+	 * ```
 	 */
-	withContext<T extends Record<string, unknown> | undefined>(): ErrorBuilder<
-		TName,
-		T,
-		TCause
-	>;
+	withContext<
+		T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+	>(): ErrorBuilder<TName, T, TCause>;
 
 	/**
 	 * Constrains the cause type for this error.
@@ -216,12 +228,19 @@ type ErrorBuilder<
 	 * UnhandledError({ message: 'Unexpected', cause: originalError })  // OK
 	 * UnhandledError({ message: 'Unexpected' })  // Type error: cause required
 	 * ```
+	 *
+	 * @example Default (no generic): permissive optional cause
+	 * ```ts
+	 * const { FlexError } = createTaggedError('FlexError')
+	 *   .withCause()  // Defaults to AnyTaggedError | undefined
+	 *
+	 * FlexError({ message: 'Error' })  // OK - cause is optional
+	 * FlexError({ message: 'Error', cause: anyTaggedError })  // OK
+	 * ```
 	 */
-	withCause<T extends AnyTaggedError | undefined>(): ErrorBuilder<
-		TName,
-		TContext,
-		T
-	>;
+	withCause<
+		T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
+	>(): ErrorBuilder<TName, TContext, T>;
 };
 
 // =============================================================================
@@ -234,12 +253,13 @@ type ErrorBuilder<
  * Returns an object containing:
  * - `{Name}Error`: Factory function that creates plain TaggedError objects
  * - `{Name}Err`: Factory function that creates Err-wrapped TaggedError objects
- * - `withContext<T>()`: Chain method to constrain context type
- * - `withCause<T>()`: Chain method to constrain cause type
+ * - `withContext<T>()`: Chain method to add context type
+ * - `withCause<T>()`: Chain method to add cause type
  *
- * **Default behavior (no chaining):**
- * - `context` is optional and accepts any `Record<string, unknown>`
- * - `cause` is optional and accepts any `AnyTaggedError`
+ * **Explicit Opt-In (Rust-inspired):**
+ * By default, errors only have `{ name, message }`. Context and cause must be
+ * explicitly added via `.withContext<T>()` and `.withCause<T>()`. This follows
+ * Rust's thiserror pattern where error properties are intentional decisions.
  *
  * **Optionality via type unions:**
  * Both `withContext` and `withCause` determine optionality based on whether
@@ -250,12 +270,12 @@ type ErrorBuilder<
  * @template TName - The name of the error type (must end with "Error")
  * @param name - The name of the error type
  *
- * @example Simple error (flexible mode)
+ * @example Minimal error (no context, no cause)
  * ```ts
  * const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
  *
  * NetworkError({ message: 'Connection failed' })
- * NetworkError({ message: 'Timeout', context: { url: 'https://...' } })
+ * // Error only has { name: 'NetworkError', message: 'Connection failed' }
  * ```
  *
  * @example Required context
@@ -285,6 +305,13 @@ type ErrorBuilder<
  * // Type extraction works
  * type UserServiceError = ReturnType<typeof UserServiceError>
  * ```
+ *
+ * @example Permissive mode (if you want the old behavior)
+ * ```ts
+ * const { FlexibleError } = createTaggedError('FlexibleError')
+ *   .withContext<Record<string, unknown> | undefined>()
+ *   .withCause<AnyTaggedError | undefined>()
+ * ```
  */
 export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
@@ -306,10 +333,14 @@ export function createTaggedError<TName extends `${string}Error`>(
 		return {
 			[name]: errorConstructor,
 			[errName]: errConstructor,
-			withContext<T extends Record<string, unknown> | undefined>() {
+			withContext<
+				T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+			>() {
 				return createBuilder<T, TCause>();
 			},
-			withCause<T extends AnyTaggedError | undefined>() {
+			withCause<
+				T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
+			>() {
 				return createBuilder<TContext, T>();
 			},
 		} as ErrorBuilder<TName, TContext, TCause>;

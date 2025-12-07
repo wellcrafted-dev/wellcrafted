@@ -31,8 +31,8 @@ The `createTaggedError` function provides a clean, chainable API for defining er
 ```typescript
 import { createTaggedError } from 'wellcrafted/error';
 
-// Simple error (flexible mode)
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+// Minimal error (only name and message)
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
 
 // Error with required context
 const { FileError, FileErr } = createTaggedError('FileError')
@@ -52,6 +52,10 @@ const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withCause<NetworkError | undefined>();
 ```
 
+### Explicit Opt-In Philosophy (Rust-inspired)
+
+By default, errors only have `{ name, message }`. Context and cause must be explicitly added via `.withContext<T>()` and `.withCause<T>()`. This follows Rust's thiserror pattern where error properties are intentional architectural decisions.
+
 ### Optionality via Type Unions
 
 Both `.withContext<T>()` and `.withCause<T>()` determine optionality from the type:
@@ -61,26 +65,44 @@ Both `.withContext<T>()` and `.withCause<T>()` determine optionality from the ty
 
 This is consistent with TypeScript idioms and requires no separate "optional" methods.
 
-## Usage Modes
+### Defaults When Called Without Generics
 
-### Flexible Mode: Exploring and Prototyping
+When you call `.withContext()` or `.withCause()` without providing a type argument, they default to permissive optional types:
 
-Use this when you don't know what context you need yet, or when context varies wildly between call sites.
+- **`.withContext()`** → defaults to `Record<string, unknown> | undefined` (any context shape, optional)
+- **`.withCause()`** → defaults to `AnyTaggedError | undefined` (any tagged error, optional)
+
+This provides an easy way to opt into having context or cause without specifying exact types:
 
 ```typescript
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+// Quick permissive mode - just chain without generics
+const { FlexError } = createTaggedError('FlexError')
+  .withContext()   // Defaults to Record<string, unknown> | undefined
+  .withCause();    // Defaults to AnyTaggedError | undefined
 
-// Just a message
-NetworkError({ message: 'Timeout' });
-
-// Add context as you discover what's useful
-NetworkError({ message: 'DNS failed', context: { host: 'example.com' } });
-
-// Chain errors when debugging
-NetworkError({ message: 'Request failed', cause: someOtherError });
+FlexError({ message: 'Error' });  // OK - both optional
+FlexError({
+  message: 'Error',
+  context: { anything: 'works' },
+  cause: someTaggedError
+});  // OK
 ```
 
-**When to use:** Early development, wrapping unpredictable third-party code, or when different call sites genuinely need different context shapes.
+## Usage Modes
+
+### Minimal Mode: Simple Errors
+
+Use this when you just need a named error type without additional metadata.
+
+```typescript
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
+
+// Error only has name and message
+ValidationError({ message: 'Email is required' });
+// Result: { name: 'ValidationError', message: 'Email is required' }
+```
+
+**When to use:** Simple errors where the message tells the whole story. Validation errors, parsing errors, simple state errors.
 
 ### Required Context Mode: Enforcing Essential Information
 
@@ -122,7 +144,7 @@ LogError({ message: 'Parse failed', context: { file: 'app.ts', line: 42 } });
 // LogError({ message: 'x', context: { wrong: true } }); // Type error!
 ```
 
-This differs from flexible mode: flexible mode accepts any shape, while optional typed mode enforces the exact shape when context is present.
+This differs from minimal mode: minimal mode has no context property at all, while optional typed mode has the property but it can be undefined.
 
 **When to use:** Errors where context is helpful but not always available. Log messages where you sometimes have source location. API errors where you sometimes have request details.
 
@@ -161,9 +183,18 @@ This encodes domain knowledge: "API errors fail because of network issues, not v
 Tagged error chains are just nested objects that serialize perfectly to JSON:
 
 ```typescript
-const { DbError } = createTaggedError('DbError');
-const { RepoError } = createTaggedError('RepoError');
-const { ServiceError } = createTaggedError('ServiceError');
+const { DbError } = createTaggedError('DbError')
+  .withContext<{ host: string; port: number }>();
+type DbError = ReturnType<typeof DbError>;
+
+const { RepoError } = createTaggedError('RepoError')
+  .withContext<{ userId: string }>()
+  .withCause<DbError | undefined>();
+type RepoError = ReturnType<typeof RepoError>;
+
+const { ServiceError } = createTaggedError('ServiceError')
+  .withContext<{ operation: string }>()
+  .withCause<RepoError | undefined>();
 
 const dbError = DbError({
   message: 'Connection timeout',
@@ -193,16 +224,16 @@ Each layer adds its own context while preserving the full chain.
 `ReturnType` works correctly for all modes:
 
 ```typescript
-// Flexible mode
+// Minimal mode
 const { NetworkError } = createTaggedError('NetworkError');
 type NetworkError = ReturnType<typeof NetworkError>;
-// = TaggedError<'NetworkError'> with optional context/cause
+// = { name: 'NetworkError', message: string }
 
 // Required context mode
 const { FileError } = createTaggedError('FileError')
   .withContext<{ path: string }>();
 type FileError = ReturnType<typeof FileError>;
-// = TaggedError<'FileError', { path: string }> with required context
+// = { name: 'FileError', message: string, context: { path: string } }
 
 // Use in function signatures
 function handleErrors(error: NetworkError | FileError) {
@@ -217,12 +248,28 @@ function handleErrors(error: NetworkError | FileError) {
 }
 ```
 
+## Migration from Old Behavior
+
+If you were using the previous permissive defaults where context and cause were always available, you can replicate that behavior with explicit opt-in:
+
+```typescript
+// Old behavior (implicit permissive)
+const { OldError } = createTaggedError('OldError');
+// Had: { name, message, context?: Record<string, unknown>, cause?: AnyTaggedError }
+
+// New explicit permissive mode
+const { FlexibleError } = createTaggedError('FlexibleError')
+  .withContext<Record<string, unknown> | undefined>()
+  .withCause<AnyTaggedError | undefined>();
+// Has: { name, message, context?: Record<string, unknown>, cause?: AnyTaggedError }
+```
+
 ## Quick Reference
 
 ```typescript
-import { createTaggedError, type TaggedError } from 'wellcrafted/error';
+import { createTaggedError, type TaggedError, type AnyTaggedError } from 'wellcrafted/error';
 
-// Flexible: context and cause optional, loosely typed
+// Minimal: only name and message
 const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 type NetworkError = ReturnType<typeof NetworkError>;
 
@@ -246,6 +293,12 @@ const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withContext<{ endpoint: string }>()
   .withCause<NetworkError | undefined>();
 type ApiError = ReturnType<typeof ApiError>;
+
+// Permissive (old behavior): optional loose context and cause
+const { FlexibleError, FlexibleErr } = createTaggedError('FlexibleError')
+  .withContext<Record<string, unknown> | undefined>()
+  .withCause<AnyTaggedError | undefined>();
+type FlexibleError = ReturnType<typeof FlexibleError>;
 ```
 
 Each factory returns two functions:
