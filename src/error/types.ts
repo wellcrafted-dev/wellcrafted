@@ -5,79 +5,79 @@ export type AnyTaggedError = { name: string; message: string };
 
 /**
  * Helper type that adds a context property.
- * - When TContext is undefined (default): context is OPTIONAL with loose typing
+ * - When TContext is undefined (default): NO context property (explicit opt-in)
  * - When TContext includes undefined (e.g., `{ foo: string } | undefined`): context is OPTIONAL but typed
  * - When TContext is a specific type without undefined: context is REQUIRED with that exact type
  *
- * This allows users to specify "optional but typed" context by passing a union with undefined.
+ * This follows Rust's explicit error philosophy: context must be explicitly added via .withContext<T>().
  */
 type WithContext<TContext> = [TContext] extends [undefined]
-	? { context?: Record<string, unknown> }
+	? {}
 	: [undefined] extends [TContext]
 		? { context?: Exclude<TContext, undefined> }
 		: { context: TContext };
 
 /**
  * Helper type that adds a cause property.
- * - When TCause is undefined (default): cause is OPTIONAL, any tagged error allowed
+ * - When TCause is undefined (default): NO cause property (explicit opt-in)
  * - When TCause includes undefined (e.g., `NetworkError | undefined`): cause is OPTIONAL, constrained
- * - When TCause is a specific type: cause is OPTIONAL but constrained to that type
+ * - When TCause is a specific type without undefined: cause is REQUIRED
  *
- * Note: cause is always optional at runtime (errors can be created without causes),
- * but when TCause is specified, it constrains what cause types are allowed.
+ * This follows Rust's explicit error philosophy: cause must be explicitly added via .withCause<T>().
  * Using brackets to prevent distributive conditional behavior with union types.
  */
 type WithCause<TCause> = [TCause] extends [undefined]
-	? { cause?: AnyTaggedError }
+	? {}
 	: [undefined] extends [TCause]
 		? { cause?: Exclude<TCause, undefined> }
-		: { cause?: TCause };
+		: { cause: TCause };
 
 /**
  * Creates a tagged error type for type-safe error handling.
  * Uses the `name` property as a discriminator for tagged unions.
  *
- * The `cause` property enables error chaining, creating a JSON-serializable
- * call stack. Each error wraps its cause, building a complete trace of how
- * an error propagated through your application layers.
+ * **Explicit Opt-In Philosophy (Rust-inspired):**
+ * By default, errors only have `name` and `message`. Context and cause must be
+ * explicitly added via type parameters. This follows Rust's thiserror pattern
+ * where error properties are intentional architectural decisions.
  *
  * **Type Parameter Behavior:**
- * - When `TContext` is `undefined` (default): `context` is OPTIONAL with type `Record<string, unknown>`
- * - When `TContext` is `{ ... } | undefined`: `context` is OPTIONAL but typed (use union for optional typed context)
- * - When `TContext` is specified without undefined: `context` is REQUIRED with that exact type
- * - When `TCause` is `undefined` (default): `cause` is OPTIONAL, any `AnyTaggedError` allowed
- * - When `TCause` is specified: `cause` is OPTIONAL but constrained to that type
+ * - When `TContext` is `undefined` (default): NO context property
+ * - When `TContext` is `{ ... } | undefined`: `context` is OPTIONAL but typed
+ * - When `TContext` is specified without undefined: `context` is REQUIRED
+ * - When `TCause` is `undefined` (default): NO cause property
+ * - When `TCause` is `{ ... } | undefined`: `cause` is OPTIONAL but typed
+ * - When `TCause` is specified without undefined: `cause` is REQUIRED
  *
  * @template TName - The error name (discriminator for tagged unions)
- * @template TContext - Additional context data for the error (default: undefined = optional loose context)
- * @template TCause - The type of error that caused this error (default: undefined = optional any cause)
+ * @template TContext - Additional context data for the error (default: undefined = no context)
+ * @template TCause - The type of error that caused this error (default: undefined = no cause)
  *
  * @example
  * ```ts
- * // Flexible error (context and cause optional, loosely typed)
+ * // Minimal error (no context, no cause)
  * type ValidationError = TaggedError<"ValidationError">;
  * const validationError: ValidationError = {
  *   name: "ValidationError",
  *   message: "Input is required"
  * };
- * // validationError.context is optional, typed as Record<string, unknown> | undefined
+ * // validationError only has name and message
  *
- * // Error with required context (fixed context mode)
+ * // Error with required context
  * type NetworkError = TaggedError<"NetworkError", { host: string; port: number }>;
  * const networkError: NetworkError = {
  *   name: "NetworkError",
  *   message: "Socket timeout",
  *   context: { host: "db.example.com", port: 5432 } // Required!
  * };
- * const host = networkError.context.host; // Type-safe, no optional chaining needed
  *
  * // Error with OPTIONAL but TYPED context (union with undefined)
  * type LogError = TaggedError<"LogError", { file: string; line: number } | undefined>;
- * const logError1: LogError = { name: "LogError", message: "Parse failed" }; // OK - no context
- * const logError2: LogError = { name: "LogError", message: "Parse failed", context: { file: "app.ts", line: 42 } }; // OK - typed context
+ * const logError1: LogError = { name: "LogError", message: "Parse failed" }; // OK
+ * const logError2: LogError = { name: "LogError", message: "Parse failed", context: { file: "app.ts", line: 42 } }; // OK
  *
- * // Error with fixed context and constrained cause type
- * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError>;
+ * // Error with required context and optional cause
+ * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError | undefined>;
  * const dbError: DatabaseError = {
  *   name: "DatabaseError",
  *   message: "Failed to connect to database",
