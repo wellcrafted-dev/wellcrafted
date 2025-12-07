@@ -104,242 +104,6 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
 	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
 
 // =============================================================================
-// Factory Return Types
-// =============================================================================
-
-/**
- * Return type when neither context nor cause are constrained (flexible mode).
- * Context and cause are optional with loose typing.
- */
-type FlexibleFactories<TName extends `${string}Error`> = {
-	[K in TName]: FlexibleErrorConstructor<K>;
-} & {
-	[K in ReplaceErrorWithErr<TName>]: FlexibleErrConstructor<TName>;
-};
-
-/**
- * Return type when context is fixed.
- * Context is required with exact type; cause is optional.
- */
-type ContextFixedFactories<
-	TName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
-> = {
-	[K in TName]: ContextFixedErrorConstructor<K, TContext>;
-} & {
-	[K in ReplaceErrorWithErr<TName>]: ContextFixedErrConstructor<TName, TContext>;
-};
-
-/**
- * Return type when both context and cause are fixed.
- * Context is required; cause is optional but constrained to specific type.
- */
-type BothFixedFactories<
-	TName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
-	TCause extends AnyTaggedError,
-> = {
-	[K in TName]: BothFixedErrorConstructor<K, TContext, TCause>;
-} & {
-	[K in ReplaceErrorWithErr<TName>]: BothFixedErrConstructor<
-		TName,
-		TContext,
-		TCause
-	>;
-};
-
-// =============================================================================
-// Flexible Mode Constructor Types (SIMPLIFIED - no overloads)
-// =============================================================================
-
-/**
- * Creates plain TaggedError objects with flexible context and cause.
- * Single signature: context and cause are optional with loose typing.
- */
-type FlexibleErrorConstructor<TName extends string> = (input: {
-	message: string;
-	context?: Record<string, unknown>;
-	cause?: AnyTaggedError;
-}) => TaggedError<TName>;
-
-/**
- * Creates Err-wrapped TaggedError objects with flexible context and cause.
- * Single signature: context and cause are optional with loose typing.
- */
-type FlexibleErrConstructor<TName extends string> = (input: {
-	message: string;
-	context?: Record<string, unknown>;
-	cause?: AnyTaggedError;
-}) => Err<TaggedError<TName>>;
-
-// =============================================================================
-// Context-Fixed Mode Constructor Types (SIMPLIFIED - no overloads)
-// =============================================================================
-
-/**
- * Creates plain TaggedError objects with fixed context.
- * Single signature: context is required, cause is optional.
- */
-type ContextFixedErrorConstructor<
-	TName extends string,
-	TContext extends Record<string, unknown>,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause?: AnyTaggedError;
-}) => TaggedError<TName, TContext>;
-
-/**
- * Creates Err-wrapped TaggedError objects with fixed context.
- * Single signature: context is required, cause is optional.
- */
-type ContextFixedErrConstructor<
-	TName extends string,
-	TContext extends Record<string, unknown>,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause?: AnyTaggedError;
-}) => Err<TaggedError<TName, TContext>>;
-
-// =============================================================================
-// Both-Fixed Mode Constructor Types (SIMPLIFIED - no overloads)
-// =============================================================================
-
-/**
- * Creates plain TaggedError objects with both context and cause fixed.
- * Single signature: context is required, cause is optional but constrained.
- */
-type BothFixedErrorConstructor<
-	TName extends string,
-	TContext extends Record<string, unknown>,
-	TCause extends AnyTaggedError,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause?: TCause;
-}) => TaggedError<TName, TContext, TCause>;
-
-/**
- * Creates Err-wrapped TaggedError objects with both context and cause fixed.
- * Single signature: context is required, cause is optional but constrained.
- */
-type BothFixedErrConstructor<
-	TName extends string,
-	TContext extends Record<string, unknown>,
-	TCause extends AnyTaggedError,
-> = (input: {
-	message: string;
-	context: TContext;
-	cause?: TCause;
-}) => Err<TaggedError<TName, TContext, TCause>>;
-
-// =============================================================================
-// Main Factory Function
-// =============================================================================
-
-/**
- * Creates two factory functions for building tagged errors with type-safe error chaining.
- *
- * @deprecated Use `defineError()` instead for a cleaner fluent API:
- * ```ts
- * // Before
- * const { FileError } = createTaggedError<'FileError', { path: string }>('FileError')
- *
- * // After
- * const { FileError } = defineError('FileError')
- *   .withContext<{ path: string }>()
- * ```
- *
- * Given an error name like "NetworkError", this returns:
- * - `NetworkError`: Creates a plain TaggedError object
- * - `NetworkErr`: Creates a TaggedError object wrapped in an Err result
- *
- * **Three usage modes:**
- *
- * 1. **Flexible mode** (no type params): Context and cause are optional, loosely typed
- * 2. **Fixed context mode** (TContext specified): Context is required with exact shape
- * 3. **Both fixed mode** (TContext + TCause): Context required, cause constrained
- *
- * **ReturnType works correctly in all modes:**
- * ```ts
- * const { NetworkError } = createTaggedError('NetworkError');
- * type NetworkError = ReturnType<typeof NetworkError>;
- * // = TaggedError<'NetworkError'> with optional context/cause
- * ```
- *
- * @template TName - The name of the error type (must end with "Error")
- * @template TContext - Optional fixed context shape (makes context required)
- * @template TCause - Optional fixed cause type (constrains cause type if provided)
- * @param name - The name of the error type (must end with "Error")
- *
- * @example
- * ```ts
- * // Mode 1: Flexible - context and cause optional, loosely typed
- * const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
- * NetworkError({ message: 'Connection failed' });
- * NetworkError({ message: 'Timeout', context: { url: 'https://...' } });
- * NetworkError({ message: 'Failed', cause: otherError });
- *
- * // Type annotation works with ReturnType:
- * type NetworkError = ReturnType<typeof NetworkError>;
- *
- * // Mode 2: Fixed context - context REQUIRED with exact shape
- * type BlobContext = { filename: string; code: 'INVALID' | 'TOO_LARGE' };
- * const { BlobError, BlobErr } = createTaggedError<'BlobError', BlobContext>('BlobError');
- * BlobError({ message: 'Invalid', context: { filename: 'x', code: 'INVALID' } });
- * // BlobError({ message: 'Error' }); // Type error - context required
- *
- * // Mode 3: Fixed context + cause - context required, cause constrained
- * const { ApiError, ApiErr } = createTaggedError<'ApiError', { endpoint: string }, NetworkError>('ApiError');
- * ApiError({ message: 'Failed', context: { endpoint: '/users' } });
- * ApiError({ message: 'Failed', context: { endpoint: '/users' }, cause: networkError });
- * ```
- */
-// Overload 1: Flexible (no type constraints)
-export function createTaggedError<TName extends `${string}Error`>(
-	name: TName,
-): FlexibleFactories<TName>;
-
-// Overload 2: Context fixed, cause flexible
-export function createTaggedError<
-	TName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
->(name: TName): ContextFixedFactories<TName, TContext>;
-
-// Overload 3: Both context and cause fixed
-export function createTaggedError<
-	TName extends `${string}Error`,
-	TContext extends Record<string, unknown>,
-	TCause extends AnyTaggedError,
->(name: TName): BothFixedFactories<TName, TContext, TCause>;
-
-// Implementation
-export function createTaggedError<
-	TName extends `${string}Error`,
-	TContext extends Record<string, unknown> = Record<string, unknown>,
-	TCause extends AnyTaggedError = AnyTaggedError,
->(name: TName): unknown {
-	const errorConstructor = (input: {
-		message: string;
-		context?: TContext;
-		cause?: TCause;
-	}) => ({ name, ...input });
-
-	const errName = name.replace(/Error$/, "Err") as ReplaceErrorWithErr<TName>;
-	const errConstructor = (input: {
-		message: string;
-		context?: TContext;
-		cause?: TCause;
-	}) => Err(errorConstructor(input));
-
-	return {
-		[name]: errorConstructor,
-		[errName]: errConstructor,
-	};
-}
-
-// =============================================================================
 // Fluent API Types
 // =============================================================================
 
@@ -366,7 +130,7 @@ type ErrorInput<
 		: OptionalIfUndefined<TCause, "cause">);
 
 /**
- * The factories object returned by defineError and its builder methods.
+ * The factories object returned by createTaggedError and its builder methods.
  */
 type ErrorFactories<
 	TName extends `${string}Error`,
@@ -383,7 +147,7 @@ type ErrorFactories<
 };
 
 /**
- * Builder interface for the fluent defineError API.
+ * Builder interface for the fluent createTaggedError API.
  * Provides chaining methods and the error factories.
  */
 type ErrorBuilder<
@@ -402,7 +166,7 @@ type ErrorBuilder<
 	 *
 	 * @example Required context
 	 * ```ts
-	 * const { FileError } = defineError('FileError')
+	 * const { FileError } = createTaggedError('FileError')
 	 *   .withContext<{ path: string }>()
 	 *
 	 * FileError({ message: 'Not found', context: { path: '/etc/config' } })  // OK
@@ -411,7 +175,7 @@ type ErrorBuilder<
 	 *
 	 * @example Optional but typed context
 	 * ```ts
-	 * const { LogError } = defineError('LogError')
+	 * const { LogError } = createTaggedError('LogError')
 	 *   .withContext<{ file: string; line: number } | undefined>()
 	 *
 	 * LogError({ message: 'Parse error' })  // OK
@@ -437,7 +201,7 @@ type ErrorBuilder<
 	 *
 	 * @example Optional typed cause (common)
 	 * ```ts
-	 * const { ServiceError } = defineError('ServiceError')
+	 * const { ServiceError } = createTaggedError('ServiceError')
 	 *   .withCause<DbError | CacheError | undefined>()
 	 *
 	 * ServiceError({ message: 'Failed' })  // OK
@@ -446,7 +210,7 @@ type ErrorBuilder<
 	 *
 	 * @example Required cause (for wrapper errors)
 	 * ```ts
-	 * const { UnhandledError } = defineError('UnhandledError')
+	 * const { UnhandledError } = createTaggedError('UnhandledError')
 	 *   .withCause<AnyTaggedError>()
 	 *
 	 * UnhandledError({ message: 'Unexpected', cause: originalError })  // OK
@@ -465,7 +229,7 @@ type ErrorBuilder<
 // =============================================================================
 
 /**
- * Defines a new tagged error type with a fluent builder API.
+ * Creates a new tagged error type with a fluent builder API.
  *
  * Returns an object containing:
  * - `{Name}Error`: Factory function that creates plain TaggedError objects
@@ -488,7 +252,7 @@ type ErrorBuilder<
  *
  * @example Simple error (flexible mode)
  * ```ts
- * const { NetworkError, NetworkErr } = defineError('NetworkError')
+ * const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
  *
  * NetworkError({ message: 'Connection failed' })
  * NetworkError({ message: 'Timeout', context: { url: 'https://...' } })
@@ -496,7 +260,7 @@ type ErrorBuilder<
  *
  * @example Required context
  * ```ts
- * const { ApiError, ApiErr } = defineError('ApiError')
+ * const { ApiError, ApiErr } = createTaggedError('ApiError')
  *   .withContext<{ endpoint: string; status: number }>()
  *
  * ApiError({ message: 'Failed', context: { endpoint: '/users', status: 500 } })
@@ -505,7 +269,7 @@ type ErrorBuilder<
  *
  * @example Optional typed cause
  * ```ts
- * const { ServiceError } = defineError('ServiceError')
+ * const { ServiceError } = createTaggedError('ServiceError')
  *   .withCause<DbError | CacheError | undefined>()
  *
  * ServiceError({ message: 'Failed' })  // OK
@@ -514,7 +278,7 @@ type ErrorBuilder<
  *
  * @example Full example with both
  * ```ts
- * const { UserServiceError } = defineError('UserServiceError')
+ * const { UserServiceError } = createTaggedError('UserServiceError')
  *   .withContext<{ userId: string }>()
  *   .withCause<RepoError | undefined>()
  *
@@ -522,7 +286,7 @@ type ErrorBuilder<
  * type UserServiceError = ReturnType<typeof UserServiceError>
  * ```
  */
-export function defineError<TName extends `${string}Error`>(
+export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
 ): ErrorBuilder<TName> {
 	const createBuilder = <
