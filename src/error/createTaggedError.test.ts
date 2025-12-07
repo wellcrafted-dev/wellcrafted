@@ -3,46 +3,20 @@ import { createTaggedError } from "./utils.js";
 import type { TaggedError, AnyTaggedError } from "./types.js";
 
 // =============================================================================
-// Basic Usage (Flexible Mode)
+// Basic Usage (Minimal Errors - No Context, No Cause)
 // =============================================================================
 
-describe("createTaggedError - basic usage (flexible mode)", () => {
-	it("creates error factories without chaining", () => {
+describe("createTaggedError - basic usage (minimal errors)", () => {
+	it("creates minimal error factories without chaining", () => {
 		const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
 
 		const error = NetworkError({ message: "Connection failed" });
 
 		expect(error.name).toBe("NetworkError");
 		expect(error.message).toBe("Connection failed");
-		expect(error.context).toBeUndefined();
-		expect(error.cause).toBeUndefined();
-	});
-
-	it("allows optional context with any shape", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
-
-		const error = NetworkError({
-			message: "Connection failed",
-			context: { url: "https://example.com", timeout: 5000 },
-		});
-
-		expect(error.context).toEqual({
-			url: "https://example.com",
-			timeout: 5000,
-		});
-	});
-
-	it("allows optional cause with any tagged error", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
-		const { ServiceError } = createTaggedError("ServiceError");
-
-		const networkError = NetworkError({ message: "Connection failed" });
-		const serviceError = ServiceError({
-			message: "Service unavailable",
-			cause: networkError,
-		});
-
-		expect(serviceError.cause).toBe(networkError);
+		// No context or cause properties exist on minimal errors
+		expect("context" in error).toBe(false);
+		expect("cause" in error).toBe(false);
 	});
 
 	it("creates Err-wrapped factory", () => {
@@ -55,6 +29,16 @@ describe("createTaggedError - basic usage (flexible mode)", () => {
 			message: "Connection failed",
 		});
 		expect(result.data).toBeNull();
+	});
+
+	it("minimal error type only has name and message", () => {
+		const { NetworkError } = createTaggedError("NetworkError");
+
+		const error = NetworkError({ message: "Error" });
+
+		expectTypeOf(error).toEqualTypeOf<
+			Readonly<{ name: "NetworkError"; message: string }>
+		>();
 	});
 });
 
@@ -310,11 +294,11 @@ describe("createTaggedError - builder methods return factories at every stage", 
 	it("factories are available immediately after createTaggedError", () => {
 		const builder = createTaggedError("NetworkError");
 
-		// Can use factories directly
+		// Can use factories directly (minimal error)
 		const error = builder.NetworkError({ message: "Failed" });
 		expect(error.name).toBe("NetworkError");
 
-		// Can also chain
+		// Can also chain to add context
 		const { NetworkError } = builder.withContext<{ url: string }>();
 		const typedError = NetworkError({
 			message: "Failed",
@@ -349,20 +333,27 @@ describe("createTaggedError - builder methods return factories at every stage", 
 });
 
 // =============================================================================
-// Error Chaining
+// Error Chaining (with explicit .withContext and .withCause)
 // =============================================================================
 
 describe("createTaggedError - Error Chaining", () => {
-	it("supports multi-level error chains", () => {
-		// Level 1: Database error
-		const { DatabaseError } = createTaggedError("DatabaseError");
+	it("supports multi-level error chains with explicit types", () => {
+		// Level 1: Database error with context
+		const { DatabaseError } = createTaggedError("DatabaseError")
+			.withContext<{ query: string; table: string }>();
+		type DatabaseError = ReturnType<typeof DatabaseError>;
+
 		const dbError = DatabaseError({
 			message: "Query failed",
 			context: { query: "SELECT * FROM users", table: "users" },
 		});
 
 		// Level 2: Repository error wrapping database error
-		const { RepositoryError } = createTaggedError("RepositoryError");
+		const { RepositoryError } = createTaggedError("RepositoryError")
+			.withContext<{ entity: string; operation: string }>()
+			.withCause<DatabaseError | undefined>();
+		type RepositoryError = ReturnType<typeof RepositoryError>;
+
 		const repoError = RepositoryError({
 			message: "Failed to fetch user",
 			context: { entity: "User", operation: "findById" },
@@ -370,7 +361,10 @@ describe("createTaggedError - Error Chaining", () => {
 		});
 
 		// Level 3: Service error wrapping repository error
-		const { ServiceError } = createTaggedError("ServiceError");
+		const { ServiceError } = createTaggedError("ServiceError")
+			.withContext<{ service: string; method: string }>()
+			.withCause<RepositoryError | undefined>();
+
 		const serviceError = ServiceError({
 			message: "User service failed",
 			context: { service: "UserService", method: "getProfile" },
@@ -380,15 +374,18 @@ describe("createTaggedError - Error Chaining", () => {
 		// Verify the chain
 		expect(serviceError.name).toBe("ServiceError");
 		expect(serviceError.cause?.name).toBe("RepositoryError");
-		const repoCause = serviceError.cause as typeof repoError;
-		expect(repoCause?.cause?.name).toBe("DatabaseError");
-		const dbCause = repoCause?.cause as typeof dbError;
-		expect(dbCause?.context?.query).toBe("SELECT * FROM users");
+		expect(serviceError.cause?.cause?.name).toBe("DatabaseError");
+		expect(serviceError.cause?.cause?.context?.query).toBe("SELECT * FROM users");
 	});
 
 	it("errors are JSON serializable", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
-		const { ApiError } = createTaggedError("ApiError");
+		const { NetworkError } = createTaggedError("NetworkError")
+			.withContext<{ host: string; port: number }>();
+		type NetworkError = ReturnType<typeof NetworkError>;
+
+		const { ApiError } = createTaggedError("ApiError")
+			.withContext<{ endpoint: string }>()
+			.withCause<NetworkError | undefined>();
 
 		const networkError = NetworkError({
 			message: "Connection failed",
@@ -417,24 +414,18 @@ describe("createTaggedError - Error Chaining", () => {
 // =============================================================================
 
 describe("createTaggedError - Type Safety", () => {
-	it("flexible mode has correct types", () => {
+	it("minimal errors have correct types (no context, no cause)", () => {
 		const { NetworkError } = createTaggedError("NetworkError");
 
-		// Just message - context is optional
-		const e1 = NetworkError({ message: "Error" });
-		expectTypeOf(e1).toMatchTypeOf<{ name: "NetworkError"; message: string }>();
-		// Context is optional in flexible mode
-		expectTypeOf(e1.context).toEqualTypeOf<Record<string, unknown> | undefined>();
+		const error = NetworkError({ message: "Error" });
 
-		// With context - still loosely typed (this is the trade-off for simpler types)
-		const e2 = NetworkError({
-			message: "Error",
-			context: { url: "https://..." },
-		});
-		expectTypeOf(e2.context).toEqualTypeOf<Record<string, unknown> | undefined>();
+		// Minimal error only has name and message
+		expectTypeOf(error).toEqualTypeOf<
+			Readonly<{ name: "NetworkError"; message: string }>
+		>();
 	});
 
-	it("fixed context mode requires context", () => {
+	it("required context mode requires context", () => {
 		type Ctx = { filename: string };
 		const { FileError } = createTaggedError("FileError").withContext<Ctx>();
 
@@ -447,7 +438,7 @@ describe("createTaggedError - Type Safety", () => {
 		expectTypeOf(error.context).toEqualTypeOf<{ filename: string }>();
 	});
 
-	it("both fixed mode constrains cause type", () => {
+	it("chained context and cause constrains types", () => {
 		// Define the cause type explicitly
 		const { CauseError } = createTaggedError("CauseError");
 		type CauseType = ReturnType<typeof CauseError>;
@@ -468,22 +459,18 @@ describe("createTaggedError - Type Safety", () => {
 		expectTypeOf(wrapper.cause).toEqualTypeOf<CauseType | undefined>();
 	});
 
-	it("ReturnType works correctly in flexible mode", () => {
+	it("ReturnType works correctly for minimal errors", () => {
 		const { NetworkError } = createTaggedError("NetworkError");
 
-		// This is the key test - ReturnType should give a useful type
 		type NetworkErrorType = ReturnType<typeof NetworkError>;
 
-		// The type should have optional context and cause
-		expectTypeOf<NetworkErrorType>().toMatchTypeOf<{
-			name: "NetworkError";
-			message: string;
-			context?: Record<string, unknown>;
-			cause?: { name: string; message: string };
-		}>();
+		// Minimal error only has name and message
+		expectTypeOf<NetworkErrorType>().toEqualTypeOf<
+			Readonly<{ name: "NetworkError"; message: string }>
+		>();
 	});
 
-	it("ReturnType works correctly in fixed context mode", () => {
+	it("ReturnType works correctly with context", () => {
 		type Ctx = { endpoint: string };
 		const { ApiError } = createTaggedError("ApiError").withContext<Ctx>();
 
@@ -520,8 +507,9 @@ describe("createTaggedError - Type Safety", () => {
 // =============================================================================
 
 describe("createTaggedError - Edge Cases", () => {
-	it("handles empty context object", () => {
-		const { TestError } = createTaggedError("TestError");
+	it("handles empty context object with explicit context type", () => {
+		const { TestError } = createTaggedError("TestError")
+			.withContext<Record<string, unknown>>();
 		const error = TestError({ message: "Error", context: {} });
 
 		expect(error.context).toEqual({});
@@ -555,5 +543,82 @@ describe("createTaggedError - Edge Cases", () => {
 		// TypeScript should prevent this, but verify at runtime the object shape
 		expect(Object.isFrozen(error)).toBe(false); // Not frozen, but typed as Readonly
 		expect(error.name).toBe("TestError");
+	});
+});
+
+// =============================================================================
+// Permissive Mode (Migration Path)
+// =============================================================================
+
+describe("createTaggedError - Permissive Mode (Migration Path)", () => {
+	it("can opt into permissive context with Record<string, unknown> | undefined", () => {
+		const { FlexibleError } = createTaggedError("FlexibleError")
+			.withContext<Record<string, unknown> | undefined>();
+
+		// Without context
+		const err1 = FlexibleError({ message: "Error" });
+		expect(err1.context).toBeUndefined();
+
+		// With any context shape
+		const err2 = FlexibleError({
+			message: "Error",
+			context: { anything: "goes", nested: { data: 123 } },
+		});
+		expect(err2.context).toEqual({ anything: "goes", nested: { data: 123 } });
+	});
+
+	it("can opt into permissive cause with AnyTaggedError | undefined", () => {
+		const { FlexibleError } = createTaggedError("FlexibleError")
+			.withCause<AnyTaggedError | undefined>();
+
+		const { SomeError } = createTaggedError("SomeError");
+		const { OtherError } = createTaggedError("OtherError");
+
+		// Without cause
+		const err1 = FlexibleError({ message: "Error" });
+		expect(err1.cause).toBeUndefined();
+
+		// With any tagged error as cause
+		const err2 = FlexibleError({
+			message: "Error",
+			cause: SomeError({ message: "Some" }),
+		});
+		expect(err2.cause?.name).toBe("SomeError");
+
+		const err3 = FlexibleError({
+			message: "Error",
+			cause: OtherError({ message: "Other" }),
+		});
+		expect(err3.cause?.name).toBe("OtherError");
+	});
+
+	it("fully permissive mode replicates old behavior", () => {
+		const { LegacyError } = createTaggedError("LegacyError")
+			.withContext<Record<string, unknown> | undefined>()
+			.withCause<AnyTaggedError | undefined>();
+
+		const { CauseError } = createTaggedError("CauseError");
+
+		// Can use it just like old flexible mode
+		const err1 = LegacyError({ message: "Error" });
+		const err2 = LegacyError({
+			message: "Error",
+			context: { any: "data" },
+		});
+		const err3 = LegacyError({
+			message: "Error",
+			cause: CauseError({ message: "Cause" }),
+		});
+		const err4 = LegacyError({
+			message: "Error",
+			context: { any: "data" },
+			cause: CauseError({ message: "Cause" }),
+		});
+
+		expect(err1.context).toBeUndefined();
+		expect(err2.context).toEqual({ any: "data" });
+		expect(err3.cause?.name).toBe("CauseError");
+		expect(err4.context).toEqual({ any: "data" });
+		expect(err4.cause?.name).toBe("CauseError");
 	});
 });
