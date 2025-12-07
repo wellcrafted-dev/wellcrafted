@@ -58,14 +58,14 @@ Structured, serializable errors with a fluent API
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
-// Flexible by default - context and cause are optional
-const { ApiError, ApiErr } = createTaggedError("ApiError");
-ApiError({ message: "Request failed" });
-ApiError({ message: "Timeout", context: { endpoint: "/users" } });
+// Minimal by default - only name and message
+const { ValidationError } = createTaggedError("ValidationError");
+ValidationError({ message: "Email is required" });
 
-// Chain to add type constraints when needed
-const { FileError } = createTaggedError("FileError")
-  .withContext<{ path: string }>();  // context is now required
+// Chain to add context and cause when needed
+const { ApiError } = createTaggedError("ApiError")
+  .withContext<{ endpoint: string }>()
+  .withCause<NetworkError | undefined>();
 ```
 
 ### 🔄 Query Integration
@@ -106,19 +106,21 @@ npm install wellcrafted
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { createTaggedError, type AnyTaggedError } from "wellcrafted/error";
 
 // Define your error with factory function
-const { ApiError, ApiErr } = createTaggedError("ApiError");
+const { ApiError, ApiErr } = createTaggedError("ApiError")
+  .withContext<{ endpoint: string }>()
+  .withCause<AnyTaggedError | undefined>();
 type ApiError = ReturnType<typeof ApiError>;
 
 // Wrap any throwing operation
 const { data, error } = await tryAsync({
   try: () => fetch('/api/user').then(r => r.json()),
-  catch: (error) => ApiErr({
+  catch: (e) => ApiErr({
     message: "Failed to fetch user",
     context: { endpoint: '/api/user' },
-    cause: error
+    cause: { name: "FetchError", message: String(e) }
   })
 });
 
@@ -212,25 +214,28 @@ if (error) {
 ### Wrap Unsafe Operations
 
 ```typescript
+// Define errors with context and cause
+const { ParseError, ParseErr } = createTaggedError("ParseError")
+  .withContext<{ input: string }>();
+
+const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
+  .withContext<{ url: string }>();
+
 // Synchronous
 const result = trySync({
   try: () => JSON.parse(jsonString),
-  catch: (error) => Err({
-    name: "ParseError",
+  catch: () => ParseErr({
     message: "Invalid JSON",
-    context: { input: jsonString },
-    cause: error
+    context: { input: jsonString }
   })
 });
 
-// Asynchronous  
+// Asynchronous
 const result = await tryAsync({
   try: () => fetch(url),
-  catch: (error) => Err({
-    name: "NetworkError",
+  catch: () => NetworkErr({
     message: "Request failed",
-    context: { url },
-    cause: error
+    context: { url }
   })
 });
 ```
@@ -240,9 +245,10 @@ const result = await tryAsync({
 ```typescript
 // 1. Service Layer - Pure business logic
 import { createTaggedError } from "wellcrafted/error";
-import { tryAsync, Result } from "wellcrafted/result";
+import { tryAsync, Result, Ok } from "wellcrafted/result";
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError");
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
+  .withContext<{ currentState?: string; permissions?: string }>();
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -254,8 +260,7 @@ export function createRecorderService() {
       if (isRecording) {
         return RecorderServiceErr({
           message: "Already recording",
-          context: { currentState: 'recording' },
-          cause: undefined
+          context: { currentState: 'recording' }
         });
       }
 
@@ -266,10 +271,9 @@ export function createRecorderService() {
           // ... recording setup
           isRecording = true;
         },
-        catch: (error) => RecorderServiceErr({
+        catch: () => RecorderServiceErr({
           message: "Failed to start recording",
-          context: { permissions: 'microphone' },
-          cause: error
+          context: { permissions: 'microphone' }
         })
       });
     },
@@ -278,11 +282,10 @@ export function createRecorderService() {
       if (!isRecording) {
         return RecorderServiceErr({
           message: "Not currently recording",
-          context: { currentState: 'idle' },
-          cause: undefined
+          context: { currentState: 'idle' }
         });
       }
-      
+
       // Stop recording and return blob...
       isRecording = false;
       return Ok(currentBlob!);
@@ -373,10 +376,12 @@ const { data: parsed } = trySync({
 
 ### Propagation Pattern (May Fail)
 ```typescript
-// When catch can return Err<E>, function returns Result<T, E>  
+const { ParseError, ParseErr } = createTaggedError("ParseError");
+
+// When catch can return Err<E>, function returns Result<T, E>
 const mayFail = trySync({
   try: () => JSON.parse(riskyJson),
-  catch: (error) => ParseErr({ message: "Invalid JSON", cause: error })
+  catch: () => ParseErr({ message: "Invalid JSON" })
 });
 // mayFail: Result<object, ParseError> - Must check for errors
 if (isOk(mayFail)) {
@@ -388,13 +393,13 @@ if (isOk(mayFail)) {
 ```typescript
 const smartParse = trySync({
   try: () => JSON.parse(input),
-  catch: (error) => {
+  catch: () => {
     // Recover from empty input
     if (input.trim() === "") {
       return Ok({}); // Return Ok<T> for fallback
     }
-    // Propagate other errors  
-    return ParseErr({ message: "Parse failed", cause: error });
+    // Propagate other errors
+    return ParseErr({ message: "Parse failed" });
   }
 });
 // smartParse: Result<object, ParseError> - Mixed handling = Result type
@@ -425,40 +430,40 @@ Based on real-world usage, here's the recommended pattern for creating services 
 
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
+import { Result, Ok } from "wellcrafted/result";
 
-// 1. Define service-specific errors
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError");
+// 1. Define service-specific errors with typed context
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
+  .withContext<{ isRecording: boolean }>();
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 // 2. Create service with factory function
 export function createRecorderService() {
   // Private state in closure
   let isRecording = false;
-  
+
   // Return object with methods
   return {
     startRecording(): Result<void, RecorderServiceError> {
       if (isRecording) {
         return RecorderServiceErr({
           message: "Already recording",
-          context: { isRecording },
-          cause: undefined
+          context: { isRecording }
         });
       }
-      
+
       isRecording = true;
       return Ok(undefined);
     },
-    
+
     stopRecording(): Result<Blob, RecorderServiceError> {
       if (!isRecording) {
         return RecorderServiceErr({
-          message: "Not currently recording", 
-          context: { isRecording },
-          cause: undefined
+          message: "Not currently recording",
+          context: { isRecording }
         });
       }
-      
+
       isRecording = false;
       return Ok(new Blob(["audio data"]));
     }
@@ -540,22 +545,23 @@ export async function GET(request: Request) {
 <summary><b>Form Validation</b></summary>
 
 ```typescript
+const { FormError, FormErr } = createTaggedError("FormError")
+  .withContext<{ fields: Record<string, string[]> }>();
+
 function validateLoginForm(data: unknown): Result<LoginData, FormError> {
   const errors: Record<string, string[]> = {};
-  
+
   if (!isValidEmail(data?.email)) {
     errors.email = ["Invalid email format"];
   }
-  
+
   if (Object.keys(errors).length > 0) {
-    return Err({
-      name: "FormError",
+    return FormErr({
       message: "Validation failed",
-      context: { fields: errors },
-      cause: undefined
+      context: { fields: errors }
     });
   }
-  
+
   return Ok(data as LoginData);
 }
 ```
@@ -623,9 +629,9 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
   - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
-  - **Default**: context and cause are optional, loosely typed
-  - Chain `.withContext<T>()` to require/type context
-  - Chain `.withCause<T>()` to constrain cause types
+  - **Default**: minimal errors with only `name` and `message`
+  - Chain `.withContext<T>()` to add typed context
+  - Chain `.withCause<T>()` to add typed cause
   - Include `| undefined` in type to make property optional but typed
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
