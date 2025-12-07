@@ -22,10 +22,11 @@ Here's the recommended pattern for creating services:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineError } from "wellcrafted/error";
+import { createTaggedError } from "wellcrafted/error";
 
-// 1. Define service-specific errors
-const { UserServiceError, UserServiceErr } = defineError("UserServiceError");
+// 1. Define service-specific errors with typed context
+const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
+  .withContext<{ userId?: string; operation: string }>();
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // 2. Create service with factory function
@@ -45,7 +46,7 @@ export function createUserService(db: Database) {
         try: () => db.users.findById(id),
         catch: (error) => UserServiceErr({
           message: "Failed to fetch user",
-          context: { userId: id },
+          context: { userId: id, operation: "getUser" },
           cause: error
         })
       });
@@ -62,17 +63,17 @@ export function createUserService(db: Database) {
       if (!input.email.includes('@')) {
         return UserServiceErr({
           message: "Invalid email format",
-          context: { email: input.email },
+          context: { operation: "createUser" },
           cause: undefined
         });
       }
-      
+
       // Save to database
       return tryAsync({
         try: () => db.users.create(input),
         catch: (error) => UserServiceErr({
           message: "Failed to create user",
-          context: { input },
+          context: { operation: "createUser" },
           cause: error
         })
       });
@@ -96,8 +97,10 @@ export const UserServiceLive = createUserService(databaseInstance);
 Services often need multiple dependencies:
 
 ```typescript
-const { PaymentServiceError, PaymentServiceErr } = defineError("PaymentServiceError");
-const { EmailServiceError, EmailServiceErr } = defineError("EmailServiceError");
+const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError")
+  .withContext<{ amount?: number; paymentId?: string }>();
+const { EmailServiceError, EmailServiceErr } = createTaggedError("EmailServiceError")
+  .withContext<{ recipient?: string; template?: string }>();
 
 type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
 type EmailServiceError = ReturnType<typeof EmailServiceError>;
@@ -170,9 +173,10 @@ export type NotificationService = {
   requestPermission(): Promise<Result<boolean, NotificationServiceError>>;
 };
 
-const { NotificationServiceError, NotificationServiceErr } = 
-  defineError("NotificationServiceError");
-  
+const { NotificationServiceError, NotificationServiceErr } =
+  createTaggedError("NotificationServiceError")
+    .withContext<{ action: string; platform?: string }>();
+
 type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
 
 // desktop.ts - Desktop implementation
@@ -504,10 +508,10 @@ Keep error types focused:
 
 ```typescript
 // ✅ Good - specific error type
-const { UserServiceError } = defineError("UserServiceError");
+const { UserServiceError } = createTaggedError("UserServiceError");
 
 // ❌ Bad - too generic
-const { ServiceError } = defineError("ServiceError");
+const { ServiceError } = createTaggedError("ServiceError");
 ```
 
 ### 2. Include Context in Errors

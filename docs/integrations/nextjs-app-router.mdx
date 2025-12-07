@@ -135,10 +135,10 @@ Create services that work in both server and client contexts:
 ```typescript
 // lib/services/users.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { defineError } from 'wellcrafted/error';
+import { createTaggedError } from 'wellcrafted/error';
 import { db } from '../db';
 
-const { UserServiceError, UserServiceErr } = defineError('UserServiceError');
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
