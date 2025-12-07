@@ -87,12 +87,12 @@ const order = logResult(await getOrder("456"), "Get Order");
 Create flexible error unions for functions that can fail in multiple ways:
 
 ```typescript
-import { defineError } from 'wellcrafted/error';
+import { createTaggedError } from 'wellcrafted/error';
 
 // Define specific error types
-const { ValidationError, ValidationErr } = defineError('ValidationError');
-const { NetworkError, NetworkErr } = defineError('NetworkError');
-const { AuthError, AuthErr } = defineError('AuthError');
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+const { AuthError, AuthErr } = createTaggedError('AuthError');
 
 type ValidationError = ReturnType<typeof ValidationError>;
 type NetworkError = ReturnType<typeof NetworkError>;
@@ -578,7 +578,7 @@ type SpecificError =
   | { type: 'NETWORK_DNS_ERROR'; hostname: string };
 
 // DO: Broad categories, specific context
-const { NetworkError } = defineError('NetworkError');
+const { NetworkError } = createTaggedError('NetworkError');
 // Use context field for specifics
 ```
 

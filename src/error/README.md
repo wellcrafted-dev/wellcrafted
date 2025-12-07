@@ -26,28 +26,28 @@ We use plain objects instead of Error classes because they serialize cleanly to 
 
 ## The Fluent API
 
-The `defineError` function provides a clean, chainable API for defining error types:
+The `createTaggedError` function provides a clean, chainable API for defining error types:
 
 ```typescript
-import { defineError } from 'wellcrafted/error';
+import { createTaggedError } from 'wellcrafted/error';
 
 // Simple error (flexible mode)
-const { NetworkError, NetworkErr } = defineError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 
 // Error with required context
-const { FileError, FileErr } = defineError('FileError')
+const { FileError, FileErr } = createTaggedError('FileError')
   .withContext<{ path: string; operation: 'read' | 'write' | 'delete' }>();
 
 // Error with optional typed context (include undefined in union)
-const { LogError, LogErr } = defineError('LogError')
+const { LogError, LogErr } = createTaggedError('LogError')
   .withContext<{ file: string; line: number } | undefined>();
 
 // Error with optional typed cause
-const { ServiceError, ServiceErr } = defineError('ServiceError')
+const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
   .withCause<DbError | CacheError | undefined>();
 
 // Both context and cause
-const { ApiError, ApiErr } = defineError('ApiError')
+const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withContext<{ endpoint: string }>()
   .withCause<NetworkError | undefined>();
 ```
@@ -68,7 +68,7 @@ This is consistent with TypeScript idioms and requires no separate "optional" me
 Use this when you don't know what context you need yet, or when context varies wildly between call sites.
 
 ```typescript
-const { NetworkError, NetworkErr } = defineError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 
 // Just a message
 NetworkError({ message: 'Timeout' });
@@ -87,7 +87,7 @@ NetworkError({ message: 'Request failed', cause: someOtherError });
 Use this when you know what debugging information is ALWAYS needed for this error type.
 
 ```typescript
-const { FileError, FileErr } = defineError('FileError')
+const { FileError, FileErr } = createTaggedError('FileError')
   .withContext<{
     path: string;
     operation: 'read' | 'write' | 'delete';
@@ -111,7 +111,7 @@ Every file error without a path is useless for debugging. Every API error withou
 Sometimes you want context to be optional (not every error needs it), but when provided, it should be typed. Include `undefined` in the union:
 
 ```typescript
-const { LogError, LogErr } = defineError('LogError')
+const { LogError, LogErr } = createTaggedError('LogError')
   .withContext<{ file: string; line: number } | undefined>();
 
 // Context is optional
@@ -131,11 +131,11 @@ This differs from flexible mode: flexible mode accepts any shape, while optional
 Use `.withCause<T>()` when errors have predictable causes. An API error wraps a network error. A service error wraps a repository error.
 
 ```typescript
-const { NetworkError } = defineError('NetworkError')
+const { NetworkError } = createTaggedError('NetworkError')
   .withContext<{ url: string }>();
 type NetworkError = ReturnType<typeof NetworkError>;
 
-const { ApiError, ApiErr } = defineError('ApiError')
+const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withContext<{ endpoint: string }>()
   .withCause<NetworkError | undefined>();
 
@@ -161,9 +161,9 @@ This encodes domain knowledge: "API errors fail because of network issues, not v
 Tagged error chains are just nested objects that serialize perfectly to JSON:
 
 ```typescript
-const { DbError } = defineError('DbError');
-const { RepoError } = defineError('RepoError');
-const { ServiceError } = defineError('ServiceError');
+const { DbError } = createTaggedError('DbError');
+const { RepoError } = createTaggedError('RepoError');
+const { ServiceError } = createTaggedError('ServiceError');
 
 const dbError = DbError({
   message: 'Connection timeout',
@@ -194,12 +194,12 @@ Each layer adds its own context while preserving the full chain.
 
 ```typescript
 // Flexible mode
-const { NetworkError } = defineError('NetworkError');
+const { NetworkError } = createTaggedError('NetworkError');
 type NetworkError = ReturnType<typeof NetworkError>;
 // = TaggedError<'NetworkError'> with optional context/cause
 
 // Required context mode
-const { FileError } = defineError('FileError')
+const { FileError } = createTaggedError('FileError')
   .withContext<{ path: string }>();
 type FileError = ReturnType<typeof FileError>;
 // = TaggedError<'FileError', { path: string }> with required context
@@ -220,29 +220,29 @@ function handleErrors(error: NetworkError | FileError) {
 ## Quick Reference
 
 ```typescript
-import { defineError, type TaggedError } from 'wellcrafted/error';
+import { createTaggedError, type TaggedError } from 'wellcrafted/error';
 
 // Flexible: context and cause optional, loosely typed
-const { NetworkError, NetworkErr } = defineError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
 type NetworkError = ReturnType<typeof NetworkError>;
 
 // Required context: context required with exact shape
-const { FileError, FileErr } = defineError('FileError')
+const { FileError, FileErr } = createTaggedError('FileError')
   .withContext<{ filename: string }>();
 type FileError = ReturnType<typeof FileError>;
 
 // Optional typed context: context optional but typed when provided
-const { LogError, LogErr } = defineError('LogError')
+const { LogError, LogErr } = createTaggedError('LogError')
   .withContext<{ file: string; line: number } | undefined>();
 type LogError = ReturnType<typeof LogError>;
 
 // Optional typed cause: cause optional but constrained when provided
-const { ServiceError, ServiceErr } = defineError('ServiceError')
+const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
   .withCause<DbError | CacheError | undefined>();
 type ServiceError = ReturnType<typeof ServiceError>;
 
 // Both: required context, optional typed cause
-const { ApiError, ApiErr } = defineError('ApiError')
+const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withContext<{ endpoint: string }>()
   .withCause<NetworkError | undefined>();
 type ApiError = ReturnType<typeof ApiError>;

@@ -8,7 +8,7 @@ description: A cleaner way to extract types from factory functions
 I was building error factories in wellcrafted and kept running into this annoying pattern:
 
 ```typescript
-const { ApiError, ApiErr } = defineError("ApiError");
+const { ApiError, ApiErr } = createTaggedError("ApiError");
 
 // Later, when I need the type...
 type ApiError = ReturnType<typeof defineError<"ApiError">>;
@@ -40,7 +40,7 @@ export function defineError<TErrorName extends `${string}Error`>(
 }
 
 // Using it
-const factories = defineError("ApiError");
+const factories = createTaggedError("ApiError");
 const { ApiError, ApiErr } = factories;
 
 // But how do I get the ApiError type?
@@ -94,7 +94,7 @@ export function defineError<TErrorName extends `${string}Error`>(
 Now look how clean the usage is:
 
 ```typescript
-const apiError = defineError("ApiError");
+const apiError = createTaggedError("ApiError");
 type ApiError = typeof apiError.type;  // That's it!
 
 // Still works with destructuring

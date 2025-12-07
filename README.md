@@ -54,12 +54,18 @@ function getUser(id: UserId) { /* ... */ }
 ```
 
 ### 📋 Tagged Errors
-Structured, serializable errors with convenient factory functions
+Structured, serializable errors with a fluent API
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
+// Flexible by default - context and cause are optional
 const { ApiError, ApiErr } = createTaggedError("ApiError");
-// ApiError() creates error object, ApiErr() creates Err-wrapped error
+ApiError({ message: "Request failed" });
+ApiError({ message: "Timeout", context: { endpoint: "/users" } });
+
+// Chain to add type constraints when needed
+const { FileError } = createTaggedError("FileError")
+  .withContext<{ path: string }>();  // context is now required
 ```
 
 ### 🔄 Query Integration
@@ -615,10 +621,12 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 - **`defineMutation(options)`** - Define a mutation with dual interface (`.options()` + `.execute()`)
 
 ### Error Functions
-- **`createTaggedError(name)`** - Creates error factory functions
-  - Returns two functions: `{ErrorName}` and `{ErrorName}Err`
-  - The first creates plain error objects
-  - The second creates Err-wrapped errors
+- **`createTaggedError(name)`** - Creates error factory functions with fluent API
+  - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
+  - **Default**: context and cause are optional, loosely typed
+  - Chain `.withContext<T>()` to require/type context
+  - Chain `.withCause<T>()` to constrain cause types
+  - Include `| undefined` in type to make property optional but typed
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
 ### Types
