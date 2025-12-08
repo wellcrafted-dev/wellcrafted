@@ -13,7 +13,7 @@ import { Err, Ok, type Result, resolve } from "../result/index.js";
 /**
  * Input options for defining a query.
  *
- * Extends TanStack Query's QueryObserverOptions but replaces queryFn with resultQueryFn.
+ * Extends TanStack Query's QueryObserverOptions but expects queryFn to return a Result type.
  * This type represents the configuration for creating a query definition with both
  * reactive and imperative interfaces for data fetching.
  *
@@ -33,7 +33,7 @@ export type DefineQueryInput<
 	"queryFn"
 > & {
 	queryKey: TQueryKey;
-	resultQueryFn: QueryFunction<Result<TQueryFnData, TError>, TQueryKey>;
+	queryFn: QueryFunction<Result<TQueryFnData, TError>, TQueryKey>;
 };
 
 /**
@@ -89,7 +89,7 @@ export type DefineQueryOutput<
 /**
  * Input options for defining a mutation.
  *
- * Extends TanStack Query's MutationOptions but replaces mutationFn with resultMutationFn.
+ * Extends TanStack Query's MutationOptions but expects mutationFn to return a Result type.
  * This type represents the configuration for creating a mutation definition with both
  * reactive and imperative interfaces for data mutations.
  *
@@ -105,7 +105,7 @@ export type DefineMutationInput<
 	TContext = unknown,
 > = Omit<MutationOptions<TData, TError, TVariables, TContext>, "mutationFn"> & {
 	mutationKey: MutationKey;
-	resultMutationFn: MutationFunction<Result<TData, TError>, TVariables>;
+	mutationFn: MutationFunction<Result<TData, TError>, TVariables>;
 };
 
 /**
@@ -179,7 +179,7 @@ export type DefineMutationOutput<
  * // Now use defineQuery and defineMutation as before
  * const userQuery = defineQuery({
  *   queryKey: ['user', userId],
- *   resultQueryFn: () => services.getUser(userId)
+ *   queryFn: () => services.getUser(userId)
  * });
  *
  * // Use in components
@@ -215,7 +215,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 *
 	 * @param options - Query configuration object
 	 * @param options.queryKey - Unique key for this query (used for caching and refetching)
-	 * @param options.resultQueryFn - Function that fetches data and returns a Result type
+	 * @param options.queryFn - Function that fetches data and returns a Result type
 	 * @param options.* - Any other TanStack Query options (staleTime, refetchInterval, etc.)
 	 *
 	 * @returns Callable query definition with:
@@ -229,7 +229,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * // Step 1: Define your query in the query layer
 	 * const userQuery = defineQuery({
 	 *   queryKey: ['users', userId],
-	 *   resultQueryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
+	 *   queryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
 	 *   staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
 	 * });
 	 *
@@ -272,7 +272,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 		const newOptions = {
 			...options,
 			queryFn: async (context) => {
-				let result = options.resultQueryFn(context);
+				let result = options.queryFn(context);
 				if (result instanceof Promise) result = await result;
 				return resolve(result);
 			},
@@ -410,7 +410,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 *
 	 * @param options - Mutation configuration object
 	 * @param options.mutationKey - Unique key for this mutation (used for tracking in-flight state)
-	 * @param options.resultMutationFn - Function that performs the mutation and returns a Result type
+	 * @param options.mutationFn - Function that performs the mutation and returns a Result type
 	 * @param options.* - Any other TanStack Mutation options (onSuccess, onError, etc.)
 	 *
 	 * @returns Callable mutation definition with:
@@ -423,7 +423,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * // Step 1: Define your mutation with cache updates
 	 * const createRecording = defineMutation({
 	 *   mutationKey: ['recordings', 'create'],
-	 *   resultMutationFn: async (recording: Recording) => {
+	 *   mutationFn: async (recording: Recording) => {
 	 *     // Call the service
 	 *     const result = await services.db.createRecording(recording);
 	 *     if (result.error) return Err(result.error);
@@ -463,7 +463,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 		const newOptions = {
 			...options,
 			mutationFn: async (variables: TVariables) => {
-				return resolve(await options.resultMutationFn(variables));
+				return resolve(await options.mutationFn(variables));
 			},
 		} satisfies MutationOptions<TData, TError, TVariables, TContext>;
 

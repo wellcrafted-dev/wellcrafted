@@ -83,7 +83,7 @@ type UIError = {
 export const recorder = {
   startRecording: defineMutation({
     mutationKey: ['recorder', 'start'],
-    resultMutationFn: async (): Promise<Result<void, UIError>> => {
+    mutationFn: async (): Promise<Result<void, UIError>> => {
       const { error } = await services.recorder.startRecording();
       if (error) {
         // Transform service error to UI error
@@ -207,7 +207,7 @@ type RecordingUIError = {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: async (): Promise<Result<Recording[], RecordingUIError>> => {
+    queryFn: async (): Promise<Result<Recording[], RecordingUIError>> => {
       const { data, error } = await services.db.getAllRecordings();
       if (error) {
         return Err({
@@ -225,7 +225,7 @@ export const recordings = {
 
   createRecording: defineMutation({
     mutationKey: ['recordings', 'create'],
-    resultMutationFn: async (recording: Recording): Promise<Result<Recording, RecordingUIError>> => {
+    mutationFn: async (recording: Recording): Promise<Result<Recording, RecordingUIError>> => {
       const { data, error } = await services.db.createRecording(recording);
       if (error) {
         // Customize UI message based on service error
@@ -311,7 +311,7 @@ Transform the same service error differently based on context:
 // Different contexts can produce different UI messages
 export const auth = {
   signIn: defineMutation({
-    resultMutationFn: async (credentials) => {
+    mutationFn: async (credentials) => {
       const { error } = await services.auth.signIn(credentials);
       if (error) {
         return Err({
@@ -325,7 +325,7 @@ export const auth = {
   }),
 
   changePassword: defineMutation({
-    resultMutationFn: async (passwords) => {
+    mutationFn: async (passwords) => {
       const { error } = await services.auth.changePassword(passwords);
       if (error) {
         // Same service error, different UI message
@@ -354,7 +354,7 @@ type UIError = {
 };
 
 const validateInput = defineMutation({
-  resultMutationFn: async (input): Promise<Result<ValidatedInput, UIError>> => {
+  mutationFn: async (input): Promise<Result<ValidatedInput, UIError>> => {
     const { data, error } = await services.validation.validateInput(input);
     if (error) {
       // Transform validation errors to warnings
@@ -386,7 +386,7 @@ Handle multiple errors from batch operations:
 
 ```typescript
 const processBatch = defineMutation({
-  resultMutationFn: async (items): Promise<Result<BatchResult, UIError>> => {
+  mutationFn: async (items): Promise<Result<BatchResult, UIError>> => {
     const { data, error } = await services.batch.processItems(items);
     if (error) {
       const successCount = data?.results.filter(r => r.success).length ?? 0;
@@ -429,7 +429,7 @@ if (error) {
 ```typescript
 // DON'T: Return raw service errors from query layer
 export const getUser = defineQuery({
-  resultQueryFn: () => services.getUser(id), // Missing error transformation!
+  queryFn: () => services.getUser(id), // Missing error transformation!
 });
 ```
 

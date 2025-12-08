@@ -80,7 +80,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 // Define operations that return Result types
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => getUserFromAPI(userId) // Returns Result<User, ApiError>
+  queryFn: () => getUserFromAPI(userId) // Returns Result<User, ApiError>
 });
 
 // Use reactively in components with automatic state management
@@ -301,7 +301,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 export const recorder = {
   getRecorderState: defineQuery({
     queryKey: ['recorder', 'state'],
-    resultQueryFn: async () => {
+    queryFn: async () => {
       const { data, error } = await services.recorder.getState();
       if (error) {
         // Transform service error to UI-friendly error
@@ -318,7 +318,7 @@ export const recorder = {
 
   startRecording: defineMutation({
     mutationKey: ['recorder', 'start'],
-    resultMutationFn: async () => {
+    mutationFn: async () => {
       const { error } = await services.recorder.startRecording();
       if (error) {
         return Err({
