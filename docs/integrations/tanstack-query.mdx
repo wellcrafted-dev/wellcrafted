@@ -27,7 +27,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 // 3. Define your operations
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
+  queryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
   staleTime: 10 * 60 * 1000, // Override default for this query
 });
 
@@ -149,7 +149,7 @@ const deleteRecordingMutation = createMutation(
 ```typescript
 const getAllUsers = defineQuery({
   queryKey: ['users'],
-  resultQueryFn: () => services.db.getAllUsers(),
+  queryFn: () => services.db.getAllUsers(),
   staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
 });
 ```
@@ -160,7 +160,7 @@ const getAllUsers = defineQuery({
 // For dynamic parameters, use accessor functions
 const getUserById = (userId: Accessor<string>) => defineQuery({
   queryKey: ['users', userId()],
-  resultQueryFn: () => services.db.getUserById(userId()),
+  queryFn: () => services.db.getUserById(userId()),
   enabled: userId() !== '', // Only run when userId is provided
 });
 
@@ -174,7 +174,7 @@ const userQuery = createQuery(getUserById(userId).options());
 ```typescript
 const userProfileQuery = (userId: Accessor<string>) => defineQuery({
   queryKey: ['users', userId(), 'profile'],
-  resultQueryFn: async () => {
+  queryFn: async () => {
     // First get basic user data
     const { data: user, error: userError } = await services.db.getUserById(userId());
     if (userError) return Err(userError);
@@ -196,7 +196,7 @@ const userProfileQuery = (userId: Accessor<string>) => defineQuery({
 ```typescript
 const createRecording = defineMutation({
   mutationKey: ['recordings', 'create'],
-  resultMutationFn: async (recording: Recording) => {
+  mutationFn: async (recording: Recording) => {
     const { data, error } = await services.db.createRecording(recording);
     if (error) return Err(error);
 
@@ -219,7 +219,7 @@ const createRecording = defineMutation({
 ```typescript
 const transcribeRecording = defineMutation({
   mutationKey: ['recordings', 'transcribe'],
-  resultMutationFn: async (recordingId: string) => {
+  mutationFn: async (recordingId: string) => {
     // Step 1: Update status to 'transcribing'
     const { error: updateError } = await recordings.updateRecording.execute({
       id: recordingId,
@@ -262,7 +262,7 @@ const { RecorderServiceError } = createTaggedError("RecorderServiceError")
 
 // Query layer transforms them for UI consumption
 const startRecording = defineMutation({
-  resultMutationFn: async () => {
+  mutationFn: async () => {
     const { error } = await services.recorder.startRecording();
     if (error) {
       // Transform service error to UI error
@@ -298,7 +298,7 @@ const recordingKeys = {
 
 const getAllRecordings = defineQuery({
   queryKey: recordingKeys.all,
-  resultQueryFn: () => services.db.getAllRecordings(),
+  queryFn: () => services.db.getAllRecordings(),
 });
 ```
 
@@ -306,7 +306,7 @@ const getAllRecordings = defineQuery({
 
 ```typescript
 const updateRecording = defineMutation({
-  resultMutationFn: async (recording: Recording) => {
+  mutationFn: async (recording: Recording) => {
     const { data, error } = await services.db.updateRecording(recording);
     if (error) return Err(error);
 
@@ -342,7 +342,7 @@ Perfect for operations that depend on user settings:
 
 ```typescript
 const transcribeBlob = defineMutation({
-  resultMutationFn: async (blob: Blob) => {
+  mutationFn: async (blob: Blob) => {
     // Access reactive settings at runtime
     const selectedService = settings.value['transcription.selectedService'];
     const apiKey = settings.value[`apiKeys.${selectedService.toLowerCase()}`];
@@ -446,7 +446,7 @@ async function handleDelete(recording: Recording) {
 ```typescript
 // ✅ Good: Transform at query layer
 const getUser = defineQuery({
-  resultQueryFn: async () => {
+  queryFn: async () => {
     const { data, error } = await services.db.getUser(id);
     if (error) {
       return Err({
@@ -534,7 +534,7 @@ const userQuery = createQuery(rpc.users.getUserById(id).options());
 // Define once, use everywhere
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => services.getUserById(userId),
+  queryFn: () => services.getUserById(userId),
 });
 
 // Reactive component usage
@@ -553,7 +553,7 @@ async function refreshUser() {
 // Same query definition works across frameworks
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => services.getUserById(userId),
+  queryFn: () => services.getUserById(userId),
 });
 
 // React component usage

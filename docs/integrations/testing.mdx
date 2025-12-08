@@ -498,7 +498,7 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
       });
 
       const result = await userQuery.fetch();
@@ -521,7 +521,7 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
       });
 
       const result = await userQuery.fetch();
@@ -541,7 +541,7 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
         staleTime: 5 * 60 * 1000, // 5 minutes
       });
 
@@ -577,7 +577,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) return result;
@@ -626,7 +626,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) return result;
@@ -670,7 +670,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) {

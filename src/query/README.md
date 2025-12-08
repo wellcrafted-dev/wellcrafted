@@ -150,19 +150,19 @@ export const users = {
   getUser: (userId: string) => 
     defineQuery({
       queryKey: ['users', userId],
-      resultQueryFn: () => userService.getUser(userId),
+      queryFn: () => userService.getUser(userId),
     }),
 
   // Query all users
   getAllUsers: defineQuery({
     queryKey: ['users'],
-    resultQueryFn: () => userService.getAllUsers(),
+    queryFn: () => userService.getAllUsers(),
   }),
 
   // Mutation with optimistic updates
   updateUser: defineMutation({
     mutationKey: ['users', 'update'],
-    resultMutationFn: async (user: User) => {
+    mutationFn: async (user: User) => {
       const result = await userService.updateUser(user);
       
       if (result.error) return result;
@@ -514,7 +514,7 @@ import { settings } from '../stores/settings';
 
 export const transcription = {
   transcribe: defineMutation({
-    resultMutationFn: async (audio: Blob) => {
+    mutationFn: async (audio: Blob) => {
       // Select service based on user settings
       const provider = settings.value.transcriptionProvider;
       
@@ -542,7 +542,7 @@ Transform service errors into UI-friendly formats:
 // query/users.ts
 export const users = {
   createUser: defineMutation({
-    resultMutationFn: async (userData: CreateUserInput) => {
+    mutationFn: async (userData: CreateUserInput) => {
       const result = await userService.createUser(userData);
       
       if (result.error) {
@@ -579,7 +579,7 @@ The query layer can orchestrate complex operations:
 // query/orders.ts
 export const orders = {
   placeOrder: defineMutation({
-    resultMutationFn: async (orderData: OrderInput) => {
+    mutationFn: async (orderData: OrderInput) => {
       // Step 1: Validate inventory
       const inventory = await rpc.inventory.checkAvailability.fetch();
       if (!hasStock(orderData.items, inventory.data)) {
@@ -633,7 +633,7 @@ describe('User Queries', () => {
 
     const userQuery = defineQuery({
       queryKey: ['users', '1'],
-      resultQueryFn: () => userService.getUser('1'),
+      queryFn: () => userService.getUser('1'),
     });
 
     const result = await userQuery.fetch();
@@ -736,7 +736,7 @@ createQuery(rpc.users.getUser(() => CONSTANT_ID).options)
 // In query/users.ts:
 getUser: (userId: string | (() => string)) => defineQuery({
   queryKey: ['users', typeof userId === 'function' ? userId() : userId],
-  resultQueryFn: () => services.getUser(
+  queryFn: () => services.getUser(
     typeof userId === 'function' ? userId() : userId
   ),
 }),

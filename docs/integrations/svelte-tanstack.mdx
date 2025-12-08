@@ -326,7 +326,7 @@ export const recordings = {
   // Query all recordings
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     staleTime: 2 * 60 * 1000, // 2 minutes for recordings list
   }),
 
@@ -334,14 +334,14 @@ export const recordings = {
   getRecording: (recordingId: string) => 
     defineQuery({
       queryKey: ['recordings', recordingId],
-      resultQueryFn: () => recordingService.getRecording(recordingId),
+      queryFn: () => recordingService.getRecording(recordingId),
       enabled: !!recordingId,
     }),
 
   // Create recording mutation
   createRecording: defineMutation({
     mutationKey: ['recordings', 'create'],
-    resultMutationFn: async (input: CreateRecordingInput) => {
+    mutationFn: async (input: CreateRecordingInput) => {
       const result = await recordingService.createRecording(input);
       
       if (result.error) return result;
@@ -362,7 +362,7 @@ export const recordings = {
   // Delete recording mutation
   deleteRecording: defineMutation({
     mutationKey: ['recordings', 'delete'],
-    resultMutationFn: async (recordingId: string) => {
+    mutationFn: async (recordingId: string) => {
       const result = await recordingService.deleteRecording(recordingId);
       
       if (result.error) return result;
@@ -382,7 +382,7 @@ export const recordings = {
   // Update recording mutation (used for transcription status, etc.)
   updateRecording: defineMutation({
     mutationKey: ['recordings', 'update'],
-    resultMutationFn: async ({ id, updates }: { id: string; updates: Partial<Recording> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Recording> }) => {
       const result = await recordingService.updateRecording(id, updates);
       
       if (result.error) return result;
@@ -1229,7 +1229,7 @@ describe('RecordingsList', () => {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     refetchInterval: 30000,
     refetchIntervalInBackground: true,
   }),
@@ -1242,7 +1242,7 @@ export const recordings = {
 // Immediately show changes before server confirms
 export const recordings = {
   updateRecording: defineMutation({
-    resultMutationFn: async ({ id, updates }) => {
+    mutationFn: async ({ id, updates }) => {
       // Optimistic update
       queryClient.setQueryData(['recordings', id], (old: Recording | undefined) => 
         old ? { ...old, ...updates } : undefined
@@ -1269,13 +1269,13 @@ export const recordings = {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     staleTime: 2 * 60 * 1000, // 2 minutes for list view
   }),
 
   getRecording: (id: string) => defineQuery({
     queryKey: ['recordings', id],
-    resultQueryFn: () => recordingService.getRecording(id),
+    queryFn: () => recordingService.getRecording(id),
     staleTime: 10 * 60 * 1000, // 10 minutes for individual recordings
   }),
 };
@@ -1327,7 +1327,7 @@ export async function getAllRecordings(): Promise<Result<Recording[], RecordingS
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
   }),
 };
 ```

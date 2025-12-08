@@ -270,7 +270,7 @@ function createUserQuery<T extends string>(
 ) {
   return defineQuery({
     queryKey: ['users', userId()] as const,
-    resultQueryFn: (): Promise<Result<User, UserServiceError>> => {
+    queryFn: (): Promise<Result<User, UserServiceError>> => {
       return services.users.getUserById(userId());
     },
     enabled: userId() !== '', // Type-safe check
@@ -308,7 +308,7 @@ const recordingDetail = recordingKeys.detail('123'); // readonly ['recordings', 
 // Use in queries
 const recordingQuery = defineQuery({
   queryKey: recordingKeys.detail(recordingId),
-  resultQueryFn: () => services.recordings.getById(recordingId),
+  queryFn: () => services.recordings.getById(recordingId),
 });
 ```
 
@@ -382,7 +382,7 @@ interface SettingsStore {
 // Query that uses settings with type safety
 const transcribeBlob = defineMutation({
   mutationKey: ['transcription', 'transcribe'],
-  resultMutationFn: async (
+  mutationFn: async (
     blob: Blob
   ): Promise<Result<string, TranscriptionError>> => {
     const provider = settings.value['transcription.provider'];
