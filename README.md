@@ -624,8 +624,8 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 
 ### Query Functions
 - **`createQueryFactories(client)`** - Create query/mutation factories for TanStack Query
-- **`defineQuery(options)`** - Define a query with dual interface (`.options()` + `.fetch()`)
-- **`defineMutation(options)`** - Define a mutation with dual interface (`.options()` + `.execute()`)
+- **`defineQuery(options)`** - Define a query with dual interface (`.options` + `.fetch()`)
+- **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + `.execute()`)
 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
