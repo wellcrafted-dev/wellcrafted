@@ -90,6 +90,7 @@ const query = createQuery(() => userQuery.options); // Svelte
 
 // Or use imperatively for direct execution (perfect for event handlers)
 const { data, error } = await userQuery.fetch();
+// Or shorthand: await userQuery() (same as .ensure())
 if (error) {
   showErrorToast(error.message);
   return;
@@ -343,6 +344,7 @@ const recorderState = createQuery(() => recorder.getRecorderState.options);
 // Imperative: Direct execution for event handlers
 async function handleStartRecording() {
   const { error } = await recorder.startRecording.execute();
+  // Or shorthand: await recorder.startRecording()
   if (error) {
     showToast(error.title, { description: error.description });
   }
@@ -624,8 +626,8 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 
 ### Query Functions
 - **`createQueryFactories(client)`** - Create query/mutation factories for TanStack Query
-- **`defineQuery(options)`** - Define a query with dual interface (`.options` + `.fetch()`)
-- **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + `.execute()`)
+- **`defineQuery(options)`** - Define a query with dual interface (`.options` + callable/`.ensure()`/`.fetch()`)
+- **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + callable/`.execute()`)
 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
