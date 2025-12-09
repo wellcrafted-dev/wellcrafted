@@ -115,7 +115,7 @@ Components receive UI-ready errors that can be displayed directly:
 
 ```typescript
 // Component usage - no additional error transformation needed
-const startRecordingMutation = createMutation(recorder.startRecording.options);
+const startRecordingMutation = createMutation(() => recorder.startRecording.options);
 
 startRecordingMutation.mutate(undefined, {
   onError: (uiError) => {
@@ -263,8 +263,8 @@ export const recordings = {
   import { createQuery, createMutation } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
   
-  const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
-  const createRecordingMutation = createMutation(rpc.recordings.createRecording.options);
+  const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+  const createRecordingMutation = createMutation(() => rpc.recordings.createRecording.options);
 
   async function handleSaveRecording(recording: Recording) {
     createRecordingMutation.mutate(recording, {
@@ -437,7 +437,7 @@ export const getUser = defineQuery({
 
 ```typescript
 // DON'T: Transform errors in components
-const userQuery = createQuery(rawUserQuery.options());
+const userQuery = createQuery(() => rawUserQuery.options);
 if (userQuery.error) {
   // Component shouldn't handle service error transformation
   const uiMessage = transformServiceError(userQuery.error);

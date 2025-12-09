@@ -64,8 +64,9 @@ export type DefineQueryInput<
  * const { data, error } = await userQuery.ensure();
  * const { data, error } = await userQuery.fetch();
  *
- * // For reactive usage
- * const query = createQuery(userQuery.options);
+ * // For reactive usage (Svelte 5 requires accessor wrapper)
+ * const query = createQuery(() => userQuery.options); // Svelte 5
+ * const query = useQuery(userQuery.options); // React
  * ```
  */
 export type DefineQueryOutput<
@@ -134,8 +135,9 @@ export type DefineMutationInput<
  * // Or use explicit method
  * const { data, error } = await createUser.execute({ name: 'John' });
  *
- * // For reactive usage
- * const mutation = createMutation(createUser.options);
+ * // For reactive usage (Svelte 5 requires accessor wrapper)
+ * const mutation = createMutation(() => createUser.options); // Svelte 5
+ * const mutation = useMutation(createUser.options); // React
  * ```
  */
 export type DefineMutationOutput<
@@ -182,8 +184,9 @@ export type DefineMutationOutput<
  *   queryFn: () => services.getUser(userId)
  * });
  *
- * // Use in components
- * const query = createQuery(userQuery.options);
+ * // Use in components (Svelte 5 requires accessor wrapper)
+ * const query = createQuery(() => userQuery.options); // Svelte 5
+ * const query = useQuery(userQuery.options); // React
  *
  * // Or imperatively
  * const { data, error } = await userQuery.fetch();
@@ -233,10 +236,10 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 *   staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
 	 * });
 	 *
-	 * // Step 2a: Use reactively in a Svelte component
-	 * const query = createQuery(userQuery.options);
-	 * // $query.data is User | undefined
-	 * // $query.error is ApiError | null
+	 * // Step 2a: Use reactively in a Svelte 5 component (accessor wrapper required)
+	 * const query = createQuery(() => userQuery.options);
+	 * // query.data is User | undefined
+	 * // query.error is ApiError | null
 	 *
 	 * // Step 2b: Call directly in preloaders (recommended)
 	 * export const load = async () => {
@@ -437,9 +440,9 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 *   }
 	 * });
 	 *
-	 * // Step 2a: Use reactively in a component
-	 * const mutation = createMutation(createRecording.options);
-	 * // Call with: $mutation.mutate(recordingData)
+	 * // Step 2a: Use reactively in a Svelte 5 component (accessor wrapper required)
+	 * const mutation = createMutation(() => createRecording.options);
+	 * // Call with: mutation.mutate(recordingData)
 	 *
 	 * // Step 2b: Call directly in an action (recommended)
 	 * async function saveRecording(data: Recording) {

@@ -277,9 +277,9 @@ function createUserQuery<T extends string>(
   });
 }
 
-// Usage with type inference
+// Usage with type inference (Svelte 5 requires accessor wrapper)
 const userId: Accessor<string> = () => route.params.id;
-const userQuery = createQuery(createUserQuery(userId).options());
+const userQuery = createQuery(() => createUserQuery(userId).options);
 // userQuery.data is User | undefined
 // userQuery.error is UserServiceError | null
 ```

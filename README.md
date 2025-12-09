@@ -84,7 +84,8 @@ const userQuery = defineQuery({
 });
 
 // Use reactively in components with automatic state management
-const query = createQuery(userQuery.options());
+// Svelte 5 requires accessor function; React uses options directly
+const query = createQuery(() => userQuery.options); // Svelte
 // query.data, query.error, query.isPending all managed automatically
 
 // Or use imperatively for direct execution (perfect for event handlers)
@@ -336,8 +337,8 @@ export const recorder = {
 };
 
 // 3. Component Usage - Choose reactive or imperative based on needs
-// Reactive: Automatic state management
-const recorderState = createQuery(recorder.getRecorderState.options());
+// Reactive: Automatic state management (Svelte 5 requires accessor function)
+const recorderState = createQuery(() => recorder.getRecorderState.options);
 
 // Imperative: Direct execution for event handlers
 async function handleStartRecording() {
@@ -623,8 +624,8 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 
 ### Query Functions
 - **`createQueryFactories(client)`** - Create query/mutation factories for TanStack Query
-- **`defineQuery(options)`** - Define a query with dual interface (`.options()` + `.fetch()`)
-- **`defineMutation(options)`** - Define a mutation with dual interface (`.options()` + `.execute()`)
+- **`defineQuery(options)`** - Define a query with dual interface (`.options` + `.fetch()`)
+- **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + `.execute()`)
 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
