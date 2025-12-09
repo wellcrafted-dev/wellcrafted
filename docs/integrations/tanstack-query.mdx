@@ -32,24 +32,49 @@ const userQuery = defineQuery({
 });
 
 // 4. Use in components or imperatively
-const query = createQuery(userQuery.options()); // Reactive
-const { data, error } = await userQuery.fetch(); // Imperative
+const query = useQuery(userQuery.options); // React
+const query = createQuery(() => userQuery.options); // Svelte 5
+const { data, error } = await userQuery.fetch(); // Imperative (any framework)
 ```
 
 ## The Dual Interface Pattern
 
 Every query and mutation provides **two ways to use them**:
 
-### 1. Reactive Interface (`.options()`) 
+### 1. Reactive Interface (`.options`)
 **Perfect for components that need automatic state management**
 
-```typescript
-import { createQuery } from '@tanstack/svelte-query';
+**React:**
 
-// Reactive usage in Svelte components
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+```tsx
+import { useQuery } from '@tanstack/react-query';
 
-// Template automatically updates when data changes
+// Reactive usage in React components (pass options directly)
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
+
+// Component automatically re-renders when data changes
+if (recordingsQuery.isPending) return <LoadingSpinner />;
+if (recordingsQuery.error) return <ErrorMessage error={recordingsQuery.error} />;
+return (
+  <>
+    {recordingsQuery.data?.map(recording => (
+      <RecordingCard key={recording.id} recording={recording} />
+    ))}
+  </>
+);
+```
+
+**Svelte 5:**
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query';
+
+  // Reactive usage in Svelte components (wrap in accessor function)
+  const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+</script>
+
+<!-- Template automatically updates when data changes -->
 {#if recordingsQuery.isPending}
   <LoadingSpinner />
 {:else if recordingsQuery.error}
@@ -106,14 +131,15 @@ async function processWorkflow() {
 ### When Creating Reactive Observers is Overkill
 
 ```typescript
-// ❌ Unnecessary overhead for simple event handlers
-const mutation = createMutation(rpc.recordings.deleteRecording.options());
+// ❌ Unnecessary overhead for simple event handlers (either framework)
+// React: const mutation = useMutation(rpc.recordings.deleteRecording.options);
+// Svelte: const mutation = createMutation(() => rpc.recordings.deleteRecording.options);
 mutation.mutate(recordingId, {
   onSuccess: () => showToast('Deleted!'),
   onError: (error) => showToast(error.message)
 });
 
-// ✅ Direct execution - much faster
+// ✅ Direct execution - much faster (works in any framework)
 const { error } = await rpc.recordings.deleteRecording.execute(recordingId);
 if (error) {
   showToast(error.message);
@@ -124,13 +150,35 @@ if (error) {
 
 ### When Reactive State is Essential
 
-```typescript
-// ✅ Reactive state needed for UI feedback
-const deleteRecordingMutation = createMutation(
-  rpc.recordings.deleteRecording.options
-);
+**React:**
 
-// Template shows loading state
+```tsx
+// ✅ Reactive state needed for UI feedback
+const deleteRecordingMutation = useMutation(rpc.recordings.deleteRecording.options);
+
+// Component shows loading state
+return deleteRecordingMutation.isPending ? (
+  <Button disabled>
+    <Spinner /> Deleting...
+  </Button>
+) : (
+  <Button onClick={() => deleteRecordingMutation.mutate(recordingId)}>
+    Delete Recording
+  </Button>
+);
+```
+
+**Svelte 5:**
+
+```svelte
+<script lang="ts">
+  // ✅ Reactive state needed for UI feedback
+  const deleteRecordingMutation = createMutation(
+    () => rpc.recordings.deleteRecording.options
+  );
+</script>
+
+<!-- Template shows loading state -->
 {#if deleteRecordingMutation.isPending}
   <Button disabled>
     <Spinner /> Deleting...
@@ -166,7 +214,7 @@ const getUserById = (userId: Accessor<string>) => defineQuery({
 
 // Usage
 const userId = () => route.params.id;
-const userQuery = createQuery(getUserById(userId).options());
+const userQuery = createQuery(() => getUserById(userId).options);
 ```
 
 ### Dependent Queries
@@ -401,18 +449,42 @@ export const rpc = {
 };
 
 // Usage throughout app
-import { rpc } from '$lib/query';
+import { rpc } from './query'; // or '$lib/query' in SvelteKit
 
 // Everything is available through one import
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+// React:
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
+// Svelte 5:
+const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+
+// Imperative (any framework):
 await rpc.transcription.transcribeBlob.execute(blob);
 ```
 
 ### Component Usage Patterns
 
+**React:**
+
+```tsx
+// Reactive pattern for data display
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
+
+// Imperative pattern for actions
+async function handleDelete(recording: Recording) {
+  const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  if (error) {
+    showErrorToast(error.message);
+  } else {
+    showSuccessToast('Recording deleted');
+  }
+}
+```
+
+**Svelte 5:**
+
 ```typescript
 // Reactive pattern for data display
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
 
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
@@ -429,9 +501,9 @@ async function handleDelete(recording: Recording) {
 
 ### 1. Choose the Right Interface
 
-**Use `.options()` when:**
+**Use `.options` when:**
 - Component needs to display loading states
-- Data changes should trigger re-renders  
+- Data changes should trigger re-renders
 - You want automatic error boundaries
 - Background refetching is beneficial
 
@@ -507,7 +579,10 @@ const userQuery = useQuery({
 });
 
 // After: Automatic Result handling
-const userQuery = createQuery(rpc.users.getUserById(id).options());
+// React:
+const userQuery = useQuery(rpc.users.getUserById(id).options);
+// Svelte 5:
+const userQuery = createQuery(() => rpc.users.getUserById(id).options);
 // Result unwrapping handled automatically by wellcrafted
 ```
 
@@ -522,13 +597,41 @@ async function loadUserData() {
 }
 
 // After: Cached and reactive
-const userQuery = createQuery(rpc.users.getUserById(id).options());
+// React:
+const userQuery = useQuery(rpc.users.getUserById(id).options);
+// Svelte 5:
+const userQuery = createQuery(() => rpc.users.getUserById(id).options);
 // Automatic state management, caching, background updates
 ```
 
 ## Framework-Specific Examples
 
-### Svelte with wellcrafted
+### React with wellcrafted
+
+```tsx
+// Define once, use everywhere
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  queryFn: () => services.getUserById(userId),
+});
+
+// React component usage (options passed directly)
+function UserProfile({ userId }) {
+  const query = useQuery(userQuery.options);
+
+  if (query.isPending) return <Loading />;
+  if (query.error) return <Error error={query.error} />;
+  return <UserCard user={query.data} />;
+}
+
+// Imperative usage in event handlers
+async function refreshUser() {
+  const { data, error } = await userQuery.fetch();
+  // Handle result...
+}
+```
+
+### Svelte 5 with wellcrafted
 
 ```typescript
 // Define once, use everywhere
@@ -537,32 +640,13 @@ const userQuery = defineQuery({
   queryFn: () => services.getUserById(userId),
 });
 
-// Reactive component usage
-const query = createQuery(userQuery.options());
+// Reactive component usage (Svelte 5 requires accessor function)
+const query = createQuery(() => userQuery.options);
 
 // Imperative usage in actions
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
   // Handle result...
-}
-```
-
-### React with wellcrafted
-
-```typescript
-// Same query definition works across frameworks
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  queryFn: () => services.getUserById(userId),
-});
-
-// React component usage
-function UserProfile({ userId }) {
-  const query = useQuery(userQuery.options());
-  
-  if (query.isPending) return <Loading />;
-  if (query.error) return <Error error={query.error} />;
-  return <UserCard user={query.data} />;
 }
 ```
 
