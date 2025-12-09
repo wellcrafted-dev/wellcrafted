@@ -34,7 +34,7 @@ const userQuery = defineQuery({
 // 4. Use in components or imperatively
 const query = useQuery(userQuery.options); // React
 const query = createQuery(() => userQuery.options); // Svelte 5
-const { data, error } = await userQuery.fetch(); // Imperative (any framework)
+const { data, error } = await userQuery.fetch(); // Imperative
 ```
 
 ## The Dual Interface Pattern
@@ -93,7 +93,7 @@ return (
 - Cache synchronization across components
 - Background refetching and stale-while-revalidate
 
-### 2. Imperative Interface (`.fetch()` / `.execute()`)
+### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
 **Perfect for event handlers, utilities, and performance-critical code**
 
 ```typescript
@@ -109,14 +109,27 @@ async function handleRefresh() {
 
 // Sequential operations
 async function processWorkflow() {
-  const { data: user, error: userError } = await userQuery.fetch();
+  const { data: user, error: userError } = await userQuery.ensure();
   if (userError) return handleError(userError);
-  
+
   const { data: result, error: processError } = await processUserMutation.execute(user);
   if (processError) return handleError(processError);
-  
+
   // Success!
 }
+```
+
+**Shorthand:** Queries and mutations are also directly callable as a shorthand:
+- `await userQuery()` is equivalent to `await userQuery.ensure()` (prefers cached data)
+- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+
+```typescript
+// These are equivalent:
+const result = await userQuery.ensure();
+const result = await userQuery(); // Shorthand
+
+const result = await createUser.execute(userData);
+const result = await createUser(userData); // Shorthand
 ```
 
 **Benefits:**
@@ -141,6 +154,7 @@ mutation.mutate(recordingId, {
 
 // ✅ Direct execution - much faster (works in any framework)
 const { error } = await rpc.recordings.deleteRecording.execute(recordingId);
+// Or use shorthand: await rpc.recordings.deleteRecording(recordingId)
 if (error) {
   showToast(error.message);
 } else {
@@ -459,6 +473,7 @@ const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.option
 
 // Imperative (any framework):
 await rpc.transcription.transcribeBlob.execute(blob);
+// Or shorthand: await rpc.transcription.transcribeBlob(blob)
 ```
 
 ### Component Usage Patterns
@@ -472,6 +487,7 @@ const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
   const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  // Or shorthand: await rpc.recordings.deleteRecording(recording)
   if (error) {
     showErrorToast(error.message);
   } else {
@@ -489,6 +505,7 @@ const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.option
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
   const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  // Or shorthand: await rpc.recordings.deleteRecording(recording)
   if (error) {
     showErrorToast(error.message);
   } else {
@@ -507,11 +524,13 @@ async function handleDelete(recording: Recording) {
 - You want automatic error boundaries
 - Background refetching is beneficial
 
-**Use `.execute()` / `.fetch()` when:**
+**Use `.execute()` / `.fetch()` / `.ensure()` when:**
 - Event handlers that just need the result
 - Sequential operations in workflows
 - Performance is critical
 - Working outside component context
+
+**Shorthand:** Queries and mutations are also directly callable. `await userQuery()` is shorthand for `await userQuery.ensure()`, and `await mutation(data)` is shorthand for `await mutation.execute(data)`.
 
 ### 2. Transform Errors at the Right Layer
 
@@ -627,7 +646,7 @@ function UserProfile({ userId }) {
 // Imperative usage in event handlers
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
-  // Handle result...
+  // Or use shorthand: await userQuery() (same as .ensure())
 }
 ```
 
@@ -646,7 +665,7 @@ const query = createQuery(() => userQuery.options);
 // Imperative usage in actions
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
-  // Handle result...
+  // Or use shorthand: await userQuery() (same as .ensure())
 }
 ```
 

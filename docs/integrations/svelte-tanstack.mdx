@@ -97,6 +97,7 @@ The same component with Whispering's proven patterns:
 
   async function handleDelete(id: string) {
     const { error } = await rpc.recordings.deleteRecording.execute(id);
+    // Or shorthand: await rpc.recordings.deleteRecording(id)
     if (error) {
       toast.error(error.title, { description: error.description });
     }
@@ -521,6 +522,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
   async function handleTranscribeAndEdit() {
     // Step 1: Start transcription
     const { error: transcribeError } = await rpc.transcription.transcribeRecording.execute(recording.id);
+    // Or shorthand: await rpc.transcription.transcribeRecording(recording.id)
     if (transcribeError) {
       toast.error('Transcription failed', { description: transcribeError.message });
       return;
@@ -534,6 +536,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
     if (!confirm('Are you sure you want to delete this recording?')) return;
 
     const { error } = await rpc.recordings.deleteRecording.execute(recording.id);
+    // Or shorthand: await rpc.recordings.deleteRecording(recording.id)
     if (error) {
       toast.error('Failed to delete recording', { description: error.message });
       return;
@@ -544,6 +547,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
 
   async function handleShare() {
     const { data, error } = await rpc.recordings.generateShareLink.execute(recording.id);
+    // Or shorthand: await rpc.recordings.generateShareLink(recording.id)
     if (error) {
       toast.error('Failed to generate share link', { description: error.message });
       return;
@@ -593,6 +597,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
     const toastId = nanoid();
     
     const { data, error } = await rpc.recorder.startRecording.execute({ toastId });
+    // Or shorthand: await rpc.recorder.startRecording({ toastId })
     if (error) {
       toast.error('Failed to start recording', { description: error.message });
       return;
@@ -610,6 +615,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
 
     // Step 1: Stop recording
     const { data: blob, error: stopError } = await rpc.recorder.stopRecording.execute({ toastId });
+    // Or shorthand: await rpc.recorder.stopRecording({ toastId })
     if (stopError) {
       toast.error('Failed to stop recording', { description: stopError.message });
       return;
@@ -623,6 +629,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
       timestamp: new Date(),
       transcriptionStatus: 'PENDING',
     });
+    // Or shorthand: await rpc.recordings.createRecording({ ... })
     if (saveError) {
       toast.error('Failed to save recording', { description: saveError.message });
       return;
@@ -630,12 +637,13 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
 
     // Step 3: Start transcription
     const { error: transcribeError } = await rpc.transcription.transcribeRecording.execute(recording.id);
+    // Or shorthand: await rpc.transcription.transcribeRecording(recording.id)
     if (transcribeError) {
       toast.error('Recording saved, but transcription failed', { 
         description: transcribeError.message,
-        action: { 
-          label: 'Retry transcription', 
-          onClick: () => rpc.transcription.transcribeRecording.execute(recording.id) 
+        action: {
+          label: 'Retry transcription',
+          onClick: () => rpc.transcription.transcribeRecording(recording.id)
         }
       });
       return;
@@ -650,6 +658,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
   onDestroy(() => {
     if (isRecording) {
       rpc.recorder.stopRecording.execute({ toastId: nanoid() });
+      // Or shorthand: rpc.recorder.stopRecording({ toastId: nanoid() })
     }
   });
 </script>
@@ -1059,6 +1068,7 @@ import { rpc } from '$lib/query';
 export const load: PageLoad = async () => {
   // Use .ensure() in preloaders - it prefers cached data
   const { data: recordings, error } = await rpc.recordings.getAllRecordings.ensure();
+  // Or shorthand: await rpc.recordings.getAllRecordings()
   
   if (error) {
     // You can throw the error to trigger error page
@@ -1421,20 +1431,21 @@ Transform service errors to UI-friendly formats in components:
 <script lang="ts">
   async function handleCreateRecording() {
     const { data, error } = await rpc.recordings.createRecording.execute(formData);
-    
+    // Or shorthand: await rpc.recordings.createRecording(formData)
+
     if (error) {
       // Transform service error to user-friendly message
-      const message = error.message.includes('blob') 
+      const message = error.message.includes('blob')
         ? 'Please select an audio file to upload'
         : 'Failed to save recording. Please try again.';
-        
-      toast.error(message, { 
+
+      toast.error(message, {
         description: error.message,
         action: { label: 'Retry', onClick: handleCreateRecording }
       });
       return;
     }
-    
+
     toast.success('Recording saved successfully');
   }
 </script>
@@ -1453,6 +1464,7 @@ Use reactive for UI state, imperative for workflows:
   async function handleBulkDelete(recordingIds: string[]) {
     for (const id of recordingIds) {
       const { error } = await rpc.recordings.deleteRecording.execute(id);
+      // Or shorthand: await rpc.recordings.deleteRecording(id)
       if (error) {
         toast.error(`Failed to delete recording ${id}: ${error.message}`);
         break;

@@ -221,6 +221,7 @@ export const rpc = {
       ...userQuery.data,
       ...updates
     });
+    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -266,6 +267,7 @@ export function UserProfile({ userId }: UserProfileProps) {
       ...userQuery.data,
       ...updates
     });
+    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -324,7 +326,7 @@ const query = useQuery(rpc.users.getUser('static-id').options);
 - **Svelte 5**: Wrap in accessor function `() => ...options`. For reactive parameters inside, also use accessor functions `() => param`.
 - **React**: Pass `.options` directly (it's a property, not a function). Pass reactive parameters directly (no accessor function needed).
 
-### 2. Imperative Interface (`.execute()` / `.fetch()`)
+### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
 
 Best for event handlers and workflows:
 
@@ -332,6 +334,25 @@ Best for event handlers and workflows:
 // Direct execution without subscriptions
 const { data, error } = await rpc.users.updateUser.execute(user);
 // No reactive overhead, just the result
+
+// For queries, .ensure() prefers cached data
+const { data, error } = await rpc.users.getUser('123').ensure();
+
+// Use .fetch() when you need to check freshness
+const { data, error } = await rpc.users.getUser('123').fetch();
+```
+
+**Shorthand:** Queries and mutations are also directly callable:
+- `await userQuery()` is equivalent to `await userQuery.ensure()`
+- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+
+```typescript
+// These are equivalent:
+const result = await rpc.users.getUser('123').ensure();
+const result = await rpc.users.getUser('123')(); // Shorthand
+
+const result = await rpc.users.updateUser.execute(user);
+const result = await rpc.users.updateUser(user); // Shorthand
 ```
 
 ## Common Mistakes with `.options`
@@ -583,7 +604,8 @@ export const orders = {
   placeOrder: defineMutation({
     mutationFn: async (orderData: OrderInput) => {
       // Step 1: Validate inventory
-      const inventory = await rpc.inventory.checkAvailability.fetch();
+      const inventory = await rpc.inventory.checkAvailability.ensure();
+      // Or shorthand: await rpc.inventory.checkAvailability()
       if (!hasStock(orderData.items, inventory.data)) {
         return Err({ code: 'OUT_OF_STOCK', message: 'Some items are out of stock' });
       }
@@ -639,6 +661,7 @@ describe('User Queries', () => {
     });
 
     const result = await userQuery.fetch();
+    // Or shorthand: await userQuery()
     expect(result.data).toEqual(mockUser);
   });
 });
