@@ -55,10 +55,12 @@ The implementation is elegantly simple:
 
 ```typescript
 declare const brand: unique symbol;
-export type Brand<T extends string> = { [brand]: T };
+export type Brand<T extends string> = { [brand]: { [K in T]: true } };
 ```
 
 This creates a phantom property using a unique symbol that exists only at the type level. The property doesn't exist at runtime, but TypeScript's type system treats each brand as a distinct type.
+
+The nested object structure `{ [K in T]: true }` enables brand stacking—when brands are intersected, the inner object properties merge rather than conflicting, allowing hierarchical brand relationships.
 
 ## Common Use Cases
 

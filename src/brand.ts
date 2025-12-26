@@ -9,28 +9,41 @@ declare const brand: unique symbol;
  * Branded types help create distinct types from primitive types, preventing
  * accidental mixing of values that should be semantically different.
  *
+ * Brands can be stacked to create hierarchical type relationships:
+ *
  * @template T - A string literal type that serves as the brand identifier
  *
- * @example
+ * @example Single brand
  * ```typescript
- * // Create a branded ID type
- * type ID = string & Brand<"ID">;
+ * type UserId = string & Brand<"UserId">;
+ * type OrderId = string & Brand<"OrderId">;
  *
- * // Create functions that work with branded types
- * function createID(value: string): ID {
- *   return value as ID;
- * }
+ * // UserId and OrderId are incompatible
+ * const userId: UserId = "user-123" as UserId;
+ * const orderId: OrderId = userId; // ❌ Type error
+ * ```
  *
- * function processID(id: ID): void {
- *   console.log(`Processing ID: ${id}`);
- * }
+ * @example Hierarchical brands
+ * ```typescript
+ * type AbsolutePath = string & Brand<"AbsolutePath">;
+ * type ConfigPath = AbsolutePath & Brand<"ConfigPath">;
  *
- * // Usage
- * const userID = createID("user-123");
- * const productID = createID("product-456");
+ * declare const configPath: ConfigPath;
+ * const abs: AbsolutePath = configPath;  // ✅ Child assignable to parent
+ * const cfg: ConfigPath = abs;           // ❌ Parent not assignable to child
+ * ```
  *
- * processID(userID); // ✅ Works
- * processID("raw-string"); // ❌ TypeScript error - string is not assignable to ID
+ * @example Multiple inheritance
+ * ```typescript
+ * type Serializable = unknown & Brand<"Serializable">;
+ * type Validated = unknown & Brand<"Validated">;
+ * type SafeData = Serializable & Validated & Brand<"SafeData">;
+ *
+ * // SafeData is assignable to both Serializable and Validated
  * ```
  */
-export type Brand<T extends string> = { [brand]: T };
+type Brand<T extends string> = {
+	[brand]: { [K in T]: true };
+};
+
+export { Brand };
