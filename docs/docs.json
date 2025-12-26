@@ -63,7 +63,8 @@
 						"pages": [
 							"philosophy/design-principles",
 							"philosophy/developer-experience",
-							"philosophy/production-reliability"
+							"philosophy/production-reliability",
+							"philosophy/brand-implementation"
 						]
 					},
 					{
