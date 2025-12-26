@@ -1,0 +1,147 @@
+---
+title: 'Brand Type Implementation'
+description: 'Why wellcrafted uses nested boolean markers for brand types'
+icon: 'code'
+---
+
+# Brand Type Implementation
+
+wellcrafted's `Brand<T>` type uses a specific implementation pattern that enables hierarchical brand relationships. This page explains why we chose this approach and how it compares to alternatives.
+
+<Note>
+**Source Code**: The implementation is in [`src/brand.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/brand.ts) (~50 lines). Tests demonstrating each behavior are in [`src/brand.test.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/brand.test.ts).
+</Note>
+
+## The Problem: Flat Brands Don't Stack
+
+The simplest possible brand implementation stores the brand name directly:
+
+```typescript
+// ❌ Naive implementation
+declare const brand: unique symbol;
+type Brand<T extends string> = { [brand]: T };
+```
+
+This works for simple cases but breaks when you need hierarchical types:
+
+```typescript
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
+type ProviderDir = ProjectDir & Brand<"ProviderDir">;
+
+// What happens when TypeScript intersects these?
+// { [brand]: "AbsolutePath" } & { [brand]: "ProjectDir" }
+// = { [brand]: "AbsolutePath" & "ProjectDir" }
+// = { [brand]: never }
+// = never ❌
+```
+
+The intersection of two different string literals is `never`, which makes the entire type collapse. You can't create a value that satisfies both brands.
+
+## Our Solution: Nested Boolean Markers
+
+wellcrafted uses a nested object structure with boolean markers:
+
+```typescript
+// ✅ wellcrafted implementation (src/brand.ts lines 45-47)
+declare const brand: unique symbol;
+type Brand<T extends string> = { [brand]: { [K in T]: true } };
+```
+
+Now intersections merge instead of conflicting:
+
+```typescript
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
+type ProviderDir = ProjectDir & Brand<"ProviderDir">;
+
+// When TypeScript intersects these:
+// { [brand]: { AbsolutePath: true } } & { [brand]: { ProjectDir: true } }
+// = { [brand]: { AbsolutePath: true, ProjectDir: true } }
+// Works! ✅
+```
+
+This enables proper subtyping: a `ProjectDir` is assignable to `AbsolutePath` because it has all the required brand markers plus additional ones.
+
+### Verified Behaviors
+
+The test suite ([`src/brand.test.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/brand.test.ts)) verifies:
+
+| Test Case | What It Proves |
+|-----------|----------------|
+| `stacked brands are not never` | Intersected brands remain valid types |
+| `child brand assignable to parent brand` | `ProjectDir` → `AbsolutePath` works |
+| `parent brand NOT assignable to child brand` | `AbsolutePath` → `ProjectDir` fails |
+| `sibling brands are distinct` | `ProjectDir` ↔ `ProviderDir` fails |
+| `three-level hierarchy` | Deep nesting works correctly |
+| `multiple inheritance via intersection` | `A & B` traits combine properly |
+
+## Comparison with Other Libraries
+
+### Effect-TS
+
+Effect uses a similar nested structure with self-mapping:
+
+```typescript
+// Effect-TS approach
+// See: https://github.com/Effect-TS/effect/blob/main/packages/effect/src/Brand.ts
+type Brand<K extends string | symbol> = { [k in K]: K };
+
+// Usage
+interface UserId extends Brand<"UserId"> {}
+```
+
+Effect maps `K` to itself (`{ UserId: "UserId" }`) rather than to `true`. Both approaches work for brand stacking; we chose boolean markers for simpler semantics—the marker's presence is what matters, not its value.
+
+### ArkType
+
+ArkType uses tuple-based branding:
+
+```typescript
+// ArkType approach
+// See: https://github.com/arktypeio/arktype/blob/main/ark/type/keywords/constructors/brand.ts
+type Brand<t, id> = [t, id];
+```
+
+This is a fundamentally different pattern designed for ArkType's validation system. Tuples don't naturally support intersection-based stacking the way object types do.
+
+## Why Boolean Markers?
+
+We chose `true` as the marker value for several reasons:
+
+1. **Semantic clarity**: The marker's presence indicates the brand applies; `true` communicates this directly
+2. **Conventional pattern**: Boolean flags are a common TypeScript idiom for feature detection
+3. **Minimal surface**: `true` is the simplest possible "yes" value
+
+The alternative of self-mapping (`{ UserId: "UserId" }`) works identically at runtime but adds conceptual overhead—why store the name twice?
+
+## Practical Implications
+
+This implementation enables real-world hierarchical type systems:
+
+```typescript
+// File system paths with progressive refinement
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
+type ProviderDir = ProjectDir & Brand<"ProviderDir">;
+
+// A ProviderDir is valid anywhere an AbsolutePath is expected
+function readFile(path: AbsolutePath): string { /* ... */ }
+
+const providerPath: ProviderDir = "/project/providers/openai" as ProviderDir;
+readFile(providerPath); // ✅ Compiles - ProviderDir extends AbsolutePath
+
+// But an AbsolutePath is NOT valid where a ProviderDir is expected  
+function getProviderConfig(path: ProviderDir): Config { /* ... */ }
+
+const absolutePath: AbsolutePath = "/some/path" as AbsolutePath;
+getProviderConfig(absolutePath); // ❌ Error - AbsolutePath doesn't have ProviderDir brand
+```
+
+This is the same subtyping relationship you'd expect from class inheritance, but achieved purely through type-level composition.
+
+## Further Reading
+
+- [Brand Types](/core/brand-types) — Usage guide and common patterns
+- [Effect-TS Brand module](https://github.com/Effect-TS/effect/blob/main/packages/effect/src/Brand.ts) — Alternative implementation with self-mapping
+- [TypeScript Handbook: Branded Types](https://www.typescriptlang.org/play/#example/nominal-typing) — Official playground example

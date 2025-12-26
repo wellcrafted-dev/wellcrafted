@@ -62,6 +62,30 @@ This creates a phantom property using a unique symbol that exists only at the ty
 
 The nested object structure `{ [K in T]: true }` enables brand stacking—when brands are intersected, the inner object properties merge rather than conflicting, allowing hierarchical brand relationships.
 
+### Why This Implementation?
+
+<Info>
+**Source**: [`src/brand.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/brand.ts) • [`src/brand.test.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/brand.test.ts)
+</Info>
+
+The boolean-marker pattern (`{ [K in T]: true }`) was chosen specifically to enable hierarchical brand relationships. A simpler implementation like `{ [brand]: T }` would cause intersections to collapse to `never`:
+
+```typescript
+// ❌ Flat structure - intersections break
+type Brand<T> = { [brand]: T };
+type Parent = string & Brand<"Parent">;
+type Child = Parent & Brand<"Child">;
+// Child's brand becomes { [brand]: "Parent" } & { [brand]: "Child" } = never!
+
+// ✅ Nested structure - intersections merge  
+type Brand<T> = { [brand]: { [K in T]: true } };
+type Parent = string & Brand<"Parent">;
+type Child = Parent & Brand<"Child">;
+// Child's brand is { [brand]: { Parent: true, Child: true } } - works!
+```
+
+This pattern follows similar approaches in Effect-TS, adapted with simpler boolean markers. For a deeper exploration of the design tradeoffs, see [Brand Type Implementation](/philosophy/brand-implementation).
+
 ## Common Use Cases
 
 ### 1. Preventing ID Mix-ups
