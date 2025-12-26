@@ -111,7 +111,9 @@ if (error) {
 import { tryAsync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-const { ApiError, ApiErr } = createTaggedError("ApiError");
+// Define error with typed context - endpoint is always useful for API errors
+const { ApiError, ApiErr } = createTaggedError("ApiError")
+  .withContext<{ endpoint: string; statusCode?: number }>();
 type ApiError = ReturnType<typeof ApiError>;
 
 interface User {
@@ -121,9 +123,10 @@ interface User {
 }
 
 async function fetchUser(id: number): Promise<Result<User, ApiError>> {
+  const endpoint = `/api/users/${id}`;
   return tryAsync({
     try: async () => {
-      const response = await fetch(`/api/users/${id}`);
+      const response = await fetch(endpoint);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -131,7 +134,7 @@ async function fetchUser(id: number): Promise<Result<User, ApiError>> {
     },
     catch: (error) => ApiErr({
       message: "Failed to fetch user",
-      context: { userId: id },
+      context: { endpoint },  // TypeScript enforces this!
       cause: error
     })
   });

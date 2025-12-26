@@ -1,48 +1,67 @@
 /**
- * Helper type that adds a context property only when TContext is not never.
- * When TContext is never, returns an empty object (no context property).
- * When TContext is a real type, returns { context: TContext } (required property).
+ * Base type for any tagged error, used as a constraint for cause parameters.
  */
-type WithContext<TContext> = [TContext] extends [never]
-	? // biome-ignore lint/complexity/noBannedTypes: Empty object type is intentional for conditional intersection
-		{}
-	: { context: TContext };
+export type AnyTaggedError = { name: string; message: string };
 
 /**
- * Helper type that adds a cause property only when TCause is not never.
- * When TCause is never, returns an empty object (no cause property).
- * When TCause is a real type, returns { cause: TCause } (required property).
+ * Helper type that adds a context property.
+ * - When TContext is undefined (default): NO context property (explicit opt-in)
+ * - When TContext includes undefined (e.g., `{ foo: string } | undefined`): context is OPTIONAL but typed
+ * - When TContext is a specific type without undefined: context is REQUIRED with that exact type
+ *
+ * This follows Rust's explicit error philosophy: context must be explicitly added via .withContext<T>().
  */
-// biome-ignore lint/complexity/noBannedTypes: Empty object type is intentional for conditional intersection
-type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
+type WithContext<TContext> = [TContext] extends [undefined]
+	? {}
+	: [undefined] extends [TContext]
+		? { context?: Exclude<TContext, undefined> }
+		: { context: TContext };
+
+/**
+ * Helper type that adds a cause property.
+ * - When TCause is undefined (default): NO cause property (explicit opt-in)
+ * - When TCause includes undefined (e.g., `NetworkError | undefined`): cause is OPTIONAL, constrained
+ * - When TCause is a specific type without undefined: cause is REQUIRED
+ *
+ * This follows Rust's explicit error philosophy: cause must be explicitly added via .withCause<T>().
+ * Using brackets to prevent distributive conditional behavior with union types.
+ */
+type WithCause<TCause> = [TCause] extends [undefined]
+	? {}
+	: [undefined] extends [TCause]
+		? { cause?: Exclude<TCause, undefined> }
+		: { cause: TCause };
 
 /**
  * Creates a tagged error type for type-safe error handling.
  * Uses the `name` property as a discriminator for tagged unions.
  *
- * The `cause` property enables error chaining, creating a JSON-serializable
- * call stack. Each error wraps its cause, building a complete trace of how
- * an error propagated through your application layers.
+ * **Explicit Opt-In Philosophy (Rust-inspired):**
+ * By default, errors only have `name` and `message`. Context and cause must be
+ * explicitly added via type parameters. This follows Rust's thiserror pattern
+ * where error properties are intentional architectural decisions.
  *
  * **Type Parameter Behavior:**
- * - When `TContext` is `never` (default): No `context` property exists
- * - When `TContext` is specified: `context` is a **required** property
- * - When `TCause` is `never` (default): No `cause` property exists
- * - When `TCause` is specified: `cause` is a **required** property
+ * - When `TContext` is `undefined` (default): NO context property
+ * - When `TContext` is `{ ... } | undefined`: `context` is OPTIONAL but typed
+ * - When `TContext` is specified without undefined: `context` is REQUIRED
+ * - When `TCause` is `undefined` (default): NO cause property
+ * - When `TCause` is `{ ... } | undefined`: `cause` is OPTIONAL but typed
+ * - When `TCause` is specified without undefined: `cause` is REQUIRED
  *
  * @template TName - The error name (discriminator for tagged unions)
- * @template TContext - Additional context data for the error (default: never = no context property)
- * @template TCause - The type of error that caused this error (default: never = no cause property)
+ * @template TContext - Additional context data for the error (default: undefined = no context)
+ * @template TCause - The type of error that caused this error (default: undefined = no cause)
  *
  * @example
  * ```ts
- * // Simple error without context or cause (properties don't exist)
+ * // Minimal error (no context, no cause)
  * type ValidationError = TaggedError<"ValidationError">;
  * const validationError: ValidationError = {
  *   name: "ValidationError",
  *   message: "Input is required"
  * };
- * // validationError.context // Property 'context' does not exist
+ * // validationError only has name and message
  *
  * // Error with required context
  * type NetworkError = TaggedError<"NetworkError", { host: string; port: number }>;
@@ -51,15 +70,19 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  *   message: "Socket timeout",
  *   context: { host: "db.example.com", port: 5432 } // Required!
  * };
- * const host = networkError.context.host; // No optional chaining needed
  *
- * // Type-safe error chaining with required cause
- * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError>;
+ * // Error with OPTIONAL but TYPED context (union with undefined)
+ * type LogError = TaggedError<"LogError", { file: string; line: number } | undefined>;
+ * const logError1: LogError = { name: "LogError", message: "Parse failed" }; // OK
+ * const logError2: LogError = { name: "LogError", message: "Parse failed", context: { file: "app.ts", line: 42 } }; // OK
+ *
+ * // Error with required context and optional cause
+ * type DatabaseError = TaggedError<"DatabaseError", { operation: string }, NetworkError | undefined>;
  * const dbError: DatabaseError = {
  *   name: "DatabaseError",
  *   message: "Failed to connect to database",
  *   context: { operation: "connect" }, // Required!
- *   cause: networkError // Required!
+ *   cause: networkError // Optional, but must be NetworkError if provided
  * };
  *
  * // Discriminated unions still work
@@ -75,8 +98,8 @@ type WithCause<TCause> = [TCause] extends [never] ? {} : { cause: TCause };
  */
 export type TaggedError<
 	TName extends string = string,
-	TContext = never,
-	TCause = never,
+	TContext extends Record<string, unknown> | undefined = undefined,
+	TCause extends AnyTaggedError | undefined = undefined,
 > = Readonly<
 	{
 		name: TName;

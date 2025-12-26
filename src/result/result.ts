@@ -275,14 +275,15 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  *
  * The return type is automatically narrowed based on what your catch function returns:
  * - If catch always returns `Ok<T>`, the function returns `Ok<T>` (guaranteed success)
- * - If catch can return `Err<E>`, the function returns `Result<T, E>` (may succeed or fail)
+ * - If catch always returns `Err<E>`, the function returns `Result<T, E>` (may succeed or fail)
+ * - If catch can return either `Ok<T>` or `Err<E>`, the function returns `Result<T, E>` (conditional recovery)
  *
  * @template T - The success value type
  * @template E - The error value type (when catch can return errors)
  * @param options - Configuration object
  * @param options.try - The operation to execute
  * @param options.catch - Error handler that transforms caught exceptions into either `Ok<T>` (recovery) or `Err<E>` (propagation)
- * @returns `Ok<T>` if catch always returns Ok (recovery), otherwise `Result<T, E>` (propagation)
+ * @returns `Ok<T>` if catch always returns Ok (recovery), otherwise `Result<T, E>` (propagation or conditional recovery)
  *
  * @example
  * ```ts
@@ -292,10 +293,19 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  *   catch: () => Ok("fallback") // Always Ok<T>
  * });
  *
- * // Returns Result<object, string> - may fail since catch can return Err
+ * // Returns Result<object, string> - may fail since catch always returns Err
  * const mayFail = trySync({
  *   try: () => JSON.parse(input),
  *   catch: (err) => Err("Parse failed") // Returns Err<E>
+ * });
+ *
+ * // Returns Result<void, MyError> - conditional recovery based on error type
+ * const conditional = trySync({
+ *   try: () => riskyOperation(),
+ *   catch: (err) => {
+ *     if (isRecoverable(err)) return Ok(undefined);
+ *     return MyErr({ message: "Unrecoverable" });
+ *   }
  * });
  * ```
  */
@@ -307,6 +317,11 @@ export function trySync<T>(options: {
 export function trySync<T, E>(options: {
 	try: () => T;
 	catch: (error: unknown) => Err<E>;
+}): Result<T, E>;
+
+export function trySync<T, E>(options: {
+	try: () => T;
+	catch: (error: unknown) => Ok<T> | Err<E>;
 }): Result<T, E>;
 
 export function trySync<T, E>({
@@ -334,14 +349,15 @@ export function trySync<T, E>({
  *
  * The return type is automatically narrowed based on what your catch function returns:
  * - If catch always returns `Ok<T>`, the function returns `Promise<Ok<T>>` (guaranteed success)
- * - If catch can return `Err<E>`, the function returns `Promise<Result<T, E>>` (may succeed or fail)
+ * - If catch always returns `Err<E>`, the function returns `Promise<Result<T, E>>` (may succeed or fail)
+ * - If catch can return either `Ok<T>` or `Err<E>`, the function returns `Promise<Result<T, E>>` (conditional recovery)
  *
  * @template T - The success value type
  * @template E - The error value type (when catch can return errors)
  * @param options - Configuration object
  * @param options.try - The async operation to execute
  * @param options.catch - Error handler that transforms caught exceptions/rejections into either `Ok<T>` (recovery) or `Err<E>` (propagation)
- * @returns `Promise<Ok<T>>` if catch always returns Ok (recovery), otherwise `Promise<Result<T, E>>` (propagation)
+ * @returns `Promise<Ok<T>>` if catch always returns Ok (recovery), otherwise `Promise<Result<T, E>>` (propagation or conditional recovery)
  *
  * @example
  * ```ts
@@ -351,10 +367,23 @@ export function trySync<T, E>({
  *   catch: () => Ok(new Response()) // Always Ok<T>
  * });
  *
- * // Returns Promise<Result<Response, Error>> - may fail since catch can return Err
+ * // Returns Promise<Result<Response, Error>> - may fail since catch always returns Err
  * const mayFail = tryAsync({
  *   try: async () => fetch(url),
  *   catch: (err) => Err(new Error("Fetch failed")) // Returns Err<E>
+ * });
+ *
+ * // Returns Promise<Result<void, BlobError>> - conditional recovery based on error type
+ * const conditional = await tryAsync({
+ *   try: async () => {
+ *     await deleteFile(filename);
+ *   },
+ *   catch: (err) => {
+ *     if ((err as { name?: string }).name === 'NotFoundError') {
+ *       return Ok(undefined); // Already deleted, that's fine
+ *     }
+ *     return BlobErr({ message: "Delete failed" });
+ *   }
  * });
  * ```
  */
@@ -366,6 +395,11 @@ export async function tryAsync<T>(options: {
 export async function tryAsync<T, E>(options: {
 	try: () => Promise<T>;
 	catch: (error: unknown) => Err<E>;
+}): Promise<Result<T, E>>;
+
+export async function tryAsync<T, E>(options: {
+	try: () => Promise<T>;
+	catch: (error: unknown) => Ok<T> | Err<E>;
 }): Promise<Result<T, E>>;
 
 export async function tryAsync<T, E>({

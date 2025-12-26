@@ -24,60 +24,58 @@ Here's the recommended pattern for creating services:
 import { Result, Ok, tryAsync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-// 1. Define service-specific errors
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError");
+// 1. Define service-specific errors with typed context
+const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
+  .withContext<{ userId?: string; operation: string }>();
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // 2. Create service with factory function
 export function createUserService(db: Database) {
   // Private state in closure if needed
   const cache = new Map<string, User>();
-  
+
   // Return object with methods
   return {
     async getUser(id: string): Promise<Result<User, UserServiceError>> {
       // Check cache first
       const cached = cache.get(id);
       if (cached) return Ok(cached);
-      
+
       // Fetch from database
       const result = await tryAsync({
         try: () => db.users.findById(id),
-        catch: (error) => UserServiceErr({
+        catch: () => UserServiceErr({
           message: "Failed to fetch user",
-          context: { userId: id },
-          cause: error
+          context: { userId: id, operation: "getUser" }
         })
       });
-      
+
       if (result.data) {
         cache.set(id, result.data);
       }
-      
+
       return result;
     },
-    
+
     async createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
       // Validation
       if (!input.email.includes('@')) {
         return UserServiceErr({
           message: "Invalid email format",
-          context: { email: input.email },
-          cause: undefined
+          context: { operation: "createUser" }
         });
       }
-      
+
       // Save to database
       return tryAsync({
         try: () => db.users.create(input),
-        catch: (error) => UserServiceErr({
+        catch: () => UserServiceErr({
           message: "Failed to create user",
-          context: { input },
-          cause: error
+          context: { operation: "createUser" }
         })
       });
     },
-    
+
     clearCache() {
       cache.clear();
     }
@@ -96,11 +94,13 @@ export const UserServiceLive = createUserService(databaseInstance);
 Services often need multiple dependencies:
 
 ```typescript
-const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError");
-const { EmailServiceError, EmailServiceErr } = createTaggedError("EmailServiceError");
+const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError")
+  .withContext<{ amount?: number; paymentId?: string }>();
+const { OrderServiceError, OrderServiceErr } = createTaggedError("OrderServiceError")
+  .withContext<{ input?: OrderInput }>();
 
 type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
-type EmailServiceError = ReturnType<typeof EmailServiceError>;
+type OrderServiceError = ReturnType<typeof OrderServiceError>;
 
 export function createOrderService(
   db: Database,
@@ -108,42 +108,40 @@ export function createOrderService(
   emailService: EmailService
 ) {
   return {
-    async createOrder(input: OrderInput): Promise<Result<Order, OrderServiceError>> {
+    async createOrder(input: OrderInput): Promise<Result<Order, OrderServiceError | PaymentServiceError>> {
       // 1. Validate inventory
       const inventoryCheck = await checkInventory(input.items);
       if (inventoryCheck.error) return inventoryCheck;
-      
+
       // 2. Process payment
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
-        catch: (error) => PaymentServiceErr({
+        catch: () => PaymentServiceErr({
           message: "Payment processing failed",
-          context: { amount: input.payment.amount },
-          cause: error
+          context: { amount: input.payment.amount }
         })
       });
-      
+
       if (paymentResult.error) return paymentResult;
-      
+
       // 3. Create order in database
       const orderResult = await tryAsync({
         try: () => db.orders.create({
           ...input,
           paymentId: paymentResult.data.id
         }),
-        catch: (error) => OrderServiceErr({
+        catch: () => OrderServiceErr({
           message: "Failed to create order",
-          context: { input },
-          cause: error
+          context: { input }
         })
       });
-      
+
       if (orderResult.error) {
         // Rollback payment on failure
         await paymentGateway.refund(paymentResult.data.id);
         return orderResult;
       }
-      
+
       // 4. Send confirmation email (don't fail order if email fails)
       await tryAsync({
         try: () => emailService.sendOrderConfirmation(orderResult.data),
@@ -152,7 +150,7 @@ export function createOrderService(
           return Ok(undefined); // Gracefully handle email failure
         }
       });
-      
+
       return Ok(orderResult.data);
     }
   };
@@ -170,9 +168,10 @@ export type NotificationService = {
   requestPermission(): Promise<Result<boolean, NotificationServiceError>>;
 };
 
-const { NotificationServiceError, NotificationServiceErr } = 
-  createTaggedError("NotificationServiceError");
-  
+const { NotificationServiceError, NotificationServiceErr } =
+  createTaggedError("NotificationServiceError")
+    .withContext<{ action: string; platform?: string }>();
+
 type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
 
 // desktop.ts - Desktop implementation
@@ -184,14 +183,13 @@ export function createNotificationServiceDesktop(): NotificationService {
           // Use native desktop notification API
           new window.Notification("App Name", { body: message });
         },
-        catch: (error) => NotificationServiceErr({
+        catch: () => NotificationServiceErr({
           message: "Failed to show notification",
-          context: { message },
-          cause: error
+          context: { action: "notify", platform: "desktop" }
         })
       });
     },
-    
+
     async requestPermission() {
       // Desktop apps don't need permission
       return Ok(true);
@@ -207,23 +205,21 @@ export function createNotificationServiceWeb(): NotificationService {
       if (permission !== 'granted') {
         return NotificationServiceErr({
           message: "Notification permission denied",
-          context: { permission },
-          cause: undefined
+          context: { action: "notify", platform: "web" }
         });
       }
-      
+
       return tryAsync({
         try: () => {
           new Notification("App Name", { body: message });
         },
-        catch: (error) => NotificationServiceErr({
+        catch: () => NotificationServiceErr({
           message: "Failed to show notification",
-          context: { message },
-          cause: error
+          context: { action: "notify", platform: "web" }
         })
       });
     },
-    
+
     async requestPermission() {
       const permission = await Notification.requestPermission();
       return Ok(permission === 'granted');
@@ -296,6 +292,11 @@ export function createConfigService() {
 Decide whether to recover or propagate based on the error:
 
 ```typescript
+const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
+  .withContext<{ path: string }>()
+  .withCause<Error | undefined>();
+type FileServiceError = ReturnType<typeof FileServiceError>;
+
 export function createFileService() {
   return {
     async ensureDirectory(path: string): Promise<Result<void, FileServiceError>> {
@@ -512,36 +513,52 @@ const { ServiceError } = createTaggedError("ServiceError");
 
 ### 2. Include Context in Errors
 
-Always include relevant debugging information:
+Always include relevant debugging information. Define your error with `.withContext()` to require it:
 
 ```typescript
+const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
+  .withContext<{
+    userId: string;
+    operation: string;
+    timestamp?: string;
+  }>();
+
+// Now context is required with the exact shape
 return UserServiceErr({
   message: "Failed to update user",
   context: {
-    userId,        // Function parameter
-    updates,       // What was being updated
-    timestamp: new Date().toISOString() // When it happened
-  },
-  cause: originalError
+    userId,
+    operation: "updateUser",
+    timestamp: new Date().toISOString()
+  }
 });
 ```
 
 ### 3. Handle Errors at the Right Level
 
-Transform low-level errors into domain-specific ones:
+Transform low-level errors into domain-specific ones. Use `.withCause()` to create error hierarchies:
 
 ```typescript
+// Define errors with typed causes for layered architectures
+const { DatabaseError, DatabaseErr } = createTaggedError("DatabaseError")
+  .withContext<{ sql: string }>();
+type DatabaseError = ReturnType<typeof DatabaseError>;
+
+const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
+  .withContext<{ userId: string }>()
+  .withCause<DatabaseError | undefined>();
+
+// Low-level database error
 const dbResult = await tryAsync({
   try: () => db.query(sql),
-  catch: (error) => DatabaseErr({
+  catch: () => DatabaseErr({
     message: "Database query failed",
-    context: { sql },
-    cause: error
+    context: { sql }
   })
 });
 
 if (dbResult.error) {
-  // Transform to service-level error
+  // Transform to service-level error, wrapping the database error
   return UserServiceErr({
     message: "Failed to fetch user preferences",
     context: { userId },
@@ -555,16 +572,20 @@ if (dbResult.error) {
 Services should only contain business logic:
 
 ```typescript
+// Define the error type with required context
+const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
+  .withContext<{ userId: string; operation: string }>();
+type UserServiceError = ReturnType<typeof UserServiceError>;
+
 // ✅ Good - pure business logic
 export function createUserService(db: Database) {
   return {
     async getUser(id: string): Promise<Result<User, UserServiceError>> {
       return tryAsync({
         try: () => db.users.findById(id),
-        catch: (error) => UserServiceErr({
+        catch: () => UserServiceErr({
           message: "Failed to fetch user",
-          context: { userId: id },
-          cause: error
+          context: { userId: id, operation: "getUser" }
         })
       });
     }

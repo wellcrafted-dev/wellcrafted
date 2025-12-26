@@ -54,12 +54,18 @@ function getUser(id: UserId) { /* ... */ }
 ```
 
 ### 📋 Tagged Errors
-Structured, serializable errors with convenient factory functions
+Structured, serializable errors with a fluent API
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
-const { ApiError, ApiErr } = createTaggedError("ApiError");
-// ApiError() creates error object, ApiErr() creates Err-wrapped error
+// Minimal by default - only name and message
+const { ValidationError } = createTaggedError("ValidationError");
+ValidationError({ message: "Email is required" });
+
+// Chain to add context and cause when needed
+const { ApiError } = createTaggedError("ApiError")
+  .withContext<{ endpoint: string }>()
+  .withCause<NetworkError | undefined>();
 ```
 
 ### 🔄 Query Integration
@@ -74,15 +80,17 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 // Define operations that return Result types
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => getUserFromAPI(userId) // Returns Result<User, ApiError>
+  queryFn: () => getUserFromAPI(userId) // Returns Result<User, ApiError>
 });
 
 // Use reactively in components with automatic state management
-const query = createQuery(userQuery.options());
+// Svelte 5 requires accessor function; React uses options directly
+const query = createQuery(() => userQuery.options); // Svelte
 // query.data, query.error, query.isPending all managed automatically
 
 // Or use imperatively for direct execution (perfect for event handlers)
 const { data, error } = await userQuery.fetch();
+// Or shorthand: await userQuery() (same as .ensure())
 if (error) {
   showErrorToast(error.message);
   return;
@@ -100,19 +108,21 @@ npm install wellcrafted
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { createTaggedError, type AnyTaggedError } from "wellcrafted/error";
 
 // Define your error with factory function
-const { ApiError, ApiErr } = createTaggedError("ApiError");
+const { ApiError, ApiErr } = createTaggedError("ApiError")
+  .withContext<{ endpoint: string }>()
+  .withCause<AnyTaggedError | undefined>();
 type ApiError = ReturnType<typeof ApiError>;
 
 // Wrap any throwing operation
 const { data, error } = await tryAsync({
   try: () => fetch('/api/user').then(r => r.json()),
-  catch: (error) => ApiErr({
+  catch: (e) => ApiErr({
     message: "Failed to fetch user",
     context: { endpoint: '/api/user' },
-    cause: error
+    cause: { name: "FetchError", message: String(e) }
   })
 });
 
@@ -206,25 +216,28 @@ if (error) {
 ### Wrap Unsafe Operations
 
 ```typescript
+// Define errors with context and cause
+const { ParseError, ParseErr } = createTaggedError("ParseError")
+  .withContext<{ input: string }>();
+
+const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
+  .withContext<{ url: string }>();
+
 // Synchronous
 const result = trySync({
   try: () => JSON.parse(jsonString),
-  catch: (error) => Err({
-    name: "ParseError",
+  catch: () => ParseErr({
     message: "Invalid JSON",
-    context: { input: jsonString },
-    cause: error
+    context: { input: jsonString }
   })
 });
 
-// Asynchronous  
+// Asynchronous
 const result = await tryAsync({
   try: () => fetch(url),
-  catch: (error) => Err({
-    name: "NetworkError",
+  catch: () => NetworkErr({
     message: "Request failed",
-    context: { url },
-    cause: error
+    context: { url }
   })
 });
 ```
@@ -234,9 +247,10 @@ const result = await tryAsync({
 ```typescript
 // 1. Service Layer - Pure business logic
 import { createTaggedError } from "wellcrafted/error";
-import { tryAsync, Result } from "wellcrafted/result";
+import { tryAsync, Result, Ok } from "wellcrafted/result";
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError");
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
+  .withContext<{ currentState?: string; permissions?: string }>();
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -248,8 +262,7 @@ export function createRecorderService() {
       if (isRecording) {
         return RecorderServiceErr({
           message: "Already recording",
-          context: { currentState: 'recording' },
-          cause: undefined
+          context: { currentState: 'recording' }
         });
       }
 
@@ -260,10 +273,9 @@ export function createRecorderService() {
           // ... recording setup
           isRecording = true;
         },
-        catch: (error) => RecorderServiceErr({
+        catch: () => RecorderServiceErr({
           message: "Failed to start recording",
-          context: { permissions: 'microphone' },
-          cause: error
+          context: { permissions: 'microphone' }
         })
       });
     },
@@ -272,11 +284,10 @@ export function createRecorderService() {
       if (!isRecording) {
         return RecorderServiceErr({
           message: "Not currently recording",
-          context: { currentState: 'idle' },
-          cause: undefined
+          context: { currentState: 'idle' }
         });
       }
-      
+
       // Stop recording and return blob...
       isRecording = false;
       return Ok(currentBlob!);
@@ -292,7 +303,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 export const recorder = {
   getRecorderState: defineQuery({
     queryKey: ['recorder', 'state'],
-    resultQueryFn: async () => {
+    queryFn: async () => {
       const { data, error } = await services.recorder.getState();
       if (error) {
         // Transform service error to UI-friendly error
@@ -309,7 +320,7 @@ export const recorder = {
 
   startRecording: defineMutation({
     mutationKey: ['recorder', 'start'],
-    resultMutationFn: async () => {
+    mutationFn: async () => {
       const { error } = await services.recorder.startRecording();
       if (error) {
         return Err({
@@ -327,12 +338,13 @@ export const recorder = {
 };
 
 // 3. Component Usage - Choose reactive or imperative based on needs
-// Reactive: Automatic state management
-const recorderState = createQuery(recorder.getRecorderState.options());
+// Reactive: Automatic state management (Svelte 5 requires accessor function)
+const recorderState = createQuery(() => recorder.getRecorderState.options);
 
 // Imperative: Direct execution for event handlers
 async function handleStartRecording() {
   const { error } = await recorder.startRecording.execute();
+  // Or shorthand: await recorder.startRecording()
   if (error) {
     showToast(error.title, { description: error.description });
   }
@@ -367,10 +379,12 @@ const { data: parsed } = trySync({
 
 ### Propagation Pattern (May Fail)
 ```typescript
-// When catch can return Err<E>, function returns Result<T, E>  
+const { ParseError, ParseErr } = createTaggedError("ParseError");
+
+// When catch can return Err<E>, function returns Result<T, E>
 const mayFail = trySync({
   try: () => JSON.parse(riskyJson),
-  catch: (error) => ParseErr({ message: "Invalid JSON", cause: error })
+  catch: () => ParseErr({ message: "Invalid JSON" })
 });
 // mayFail: Result<object, ParseError> - Must check for errors
 if (isOk(mayFail)) {
@@ -382,13 +396,13 @@ if (isOk(mayFail)) {
 ```typescript
 const smartParse = trySync({
   try: () => JSON.parse(input),
-  catch: (error) => {
+  catch: () => {
     // Recover from empty input
     if (input.trim() === "") {
       return Ok({}); // Return Ok<T> for fallback
     }
-    // Propagate other errors  
-    return ParseErr({ message: "Parse failed", cause: error });
+    // Propagate other errors
+    return ParseErr({ message: "Parse failed" });
   }
 });
 // smartParse: Result<object, ParseError> - Mixed handling = Result type
@@ -419,40 +433,40 @@ Based on real-world usage, here's the recommended pattern for creating services 
 
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
+import { Result, Ok } from "wellcrafted/result";
 
-// 1. Define service-specific errors
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError");
+// 1. Define service-specific errors with typed context
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
+  .withContext<{ isRecording: boolean }>();
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 // 2. Create service with factory function
 export function createRecorderService() {
   // Private state in closure
   let isRecording = false;
-  
+
   // Return object with methods
   return {
     startRecording(): Result<void, RecorderServiceError> {
       if (isRecording) {
         return RecorderServiceErr({
           message: "Already recording",
-          context: { isRecording },
-          cause: undefined
+          context: { isRecording }
         });
       }
-      
+
       isRecording = true;
       return Ok(undefined);
     },
-    
+
     stopRecording(): Result<Blob, RecorderServiceError> {
       if (!isRecording) {
         return RecorderServiceErr({
-          message: "Not currently recording", 
-          context: { isRecording },
-          cause: undefined
+          message: "Not currently recording",
+          context: { isRecording }
         });
       }
-      
+
       isRecording = false;
       return Ok(new Blob(["audio data"]));
     }
@@ -534,22 +548,23 @@ export async function GET(request: Request) {
 <summary><b>Form Validation</b></summary>
 
 ```typescript
+const { FormError, FormErr } = createTaggedError("FormError")
+  .withContext<{ fields: Record<string, string[]> }>();
+
 function validateLoginForm(data: unknown): Result<LoginData, FormError> {
   const errors: Record<string, string[]> = {};
-  
+
   if (!isValidEmail(data?.email)) {
     errors.email = ["Invalid email format"];
   }
-  
+
   if (Object.keys(errors).length > 0) {
-    return Err({
-      name: "FormError",
+    return FormErr({
       message: "Validation failed",
-      context: { fields: errors },
-      cause: undefined
+      context: { fields: errors }
     });
   }
-  
+
   return Ok(data as LoginData);
 }
 ```
@@ -611,14 +626,16 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 
 ### Query Functions
 - **`createQueryFactories(client)`** - Create query/mutation factories for TanStack Query
-- **`defineQuery(options)`** - Define a query with dual interface (`.options()` + `.fetch()`)
-- **`defineMutation(options)`** - Define a mutation with dual interface (`.options()` + `.execute()`)
+- **`defineQuery(options)`** - Define a query with dual interface (`.options` + callable/`.ensure()`/`.fetch()`)
+- **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + callable/`.execute()`)
 
 ### Error Functions
-- **`createTaggedError(name)`** - Creates error factory functions
-  - Returns two functions: `{ErrorName}` and `{ErrorName}Err`
-  - The first creates plain error objects
-  - The second creates Err-wrapped errors
+- **`createTaggedError(name)`** - Creates error factory functions with fluent API
+  - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
+  - **Default**: minimal errors with only `name` and `message`
+  - Chain `.withContext<T>()` to add typed context
+  - Chain `.withCause<T>()` to add typed cause
+  - Include `| undefined` in type to make property optional but typed
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
 ### Types

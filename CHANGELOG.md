@@ -1,5 +1,217 @@
 # wellcrafted
 
+## 0.29.0
+
+### Minor Changes
+
+- 1237ce4: **BREAKING**: Rename `resultQueryFn` to `queryFn` and `resultMutationFn` to `mutationFn`
+
+  The `result` prefix was redundant since the TypeScript signature already encodes that these functions return Result types. This removes unnecessary Hungarian notation from the API.
+
+  Migration:
+
+  ```typescript
+  // Before
+  defineQuery({
+    queryKey: ["users"],
+    resultQueryFn: () => getUsers(),
+  });
+
+  defineMutation({
+    mutationKey: ["users", "create"],
+    resultMutationFn: (input) => createUser(input),
+  });
+
+  // After
+  defineQuery({
+    queryKey: ["users"],
+    queryFn: () => getUsers(),
+  });
+
+  defineMutation({
+    mutationKey: ["users", "create"],
+    mutationFn: (input) => createUser(input),
+  });
+  ```
+
+## 0.28.0
+
+### Minor Changes
+
+- 7c41baf: feat(error): explicit opt-in for context and cause properties
+
+  Following Rust's thiserror pattern, `createTaggedError` now uses explicit opt-in for `context` and `cause` properties. By default, errors only have `{ name, message }`.
+
+  **Breaking Change:** Previously, all errors had optional `context` and `cause` properties by default. Now you must explicitly chain `.withContext<T>()` and/or `.withCause<T>()` to add these properties.
+
+  Before (old behavior):
+
+  ```typescript
+  const { ApiError } = createTaggedError("ApiError");
+  // ApiError had: { name, message, context?: Record<string, unknown>, cause?: AnyTaggedError }
+  ```
+
+  After (new behavior):
+
+  ```typescript
+  // Minimal error - only name and message
+  const { ApiError } = createTaggedError("ApiError");
+  // ApiError has: { name, message }
+
+  // With required context
+  const { ApiError } = createTaggedError("ApiError").withContext<{
+    endpoint: string;
+  }>();
+  // ApiError has: { name, message, context: { endpoint: string } }
+
+  // With optional typed cause
+  const { ApiError } = createTaggedError("ApiError").withCause<
+    NetworkError | undefined
+  >();
+  // ApiError has: { name, message, cause?: NetworkError }
+  ```
+
+  **Migration:** To replicate the old permissive behavior, either specify the types explicitly:
+
+  ```typescript
+  const { FlexibleError } = createTaggedError("FlexibleError")
+    .withContext<Record<string, unknown> | undefined>()
+    .withCause<AnyTaggedError | undefined>();
+  ```
+
+  Or use the new defaults by calling without generics:
+
+  ```typescript
+  const { FlexibleError } = createTaggedError("FlexibleError")
+    .withContext() // Defaults to Record<string, unknown> | undefined
+    .withCause(); // Defaults to AnyTaggedError | undefined
+  ```
+
+## 0.27.0
+
+### Minor Changes
+
+- b917060: Replace `defineError` with fluent `createTaggedError` API
+
+  The `createTaggedError` function now uses a fluent builder pattern for type constraints:
+
+  ```typescript
+  // Simple usage (flexible mode)
+  const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
+
+  // Required context
+  const { ApiError } = createTaggedError("ApiError").withContext<{
+    endpoint: string;
+    status: number;
+  }>();
+
+  // Optional typed context
+  const { LogError } = createTaggedError("LogError").withContext<
+    { file: string; line: number } | undefined
+  >();
+
+  // Chaining both context and cause
+  const { RepoError } = createTaggedError("RepoError")
+    .withContext<{ entity: string }>()
+    .withCause<DbError | undefined>();
+  ```
+
+  **Breaking changes:**
+
+  - `defineError` has been removed (use `createTaggedError` instead)
+  - The old `createTaggedError` generic overloads are removed in favor of the fluent API
+
+## 0.26.0
+
+### Minor Changes
+
+- 5f0e7af: Make query and mutation definitions directly callable
+
+  Query and mutation definitions from `defineQuery` and `defineMutation` are now directly callable functions:
+
+  ```ts
+  // Queries - callable defaults to ensure() behavior
+  const { data, error } = await userQuery(); // same as userQuery.ensure()
+
+  // Mutations - callable defaults to execute() behavior
+  const { data, error } = await createUser({ name: "John" }); // same as createUser.execute()
+  ```
+
+  The explicit methods (`.ensure()`, `.fetch()`, `.execute()`) remain available for when you need different behavior or prefer explicit code.
+
+  **Breaking change**: `.options` is now a property instead of a function. Update `createQuery(query.options())` to `createQuery(query.options)`.
+
+## 0.25.1
+
+### Patch Changes
+
+- 5d72453: feat(error): support optional typed context via union with undefined
+
+  You can now specify context that is optional but still type-checked when provided by using a union with `undefined`:
+
+  ```typescript
+  type LogContext = { file: string; line: number } | undefined;
+  const { LogError } = createTaggedError<"LogError", LogContext>("LogError");
+
+  // Context is optional
+  LogError({ message: "Parse failed" });
+
+  // But when provided, it's typed
+  LogError({ message: "Parse failed", context: { file: "app.ts", line: 42 } });
+  ```
+
+  This gives you the best of both worlds: optional context like flexible mode, but with type enforcement like fixed context mode.
+
+  The same pattern works for `cause`:
+
+  ```typescript
+  type NetworkError = TaggedError<"NetworkError">;
+  type CauseType = NetworkError | undefined;
+  const { ApiError } = createTaggedError<
+    "ApiError",
+    { endpoint: string },
+    CauseType
+  >("ApiError");
+  ```
+
+- 5d72453: fix(error): simplify TaggedError types for better ReturnType inference
+
+  Previously, `createTaggedError` used function overloads to provide precise call-site type inference. While this worked well for constructing errors, it broke `ReturnType<typeof MyError>` because TypeScript picks the last overload (the most constrained signature).
+
+  This change simplifies to single signatures per mode:
+
+  1. **Flexible mode** (no type params): context and cause are optional with loose typing
+  2. **Fixed context mode** (TContext specified): context is required with exact type
+  3. **Both fixed mode** (TContext + TCause): context required, cause optional but constrained
+
+  `ReturnType` now works correctly:
+
+  ```typescript
+  const { NetworkError } = createTaggedError("NetworkError");
+  type NetworkError = ReturnType<typeof NetworkError>;
+  // = TaggedError<'NetworkError'> with optional context/cause
+  ```
+
+  **BREAKING CHANGE**: In flexible mode, `context` is now typed as `Record<string, unknown> | undefined` instead of precisely inferred at call sites. Users who need typed context should use fixed context mode:
+
+  ```typescript
+  // Before (flexible with inference - no longer works)
+  const { ApiError } = createTaggedError("ApiError");
+  const err = ApiError({ message: "x", context: { endpoint: "/users" } });
+
+  // After (fixed context mode)
+  const { ApiError } = createTaggedError<"ApiError", { endpoint: string }>(
+    "ApiError"
+  );
+  const err = ApiError({ message: "x", context: { endpoint: "/users" } });
+  ```
+
+- 2388e95: fix(result): add overload for trySync/tryAsync when catch returns Ok | Err union
+
+  Previously, trySync and tryAsync only had overloads for catch handlers that returned exclusively Ok<T> or exclusively Err<E>. This caused type errors when a catch handler could return either based on runtime conditions (conditional recovery pattern).
+
+  Added a third overload to both functions that accepts catch handlers returning `Ok<T> | Err<E>`, properly typing the return as `Result<T, E>`.
+
 ## 0.25.0
 
 ### Minor Changes

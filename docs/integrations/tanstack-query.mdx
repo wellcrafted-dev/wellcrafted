@@ -27,12 +27,13 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 // 3. Define your operations
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
+  queryFn: () => services.getUser(userId), // Returns Result<User, ApiError>
   staleTime: 10 * 60 * 1000, // Override default for this query
 });
 
 // 4. Use in components or imperatively
-const query = createQuery(userQuery.options()); // Reactive
+const query = useQuery(userQuery.options); // React
+const query = createQuery(() => userQuery.options); // Svelte 5
 const { data, error } = await userQuery.fetch(); // Imperative
 ```
 
@@ -40,16 +41,40 @@ const { data, error } = await userQuery.fetch(); // Imperative
 
 Every query and mutation provides **two ways to use them**:
 
-### 1. Reactive Interface (`.options()`) 
+### 1. Reactive Interface (`.options`)
 **Perfect for components that need automatic state management**
 
-```typescript
-import { createQuery } from '@tanstack/svelte-query';
+**React:**
 
-// Reactive usage in Svelte components
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+```tsx
+import { useQuery } from '@tanstack/react-query';
 
-// Template automatically updates when data changes
+// Reactive usage in React components (pass options directly)
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
+
+// Component automatically re-renders when data changes
+if (recordingsQuery.isPending) return <LoadingSpinner />;
+if (recordingsQuery.error) return <ErrorMessage error={recordingsQuery.error} />;
+return (
+  <>
+    {recordingsQuery.data?.map(recording => (
+      <RecordingCard key={recording.id} recording={recording} />
+    ))}
+  </>
+);
+```
+
+**Svelte 5:**
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query';
+
+  // Reactive usage in Svelte components (wrap in accessor function)
+  const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+</script>
+
+<!-- Template automatically updates when data changes -->
 {#if recordingsQuery.isPending}
   <LoadingSpinner />
 {:else if recordingsQuery.error}
@@ -68,7 +93,7 @@ const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
 - Cache synchronization across components
 - Background refetching and stale-while-revalidate
 
-### 2. Imperative Interface (`.fetch()` / `.execute()`)
+### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
 **Perfect for event handlers, utilities, and performance-critical code**
 
 ```typescript
@@ -84,14 +109,27 @@ async function handleRefresh() {
 
 // Sequential operations
 async function processWorkflow() {
-  const { data: user, error: userError } = await userQuery.fetch();
+  const { data: user, error: userError } = await userQuery.ensure();
   if (userError) return handleError(userError);
-  
+
   const { data: result, error: processError } = await processUserMutation.execute(user);
   if (processError) return handleError(processError);
-  
+
   // Success!
 }
+```
+
+**Shorthand:** Queries and mutations are also directly callable as a shorthand:
+- `await userQuery()` is equivalent to `await userQuery.ensure()` (prefers cached data)
+- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+
+```typescript
+// These are equivalent:
+const result = await userQuery.ensure();
+const result = await userQuery(); // Shorthand
+
+const result = await createUser.execute(userData);
+const result = await createUser(userData); // Shorthand
 ```
 
 **Benefits:**
@@ -106,15 +144,17 @@ async function processWorkflow() {
 ### When Creating Reactive Observers is Overkill
 
 ```typescript
-// ❌ Unnecessary overhead for simple event handlers
-const mutation = createMutation(rpc.recordings.deleteRecording.options());
+// ❌ Unnecessary overhead for simple event handlers (either framework)
+// React: const mutation = useMutation(rpc.recordings.deleteRecording.options);
+// Svelte: const mutation = createMutation(() => rpc.recordings.deleteRecording.options);
 mutation.mutate(recordingId, {
   onSuccess: () => showToast('Deleted!'),
   onError: (error) => showToast(error.message)
 });
 
-// ✅ Direct execution - much faster
+// ✅ Direct execution - much faster (works in any framework)
 const { error } = await rpc.recordings.deleteRecording.execute(recordingId);
+// Or use shorthand: await rpc.recordings.deleteRecording(recordingId)
 if (error) {
   showToast(error.message);
 } else {
@@ -124,13 +164,35 @@ if (error) {
 
 ### When Reactive State is Essential
 
-```typescript
-// ✅ Reactive state needed for UI feedback
-const deleteRecordingMutation = createMutation(
-  rpc.recordings.deleteRecording.options
-);
+**React:**
 
-// Template shows loading state
+```tsx
+// ✅ Reactive state needed for UI feedback
+const deleteRecordingMutation = useMutation(rpc.recordings.deleteRecording.options);
+
+// Component shows loading state
+return deleteRecordingMutation.isPending ? (
+  <Button disabled>
+    <Spinner /> Deleting...
+  </Button>
+) : (
+  <Button onClick={() => deleteRecordingMutation.mutate(recordingId)}>
+    Delete Recording
+  </Button>
+);
+```
+
+**Svelte 5:**
+
+```svelte
+<script lang="ts">
+  // ✅ Reactive state needed for UI feedback
+  const deleteRecordingMutation = createMutation(
+    () => rpc.recordings.deleteRecording.options
+  );
+</script>
+
+<!-- Template shows loading state -->
 {#if deleteRecordingMutation.isPending}
   <Button disabled>
     <Spinner /> Deleting...
@@ -149,7 +211,7 @@ const deleteRecordingMutation = createMutation(
 ```typescript
 const getAllUsers = defineQuery({
   queryKey: ['users'],
-  resultQueryFn: () => services.db.getAllUsers(),
+  queryFn: () => services.db.getAllUsers(),
   staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
 });
 ```
@@ -160,13 +222,13 @@ const getAllUsers = defineQuery({
 // For dynamic parameters, use accessor functions
 const getUserById = (userId: Accessor<string>) => defineQuery({
   queryKey: ['users', userId()],
-  resultQueryFn: () => services.db.getUserById(userId()),
+  queryFn: () => services.db.getUserById(userId()),
   enabled: userId() !== '', // Only run when userId is provided
 });
 
 // Usage
 const userId = () => route.params.id;
-const userQuery = createQuery(getUserById(userId).options());
+const userQuery = createQuery(() => getUserById(userId).options);
 ```
 
 ### Dependent Queries
@@ -174,7 +236,7 @@ const userQuery = createQuery(getUserById(userId).options());
 ```typescript
 const userProfileQuery = (userId: Accessor<string>) => defineQuery({
   queryKey: ['users', userId(), 'profile'],
-  resultQueryFn: async () => {
+  queryFn: async () => {
     // First get basic user data
     const { data: user, error: userError } = await services.db.getUserById(userId());
     if (userError) return Err(userError);
@@ -196,7 +258,7 @@ const userProfileQuery = (userId: Accessor<string>) => defineQuery({
 ```typescript
 const createRecording = defineMutation({
   mutationKey: ['recordings', 'create'],
-  resultMutationFn: async (recording: Recording) => {
+  mutationFn: async (recording: Recording) => {
     const { data, error } = await services.db.createRecording(recording);
     if (error) return Err(error);
 
@@ -219,7 +281,7 @@ const createRecording = defineMutation({
 ```typescript
 const transcribeRecording = defineMutation({
   mutationKey: ['recordings', 'transcribe'],
-  resultMutationFn: async (recordingId: string) => {
+  mutationFn: async (recordingId: string) => {
     // Step 1: Update status to 'transcribing'
     const { error: updateError } = await recordings.updateRecording.execute({
       id: recordingId,
@@ -256,12 +318,13 @@ const transcribeRecording = defineMutation({
 A critical responsibility of the query layer is transforming service-specific errors into UI-friendly formats:
 
 ```typescript
-// Service layer returns domain-specific errors
-const { RecorderServiceError } = createTaggedError("RecorderServiceError");
+// Service layer returns domain-specific errors with typed context
+const { RecorderServiceError } = createTaggedError("RecorderServiceError")
+  .withContext<{ action: string; deviceId?: string }>();
 
 // Query layer transforms them for UI consumption
 const startRecording = defineMutation({
-  resultMutationFn: async () => {
+  mutationFn: async () => {
     const { error } = await services.recorder.startRecording();
     if (error) {
       // Transform service error to UI error
@@ -297,7 +360,7 @@ const recordingKeys = {
 
 const getAllRecordings = defineQuery({
   queryKey: recordingKeys.all,
-  resultQueryFn: () => services.db.getAllRecordings(),
+  queryFn: () => services.db.getAllRecordings(),
 });
 ```
 
@@ -305,7 +368,7 @@ const getAllRecordings = defineQuery({
 
 ```typescript
 const updateRecording = defineMutation({
-  resultMutationFn: async (recording: Recording) => {
+  mutationFn: async (recording: Recording) => {
     const { data, error } = await services.db.updateRecording(recording);
     if (error) return Err(error);
 
@@ -341,7 +404,7 @@ Perfect for operations that depend on user settings:
 
 ```typescript
 const transcribeBlob = defineMutation({
-  resultMutationFn: async (blob: Blob) => {
+  mutationFn: async (blob: Blob) => {
     // Access reactive settings at runtime
     const selectedService = settings.value['transcription.selectedService'];
     const apiKey = settings.value[`apiKeys.${selectedService.toLowerCase()}`];
@@ -400,22 +463,49 @@ export const rpc = {
 };
 
 // Usage throughout app
-import { rpc } from '$lib/query';
+import { rpc } from './query'; // or '$lib/query' in SvelteKit
 
 // Everything is available through one import
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+// React:
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
+// Svelte 5:
+const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+
+// Imperative (any framework):
 await rpc.transcription.transcribeBlob.execute(blob);
+// Or shorthand: await rpc.transcription.transcribeBlob(blob)
 ```
 
 ### Component Usage Patterns
 
-```typescript
+**React:**
+
+```tsx
 // Reactive pattern for data display
-const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
+const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
 
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
   const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  // Or shorthand: await rpc.recordings.deleteRecording(recording)
+  if (error) {
+    showErrorToast(error.message);
+  } else {
+    showSuccessToast('Recording deleted');
+  }
+}
+```
+
+**Svelte 5:**
+
+```typescript
+// Reactive pattern for data display
+const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+
+// Imperative pattern for actions
+async function handleDelete(recording: Recording) {
+  const { error } = await rpc.recordings.deleteRecording.execute(recording);
+  // Or shorthand: await rpc.recordings.deleteRecording(recording)
   if (error) {
     showErrorToast(error.message);
   } else {
@@ -428,24 +518,26 @@ async function handleDelete(recording: Recording) {
 
 ### 1. Choose the Right Interface
 
-**Use `.options()` when:**
+**Use `.options` when:**
 - Component needs to display loading states
-- Data changes should trigger re-renders  
+- Data changes should trigger re-renders
 - You want automatic error boundaries
 - Background refetching is beneficial
 
-**Use `.execute()` / `.fetch()` when:**
+**Use `.execute()` / `.fetch()` / `.ensure()` when:**
 - Event handlers that just need the result
 - Sequential operations in workflows
 - Performance is critical
 - Working outside component context
+
+**Shorthand:** Queries and mutations are also directly callable. `await userQuery()` is shorthand for `await userQuery.ensure()`, and `await mutation(data)` is shorthand for `await mutation.execute(data)`.
 
 ### 2. Transform Errors at the Right Layer
 
 ```typescript
 // ✅ Good: Transform at query layer
 const getUser = defineQuery({
-  resultQueryFn: async () => {
+  queryFn: async () => {
     const { data, error } = await services.db.getUser(id);
     if (error) {
       return Err({
@@ -506,7 +598,10 @@ const userQuery = useQuery({
 });
 
 // After: Automatic Result handling
-const userQuery = createQuery(rpc.users.getUserById(id).options());
+// React:
+const userQuery = useQuery(rpc.users.getUserById(id).options);
+// Svelte 5:
+const userQuery = createQuery(() => rpc.users.getUserById(id).options);
 // Result unwrapping handled automatically by wellcrafted
 ```
 
@@ -521,47 +616,56 @@ async function loadUserData() {
 }
 
 // After: Cached and reactive
-const userQuery = createQuery(rpc.users.getUserById(id).options());
+// React:
+const userQuery = useQuery(rpc.users.getUserById(id).options);
+// Svelte 5:
+const userQuery = createQuery(() => rpc.users.getUserById(id).options);
 // Automatic state management, caching, background updates
 ```
 
 ## Framework-Specific Examples
 
-### Svelte with wellcrafted
+### React with wellcrafted
+
+```tsx
+// Define once, use everywhere
+const userQuery = defineQuery({
+  queryKey: ['users', userId],
+  queryFn: () => services.getUserById(userId),
+});
+
+// React component usage (options passed directly)
+function UserProfile({ userId }) {
+  const query = useQuery(userQuery.options);
+
+  if (query.isPending) return <Loading />;
+  if (query.error) return <Error error={query.error} />;
+  return <UserCard user={query.data} />;
+}
+
+// Imperative usage in event handlers
+async function refreshUser() {
+  const { data, error } = await userQuery.fetch();
+  // Or use shorthand: await userQuery() (same as .ensure())
+}
+```
+
+### Svelte 5 with wellcrafted
 
 ```typescript
 // Define once, use everywhere
 const userQuery = defineQuery({
   queryKey: ['users', userId],
-  resultQueryFn: () => services.getUserById(userId),
+  queryFn: () => services.getUserById(userId),
 });
 
-// Reactive component usage
-const query = createQuery(userQuery.options());
+// Reactive component usage (Svelte 5 requires accessor function)
+const query = createQuery(() => userQuery.options);
 
 // Imperative usage in actions
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
-  // Handle result...
-}
-```
-
-### React with wellcrafted
-
-```typescript
-// Same query definition works across frameworks
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  resultQueryFn: () => services.getUserById(userId),
-});
-
-// React component usage
-function UserProfile({ userId }) {
-  const query = useQuery(userQuery.options());
-  
-  if (query.isPending) return <Loading />;
-  if (query.error) return <Error error={query.error} />;
-  return <UserCard user={query.data} />;
+  // Or use shorthand: await userQuery() (same as .ensure())
 }
 ```
 

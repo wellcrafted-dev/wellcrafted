@@ -150,19 +150,19 @@ export const users = {
   getUser: (userId: string) => 
     defineQuery({
       queryKey: ['users', userId],
-      resultQueryFn: () => userService.getUser(userId),
+      queryFn: () => userService.getUser(userId),
     }),
 
   // Query all users
   getAllUsers: defineQuery({
     queryKey: ['users'],
-    resultQueryFn: () => userService.getAllUsers(),
+    queryFn: () => userService.getAllUsers(),
   }),
 
   // Mutation with optimistic updates
   updateUser: defineMutation({
     mutationKey: ['users', 'update'],
-    resultMutationFn: async (user: User) => {
+    mutationFn: async (user: User) => {
       const result = await userService.updateUser(user);
       
       if (result.error) return result;
@@ -209,11 +209,11 @@ export const rpc = {
 
   let { userId } = $props<{ userId: string }>();
 
-  // Reactive query - automatically updates UI
-  const userQuery = createQuery(rpc.users.getUser(() => userId).options);
+  // Reactive query - automatically updates UI (Svelte 5 requires accessor function)
+  const userQuery = createQuery(() => rpc.users.getUser(() => userId).options);
 
   // Reactive mutation - provides loading states
-  const updateMutation = createMutation(rpc.users.updateUser.options);
+  const updateMutation = createMutation(() => rpc.users.updateUser.options);
 
   // Or use imperatively in event handlers
   async function handleQuickUpdate(updates: Partial<User>) {
@@ -221,6 +221,7 @@ export const rpc = {
       ...userQuery.data,
       ...updates
     });
+    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -254,11 +255,11 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ userId }: UserProfileProps) {
-  // Reactive query - automatically updates UI
-  const userQuery = useQuery(rpc.users.getUser(userId).options());
+  // Reactive query - automatically updates UI (React passes options directly)
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
 
   // Reactive mutation - provides loading states
-  const updateMutation = useMutation(rpc.users.updateUser.options());
+  const updateMutation = useMutation(rpc.users.updateUser.options);
 
   // Or use imperatively in event handlers
   async function handleQuickUpdate(updates: Partial<User>) {
@@ -266,6 +267,7 @@ export function UserProfile({ userId }: UserProfileProps) {
       ...userQuery.data,
       ...updates
     });
+    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -294,35 +296,37 @@ Every query and mutation provides two ways to use it:
 
 Best for UI components that need to track state:
 
+**Svelte 5** (wrap entire expression in accessor function):
+
 ```typescript
 // With reactive parameter - creates a reactive subscription
 const userId = $state('abc-123');
-const query = createQuery(rpc.users.getUser(() => userId).options);
+const query = createQuery(() => rpc.users.getUser(() => userId).options);
 // Access: query.data, query.isPending, query.error
 // Query automatically re-runs when userId changes
 
 // With static parameter - simpler when value never changes
-const query = createQuery(rpc.users.getUser('static-id').options);
+const query = createQuery(() => rpc.users.getUser('static-id').options);
 ```
 
-**React equivalent:**
+**React** (pass options directly):
 
 ```tsx
 // With reactive parameter - creates a reactive subscription
 const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options());
+const query = useQuery(rpc.users.getUser(userId).options);
 // Access: query.data, query.isPending, query.error
 // Query automatically re-runs when userId changes
 
 // With static parameter - simpler when value never changes
-const query = useQuery(rpc.users.getUser('static-id').options());
+const query = useQuery(rpc.users.getUser('static-id').options);
 ```
 
 **Important**:
-- **Svelte**: Pass `.options` as a **property reference** (no parentheses). For reactive parameters, wrap them in accessor functions `() => param`.
-- **React**: Call `.options()` as a **function** (with parentheses). Pass reactive parameters directly (no accessor function needed).
+- **Svelte 5**: Wrap in accessor function `() => ...options`. For reactive parameters inside, also use accessor functions `() => param`.
+- **React**: Pass `.options` directly (it's a property, not a function). Pass reactive parameters directly (no accessor function needed).
 
-### 2. Imperative Interface (`.execute()` / `.fetch()`)
+### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
 
 Best for event handlers and workflows:
 
@@ -330,6 +334,25 @@ Best for event handlers and workflows:
 // Direct execution without subscriptions
 const { data, error } = await rpc.users.updateUser.execute(user);
 // No reactive overhead, just the result
+
+// For queries, .ensure() prefers cached data
+const { data, error } = await rpc.users.getUser('123').ensure();
+
+// Use .fetch() when you need to check freshness
+const { data, error } = await rpc.users.getUser('123').fetch();
+```
+
+**Shorthand:** Queries and mutations are also directly callable:
+- `await userQuery()` is equivalent to `await userQuery.ensure()`
+- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+
+```typescript
+// These are equivalent:
+const result = await rpc.users.getUser('123').ensure();
+const result = await rpc.users.getUser('123')(); // Shorthand
+
+const result = await rpc.users.updateUser.execute(user);
+const result = await rpc.users.updateUser(user); // Shorthand
 ```
 
 ## Common Mistakes with `.options`
@@ -338,95 +361,95 @@ Understanding the `.options` pattern is crucial for proper reactive behavior. He
 
 ### ❌ Mistake 1: Wrong `.options` pattern for your framework
 
-**Svelte:**
+**Svelte 5:**
 
 ```typescript
-// WRONG: Calling .options() instead of passing the function reference
-const query = createQuery(rpc.users.getUser(userId).options());
-//                                                         ^^
-//                                                      Don't call it
-
-// ALSO WRONG: Not using accessor for reactive parameter
+// WRONG: Not wrapping in accessor function
 const userId = $state('abc-123');
 const query = createQuery(rpc.users.getUser(userId).options);
-//                                            ^^^^^^
-//                                     Breaks reactivity!
+//            ^^^^^^^^^^^^                                 ^
+//            Missing outer accessor       Svelte 5 requires () => ...
+
+// ALSO WRONG: Calling .options() with parentheses (.options is a property)
+const query = createQuery(() => rpc.users.getUser(userId).options());
+//                                                               ^^
+//                                                     Don't call it!
 ```
 
 ```typescript
-// CORRECT: Pass .options as property, use accessor for reactive param
+// CORRECT: Wrap in accessor, use inner accessor for reactive param
 const userId = $state('abc-123');
-const query = createQuery(rpc.users.getUser(() => userId).options);
-//                                          ^^^^^^^^^^^ accessor preserves reactivity
-//                                                             no parentheses!
+const query = createQuery(() => rpc.users.getUser(() => userId).options);
+//                        ^^^^                    ^^^^^^^^^^^
+//                  outer accessor           inner accessor for reactive param
 ```
 
 **React:**
 
 ```tsx
-// WRONG: Not calling .options() as a function
+// WRONG: Calling .options() with parentheses (.options is a property)
 const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options);
-//                                                     ^
-//                                              Missing parentheses!
+const query = useQuery(rpc.users.getUser(userId).options());
+//                                                      ^^
+//                                              Don't call it!
 
 // ALSO WRONG: Using unnecessary accessor function
 const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(() => userId).options());
-//                                       ^^^^^^^^^^^
-//                                    Don't need accessor in React!
+const query = useQuery(() => rpc.users.getUser(userId).options);
+//                     ^^^^
+//                  Don't need accessor wrapper in React!
 ```
 
 ```tsx
-// CORRECT: Call .options() as function, pass param directly
+// CORRECT: Pass .options directly (it's a property, not a function)
 const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options());
+const query = useQuery(rpc.users.getUser(userId).options);
 //                                       ^^^^^^^ direct param
-//                                                      ^^ call it!
+//                                                      ^ no parentheses!
 ```
 
 **Why it's wrong**:
-- **Svelte**: Requires `.options` as property (no parentheses) and accessor functions `() => param` for reactive values
-- **React**: Requires `.options()` as function call (with parentheses) and direct parameter passing (no accessor)
+- **Svelte 5**: Requires accessor wrapper `() => ...options` and inner accessors `() => param` for reactive values
+- **React**: Pass `.options` directly (no parentheses, no wrapper) with direct parameter passing
 
 ### ❌ Mistake 2: Passing reactive values directly (Svelte-specific)
 
 ```typescript
-// WRONG: Passes a snapshot, breaks reactivity
+// WRONG: Passes a snapshot, breaks reactivity (missing both accessors)
 const id = $state('abc-123');
 const query = createQuery(rpc.users.getUser(id).options);
-//                                            ^^
-//                                      Direct value breaks reactivity
+//                        ^                  ^^
+//              Missing outer accessor    Direct value breaks reactivity
 ```
 
 ```typescript
-// CORRECT: Use accessor function for reactive tracking
+// CORRECT: Use accessor functions for reactive tracking
 const id = $state('abc-123');
-const query = createQuery(rpc.users.getUser(() => id).options);
-//                                          ^^^^^^^^
-//                                    Accessor preserves reactivity
+const query = createQuery(() => rpc.users.getUser(() => id).options);
+//                        ^^^^                    ^^^^^^^^
+//                   outer accessor         inner accessor preserves reactivity
 ```
 
-**Why it's wrong**: In Svelte, when you pass `id` directly, the query definition runs once with the current value. Changes to `id` won't trigger new queries. Using `() => id` creates a function that TanStack Query can call each time it needs the value, preserving reactivity.
+**Why it's wrong**: In Svelte 5, `createQuery` expects an accessor function that returns the options. Additionally, when you pass `id` directly to the RPC method, the query definition runs once with the current value. Changes to `id` won't trigger new queries. Using `() => id` creates a function that TanStack Query can call each time it needs the value, preserving reactivity.
 
-**Note**: This is Svelte-specific. React hooks automatically track dependencies, so you pass values directly.
+**Note**: This is Svelte-specific. React hooks automatically track dependencies, so you pass values directly without accessor wrappers.
 
 ### ❌ Mistake 3: Wrong method call order
 
-**Svelte:**
+**Svelte 5:**
 
 ```typescript
 // WRONG: Can't access .options before calling the method
-const query = createQuery(rpc.users.getUser.options(() => userId));
-//                                          ^^^^^^^^^^^^^^^^^^^^^^^
-//                                          .options isn't a function
+const query = createQuery(() => rpc.users.getUser.options(() => userId));
+//                                                ^^^^^^^^^^^^^^^^^^^^^^^
+//                                                .options isn't a function
 ```
 
 ```typescript
 // CORRECT: Call method with accessor, then access .options property
-const query = createQuery(rpc.users.getUser(() => userId).options);
-//                                  ^^^^^^^^^^^^^ call with accessor
-//                                                         ^^^^^^^ then .options property
+const query = createQuery(() => rpc.users.getUser(() => userId).options);
+//                        ^^^^          ^^^^^^^^^^^^^ call with accessor
+//                   outer accessor                              ^^^^^^^ then .options property
 ```
 
 **React:**
@@ -439,68 +462,68 @@ const query = useQuery(rpc.users.getUser.options(userId));
 ```
 
 ```tsx
-// CORRECT: Call method with param, then call .options() function
-const query = useQuery(rpc.users.getUser(userId).options());
+// CORRECT: Call method with param, then access .options property
+const query = useQuery(rpc.users.getUser(userId).options);
 //                              ^^^^^^^^^^^^ call with param
-//                                                  ^^^^^^^^^ then call .options()
+//                                                      ^ then .options property (not function!)
 ```
 
 **Why it's wrong**: The RPC method structure is:
-- **Svelte**: `method(() => param).options` (accessor, then property)
-- **React**: `method(param).options()` (direct param, then function call)
+- **Svelte 5**: `() => method(() => param).options` (outer accessor, inner accessor for param, then property)
+- **React**: `method(param).options` (direct param, then property access)
 
-First call the method with its parameter, which returns an object containing the `.options` property/function.
+First call the method with its parameter, which returns an object containing the `.options` property.
 
-### When to Use Accessor Functions (Svelte-Specific)
+### When to Use Accessor Functions (Svelte 5-Specific)
 
-**Note**: Accessor functions are only needed in Svelte. React hooks automatically track dependencies, so you pass values directly.
+**Note**: Accessor functions are only needed in Svelte 5. React hooks automatically track dependencies, so you pass values directly.
 
-In Svelte, use accessor functions (arrow functions) for **reactive values**:
+In Svelte 5, you always need the outer accessor wrapper `() => ...options`. Additionally, use inner accessor functions for **reactive values**:
 
 ```typescript
 // ✅ Props (Svelte 5)
 let { userId } = $props<{ userId: string }>();
-const query = createQuery(rpc.users.getUser(() => userId).options);
+const query = createQuery(() => rpc.users.getUser(() => userId).options);
 
 // ✅ $state variables
 const searchTerm = $state('');
-const query = createQuery(rpc.products.search(() => searchTerm).options);
+const query = createQuery(() => rpc.products.search(() => searchTerm).options);
 
 // ✅ $derived values
 const fullName = $derived(`${firstName} ${lastName}`);
-const query = createQuery(rpc.users.searchByName(() => fullName).options);
+const query = createQuery(() => rpc.users.searchByName(() => fullName).options);
 
 // ✅ Store values
 const settings = getSettings(); // returns a store
-const query = createQuery(rpc.api.getData(() => settings.apiKey).options);
+const query = createQuery(() => rpc.api.getData(() => settings.apiKey).options);
 ```
 
-**Don't use** accessor functions for **static values**:
+For **static values**, you still need the outer accessor but can pass the value directly to the RPC method:
 
 ```typescript
 // ✅ String literals
-const query = createQuery(rpc.users.getUser('user-123').options);
+const query = createQuery(() => rpc.users.getUser('user-123').options);
 
 // ✅ Numbers
-const query = createQuery(rpc.products.getProduct(42).options);
+const query = createQuery(() => rpc.products.getProduct(42).options);
 
 // ✅ Constants
 const ADMIN_ID = 'admin-001';
-const query = createQuery(rpc.users.getUser(ADMIN_ID).options);
+const query = createQuery(() => rpc.users.getUser(ADMIN_ID).options);
 ```
 
 ### Quick Reference
 
-| Pattern | Svelte | React | Use Case |
-|---------|--------|-------|----------|
-| **No parameters** | `createQuery(rpc.users.getAll.options)` | `useQuery(rpc.users.getAll.options())` | Static query, no params |
-| **Static parameter** | `createQuery(rpc.users.getUser('id-123').options)` | `useQuery(rpc.users.getUser('id-123').options())` | Non-reactive value |
-| **Reactive parameter** | `createQuery(rpc.users.getUser(() => userId).options)` | `useQuery(rpc.users.getUser(userId).options())` | Props, state, derived |
-| **Multiple parameters** | `createQuery(rpc.products.search(() => term, () => category).options)` | `useQuery(rpc.products.search(term, category).options())` | Multiple reactive values |
+| Pattern | Svelte 5 | React | Use Case |
+|---------|----------|-------|----------|
+| **No parameters** | `createQuery(() => rpc.users.getAll.options)` | `useQuery(rpc.users.getAll.options)` | Static query, no params |
+| **Static parameter** | `createQuery(() => rpc.users.getUser('id-123').options)` | `useQuery(rpc.users.getUser('id-123').options)` | Non-reactive value |
+| **Reactive parameter** | `createQuery(() => rpc.users.getUser(() => userId).options)` | `useQuery(rpc.users.getUser(userId).options)` | Props, state, derived |
+| **Multiple parameters** | `createQuery(() => rpc.products.search(() => term, () => category).options)` | `useQuery(rpc.products.search(term, category).options)` | Multiple reactive values |
 
 **Key differences:**
-- **Svelte**: `.options` property (no parentheses), accessor functions `() => param` for reactive values
-- **React**: `.options()` function call (with parentheses), direct parameter passing
+- **Svelte 5**: Outer accessor wrapper `() => ...options`, inner accessor functions `() => param` for reactive values
+- **React**: `.options` property directly (no wrapper, no parentheses), direct parameter passing
 
 ## Advanced Patterns
 
@@ -514,7 +537,7 @@ import { settings } from '../stores/settings';
 
 export const transcription = {
   transcribe: defineMutation({
-    resultMutationFn: async (audio: Blob) => {
+    mutationFn: async (audio: Blob) => {
       // Select service based on user settings
       const provider = settings.value.transcriptionProvider;
       
@@ -542,7 +565,7 @@ Transform service errors into UI-friendly formats:
 // query/users.ts
 export const users = {
   createUser: defineMutation({
-    resultMutationFn: async (userData: CreateUserInput) => {
+    mutationFn: async (userData: CreateUserInput) => {
       const result = await userService.createUser(userData);
       
       if (result.error) {
@@ -579,9 +602,10 @@ The query layer can orchestrate complex operations:
 // query/orders.ts
 export const orders = {
   placeOrder: defineMutation({
-    resultMutationFn: async (orderData: OrderInput) => {
+    mutationFn: async (orderData: OrderInput) => {
       // Step 1: Validate inventory
-      const inventory = await rpc.inventory.checkAvailability.fetch();
+      const inventory = await rpc.inventory.checkAvailability.ensure();
+      // Or shorthand: await rpc.inventory.checkAvailability()
       if (!hasStock(orderData.items, inventory.data)) {
         return Err({ code: 'OUT_OF_STOCK', message: 'Some items are out of stock' });
       }
@@ -633,10 +657,11 @@ describe('User Queries', () => {
 
     const userQuery = defineQuery({
       queryKey: ['users', '1'],
-      resultQueryFn: () => userService.getUser('1'),
+      queryFn: () => userService.getUser('1'),
     });
 
     const result = await userQuery.fetch();
+    // Or shorthand: await userQuery()
     expect(result.data).toEqual(mockUser);
   });
 });
@@ -666,8 +691,8 @@ async function loadUser() {
   }
 }
 
-// After: Using the query pattern
-const userQuery = createQuery(rpc.users.getUser(() => userId).options);
+// After: Using the query pattern (Svelte 5)
+const userQuery = createQuery(() => rpc.users.getUser(() => userId).options);
 // Automatically handles loading, error, caching, and refetching
 ```
 
@@ -682,10 +707,10 @@ If you're getting errors with `.options`, use this quick diagnostic guide:
 **Common causes**:
 ```typescript
 // ❌ Typo in method name
-createQuery(rpc.users.getUzer(id).options);  // 'getUzer' doesn't exist
+createQuery(() => rpc.users.getUzer(id).options);  // 'getUzer' doesn't exist
 
 // ❌ Method not exported from RPC namespace
-createQuery(rpc.users.privateMethod(id).options);  // not in exports
+createQuery(() => rpc.users.privateMethod(id).options);  // not in exports
 ```
 
 **Fix**: Check that the method exists and is properly exported in your RPC namespace.
@@ -694,31 +719,37 @@ createQuery(rpc.users.privateMethod(id).options);  // not in exports
 
 **Problem**: You're trying to call `.options()` with parentheses.
 
-**Fix**: Remove the parentheses from `.options` and use accessor for reactive param:
+**Fix**: Remove the parentheses from `.options` (it's a property, not a function):
 ```typescript
-// ❌ Wrong: calling .options() and not using accessor
-createQuery(rpc.users.getUser(id).options())
+// ❌ Wrong: calling .options() with parentheses
+createQuery(() => rpc.users.getUser(id).options())
 
-// ✅ Correct: .options as property, accessor for reactive value
+// ✅ Correct (Svelte 5): .options as property with accessor wrapper
 const id = $state('abc-123');
-createQuery(rpc.users.getUser(() => id).options)
+createQuery(() => rpc.users.getUser(() => id).options)
+
+// ✅ Correct (React): .options as property directly
+useQuery(rpc.users.getUser(id).options)
 ```
 
-### Query doesn't update when reactive value changes
+### Query doesn't update when reactive value changes (Svelte 5)
 
-**Problem**: You're passing the value directly instead of using an accessor function.
+**Problem**: You're missing the outer accessor wrapper or passing the value directly instead of using an inner accessor function.
 
 **Symptoms**: Query runs once but doesn't re-run when `userId` changes.
 
-**Fix**: Wrap reactive values in accessor functions:
+**Fix**: Use both outer and inner accessor functions:
 ```typescript
 let { userId } = $props<{ userId: string }>();
 
-// ❌ Wrong: Passes snapshot, doesn't track changes
-createQuery(rpc.users.getUser(userId).options)
-
-// ✅ Correct: Accessor preserves reactivity
+// ❌ Wrong: Missing outer accessor
 createQuery(rpc.users.getUser(() => userId).options)
+
+// ❌ Wrong: Missing inner accessor for reactive value
+createQuery(() => rpc.users.getUser(userId).options)
+
+// ✅ Correct: Both outer and inner accessors
+createQuery(() => rpc.users.getUser(() => userId).options)
 ```
 
 ### Type error: "Type 'string' is not assignable to type '() => string'"
@@ -730,13 +761,13 @@ createQuery(rpc.users.getUser(() => userId).options)
 **Fix**: Either wrap in an accessor or update the RPC method definition:
 ```typescript
 // Option 1: Wrap in accessor (if value might change)
-createQuery(rpc.users.getUser(() => CONSTANT_ID).options)
+createQuery(() => rpc.users.getUser(() => CONSTANT_ID).options)
 
 // Option 2: Update RPC definition to accept both
 // In query/users.ts:
 getUser: (userId: string | (() => string)) => defineQuery({
   queryKey: ['users', typeof userId === 'function' ? userId() : userId],
-  resultQueryFn: () => services.getUser(
+  queryFn: () => services.getUser(
     typeof userId === 'function' ? userId() : userId
   ),
 }),
@@ -752,13 +783,13 @@ getUser: (userId: string | (() => string)) => defineQuery({
 ```typescript
 // ❌ Wrong: Creates new object every call
 createQuery(
-  rpc.products.search(() => ({ term: searchTerm, category })).options
+  () => rpc.products.search(() => ({ term: searchTerm, category })).options
 )
 
 // ✅ Correct: Pass primitive values separately or use $derived
 const searchParams = $derived({ term: searchTerm, category });
 createQuery(
-  rpc.products.searchWithParams(() => searchParams).options
+  () => rpc.products.searchWithParams(() => searchParams).options
 )
 ```
 

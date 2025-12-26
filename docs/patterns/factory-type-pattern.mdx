@@ -11,7 +11,7 @@ I was building error factories in wellcrafted and kept running into this annoyin
 const { ApiError, ApiErr } = createTaggedError("ApiError");
 
 // Later, when I need the type...
-type ApiError = ReturnType<typeof createTaggedError<"ApiError">>;
+type ApiError = ReturnType<typeof defineError<"ApiError">>;
 // Wait, that's not right. Let me try...
 type ApiError = ReturnType<typeof ApiError>;
 // No, that's the function type, not the error type...
@@ -24,7 +24,7 @@ Every time I needed to extract the type from a factory function, I'd have to do 
 Here's what I had:
 
 ```typescript
-export function createTaggedError<TErrorName extends `${string}Error`>(
+export function defineError<TErrorName extends `${string}Error`>(
   name: TErrorName
 ) {
   const errorConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>
@@ -70,7 +70,7 @@ Here's the thing that took me too long to realize: **The `.type` property doesn'
 So I added a `.type` property to my factory:
 
 ```typescript
-export function createTaggedError<TErrorName extends `${string}Error`>(
+export function defineError<TErrorName extends `${string}Error`>(
   name: TErrorName
 ) {
   const errorConstructor = (error: Omit<TaggedError<TErrorName>, "name">) =>

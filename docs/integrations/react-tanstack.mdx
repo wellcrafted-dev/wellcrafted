@@ -100,7 +100,8 @@ Create services that return Result types:
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
+  .withContext<{ operation: string; userId?: string }>();
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
@@ -235,20 +236,20 @@ export const users = {
   getUser: (userId: string) => 
     defineQuery({
       queryKey: ['users', userId],
-      resultQueryFn: () => userService.getUser(userId),
+      queryFn: () => userService.getUser(userId),
       enabled: !!userId, // Only run when userId exists
     }),
 
   // Query all users
   getAllUsers: defineQuery({
     queryKey: ['users'],
-    resultQueryFn: () => userService.getAllUsers(),
+    queryFn: () => userService.getAllUsers(),
   }),
 
   // Create user mutation
   createUser: defineMutation({
     mutationKey: ['users', 'create'],
-    resultMutationFn: async (input: CreateUserInput) => {
+    mutationFn: async (input: CreateUserInput) => {
       const result = await userService.createUser(input);
       
       if (result.error) return result;
@@ -269,7 +270,7 @@ export const users = {
   // Update user mutation
   updateUser: defineMutation({
     mutationKey: ['users', 'update'],
-    resultMutationFn: async (user: User) => {
+    mutationFn: async (user: User) => {
       const result = await userService.updateUser(user);
       
       if (result.error) return result;
@@ -767,7 +768,7 @@ export const users = {
   getUser: (userId: string) => 
     defineQuery({
       queryKey: ['users', userId],
-      resultQueryFn: () => userService.getUser(userId),
+      queryFn: () => userService.getUser(userId),
     }),
 };
 ```
@@ -846,7 +847,7 @@ Transform service errors to UI-friendly formats in the query layer:
 // Query layer - transform errors
 export const users = {
   createUser: defineMutation({
-    resultMutationFn: async (input: CreateUserInput) => {
+    mutationFn: async (input: CreateUserInput) => {
       const result = await userService.createUser(input);
       
       if (result.error) {
@@ -905,7 +906,7 @@ function UserManagementPage() {
 ```typescript
 export const users = {
   updateUser: defineMutation({
-    resultMutationFn: async (user: User) => {
+    mutationFn: async (user: User) => {
       // Optimistic update
       queryClient.setQueryData(['users', user.id], user);
       
@@ -929,7 +930,7 @@ export const users = {
 export const users = {
   getAllUsers: defineQuery({
     queryKey: ['users'],
-    resultQueryFn: () => userService.getAllUsers(),
+    queryFn: () => userService.getAllUsers(),
     refetchInterval: 30000, // Sync every 30 seconds
     refetchIntervalInBackground: true,
   }),

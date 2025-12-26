@@ -93,10 +93,11 @@ The same component with Whispering's proven patterns:
   import { createQuery } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
 
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 
   async function handleDelete(id: string) {
     const { error } = await rpc.recordings.deleteRecording.execute(id);
+    // Or shorthand: await rpc.recordings.deleteRecording(id)
     if (error) {
       toast.error(error.title, { description: error.description });
     }
@@ -130,7 +131,8 @@ Services are pure functions with explicit dependencies, used throughout Whisperi
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
-const { RecordingServiceError, RecordingServiceErr } = createTaggedError('RecordingServiceError');
+const { RecordingServiceError, RecordingServiceErr } = createTaggedError('RecordingServiceError')
+  .withContext<{ operation: string; recordingId?: string }>();
 type RecordingServiceError = ReturnType<typeof RecordingServiceError>;
 
 export type Recording = {
@@ -325,7 +327,7 @@ export const recordings = {
   // Query all recordings
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     staleTime: 2 * 60 * 1000, // 2 minutes for recordings list
   }),
 
@@ -333,14 +335,14 @@ export const recordings = {
   getRecording: (recordingId: string) => 
     defineQuery({
       queryKey: ['recordings', recordingId],
-      resultQueryFn: () => recordingService.getRecording(recordingId),
+      queryFn: () => recordingService.getRecording(recordingId),
       enabled: !!recordingId,
     }),
 
   // Create recording mutation
   createRecording: defineMutation({
     mutationKey: ['recordings', 'create'],
-    resultMutationFn: async (input: CreateRecordingInput) => {
+    mutationFn: async (input: CreateRecordingInput) => {
       const result = await recordingService.createRecording(input);
       
       if (result.error) return result;
@@ -361,7 +363,7 @@ export const recordings = {
   // Delete recording mutation
   deleteRecording: defineMutation({
     mutationKey: ['recordings', 'delete'],
-    resultMutationFn: async (recordingId: string) => {
+    mutationFn: async (recordingId: string) => {
       const result = await recordingService.deleteRecording(recordingId);
       
       if (result.error) return result;
@@ -381,7 +383,7 @@ export const recordings = {
   // Update recording mutation (used for transcription status, etc.)
   updateRecording: defineMutation({
     mutationKey: ['recordings', 'update'],
-    resultMutationFn: async ({ id, updates }: { id: string; updates: Partial<Recording> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Recording> }) => {
       const result = await recordingService.updateRecording(id, updates);
       
       if (result.error) return result;
@@ -448,7 +450,7 @@ Perfect for component state that needs to track loading/error states:
   import ErrorDisplay from './ErrorDisplay.svelte';
 
   // Automatically syncs: isPending, data, error, isStale
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 </script>
 
 {#if $recordings.isPending}
@@ -520,6 +522,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
   async function handleTranscribeAndEdit() {
     // Step 1: Start transcription
     const { error: transcribeError } = await rpc.transcription.transcribeRecording.execute(recording.id);
+    // Or shorthand: await rpc.transcription.transcribeRecording(recording.id)
     if (transcribeError) {
       toast.error('Transcription failed', { description: transcribeError.message });
       return;
@@ -533,6 +536,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
     if (!confirm('Are you sure you want to delete this recording?')) return;
 
     const { error } = await rpc.recordings.deleteRecording.execute(recording.id);
+    // Or shorthand: await rpc.recordings.deleteRecording(recording.id)
     if (error) {
       toast.error('Failed to delete recording', { description: error.message });
       return;
@@ -543,6 +547,7 @@ Perfect for event handlers and workflows that don't need reactive overhead:
 
   async function handleShare() {
     const { data, error } = await rpc.recordings.generateShareLink.execute(recording.id);
+    // Or shorthand: await rpc.recordings.generateShareLink(recording.id)
     if (error) {
       toast.error('Failed to generate share link', { description: error.message });
       return;
@@ -584,14 +589,15 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
   let currentRecordingId: string | null = null;
 
   // Reactive mutations provide loading states
-  const startRecording = createMutation(rpc.recorder.startRecording.options);
-  const stopRecording = createMutation(rpc.recorder.stopRecording.options);
+  const startRecording = createMutation(() => rpc.recorder.startRecording.options);
+  const stopRecording = createMutation(() => rpc.recorder.stopRecording.options);
 
   // Complex workflow: Record → Save → Transcribe
   async function handleStartRecording() {
     const toastId = nanoid();
     
     const { data, error } = await rpc.recorder.startRecording.execute({ toastId });
+    // Or shorthand: await rpc.recorder.startRecording({ toastId })
     if (error) {
       toast.error('Failed to start recording', { description: error.message });
       return;
@@ -609,6 +615,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
 
     // Step 1: Stop recording
     const { data: blob, error: stopError } = await rpc.recorder.stopRecording.execute({ toastId });
+    // Or shorthand: await rpc.recorder.stopRecording({ toastId })
     if (stopError) {
       toast.error('Failed to stop recording', { description: stopError.message });
       return;
@@ -622,6 +629,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
       timestamp: new Date(),
       transcriptionStatus: 'PENDING',
     });
+    // Or shorthand: await rpc.recordings.createRecording({ ... })
     if (saveError) {
       toast.error('Failed to save recording', { description: saveError.message });
       return;
@@ -629,12 +637,13 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
 
     // Step 3: Start transcription
     const { error: transcribeError } = await rpc.transcription.transcribeRecording.execute(recording.id);
+    // Or shorthand: await rpc.transcription.transcribeRecording(recording.id)
     if (transcribeError) {
       toast.error('Recording saved, but transcription failed', { 
         description: transcribeError.message,
-        action: { 
-          label: 'Retry transcription', 
-          onClick: () => rpc.transcription.transcribeRecording.execute(recording.id) 
+        action: {
+          label: 'Retry transcription',
+          onClick: () => rpc.transcription.transcribeRecording(recording.id)
         }
       });
       return;
@@ -649,6 +658,7 @@ Whispering handles complex workflows like this recording-to-transcription pipeli
   onDestroy(() => {
     if (isRecording) {
       rpc.recorder.stopRecording.execute({ toastId: nanoid() });
+      // Or shorthand: rpc.recorder.stopRecording({ toastId: nanoid() })
     }
   });
 </script>
@@ -1058,6 +1068,7 @@ import { rpc } from '$lib/query';
 export const load: PageLoad = async () => {
   // Use .ensure() in preloaders - it prefers cached data
   const { data: recordings, error } = await rpc.recordings.getAllRecordings.ensure();
+  // Or shorthand: await rpc.recordings.getAllRecordings()
   
   if (error) {
     // You can throw the error to trigger error page
@@ -1079,7 +1090,7 @@ export const load: PageLoad = async () => {
   import RecordingCard from '$lib/components/RecordingCard.svelte';
 
   // Data is preloaded, but query provides reactivity
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 
   // Use preloaded data as initial data
   $effect(() => {
@@ -1228,7 +1239,7 @@ describe('RecordingsList', () => {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     refetchInterval: 30000,
     refetchIntervalInBackground: true,
   }),
@@ -1241,7 +1252,7 @@ export const recordings = {
 // Immediately show changes before server confirms
 export const recordings = {
   updateRecording: defineMutation({
-    resultMutationFn: async ({ id, updates }) => {
+    mutationFn: async ({ id, updates }) => {
       // Optimistic update
       queryClient.setQueryData(['recordings', id], (old: Recording | undefined) => 
         old ? { ...old, ...updates } : undefined
@@ -1268,13 +1279,13 @@ export const recordings = {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
     staleTime: 2 * 60 * 1000, // 2 minutes for list view
   }),
 
   getRecording: (id: string) => defineQuery({
     queryKey: ['recordings', id],
-    resultQueryFn: () => recordingService.getRecording(id),
+    queryFn: () => recordingService.getRecording(id),
     staleTime: 10 * 60 * 1000, // 10 minutes for individual recordings
   }),
 };
@@ -1326,7 +1337,7 @@ export async function getAllRecordings(): Promise<Result<Recording[], RecordingS
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: () => recordingService.getAllRecordings(),
+    queryFn: () => recordingService.getAllRecordings(),
   }),
 };
 ```
@@ -1356,7 +1367,7 @@ export const recordings = {
   import { createQuery } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
 
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 </script>
 
 {#if $recordings.isPending}
@@ -1420,20 +1431,21 @@ Transform service errors to UI-friendly formats in components:
 <script lang="ts">
   async function handleCreateRecording() {
     const { data, error } = await rpc.recordings.createRecording.execute(formData);
-    
+    // Or shorthand: await rpc.recordings.createRecording(formData)
+
     if (error) {
       // Transform service error to user-friendly message
-      const message = error.message.includes('blob') 
+      const message = error.message.includes('blob')
         ? 'Please select an audio file to upload'
         : 'Failed to save recording. Please try again.';
-        
-      toast.error(message, { 
+
+      toast.error(message, {
         description: error.message,
         action: { label: 'Retry', onClick: handleCreateRecording }
       });
       return;
     }
-    
+
     toast.success('Recording saved successfully');
   }
 </script>
@@ -1446,12 +1458,13 @@ Use reactive for UI state, imperative for workflows:
 ```svelte
 <script lang="ts">
   // Reactive - automatic UI updates
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
   
   // Imperative - direct action execution
   async function handleBulkDelete(recordingIds: string[]) {
     for (const id of recordingIds) {
       const { error } = await rpc.recordings.deleteRecording.execute(id);
+      // Or shorthand: await rpc.recordings.deleteRecording(id)
       if (error) {
         toast.error(`Failed to delete recording ${id}: ${error.message}`);
         break;

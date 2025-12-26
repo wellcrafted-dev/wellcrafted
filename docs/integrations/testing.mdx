@@ -498,10 +498,11 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
       });
 
       const result = await userQuery.fetch();
+      // Or shorthand: await userQuery()
 
       expect(result).toEqual(Ok({
         users: mockUsers,
@@ -521,10 +522,11 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
       });
 
       const result = await userQuery.fetch();
+      // Or shorthand: await userQuery()
 
       expect(result).toEqual(Err(serviceError));
     });
@@ -541,15 +543,16 @@ describe('User Queries', () => {
 
       const userQuery = defineQuery({
         queryKey: ['users'],
-        resultQueryFn: () => userService.getAllUsers(),
+        queryFn: () => userService.getAllUsers(),
         staleTime: 5 * 60 * 1000, // 5 minutes
       });
 
       // First fetch
       await userQuery.fetch();
-      
+      // Or shorthand: await userQuery()
+
       // Second fetch should use cache
-      await userQuery.ensure();
+      await userQuery.ensure(); // Or shorthand: await userQuery()
 
       // Service should only be called once
       expect(userService.getAllUsers).toHaveBeenCalledTimes(1);
@@ -577,7 +580,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) return result;
@@ -599,6 +602,7 @@ describe('User Queries', () => {
         email: 'bob@example.com',
         password: 'password123',
       });
+      // Or shorthand: await createUserMutation({ ... })
 
       expect(result).toEqual(Ok(newUser));
 
@@ -626,7 +630,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) return result;
@@ -648,6 +652,7 @@ describe('User Queries', () => {
         email: 'existing@example.com',
         password: 'password123',
       });
+      // Or shorthand: await createUserMutation({ ... })
 
       expect(result).toEqual(Err(serviceError));
 
@@ -670,7 +675,7 @@ describe('User Queries', () => {
 
       const createUserMutation = defineMutation({
         mutationKey: ['users', 'create'],
-        resultMutationFn: async (input: any) => {
+        mutationFn: async (input: any) => {
           const result = await userService.createUser(input);
           
           if (result.error) {
@@ -692,6 +697,7 @@ describe('User Queries', () => {
         email: 'invalid-email',
         password: 'password123',
       });
+      // Or shorthand: await createUserMutation({ ... })
 
       expect(result).toEqual(Err({
         name: 'UIError',

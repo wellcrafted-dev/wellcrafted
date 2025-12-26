@@ -161,7 +161,7 @@ export const { defineQuery, defineMutation } = createQueryFactories(queryClient)
 export const recorder = {
   startRecording: defineMutation({
     mutationKey: ['recorder', 'startRecording'],
-    resultMutationFn: async ({ toastId }: { toastId: string }) => {
+    mutationFn: async ({ toastId }: { toastId: string }) => {
       const recordingId = nanoid();
       
       const params = {
@@ -214,7 +214,7 @@ Perfect for component state that needs to track loading/error states:
   import { rpc } from '$lib/query';
 
   // Automatically syncs: isPending, data, error, isStale
-  const recordings = createQuery(rpc.recordings.getAllRecordings.options);
+  const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 </script>
 
 {#if recordings.isPending}
@@ -430,7 +430,7 @@ async function transcribeBlob(blob: Blob) {
 // Multi-step workflow with comprehensive error handling
 export const commands = {
   stopRecordingAndTranscribe: defineMutation({
-    resultMutationFn: async () => {
+    mutationFn: async () => {
       // Step 1: Stop recording
       const { data: blob, error: stopError } = await rpc.recorder.stopRecording.execute({ toastId });
       if (stopError) {
@@ -482,7 +482,7 @@ export const commands = {
 export const recorder = {
   enumerateDevices: defineQuery({
     queryKey: ['recorder', 'devices'],
-    resultQueryFn: async () => {
+    queryFn: async () => {
       const { data, error } = await recorderService().enumerateDevices();
       if (error) {
         return fromTaggedErr(error, {
@@ -633,7 +633,7 @@ export const { defineQuery, defineMutation } = createQueryFactories(queryClient)
 export const users = {
   getUser: (userId: () => string) => defineQuery({
     queryKey: ['users', userId()],
-    resultQueryFn: () => services.user.getUser(userId()),
+    queryFn: () => services.user.getUser(userId()),
   }),
 };
 ```
@@ -658,7 +658,7 @@ Choose reactive or imperative based on needs:
 ```svelte
 <script lang="ts">
   // Reactive for UI state
-  const user = createQuery(rpc.users.getUser(() => userId).options);
+  const user = createQuery(() => rpc.users.getUser(() => userId).options);
 
   // Imperative for actions
   async function deleteUser() {

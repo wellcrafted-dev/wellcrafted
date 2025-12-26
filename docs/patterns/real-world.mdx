@@ -39,8 +39,9 @@ import { type Brand } from "wellcrafted/brand";
 type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
-// Service-specific errors
-const { AuthServiceError, AuthServiceErr } = createTaggedError("AuthServiceError");
+// Service-specific errors with typed context
+const { AuthServiceError, AuthServiceErr } = createTaggedError("AuthServiceError")
+  .withContext<{ operation: string; email?: string }>();
 type AuthServiceError = ReturnType<typeof AuthServiceError>;
 
 interface AuthenticatedUser {
@@ -176,8 +177,9 @@ import { type Brand } from "wellcrafted/brand";
 type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
-// Service errors
-const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError");
+// Service errors with typed context
+const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
+  .withContext<{ operation: string; filename?: string; mimeType?: string }>();
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 interface UploadedFile {
@@ -429,8 +431,9 @@ import { z } from 'zod';
 import { Result, Ok, trySync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-// Form validation errors
-const { ValidationError, ValidationErr } = createTaggedError("ValidationError");
+// Form validation errors with typed context
+const { ValidationError, ValidationErr } = createTaggedError("ValidationError")
+  .withContext<{ field?: string; value?: unknown }>();
 type ValidationError = ReturnType<typeof ValidationError>;
 
 // Zod schemas

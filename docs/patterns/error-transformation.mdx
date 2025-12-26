@@ -29,7 +29,8 @@ Services return detailed, domain-specific errors using `createTaggedError`:
 import { createTaggedError } from 'wellcrafted/error';
 import { tryAsync, Result } from 'wellcrafted/result';
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError');
+const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError')
+  .withContext<{ userAgent?: string; permissions?: string; errorCode?: string }>();
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -82,7 +83,7 @@ type UIError = {
 export const recorder = {
   startRecording: defineMutation({
     mutationKey: ['recorder', 'start'],
-    resultMutationFn: async (): Promise<Result<void, UIError>> => {
+    mutationFn: async (): Promise<Result<void, UIError>> => {
       const { error } = await services.recorder.startRecording();
       if (error) {
         // Transform service error to UI error
@@ -114,7 +115,7 @@ Components receive UI-ready errors that can be displayed directly:
 
 ```typescript
 // Component usage - no additional error transformation needed
-const startRecordingMutation = createMutation(recorder.startRecording.options);
+const startRecordingMutation = createMutation(() => recorder.startRecording.options);
 
 startRecordingMutation.mutate(undefined, {
   onError: (uiError) => {
@@ -135,7 +136,8 @@ Let's see a complete example with a database service:
 
 ```typescript
 // services/db.ts
-const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError');
+const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError')
+  .withContext<{ operation: string; table?: string; query?: string; timestamp?: string }>();
 type DbServiceError = ReturnType<typeof DbServiceError>;
 
 export async function getAllRecordings(): Promise<Result<Recording[], DbServiceError>> {
@@ -205,7 +207,7 @@ type RecordingUIError = {
 export const recordings = {
   getAllRecordings: defineQuery({
     queryKey: ['recordings'],
-    resultQueryFn: async (): Promise<Result<Recording[], RecordingUIError>> => {
+    queryFn: async (): Promise<Result<Recording[], RecordingUIError>> => {
       const { data, error } = await services.db.getAllRecordings();
       if (error) {
         return Err({
@@ -223,7 +225,7 @@ export const recordings = {
 
   createRecording: defineMutation({
     mutationKey: ['recordings', 'create'],
-    resultMutationFn: async (recording: Recording): Promise<Result<Recording, RecordingUIError>> => {
+    mutationFn: async (recording: Recording): Promise<Result<Recording, RecordingUIError>> => {
       const { data, error } = await services.db.createRecording(recording);
       if (error) {
         // Customize UI message based on service error
@@ -261,8 +263,8 @@ export const recordings = {
   import { createQuery, createMutation } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
   
-  const recordingsQuery = createQuery(rpc.recordings.getAllRecordings.options());
-  const createRecordingMutation = createMutation(rpc.recordings.createRecording.options);
+  const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
+  const createRecordingMutation = createMutation(() => rpc.recordings.createRecording.options);
 
   async function handleSaveRecording(recording: Recording) {
     createRecordingMutation.mutate(recording, {
@@ -309,7 +311,7 @@ Transform the same service error differently based on context:
 // Different contexts can produce different UI messages
 export const auth = {
   signIn: defineMutation({
-    resultMutationFn: async (credentials) => {
+    mutationFn: async (credentials) => {
       const { error } = await services.auth.signIn(credentials);
       if (error) {
         return Err({
@@ -323,7 +325,7 @@ export const auth = {
   }),
 
   changePassword: defineMutation({
-    resultMutationFn: async (passwords) => {
+    mutationFn: async (passwords) => {
       const { error } = await services.auth.changePassword(passwords);
       if (error) {
         // Same service error, different UI message
@@ -352,7 +354,7 @@ type UIError = {
 };
 
 const validateInput = defineMutation({
-  resultMutationFn: async (input): Promise<Result<ValidatedInput, UIError>> => {
+  mutationFn: async (input): Promise<Result<ValidatedInput, UIError>> => {
     const { data, error } = await services.validation.validateInput(input);
     if (error) {
       // Transform validation errors to warnings
@@ -384,7 +386,7 @@ Handle multiple errors from batch operations:
 
 ```typescript
 const processBatch = defineMutation({
-  resultMutationFn: async (items): Promise<Result<BatchResult, UIError>> => {
+  mutationFn: async (items): Promise<Result<BatchResult, UIError>> => {
     const { data, error } = await services.batch.processItems(items);
     if (error) {
       const successCount = data?.results.filter(r => r.success).length ?? 0;
@@ -427,7 +429,7 @@ if (error) {
 ```typescript
 // DON'T: Return raw service errors from query layer
 export const getUser = defineQuery({
-  resultQueryFn: () => services.getUser(id), // Missing error transformation!
+  queryFn: () => services.getUser(id), // Missing error transformation!
 });
 ```
 
@@ -435,7 +437,7 @@ export const getUser = defineQuery({
 
 ```typescript
 // DON'T: Transform errors in components
-const userQuery = createQuery(rawUserQuery.options());
+const userQuery = createQuery(() => rawUserQuery.options);
 if (userQuery.error) {
   // Component shouldn't handle service error transformation
   const uiMessage = transformServiceError(userQuery.error);
