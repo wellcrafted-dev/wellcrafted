@@ -1,6 +1,6 @@
 import { type } from "arktype";
 import * as v from "valibot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 import { ErrSchema, FAILURES, OkSchema, ResultSchema } from "./index.js";
 
@@ -407,7 +407,7 @@ describe("edge cases", () => {
 
 		expect(result).toEqual({
 			value: { data: null, error: null },
-		});
+		} as unknown as typeof result);
 	});
 
 	it("handles null as valid data value in Ok", () => {

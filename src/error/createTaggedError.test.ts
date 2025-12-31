@@ -1,4 +1,4 @@
-import { describe, it, expect, expectTypeOf } from "vitest";
+import { describe, it, expect, expectTypeOf } from "bun:test";
 import { createTaggedError } from "./utils.js";
 import type { TaggedError, AnyTaggedError } from "./types.js";
 

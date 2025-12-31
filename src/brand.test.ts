@@ -1,4 +1,4 @@
-import { describe, it, expectTypeOf } from "vitest";
+import { describe, it, expectTypeOf } from "bun:test";
 import type { Brand } from "./brand.js";
 
 describe("Brand", () => {
