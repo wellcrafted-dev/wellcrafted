@@ -7,9 +7,9 @@ import type { TaggedError, AnyTaggedError } from "./types.js";
 // =============================================================================
 
 describe("createTaggedError - basic usage (minimal errors)", () => {
-	it("creates minimal error factories without chaining", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
+	const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
 
+	it("creates minimal error factories without chaining", () => {
 		const error = NetworkError({ message: "Connection failed" });
 
 		expect(error.name).toBe("NetworkError");
@@ -20,8 +20,6 @@ describe("createTaggedError - basic usage (minimal errors)", () => {
 	});
 
 	it("creates Err-wrapped factory", () => {
-		const { NetworkErr } = createTaggedError("NetworkError");
-
 		const result = NetworkErr({ message: "Connection failed" });
 
 		expect(result.error).toEqual({
@@ -32,8 +30,6 @@ describe("createTaggedError - basic usage (minimal errors)", () => {
 	});
 
 	it("minimal error type only has name and message", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
-
 		const error = NetworkError({ message: "Error" });
 
 		expectTypeOf(error).toEqualTypeOf<
@@ -87,11 +83,11 @@ describe("createTaggedError - .withContext<T>() - required context", () => {
 // =============================================================================
 
 describe("createTaggedError - .withContext<T | undefined>() - optional typed context", () => {
-	it("makes context optional when T includes undefined", () => {
-		const { LogError } = createTaggedError("LogError").withContext<
-			{ file: string; line: number } | undefined
-		>();
+	const { LogError } = createTaggedError("LogError").withContext<
+		{ file: string; line: number } | undefined
+	>();
 
+	it("makes context optional when T includes undefined", () => {
 		// Without context
 		const err1 = LogError({ message: "Parse failed" });
 		expect(err1.context).toBeUndefined();
@@ -105,10 +101,6 @@ describe("createTaggedError - .withContext<T | undefined>() - optional typed con
 	});
 
 	it("context is typed when provided", () => {
-		const { LogError } = createTaggedError("LogError").withContext<
-			{ file: string; line: number } | undefined
-		>();
-
 		const error = LogError({
 			message: "Parse failed",
 			context: { file: "app.ts", line: 42 },
@@ -148,14 +140,14 @@ describe("createTaggedError - .withCause<T>() - required cause", () => {
 // =============================================================================
 
 describe("createTaggedError - .withCause<T | undefined>() - optional typed cause", () => {
+	const { DbError } = createTaggedError("DbError");
+	type DbError = ReturnType<typeof DbError>;
+
+	const { ServiceError } = createTaggedError("ServiceError").withCause<
+		DbError | undefined
+	>();
+
 	it("makes cause optional when T includes undefined", () => {
-		const { DbError } = createTaggedError("DbError");
-		type DbError = ReturnType<typeof DbError>;
-
-		const { ServiceError } = createTaggedError("ServiceError").withCause<
-			DbError | undefined
-		>();
-
 		// Without cause
 		const err1 = ServiceError({ message: "Failed" });
 		expect(err1.cause).toBeUndefined();
@@ -167,13 +159,6 @@ describe("createTaggedError - .withCause<T | undefined>() - optional typed cause
 	});
 
 	it("cause is typed when provided", () => {
-		const { DbError } = createTaggedError("DbError");
-		type DbError = ReturnType<typeof DbError>;
-
-		const { ServiceError } = createTaggedError("ServiceError").withCause<
-			DbError | undefined
-		>();
-
 		const dbError = DbError({ message: "Connection failed" });
 		const error = ServiceError({ message: "Failed", cause: dbError });
 
@@ -420,9 +405,9 @@ describe("createTaggedError - Error Chaining", () => {
 // =============================================================================
 
 describe("createTaggedError - Type Safety", () => {
-	it("minimal errors have correct types (no context, no cause)", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
+	const { NetworkError } = createTaggedError("NetworkError");
 
+	it("minimal errors have correct types (no context, no cause)", () => {
 		const error = NetworkError({ message: "Error" });
 
 		// Minimal error only has name and message
@@ -466,8 +451,6 @@ describe("createTaggedError - Type Safety", () => {
 	});
 
 	it("ReturnType works correctly for minimal errors", () => {
-		const { NetworkError } = createTaggedError("NetworkError");
-
 		type NetworkErrorType = ReturnType<typeof NetworkError>;
 
 		// Minimal error only has name and message
@@ -564,6 +547,9 @@ describe("createTaggedError - Edge Cases", () => {
 // =============================================================================
 
 describe("createTaggedError - Permissive Mode (Migration Path)", () => {
+	const { SomeError } = createTaggedError("SomeError");
+	const { OtherError } = createTaggedError("OtherError");
+
 	it("can opt into permissive context with Record<string, unknown> | undefined", () => {
 		const { FlexibleError } = createTaggedError("FlexibleError").withContext<
 			Record<string, unknown> | undefined
@@ -585,9 +571,6 @@ describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 		const { FlexibleError } = createTaggedError("FlexibleError").withCause<
 			AnyTaggedError | undefined
 		>();
-
-		const { SomeError } = createTaggedError("SomeError");
-		const { OtherError } = createTaggedError("OtherError");
 
 		// Without cause
 		const err1 = FlexibleError({ message: "Error" });
@@ -656,9 +639,6 @@ describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 	it(".withCause() without generic defaults to optional any tagged error", () => {
 		// When called without a generic, defaults to AnyTaggedError | undefined
 		const { FlexError } = createTaggedError("FlexError").withCause();
-
-		const { SomeError } = createTaggedError("SomeError");
-		const { OtherError } = createTaggedError("OtherError");
 
 		// Cause is optional
 		const err1 = FlexError({ message: "Error" });
