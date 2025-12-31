@@ -83,18 +83,9 @@ function createResultValidate<
 
 		const obj = value as { data: unknown; error: unknown };
 
-		const isOkVariant = obj.error === null;
-		const isErrVariant = obj.data === null;
+		const isOk = obj.error === null;
 
-		if (isOkVariant && isErrVariant) {
-			return { value: { data: null as null, error: null as null } as never };
-		}
-
-		if (!isOkVariant && !isErrVariant) {
-			return FAILURES.INVALID_RESULT;
-		}
-
-		if (isOkVariant) {
+		if (isOk) {
 			const innerResult = dataSchema["~standard"].validate(obj.data);
 
 			if (innerResult instanceof Promise) {
@@ -121,6 +112,10 @@ function createResultValidate<
 			}
 
 			return { value: { data: innerResult.value, error: null as null } };
+		}
+
+		if (obj.data !== null) {
+			return FAILURES.INVALID_RESULT;
 		}
 
 		const innerResult = errorSchema["~standard"].validate(obj.error);

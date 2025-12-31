@@ -173,13 +173,13 @@ describe("ErrSchema", () => {
 			});
 		});
 
-		it("rejects Ok variant (data not null)", () => {
+		it("rejects Ok variant (error is null)", () => {
 			const result = errSchema["~standard"].validate({
 				data: "some data",
 				error: null,
 			});
 
-			expect(result).toEqual(FAILURES.EXPECTED_DATA_NULL);
+			expect(result).toEqual(FAILURES.EXPECTED_ERROR_NOT_NULL);
 		});
 
 		it("propagates inner schema validation errors with path prefix", () => {
@@ -395,7 +395,7 @@ describe("ResultSchema", () => {
 });
 
 describe("edge cases", () => {
-	it("handles both data and error being null", () => {
+	it("rejects both data and error being null when data schema doesn't allow null", () => {
 		const dataSchema = z.string();
 		const errorSchema = z.string();
 		const resultSchema = ResultSchema(dataSchema, errorSchema);
@@ -405,9 +405,10 @@ describe("edge cases", () => {
 			error: null,
 		});
 
-		expect(result).toEqual({
-			value: { data: null, error: null },
-		} as unknown as typeof result);
+		expect(result).toHaveProperty("issues");
+		const issues = (result as { issues: unknown[] }).issues;
+		expect(issues[0]).toHaveProperty("path");
+		expect((issues[0] as { path: unknown[] }).path[0]).toBe("data");
 	});
 
 	it("handles null as valid data value in Ok", () => {

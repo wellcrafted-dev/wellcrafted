@@ -21,6 +21,14 @@ export const FAILURES = {
 			},
 		],
 	},
+	EXPECTED_ERROR_NOT_NULL: {
+		issues: [
+			{
+				message: "Expected 'error' to be non-null for Err variant",
+				path: ["error"],
+			},
+		],
+	},
 	INVALID_RESULT: {
 		issues: [
 			{
