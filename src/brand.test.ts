@@ -9,8 +9,8 @@ describe("Brand", () => {
 		const userId = "user-123" as UserId;
 		const orderId = "order-456" as OrderId;
 
-		expectTypeOf(userId).toMatchTypeOf<string>();
-		expectTypeOf(orderId).toMatchTypeOf<string>();
+		expectTypeOf(userId).toEqualTypeOf<UserId>();
+		expectTypeOf(orderId).toEqualTypeOf<OrderId>();
 
 		// @ts-expect-error - UserId not assignable to OrderId
 		const _test1: OrderId = userId;
@@ -49,7 +49,7 @@ describe("Brand", () => {
 		const projectDir = "/home/project" as ProjectDir;
 
 		const abs: AbsolutePath = projectDir;
-		expectTypeOf(abs).toMatchTypeOf<AbsolutePath>();
+		expectTypeOf(abs).toExtend<AbsolutePath>();
 	});
 
 	it("parent brand NOT assignable to child brand", () => {
@@ -102,8 +102,8 @@ describe("Brand", () => {
 		const a: A = c;
 		const b: B = c;
 
-		expectTypeOf(a).toMatchTypeOf<A>();
-		expectTypeOf(b).toMatchTypeOf<B>();
+		expectTypeOf(a).toExtend<A>();
+		expectTypeOf(b).toExtend<B>();
 	});
 
 	it("multiple inheritance: parents not assignable to child", () => {
@@ -133,9 +133,9 @@ describe("Brand", () => {
 		const l1: Level1 = level3;
 		const l2: Level2 = level3;
 
-		expectTypeOf(l0).toMatchTypeOf<Level0>();
-		expectTypeOf(l1).toMatchTypeOf<Level1>();
-		expectTypeOf(l2).toMatchTypeOf<Level2>();
+		expectTypeOf(l0).toExtend<Level0>();
+		expectTypeOf(l1).toExtend<Level1>();
+		expectTypeOf(l2).toExtend<Level2>();
 	});
 
 	it("works with number", () => {
@@ -147,7 +147,7 @@ describe("Brand", () => {
 		const pct: Percentage = validated;
 		const num: number = validated;
 
-		expectTypeOf(pct).toMatchTypeOf<Percentage>();
+		expectTypeOf(pct).toExtend<Percentage>();
 		expectTypeOf(num).toBeNumber();
 	});
 
@@ -159,6 +159,6 @@ describe("Brand", () => {
 
 		const base: BaseConfig = validated;
 		expectTypeOf(validated.host).toBeString();
-		expectTypeOf(base).toMatchTypeOf<BaseConfig>();
+		expectTypeOf(base).toExtend<BaseConfig>();
 	});
 });
