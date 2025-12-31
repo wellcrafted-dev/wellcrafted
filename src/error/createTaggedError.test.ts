@@ -280,7 +280,7 @@ describe("createTaggedError - type extraction with ReturnType", () => {
 			context: { path: "/etc/config" },
 		};
 
-		expectTypeOf(error).toMatchTypeOf<
+		expectTypeOf(error).toExtend<
 			TaggedError<"FileError", { path: string }, undefined>
 		>();
 	});
@@ -339,8 +339,10 @@ describe("createTaggedError - builder methods return factories at every stage", 
 describe("createTaggedError - Error Chaining", () => {
 	it("supports multi-level error chains with explicit types", () => {
 		// Level 1: Database error with context
-		const { DatabaseError } = createTaggedError("DatabaseError")
-			.withContext<{ query: string; table: string }>();
+		const { DatabaseError } = createTaggedError("DatabaseError").withContext<{
+			query: string;
+			table: string;
+		}>();
 		type DatabaseError = ReturnType<typeof DatabaseError>;
 
 		const dbError = DatabaseError({
@@ -375,12 +377,16 @@ describe("createTaggedError - Error Chaining", () => {
 		expect(serviceError.name).toBe("ServiceError");
 		expect(serviceError.cause?.name).toBe("RepositoryError");
 		expect(serviceError.cause?.cause?.name).toBe("DatabaseError");
-		expect(serviceError.cause?.cause?.context?.query).toBe("SELECT * FROM users");
+		expect(serviceError.cause?.cause?.context?.query).toBe(
+			"SELECT * FROM users",
+		);
 	});
 
 	it("errors are JSON serializable", () => {
-		const { NetworkError } = createTaggedError("NetworkError")
-			.withContext<{ host: string; port: number }>();
+		const { NetworkError } = createTaggedError("NetworkError").withContext<{
+			host: string;
+			port: number;
+		}>();
 		type NetworkError = ReturnType<typeof NetworkError>;
 
 		const { ApiError } = createTaggedError("ApiError")
@@ -477,7 +483,7 @@ describe("createTaggedError - Type Safety", () => {
 		type ApiErrorType = ReturnType<typeof ApiError>;
 
 		// Context should be required and typed
-		expectTypeOf<ApiErrorType>().toMatchTypeOf<{
+		expectTypeOf<ApiErrorType>().toExtend<{
 			name: "ApiError";
 			message: string;
 			context: { endpoint: string };
@@ -486,10 +492,16 @@ describe("createTaggedError - Type Safety", () => {
 
 	it("TaggedError type with optional typed context", () => {
 		// Direct use of TaggedError type with union
-		type OptionalContextError = TaggedError<"OptionalError", { code: string } | undefined>;
+		type OptionalContextError = TaggedError<
+			"OptionalError",
+			{ code: string } | undefined
+		>;
 
 		// The context should be optional but typed
-		const err1: OptionalContextError = { name: "OptionalError", message: "No context" };
+		const err1: OptionalContextError = {
+			name: "OptionalError",
+			message: "No context",
+		};
 		const err2: OptionalContextError = {
 			name: "OptionalError",
 			message: "With context",
@@ -508,8 +520,8 @@ describe("createTaggedError - Type Safety", () => {
 
 describe("createTaggedError - Edge Cases", () => {
 	it("handles empty context object with explicit context type", () => {
-		const { TestError } = createTaggedError("TestError")
-			.withContext<Record<string, unknown>>();
+		const { TestError } =
+			createTaggedError("TestError").withContext<Record<string, unknown>>();
 		const error = TestError({ message: "Error", context: {} });
 
 		expect(error.context).toEqual({});
@@ -521,7 +533,8 @@ describe("createTaggedError - Edge Cases", () => {
 			array: number[];
 			nullable: null;
 		};
-		const { TestError } = createTaggedError("TestError").withContext<NestedContext>();
+		const { TestError } =
+			createTaggedError("TestError").withContext<NestedContext>();
 		const error = TestError({
 			message: "Error",
 			context: {
@@ -552,8 +565,9 @@ describe("createTaggedError - Edge Cases", () => {
 
 describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 	it("can opt into permissive context with Record<string, unknown> | undefined", () => {
-		const { FlexibleError } = createTaggedError("FlexibleError")
-			.withContext<Record<string, unknown> | undefined>();
+		const { FlexibleError } = createTaggedError("FlexibleError").withContext<
+			Record<string, unknown> | undefined
+		>();
 
 		// Without context
 		const err1 = FlexibleError({ message: "Error" });
@@ -568,8 +582,9 @@ describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 	});
 
 	it("can opt into permissive cause with AnyTaggedError | undefined", () => {
-		const { FlexibleError } = createTaggedError("FlexibleError")
-			.withCause<AnyTaggedError | undefined>();
+		const { FlexibleError } = createTaggedError("FlexibleError").withCause<
+			AnyTaggedError | undefined
+		>();
 
 		const { SomeError } = createTaggedError("SomeError");
 		const { OtherError } = createTaggedError("OtherError");
@@ -665,14 +680,19 @@ describe("createTaggedError - Permissive Mode (Migration Path)", () => {
 
 	it(".withContext().withCause() without generics gives fully permissive error", () => {
 		// Chaining both without generics gives the old permissive behavior
-		const { FlexError } = createTaggedError("FlexError").withContext().withCause();
+		const { FlexError } = createTaggedError("FlexError")
+			.withContext()
+			.withCause();
 
 		const { CauseError } = createTaggedError("CauseError");
 
 		// All combinations work
 		const err1 = FlexError({ message: "Error" });
 		const err2 = FlexError({ message: "Error", context: { any: "data" } });
-		const err3 = FlexError({ message: "Error", cause: CauseError({ message: "Cause" }) });
+		const err3 = FlexError({
+			message: "Error",
+			cause: CauseError({ message: "Cause" }),
+		});
 		const err4 = FlexError({
 			message: "Error",
 			context: { any: "data" },
