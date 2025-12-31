@@ -133,6 +133,23 @@ This aligns the standard-schema validation with the core Result module's `isOk`/
 | `{ data: null, error: null }` | Special case, returned as-is | Ok path, validates data against schema |
 | `{ data: "x", error: null }` | Ok path | Ok path (unchanged) |
 | `{ data: null, error: "x" }` | Err path | Err path (unchanged) |
-| `{ data: "x", error: "x" }` | `INVALID_RESULT` | `INVALID_RESULT` (unchanged) |
+| `{ data: "x", error: "x" }` | `INVALID_RESULT` | Err path, validates error against schema |
 
-The key semantic change: `{ data: null, error: null }` is now treated as `Ok<null>` and validated accordingly.
+The key semantic changes:
+1. `{ data: null, error: null }` → `Ok<null>`, validated accordingly
+2. `{ data: "x", error: "x" }` → Err (because error !== null), data is ignored
+
+### Additional Simplifications (Second Commit)
+
+Removed all "invalid Result" concept since error is now the sole discriminant:
+
+1. **`src/standard-schema/result.ts`**: Removed `INVALID_RESULT` check
+2. **`src/standard-schema/err.ts`**: Removed `EXPECTED_DATA_NULL` check  
+3. **`src/result/result.ts`**: Removed `isNeitherNull` check from `isResult()` function
+4. **`src/standard-schema/failures.ts`**: Removed unused `EXPECTED_DATA_NULL` and `INVALID_RESULT` messages
+5. **Test updated**: "rejects invalid Result (neither null)" → "treats both non-null as Err (error is discriminant)"
+
+The Result type is now simpler:
+- Any object with `data` and `error` properties is a valid Result structure
+- `error === null` → Ok
+- `error !== null` → Err (regardless of data value)

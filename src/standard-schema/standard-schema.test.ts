@@ -279,13 +279,15 @@ describe("ResultSchema", () => {
 			});
 		});
 
-		it("rejects invalid Result (neither null)", () => {
+		it("treats both non-null as Err (error is discriminant)", () => {
 			const result = resultSchema["~standard"].validate({
 				data: { id: "1", name: "Alice" },
 				error: { code: "ERROR", message: "oops" },
 			});
 
-			expect(result).toEqual(FAILURES.INVALID_RESULT);
+			expect(result).toEqual({
+				value: { data: null, error: { code: "ERROR", message: "oops" } },
+			});
 		});
 
 		it("propagates data schema errors with path prefix", () => {

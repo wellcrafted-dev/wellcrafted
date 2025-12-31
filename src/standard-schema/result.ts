@@ -114,10 +114,6 @@ function createResultValidate<
 			return { value: { data: innerResult.value, error: null as null } };
 		}
 
-		if (obj.data !== null) {
-			return FAILURES.INVALID_RESULT;
-		}
-
 		const innerResult = errorSchema["~standard"].validate(obj.error);
 
 		if (innerResult instanceof Promise) {

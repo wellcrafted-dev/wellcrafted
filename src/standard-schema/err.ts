@@ -62,10 +62,6 @@ function createErrValidate<TSchema extends StandardSchemaV1>(
 			return FAILURES.EXPECTED_ERROR_NOT_NULL;
 		}
 
-		if (obj.data !== null) {
-			return FAILURES.EXPECTED_DATA_NULL;
-		}
-
 		const innerResult = innerSchema["~standard"].validate(obj.error);
 
 		if (innerResult instanceof Promise) {
