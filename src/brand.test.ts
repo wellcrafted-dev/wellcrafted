@@ -2,12 +2,18 @@ import { describe, it, expectTypeOf } from "vitest";
 import type { Brand } from "./brand.js";
 
 describe("Brand", () => {
-	it("single brand creates nominal type", () => {
-		type UserId = string & Brand<"UserId">;
-		type OrderId = string & Brand<"OrderId">;
+	// =============================================================================
+	// Basic Branding (UserId / OrderId)
+	// =============================================================================
 
-		const userId = "user-123" as UserId;
-		const orderId = "order-456" as OrderId;
+	type UserId = string & Brand<"UserId">;
+	type OrderId = string & Brand<"OrderId">;
+	const UserId = (s: string): UserId => s as UserId;
+	const OrderId = (s: string): OrderId => s as OrderId;
+
+	it("single brand creates nominal type", () => {
+		const userId = UserId("user-123");
+		const orderId = OrderId("order-456");
 
 		expectTypeOf(userId).toEqualTypeOf<UserId>();
 		expectTypeOf(orderId).toEqualTypeOf<OrderId>();
@@ -20,19 +26,27 @@ describe("Brand", () => {
 	});
 
 	it("raw primitive not assignable to branded type", () => {
-		type UserId = string & Brand<"UserId">;
-
 		// @ts-expect-error - string not assignable to UserId
 		const _test: UserId = "raw-string";
 	});
 
 	it("branded type assignable to primitive", () => {
-		type UserId = string & Brand<"UserId">;
-		const userId = "user-123" as UserId;
+		const userId = UserId("user-123");
 
 		const str: string = userId;
 		expectTypeOf(str).toBeString();
 	});
+
+	// =============================================================================
+	// Hierarchical Branding (AbsolutePath / ProjectDir / ProviderDir)
+	// =============================================================================
+
+	type AbsolutePath = string & Brand<"AbsolutePath">;
+	type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
+	type ProviderDir = AbsolutePath & Brand<"ProviderDir">;
+	const AbsolutePath = (s: string): AbsolutePath => s as AbsolutePath;
+	const ProjectDir = (s: string): ProjectDir => s as ProjectDir;
+	const ProviderDir = (s: string): ProviderDir => s as ProviderDir;
 
 	it("stacked brands are not never", () => {
 		type Base = string & Brand<"Base">;
@@ -43,32 +57,22 @@ describe("Brand", () => {
 	});
 
 	it("child brand assignable to parent brand", () => {
-		type AbsolutePath = string & Brand<"AbsolutePath">;
-		type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
-
-		const projectDir = "/home/project" as ProjectDir;
+		const projectDir = ProjectDir("/home/project");
 
 		const abs: AbsolutePath = projectDir;
 		expectTypeOf(abs).toExtend<AbsolutePath>();
 	});
 
 	it("parent brand NOT assignable to child brand", () => {
-		type AbsolutePath = string & Brand<"AbsolutePath">;
-		type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
-
-		const absolutePath = "/home" as AbsolutePath;
+		const absolutePath = AbsolutePath("/home");
 
 		// @ts-expect-error
 		const _test: ProjectDir = absolutePath;
 	});
 
 	it("sibling brands are distinct", () => {
-		type AbsolutePath = string & Brand<"AbsolutePath">;
-		type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
-		type ProviderDir = AbsolutePath & Brand<"ProviderDir">;
-
-		const projectDir = "/project" as ProjectDir;
-		const providerDir = "/provider" as ProviderDir;
+		const projectDir = ProjectDir("/project");
+		const providerDir = ProviderDir("/provider");
 
 		// @ts-expect-error
 		const _test1: ProviderDir = projectDir;
@@ -78,10 +82,7 @@ describe("Brand", () => {
 	});
 
 	it("string methods work on hierarchical brands", () => {
-		type AbsolutePath = string & Brand<"AbsolutePath">;
-		type ProjectDir = AbsolutePath & Brand<"ProjectDir">;
-
-		const projectDir = "/Project" as ProjectDir;
+		const projectDir = ProjectDir("/Project");
 
 		const lower = projectDir.toLowerCase();
 		const upper = projectDir.toUpperCase();
@@ -92,12 +93,19 @@ describe("Brand", () => {
 		expectTypeOf(len).toBeNumber();
 	});
 
-	it("multiple inheritance works", () => {
-		type A = string & Brand<"A">;
-		type B = string & Brand<"B">;
-		type C = A & B & Brand<"C">;
+	// =============================================================================
+	// Multiple Inheritance (A & B → C)
+	// =============================================================================
 
-		const c = "abc" as C;
+	type A = string & Brand<"A">;
+	type B = string & Brand<"B">;
+	type C = A & B & Brand<"C">;
+	const A = (s: string): A => s as A;
+	const B = (s: string): B => s as B;
+	const C = (s: string): C => s as C;
+
+	it("multiple inheritance works", () => {
+		const c = C("abc");
 
 		const a: A = c;
 		const b: B = c;
@@ -107,12 +115,8 @@ describe("Brand", () => {
 	});
 
 	it("multiple inheritance: parents not assignable to child", () => {
-		type A = string & Brand<"A">;
-		type B = string & Brand<"B">;
-		type C = A & B & Brand<"C">;
-
-		const a = "a" as A;
-		const b = "b" as B;
+		const a = A("a");
+		const b = B("b");
 
 		// @ts-expect-error - A alone not assignable to C
 		const _test1: C = a;
@@ -121,13 +125,18 @@ describe("Brand", () => {
 		const _test2: C = b;
 	});
 
-	it("deep hierarchy works", () => {
-		type Level0 = string & Brand<"Level0">;
-		type Level1 = Level0 & Brand<"Level1">;
-		type Level2 = Level1 & Brand<"Level2">;
-		type Level3 = Level2 & Brand<"Level3">;
+	// =============================================================================
+	// Deep Hierarchy (Level0 → Level1 → Level2 → Level3)
+	// =============================================================================
 
-		const level3 = "deep" as Level3;
+	type Level0 = string & Brand<"Level0">;
+	type Level1 = Level0 & Brand<"Level1">;
+	type Level2 = Level1 & Brand<"Level2">;
+	type Level3 = Level2 & Brand<"Level3">;
+	const Level3 = (s: string): Level3 => s as Level3;
+
+	it("deep hierarchy works", () => {
+		const level3 = Level3("deep");
 
 		const l0: Level0 = level3;
 		const l1: Level1 = level3;
@@ -138,11 +147,17 @@ describe("Brand", () => {
 		expectTypeOf(l2).toExtend<Level2>();
 	});
 
+	// =============================================================================
+	// Other Primitive Types
+	// =============================================================================
+
 	it("works with number", () => {
 		type Percentage = number & Brand<"Percentage">;
 		type ValidatedPercentage = Percentage & Brand<"Validated">;
+		const ValidatedPercentage = (n: number): ValidatedPercentage =>
+			n as ValidatedPercentage;
 
-		const validated = 50 as ValidatedPercentage;
+		const validated = ValidatedPercentage(50);
 
 		const pct: Percentage = validated;
 		const num: number = validated;
@@ -154,8 +169,10 @@ describe("Brand", () => {
 	it("works with object types", () => {
 		type BaseConfig = { host: string } & Brand<"Config">;
 		type ValidatedConfig = BaseConfig & Brand<"Validated">;
+		const ValidatedConfig = (c: { host: string }): ValidatedConfig =>
+			c as ValidatedConfig;
 
-		const validated = { host: "localhost" } as ValidatedConfig;
+		const validated = ValidatedConfig({ host: "localhost" });
 
 		const base: BaseConfig = validated;
 		expectTypeOf(validated.host).toBeString();
