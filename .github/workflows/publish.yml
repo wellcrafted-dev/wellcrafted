@@ -33,3 +33,9 @@ jobs:
           publish: bun run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for Version Packages PR
+        if: steps.changesets.outputs.pullRequestNumber
+        run: gh pr merge --auto --merge ${{ steps.changesets.outputs.pullRequestNumber }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
