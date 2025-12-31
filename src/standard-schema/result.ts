@@ -1,4 +1,4 @@
-import { ISSUES } from "./errors.js";
+import { FAILURES } from "./failures.js";
 import {
 	hasJsonSchema,
 	hasValidate,
@@ -74,11 +74,11 @@ function createResultValidate<
 >["validate"] {
 	return (value: unknown) => {
 		if (typeof value !== "object" || value === null) {
-			return { issues: [ISSUES.EXPECTED_OBJECT] };
+			return FAILURES.EXPECTED_OBJECT;
 		}
 
 		if (!("data" in value) || !("error" in value)) {
-			return { issues: [ISSUES.EXPECTED_DATA_ERROR_PROPS] };
+			return FAILURES.EXPECTED_DATA_ERROR_PROPS;
 		}
 
 		const obj = value as { data: unknown; error: unknown };
@@ -91,7 +91,7 @@ function createResultValidate<
 		}
 
 		if (!isOkVariant && !isErrVariant) {
-			return { issues: [ISSUES.INVALID_RESULT] };
+			return FAILURES.INVALID_RESULT;
 		}
 
 		if (isOkVariant) {

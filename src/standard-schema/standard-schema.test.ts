@@ -2,7 +2,7 @@ import { type } from "arktype";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ErrSchema, ISSUES, OkSchema, ResultSchema } from "./index.js";
+import { ErrSchema, FAILURES, OkSchema, ResultSchema } from "./index.js";
 
 describe("OkSchema", () => {
 	describe("with Zod", () => {
@@ -21,13 +21,13 @@ describe("OkSchema", () => {
 		it("rejects non-object values", () => {
 			const result = okSchema["~standard"].validate("not an object");
 
-			expect(result).toEqual({ issues: [ISSUES.EXPECTED_OBJECT] });
+			expect(result).toEqual(FAILURES.EXPECTED_OBJECT);
 		});
 
 		it("rejects objects without data/error properties", () => {
 			const result = okSchema["~standard"].validate({ foo: "bar" });
 
-			expect(result).toEqual({ issues: [ISSUES.EXPECTED_DATA_ERROR_PROPS] });
+			expect(result).toEqual(FAILURES.EXPECTED_DATA_ERROR_PROPS);
 		});
 
 		it("rejects Err variant (error not null)", () => {
@@ -36,7 +36,7 @@ describe("OkSchema", () => {
 				error: "some error",
 			});
 
-			expect(result).toEqual({ issues: [ISSUES.EXPECTED_ERROR_NULL] });
+			expect(result).toEqual(FAILURES.EXPECTED_ERROR_NULL);
 		});
 
 		it("propagates inner schema validation errors with path prefix", () => {
@@ -179,7 +179,7 @@ describe("ErrSchema", () => {
 				error: null,
 			});
 
-			expect(result).toEqual({ issues: [ISSUES.EXPECTED_DATA_NULL] });
+			expect(result).toEqual(FAILURES.EXPECTED_DATA_NULL);
 		});
 
 		it("propagates inner schema validation errors with path prefix", () => {
@@ -285,7 +285,7 @@ describe("ResultSchema", () => {
 				error: { code: "ERROR", message: "oops" },
 			});
 
-			expect(result).toEqual({ issues: [ISSUES.INVALID_RESULT] });
+			expect(result).toEqual(FAILURES.INVALID_RESULT);
 		});
 
 		it("propagates data schema errors with path prefix", () => {
