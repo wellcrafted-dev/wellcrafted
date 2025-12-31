@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from "vitest";
-import type { Brand } from "./brand";
+import type { Brand } from "./brand.js";
 
 describe("Brand", () => {
 	it("single brand creates nominal type", () => {

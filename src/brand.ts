@@ -46,4 +46,4 @@ type Brand<T extends string> = {
 	[brand]: { [K in T]: true };
 };
 
-export { Brand };
+export type { Brand };
