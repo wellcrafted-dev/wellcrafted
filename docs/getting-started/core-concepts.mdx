@@ -87,7 +87,7 @@ type Err<E> = { data: null; error: E }
 
 ### Why This Design?
 
-1. **Discriminated Union**: This design creates a **discriminated union** where the `error` (or `data`) property acts as the discriminant with literal types `null` vs non-`null`, allowing TypeScript to automatically narrow types
+1. **Discriminated Union**: The `error` property is the sole discriminant. `error === null` means Ok, `error !== null` means Err. Why not check `data`? Because `data` can be `null` as a valid success value (`Ok<null>`), so it's not a universal discriminant
 2. **Destructuring-Friendly**: The ability to destructure `const { data, error } = ...` is a clean, direct, and pragmatic pattern that is already familiar to developers using popular libraries like Supabase and Astro Actions
 3. **Serialization-Safe**: Plain objects survive any serialization boundary
 4. **Zero Magic**: No classes, no prototypes, just objects
