@@ -128,10 +128,10 @@ type ErrorInput<
 	TContext extends Record<string, unknown> | undefined,
 	TCause extends AnyTaggedError | undefined,
 > = { message: string } & (TContext extends undefined
-	? {}
+	? Record<never, never>
 	: OptionalIfUndefined<TContext, "context">) &
 	(TCause extends undefined
-		? {}
+		? Record<never, never>
 		: OptionalIfUndefined<TCause, "cause">);
 
 /**
@@ -197,7 +197,9 @@ type ErrorBuilder<
 	 * ```
 	 */
 	withContext<
-		T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+		T extends Record<string, unknown> | undefined =
+			| Record<string, unknown>
+			| undefined,
 	>(): ErrorBuilder<TName, T, TCause>;
 
 	/**
@@ -323,10 +325,7 @@ export function createTaggedError<TName extends `${string}Error`>(
 		const errorConstructor = (input: ErrorInput<TContext, TCause>) =>
 			({ name, ...input }) as unknown as TaggedError<TName, TContext, TCause>;
 
-		const errName = name.replace(
-			/Error$/,
-			"Err",
-		) as ReplaceErrorWithErr<TName>;
+		const errName = name.replace(/Error$/, "Err") as ReplaceErrorWithErr<TName>;
 		const errConstructor = (input: ErrorInput<TContext, TCause>) =>
 			Err(errorConstructor(input));
 
@@ -334,7 +333,9 @@ export function createTaggedError<TName extends `${string}Error`>(
 			[name]: errorConstructor,
 			[errName]: errConstructor,
 			withContext<
-				T extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+				T extends Record<string, unknown> | undefined =
+					| Record<string, unknown>
+					| undefined,
 			>() {
 				return createBuilder<T, TCause>();
 			},

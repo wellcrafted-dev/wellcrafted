@@ -12,7 +12,7 @@ export type AnyTaggedError = { name: string; message: string };
  * This follows Rust's explicit error philosophy: context must be explicitly added via .withContext<T>().
  */
 type WithContext<TContext> = [TContext] extends [undefined]
-	? {}
+	? Record<never, never>
 	: [undefined] extends [TContext]
 		? { context?: Exclude<TContext, undefined> }
 		: { context: TContext };
@@ -27,7 +27,7 @@ type WithContext<TContext> = [TContext] extends [undefined]
  * Using brackets to prevent distributive conditional behavior with union types.
  */
 type WithCause<TCause> = [TCause] extends [undefined]
-	? {}
+	? Record<never, never>
 	: [undefined] extends [TCause]
 		? { cause?: Exclude<TCause, undefined> }
 		: { cause: TCause };

@@ -8,7 +8,7 @@ import type { TaggedError, AnyTaggedError } from "./types.js";
 
 describe("createTaggedError - basic usage (minimal errors)", () => {
 	it("creates minimal error factories without chaining", () => {
-		const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
+		const { NetworkError } = createTaggedError("NetworkError");
 
 		const error = NetworkError({ message: "Connection failed" });
 
@@ -128,7 +128,7 @@ describe("createTaggedError - .withContext<T | undefined>() - optional typed con
 describe("createTaggedError - .withCause<T>() - required cause", () => {
 	it("makes cause required when T doesn't include undefined", () => {
 		const { DbError } = createTaggedError("DbError");
-		type DbError = ReturnType<typeof DbError>;
+		type _DbError = ReturnType<typeof DbError>;
 
 		const { UnhandledError } =
 			createTaggedError("UnhandledError").withCause<AnyTaggedError>();
