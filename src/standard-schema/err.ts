@@ -58,8 +58,8 @@ function createErrValidate<TSchema extends StandardSchemaV1>(
 
 		const obj = value as { data: unknown; error: unknown };
 
-		if (obj.data !== null) {
-			return FAILURES.EXPECTED_DATA_NULL;
+		if (obj.error === null) {
+			return FAILURES.EXPECTED_ERROR_NOT_NULL;
 		}
 
 		const innerResult = innerSchema["~standard"].validate(obj.error);

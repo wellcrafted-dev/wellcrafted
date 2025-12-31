@@ -25,10 +25,40 @@ type Ok<T> = { data: T; error: null };
 type Err<E> = { error: E; data: null };
 ```
 
-The key insight: **This design creates a discriminated union where the `error` (or `data`) property acts as the discriminant with literal types `null` vs non-`null`**.
+The key insight: **Both `data` and `error` can act as discriminants** — they're symmetric in most cases. TypeScript narrows types when you check either one:
 
-- When `error` is `null`, TypeScript knows `data` is `T`
-- When `data` is `null`, TypeScript knows `error` is `E`
+- `error === null` → **Ok**: TypeScript knows `data` is `T`
+- `error !== null` → **Err**: TypeScript knows `error` is `E`
+- `data !== null` → **Ok**: TypeScript knows you have success data
+- `data === null` → Usually **Err**, but not always...
+
+### Pro Tip: Prefer Checking `error`
+
+In practice, we recommend checking `error` first. Here's why:
+
+```typescript
+// Both work in most cases:
+if (result.error) { /* handle error */ }
+if (!result.data) { /* handle error */ }  // Also works... usually
+
+// But what about Ok<null>?
+const result: Result<null, string> = Ok(null);
+// result = { data: null, error: null }
+
+if (!result.data) {
+  // ❌ We'd wrongly think this is an error!
+  // But it's actually a successful Ok<null>
+}
+
+if (result.error) {
+  // ✅ This correctly identifies it as Ok
+  // error is null, so we skip this branch
+}
+```
+
+The edge case is `Ok<null>` — when your success value is intentionally `null`. In this case, `data === null` doesn't mean failure; it means success with a null value.
+
+**Bottom line**: Check `error` first — it works reliably in every scenario, including `Ok<null>`. Checking `data` works great when you know your success type is non-nullable, but `error` is the safer, more consistent choice.
 
 ### Control-Flow Analysis in Action
 
@@ -52,18 +82,41 @@ function processResult<T, E>(result: Result<T, E>) {
 
 This isn't just type checking - it's type *narrowing*. TypeScript eliminates impossible states from consideration.
 
-### The Power of Mutual Exclusivity
+### The Tiebreaker Rule
 
-The design ensures that these states are mutually exclusive:
+When validating external data (like API responses), you might encounter objects with both `data` and `error` present:
 
 ```typescript
-// This is impossible to construct with our API:
-const invalid = { data: "value", error: "error" }; // ❌ Not a valid Result
+// External API returns this ambiguous shape:
+const response = { data: "value", error: "Something went wrong" };
 
-// You must use the constructors:
-const valid1 = Ok("value");    // { data: "value", error: null }
-const valid2 = Err("error");    // { data: null, error: "error" }
+// wellcrafted treats this as Err - error takes precedence
+// The error property is the sole discriminant, so:
+// error !== null → it's an Err (regardless of data value)
 ```
+
+This "error wins" behavior provides a consistent rule: if there's an error, treat it as a failure. This is especially useful when working with APIs that might populate both fields.
+
+```typescript
+// The constructors enforce clean states:
+const success = Ok("value");   // { data: "value", error: null }
+const failure = Err("error");  // { data: null, error: "error" }
+
+// But when parsing external data, both-present is valid (treated as Err)
+```
+
+### The Both-Null Case
+
+What about `{ data: null, error: null }`? Following the "error is the sole discriminant" rule:
+
+```typescript
+const bothNull = { data: null, error: null };
+
+// error === null → this is Ok<null>
+// It's a successful result where the success value happens to be null
+```
+
+This is useful for operations that succeed but intentionally return nothing, like a cache lookup that found nothing (success, but null data) versus a cache lookup that failed (error).
 
 ## Why Not Boolean Discriminators?
 

@@ -208,10 +208,6 @@ export function isResult<T = unknown, E = unknown>(
 	const hasErrorProperty = "error" in value;
 	if (!hasDataProperty || !hasErrorProperty) return false;
 
-	const isNeitherNull = value.data !== null && value.error !== null;
-	if (isNeitherNull) return false;
-
-	// At least one channel is null (valid Result)
 	return true;
 }
 

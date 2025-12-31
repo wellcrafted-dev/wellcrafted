@@ -37,7 +37,12 @@ The magic lies in how TypeScript's type system interprets this structure:
 - **`Err<E>`** always has `error: E` and `data: null`  
 - **`Result<T, E>`** is simply `Ok<T> | Err<E>`
 
-This creates a **discriminated union** where the `error` (or `data`) property acts as the discriminant with literal types `null` vs non-`null`.
+This creates a **discriminated union** where both `data` and `error` can act as discriminants — they work symmetrically in most cases:
+
+- `error === null` → **Ok** (data is `T`)
+- `error !== null` → **Err** (error is `E`)
+
+**Pro tip**: We recommend checking `error` by default. While checking `data` works great when your success type is non-nullable, `error` handles all cases — including `Ok<null>` where the success value itself is `null`.
 
 ### How TypeScript Narrows Types
 

@@ -1,6 +1,6 @@
 import { type } from "arktype";
 import * as v from "valibot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 import { ErrSchema, FAILURES, OkSchema, ResultSchema } from "./index.js";
 
@@ -173,13 +173,13 @@ describe("ErrSchema", () => {
 			});
 		});
 
-		it("rejects Ok variant (data not null)", () => {
+		it("rejects Ok variant (error is null)", () => {
 			const result = errSchema["~standard"].validate({
 				data: "some data",
 				error: null,
 			});
 
-			expect(result).toEqual(FAILURES.EXPECTED_DATA_NULL);
+			expect(result).toEqual(FAILURES.EXPECTED_ERROR_NOT_NULL);
 		});
 
 		it("propagates inner schema validation errors with path prefix", () => {
@@ -279,13 +279,15 @@ describe("ResultSchema", () => {
 			});
 		});
 
-		it("rejects invalid Result (neither null)", () => {
+		it("treats both non-null as Err (error is discriminant)", () => {
 			const result = resultSchema["~standard"].validate({
 				data: { id: "1", name: "Alice" },
 				error: { code: "ERROR", message: "oops" },
 			});
 
-			expect(result).toEqual(FAILURES.INVALID_RESULT);
+			expect(result).toEqual({
+				value: { data: null, error: { code: "ERROR", message: "oops" } },
+			});
 		});
 
 		it("propagates data schema errors with path prefix", () => {
@@ -395,7 +397,7 @@ describe("ResultSchema", () => {
 });
 
 describe("edge cases", () => {
-	it("handles both data and error being null", () => {
+	it("rejects both data and error being null when data schema doesn't allow null", () => {
 		const dataSchema = z.string();
 		const errorSchema = z.string();
 		const resultSchema = ResultSchema(dataSchema, errorSchema);
@@ -405,9 +407,10 @@ describe("edge cases", () => {
 			error: null,
 		});
 
-		expect(result).toEqual({
-			value: { data: null, error: null },
-		});
+		expect(result).toHaveProperty("issues");
+		const issues = (result as { issues: unknown[] }).issues;
+		expect(issues[0]).toHaveProperty("path");
+		expect((issues[0] as { path: unknown[] }).path[0]).toBe("data");
 	});
 
 	it("handles null as valid data value in Ok", () => {

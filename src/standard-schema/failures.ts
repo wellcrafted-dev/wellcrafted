@@ -13,20 +13,11 @@ export const FAILURES = {
 			},
 		],
 	},
-	EXPECTED_DATA_NULL: {
+	EXPECTED_ERROR_NOT_NULL: {
 		issues: [
 			{
-				message: "Expected 'data' to be null for Err variant",
-				path: ["data"],
-			},
-		],
-	},
-	INVALID_RESULT: {
-		issues: [
-			{
-				message:
-					"Invalid Result: exactly one of 'data' or 'error' must be null",
-				path: ["data", "error"],
+				message: "Expected 'error' to be non-null for Err variant",
+				path: ["error"],
 			},
 		],
 	},
