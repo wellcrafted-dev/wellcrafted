@@ -1,3 +1,4 @@
+import { ERRORS } from "./errors.js";
 import {
 	hasJsonSchema,
 	hasValidate,
@@ -73,14 +74,12 @@ function createResultValidate<
 >["validate"] {
 	return (value: unknown) => {
 		if (typeof value !== "object" || value === null) {
-			return { issues: [{ message: "Expected object" }] };
+			return { issues: [{ message: ERRORS.EXPECTED_OBJECT }] };
 		}
 
 		if (!("data" in value) || !("error" in value)) {
 			return {
-				issues: [
-					{ message: "Expected object with 'data' and 'error' properties" },
-				],
+				issues: [{ message: ERRORS.EXPECTED_DATA_ERROR_PROPS }],
 			};
 		}
 
@@ -95,12 +94,7 @@ function createResultValidate<
 
 		if (!isOkVariant && !isErrVariant) {
 			return {
-				issues: [
-					{
-						message:
-							"Invalid Result: exactly one of 'data' or 'error' must be null",
-					},
-				],
+				issues: [{ message: ERRORS.INVALID_RESULT }],
 			};
 		}
 

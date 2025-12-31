@@ -1,4 +1,5 @@
 export { ErrSchema, type Err } from "./err.js";
+export { ERRORS } from "./errors.js";
 export { OkSchema, type Ok } from "./ok.js";
 export { ResultSchema, type Result } from "./result.js";
 export {

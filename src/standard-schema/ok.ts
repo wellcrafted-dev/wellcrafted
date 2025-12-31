@@ -1,3 +1,4 @@
+import { ERRORS } from "./errors.js";
 import {
 	hasJsonSchema,
 	hasValidate,
@@ -48,23 +49,17 @@ function createOkValidate<TSchema extends StandardSchemaV1>(
 >["validate"] {
 	return (value: unknown) => {
 		if (typeof value !== "object" || value === null) {
-			return { issues: [{ message: "Expected object" }] };
+			return { issues: [{ message: ERRORS.EXPECTED_OBJECT }] };
 		}
 
 		if (!("data" in value) || !("error" in value)) {
-			return {
-				issues: [
-					{ message: "Expected object with 'data' and 'error' properties" },
-				],
-			};
+			return { issues: [{ message: ERRORS.EXPECTED_DATA_ERROR_PROPS }] };
 		}
 
 		const obj = value as { data: unknown; error: unknown };
 
 		if (obj.error !== null) {
-			return {
-				issues: [{ message: "Expected 'error' to be null for Ok variant" }],
-			};
+			return { issues: [{ message: ERRORS.EXPECTED_ERROR_NULL }] };
 		}
 
 		const innerResult = innerSchema["~standard"].validate(obj.data);

@@ -2,7 +2,7 @@ import { type } from "arktype";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ErrSchema, OkSchema, ResultSchema } from "./index.js";
+import { ERRORS, ErrSchema, OkSchema, ResultSchema } from "./index.js";
 
 describe("OkSchema", () => {
 	describe("with Zod", () => {
@@ -21,16 +21,14 @@ describe("OkSchema", () => {
 		it("rejects non-object values", () => {
 			const result = okSchema["~standard"].validate("not an object");
 
-			expect(result).toEqual({ issues: [{ message: "Expected object" }] });
+			expect(result).toEqual({ issues: [{ message: ERRORS.EXPECTED_OBJECT }] });
 		});
 
 		it("rejects objects without data/error properties", () => {
 			const result = okSchema["~standard"].validate({ foo: "bar" });
 
 			expect(result).toEqual({
-				issues: [
-					{ message: "Expected object with 'data' and 'error' properties" },
-				],
+				issues: [{ message: ERRORS.EXPECTED_DATA_ERROR_PROPS }],
 			});
 		});
 
@@ -41,7 +39,7 @@ describe("OkSchema", () => {
 			});
 
 			expect(result).toEqual({
-				issues: [{ message: "Expected 'error' to be null for Ok variant" }],
+				issues: [{ message: ERRORS.EXPECTED_ERROR_NULL }],
 			});
 		});
 
@@ -186,7 +184,7 @@ describe("ErrSchema", () => {
 			});
 
 			expect(result).toEqual({
-				issues: [{ message: "Expected 'data' to be null for Err variant" }],
+				issues: [{ message: ERRORS.EXPECTED_DATA_NULL }],
 			});
 		});
 
@@ -294,12 +292,7 @@ describe("ResultSchema", () => {
 			});
 
 			expect(result).toEqual({
-				issues: [
-					{
-						message:
-							"Invalid Result: exactly one of 'data' or 'error' must be null",
-					},
-				],
+				issues: [{ message: ERRORS.INVALID_RESULT }],
 			});
 		});
 
