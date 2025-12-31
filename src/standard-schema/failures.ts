@@ -1,3 +1,5 @@
+import type { StandardSchemaV1 } from "./types.js";
+
 export const FAILURES = {
 	EXPECTED_OBJECT: { issues: [{ message: "Expected object" }] },
 	EXPECTED_DATA_ERROR_PROPS: {
@@ -28,4 +30,4 @@ export const FAILURES = {
 			},
 		],
 	},
-} as const;
+} as const satisfies Record<string, StandardSchemaV1.FailureResult>;
