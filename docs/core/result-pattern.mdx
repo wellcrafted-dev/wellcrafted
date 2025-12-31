@@ -25,28 +25,40 @@ type Ok<T> = { data: T; error: null };
 type Err<E> = { error: E; data: null };
 ```
 
-The key insight: **The `error` property is the sole discriminant**. When in doubt, check the error.
+The key insight: **Both `data` and `error` can act as discriminants** — they're symmetric in most cases. TypeScript narrows types when you check either one:
 
 - `error === null` → **Ok**: TypeScript knows `data` is `T`
 - `error !== null` → **Err**: TypeScript knows `error` is `E`
+- `data !== null` → **Ok**: TypeScript knows you have success data
+- `data === null` → Usually **Err**, but not always...
 
-### Why `error` is the Universal Discriminant
+### Pro Tip: Prefer Checking `error`
 
-While you might think `data` could also serve as a discriminant, it's not universal:
+In practice, we recommend checking `error` first. Here's why:
 
 ```typescript
-// ✅ error is ALWAYS reliable
-if (result.error === null) { /* Always Ok */ }
-if (result.error !== null) { /* Always Err */ }
+// Both work in most cases:
+if (result.error) { /* handle error */ }
+if (!result.data) { /* handle error */ }  // Also works... usually
 
-// ⚠️ data is NOT always reliable  
-if (result.data !== null) { /* Ok - but only if T doesn't include null */ }
-if (result.data === null) { /* Ambiguous! Could be Ok<null> OR Err<E> */ }
+// But what about Ok<null>?
+const result: Result<null, string> = Ok(null);
+// result = { data: null, error: null }
+
+if (!result.data) {
+  // ❌ We'd wrongly think this is an error!
+  // But it's actually a successful Ok<null>
+}
+
+if (result.error) {
+  // ✅ This correctly identifies it as Ok
+  // error is null, so we skip this branch
+}
 ```
 
-The issue: `data` can legitimately be `null` as a success value (`Ok<null>`). So checking `data === null` doesn't tell you whether you have a success with null data or an error.
+The edge case is `Ok<null>` — when your success value is intentionally `null`. In this case, `data === null` doesn't mean failure; it means success with a null value.
 
-**Best practice**: Always check `error`, even if you know your success type doesn't include `null`. Consistency makes code more maintainable.
+**Bottom line**: Check `error` first — it works reliably in every scenario, including `Ok<null>`. Checking `data` works great when you know your success type is non-nullable, but `error` is the safer, more consistent choice.
 
 ### Control-Flow Analysis in Action
 
