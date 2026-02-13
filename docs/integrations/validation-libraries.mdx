@@ -120,17 +120,34 @@ const FileId = type("string").pipe((s): FileId => s as FileId);
 
 ## Composition: Hierarchical Brands
 
-wellcrafted brands compose through intersection. Child types are assignable to parent types, but not vice versa:
+wellcrafted brands compose through intersection. Child types are assignable to parent types, but not vice versa. Combine this with the dual-declaration pattern to get a full hierarchy of types and runtime validators:
 
 ```typescript
+/** Base identifier — any UUID v4 string. */
 type Guid = string & Brand<"Guid">;
-type FileId = Guid & Brand<"FileId">;
-type ImageId = FileId & Brand<"ImageId">;
+const Guid = type("string").pipe((s): Guid => s as Guid);
 
-const imageId: ImageId = "img-123" as ImageId;
-const fileId: FileId = imageId;   // ✅ Child assignable to parent
-const guid: Guid = imageId;       // ✅ Grandchild assignable to grandparent
-const bad: ImageId = fileId;      // ❌ Parent not assignable to child
+/** Unique file identifier in the storage system. */
+type FileId = Guid & Brand<"FileId">;
+const FileId = type("string").pipe((s): FileId => s as FileId);
+
+/** Image file identifier — a FileId that points to an image. */
+type ImageId = FileId & Brand<"ImageId">;
+const ImageId = type("string").pipe((s): ImageId => s as ImageId);
+```
+
+Each level is both a type and a runtime validator. The type hierarchy gives you compile-time subtyping — an `ImageId` is assignable anywhere a `FileId` or `Guid` is expected:
+
+```typescript
+function getFile(id: FileId): Promise<File> { /* ... */ }
+function getGuid(id: Guid): string { return id; }
+
+const imageId = ImageId("img-abc-123");
+getFile(imageId);  // ✅ ImageId extends FileId
+getGuid(imageId);  // ✅ ImageId extends Guid
+
+const fileId = FileId("file-xyz-789");
+const bad: ImageId = fileId;  // ❌ Parent not assignable to child
 ```
 
 This works because of wellcrafted's nested object structure — when brands intersect, their boolean markers merge:
