@@ -1,0 +1,202 @@
+---
+title: 'Using Brand with Validation Libraries'
+description: 'Framework-agnostic branded types that work with ArkType, Zod, Valibot, and any runtime validator'
+icon: 'puzzle-piece'
+---
+
+# Using Brand with Validation Libraries
+
+wellcrafted's `Brand<T>` is a pure type utility. It doesn't care what runtime validator you use — ArkType, Zod, Valibot, or anything else. Define the branded type once, then create a runtime validator with whichever library you prefer.
+
+## The Lock-in Problem
+
+Every major validation library ships its own branding mechanism:
+
+<Tabs>
+  <Tab title="Zod">
+    ```typescript
+    const FileId = z.string().brand<"FileId">();
+    type FileId = z.infer<typeof FileId>;
+    // FileId = string & z.$brand<"FileId"> — Zod-specific type
+    ```
+  </Tab>
+  <Tab title="ArkType">
+    ```typescript
+    const FileId = type("string").brand("FileId");
+    type FileId = typeof FileId.infer;
+    // FileId = Brand<string, "FileId"> — ArkType-specific type
+    ```
+  </Tab>
+  <Tab title="Valibot">
+    ```typescript
+    const FileId = v.pipe(v.string(), v.brand("FileId"));
+    type FileId = v.InferOutput<typeof FileId>;
+    // FileId = string & v.Brand<"FileId"> — Valibot-specific type
+    ```
+  </Tab>
+</Tabs>
+
+Each produces a **library-specific** branded type. If you switch validators — or use multiple validators in the same project — your domain types break. Your branded types become coupled to your validation library.
+
+## The Pattern
+
+Decouple the type from the validator:
+
+```typescript
+import { type Brand } from "wellcrafted/brand";
+
+// 1. Define the type — framework-agnostic, zero dependencies
+type FileId = string & Brand<"FileId">;
+```
+
+Then create a runtime validator with your library of choice. All three produce the same `FileId` type:
+
+<Tabs>
+  <Tab title="ArkType">
+    ```typescript
+    import { type } from "arktype";
+
+    type FileId = string & Brand<"FileId">;
+    const FileId = type("string").pipe((s): FileId => s as FileId);
+    ```
+  </Tab>
+  <Tab title="Zod">
+    ```typescript
+    import { z } from "zod";
+
+    type FileId = string & Brand<"FileId">;
+    const FileId = z.string().transform((s): FileId => s as FileId);
+    ```
+  </Tab>
+  <Tab title="Valibot">
+    ```typescript
+    import * as v from "valibot";
+
+    type FileId = string & Brand<"FileId">;
+    const FileId = v.pipe(v.string(), v.transform((s): FileId => s as FileId));
+    ```
+  </Tab>
+</Tabs>
+
+The explicit return type annotation `(s): FileId => ...` is what bridges the runtime validator to the branded type. The validator handles runtime checks; `Brand<T>` handles compile-time safety.
+
+## Same Name for Type and Value
+
+TypeScript has two parallel namespaces — types and values. You can use the same PascalCase name for both the branded type and its runtime validator. TypeScript resolves which one you mean from context.
+
+```typescript
+/**
+ * Unique file identifier in the storage system.
+ * Format: UUID v4 string.
+ */
+type FileId = string & Brand<"FileId">;
+const FileId = type("string").pipe((s): FileId => s as FileId);
+```
+
+This gives you a single hover experience. Hover over `FileId` anywhere in your codebase — in a function signature, a schema definition, or an import — and you see the same JSDoc.
+
+```typescript
+// In a function signature — hovering FileId shows the JSDoc above
+function deleteFile(id: FileId): Promise<void> { /* ... */ }
+
+// In a schema definition — same hover, same docs
+const FileUpload = type({ id: FileId, name: "string" });
+```
+
+<Info>
+**No naming tax.** Contrast this with Zod's conventional pattern where you need two names — `fileIdSchema` for the validator and `FileId` for the type. With the dual-declaration pattern, one name flows through your entire system: type annotations, runtime validation, schema composition, and IDE hovers.
+</Info>
+
+You can also use a type-only brand when no runtime validation is needed:
+
+```typescript
+// Type-only — no runtime validator, just compile-time safety
+type Guid = string & Brand<"Guid">;
+
+// Dual-declaration — type + validator share the name
+type FileId = Guid & Brand<"FileId">;
+const FileId = type("string").pipe((s): FileId => s as FileId);
+```
+
+## Composition: Hierarchical Brands
+
+wellcrafted brands compose through intersection. Child types are assignable to parent types, but not vice versa:
+
+```typescript
+type Guid = string & Brand<"Guid">;
+type FileId = Guid & Brand<"FileId">;
+type ImageId = FileId & Brand<"ImageId">;
+
+const imageId: ImageId = "img-123" as ImageId;
+const fileId: FileId = imageId;   // ✅ Child assignable to parent
+const guid: Guid = imageId;       // ✅ Grandchild assignable to grandparent
+const bad: ImageId = fileId;      // ❌ Parent not assignable to child
+```
+
+This works because of wellcrafted's nested object structure — when brands intersect, their boolean markers merge:
+
+```
+ImageId's brand = { [brand]: { Guid: true, FileId: true, ImageId: true } }
+FileId's brand  = { [brand]: { Guid: true, FileId: true } }
+Guid's brand    = { [brand]: { Guid: true } }
+```
+
+`ImageId` has all of `FileId`'s markers (plus its own), so it satisfies the `FileId` constraint.
+
+<Note>
+Zod's `.brand()`, ArkType's `.brand()`, and Valibot's `v.brand()` don't support hierarchical stacking. Their brand types are flat — you can't express "an ImageId is also a FileId" with built-in brands.
+</Note>
+
+## Adding Real Validation
+
+The `.pipe` / `.transform` pattern isn't limited to passthrough casting. Add real runtime checks before branding:
+
+<Tabs>
+  <Tab title="ArkType">
+    ```typescript
+    type Email = string & Brand<"Email">;
+
+    const Email = type("string")
+      .narrow((s, ctx) => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
+          return ctx.mustBe("a valid email address");
+        }
+        return true;
+      })
+      .pipe((s): Email => s as Email);
+    ```
+  </Tab>
+  <Tab title="Zod">
+    ```typescript
+    type Email = string & Brand<"Email">;
+
+    const Email = z.string()
+      .email()
+      .transform((s): Email => s as Email);
+    ```
+  </Tab>
+  <Tab title="Valibot">
+    ```typescript
+    type Email = string & Brand<"Email">;
+
+    const Email = v.pipe(
+      v.string(),
+      v.email(),
+      v.transform((s): Email => s as Email),
+    );
+    ```
+  </Tab>
+</Tabs>
+
+The branded type now guarantees two things: the value is a `string` (structural) **and** it's been validated as an email (nominal). Functions accepting `Email` know the validation already happened.
+
+## See Also
+
+<CardGroup>
+  <Card title="Brand Types" icon="fingerprint" href="/core/brand-types">
+    Core guide to branded types, common patterns, and best practices
+  </Card>
+  <Card title="Brand Implementation" icon="code" href="/philosophy/brand-implementation">
+    Why wellcrafted uses nested boolean markers for hierarchical brands
+  </Card>
+</CardGroup>

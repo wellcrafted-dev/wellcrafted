@@ -50,6 +50,7 @@
 					{
 						"group": "🔌 Integrations",
 						"pages": [
+							"integrations/validation-libraries",
 							"integrations/svelte-tanstack",
 							"integrations/react-tanstack",
 							"integrations/nextjs-app-router",
