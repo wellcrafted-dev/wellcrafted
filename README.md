@@ -46,8 +46,8 @@ function divide(a: number, b: number): Result<number, string> {
 ### 🏷️ Brand Types
 Create distinct types from primitives
 ```typescript
-type UserId = Brand<string, "UserId">;
-type OrderId = Brand<string, "OrderId">;
+type UserId = string & Brand<"UserId">;
+type OrderId = string & Brand<"OrderId">;
 
 // TypeScript prevents mixing them up!
 function getUser(id: UserId) { /* ... */ }

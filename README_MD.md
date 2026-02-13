@@ -181,8 +181,8 @@ Create distinct types from primitives for better type safety:
 ```typescript
 import { type Brand } from "wellcrafted/brand";
 
-type UserId = Brand<string, "UserId">;
-type OrderId = Brand<string, "OrderId">;
+type UserId = string & Brand<"UserId">;
+type OrderId = string & Brand<"OrderId">;
 
 // TypeScript prevents mixing branded types
 function getUser(id: UserId) { /* ... */ }
@@ -750,9 +750,9 @@ function useUser(id: number) {
 import { type Brand } from "wellcrafted/brand";
 
 // Create branded types
-type SafeHtml = Brand<string, "SafeHtml">;
-type UserId = Brand<string, "UserId">;
-type ApiKey = Brand<string, "ApiKey">;
+type SafeHtml = string & Brand<"SafeHtml">;
+type UserId = string & Brand<"UserId">;
+type ApiKey = string & Brand<"ApiKey">;
 
 // Functions that require specific branded types
 function renderHtml(html: SafeHtml) {
@@ -909,8 +909,8 @@ type Brand<T, B> = T & { __brand: B };
 
 3. **Use brand types for critical values**:
    ```typescript
-   type CustomerId = Brand<string, "CustomerId">;
-   type OrderId = Brand<string, "OrderId">;
+   type CustomerId = string & Brand<"CustomerId">;
+   type OrderId = string & Brand<"OrderId">;
    
    // Prevents mixing up IDs
    function processOrder(customerId: CustomerId, orderId: OrderId) {
