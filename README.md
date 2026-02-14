@@ -649,6 +649,30 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 - **`UnwrapOk<R>`** - Extract success value type from Result
 - **`UnwrapErr<R>`** - Extract error value type from Result
 
+## Development Setup
+
+### Peer Directory Requirement
+
+Wellcrafted shares AI agent skills (`.agents/skills/`, `.claude/skills/`) with the [Epicenter](https://github.com/EpicenterHQ/epicenter) repo via relative symlinks. Epicenter is the source of truth for skill definitions — they're authored and maintained there, and wellcrafted consumes them to stay in sync.
+
+**Both repos must be sibling directories under the same parent:**
+
+```
+Code/
+├── epicenter/       # Source of truth for skills
+│   └── .agents/skills/
+└── wellcrafted/     # Symlinks to epicenter
+    ├── .agents/skills/<name> → ../../../epicenter/.agents/skills/<name>
+    └── .claude/skills/<name> → ../../.agents/skills/<name>
+```
+
+If symlinks appear broken after cloning, ensure epicenter is cloned alongside wellcrafted:
+
+```bash
+cd "$(git rev-parse --show-toplevel)/.."
+git clone https://github.com/EpicenterHQ/epicenter.git
+```
+
 ## License
 
 MIT
