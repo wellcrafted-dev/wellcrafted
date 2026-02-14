@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WellCrafted Logo Gallery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 { font-size: 2rem; color: #1E40AF; margin-bottom: 0.25rem; }
+        .header p { color: #666; font-size: 1rem; }
+
+        .controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            border: 2px solid #1E40AF;
+            background: white;
+            color: #1E40AF;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .btn:hover, .btn.active { background: #1E40AF; color: white; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+        .category { margin-bottom: 2.5rem; }
+        .category h2 {
+            font-size: 1.4rem;
+            color: #1E40AF;
+            border-bottom: 2px solid #1E40AF;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .category-count {
+            font-size: 0.85rem;
+            color: #999;
+            font-weight: normal;
+            margin-left: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .card-display {
+            height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-display.bg-light { background: #ffffff; }
+        .card-display.bg-dark { background: #1a1a1a; }
+        .card-display.bg-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
+        .card-display img {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            transition: width 0.2s, height 0.2s;
+        }
+
+        .size-controls {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+            background: rgba(255,255,255,0.9);
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .size-btn {
+            padding: 2px 8px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #666;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .size-btn.active { background: #1E40AF; color: white; border-color: #1E40AF; }
+
+        .card-info {
+            padding: 1rem;
+            border-top: 1px solid #eee;
+        }
+        .card-info h3 { font-size: 1rem; color: #333; margin-bottom: 0.15rem; }
+        .card-info .filename { font-size: 0.75rem; color: #999; font-family: monospace; word-break: break-all; }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+        }
+        @media (max-width: 550px) {
+            .grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WellCrafted Logo Gallery</h1>
+        <p>All 33 surviving logo variations, organized by category</p>
+        <div class="controls">
+            <button class="btn active" onclick="setBg('light', this)">Light</button>
+            <button class="btn" onclick="setBg('dark', this)">Dark</button>
+            <button class="btn" onclick="setBg('gradient', this)">Gradient</button>
+        </div>
+    </div>
+
+    <div class="container" id="gallery"></div>
+
+    <script>
+        const categories = [
+            {
+                name: "Chrome Series",
+                logos: [
+                    { file: "svg/variations/v6-mixed/chrome-minimal.svg", name: "Chrome Minimal" },
+                    { file: "svg/variations/v6-mixed/chrome-precision.svg", name: "Chrome Precision" },
+                    { file: "svg/variations/v6-mixed/chrome-strike.svg", name: "Chrome Strike" },
+                ]
+            },
+            {
+                name: "v3 Hammer Forge",
+                logos: [
+                    { file: "svg/variations/v3-05-dynamic-forge-motion.svg", name: "Dynamic Forge Motion" },
+                    { file: "svg/variations/v3-06-gilded-hammer-forge.svg", name: "Gilded Hammer Forge" },
+                    { file: "svg/variations/v3-07-damascus-hammer.svg", name: "Damascus Hammer" },
+                    { file: "svg/variations/v3-hammer-turquoise.svg", name: "Hammer Turquoise" },
+                ]
+            },
+            {
+                name: "v5 Motion",
+                logos: [
+                    { file: "svg/variations/v5-motion-02.svg", name: "Motion 02" },
+                    { file: "svg/variations/v5-motion-05.svg", name: "Motion 05" },
+                    { file: "svg/variations/v5-motion-08.svg", name: "Motion 08" },
+                ]
+            },
+            {
+                name: "v9 Animation Flow",
+                logos: [
+                    { file: "svg/variations/v9-animation-flow-01.svg", name: "Animation Flow 01" },
+                    { file: "svg/variations/v9-animation-flow-02.svg", name: "Animation Flow 02" },
+                    { file: "svg/variations/v9-animation-flow-03.svg", name: "Animation Flow 03" },
+                    { file: "svg/variations/v9-animation-flow-04.svg", name: "Animation Flow 04" },
+                    { file: "svg/variations/v9-animation-flow-05.svg", name: "Animation Flow 05" },
+                ]
+            },
+            {
+                name: "v9 Particle Effects",
+                logos: [
+                    { file: "svg/variations/v9-particle-effect-04.svg", name: "Particle Effect 04" },
+                    { file: "svg/variations/v9-particle-effect-05.svg", name: "Particle Effect 05" },
+                ]
+            },
+            {
+                name: "v10 Lightning",
+                logos: [
+                    { file: "svg/variations/v10-lightning-branched-03.svg", name: "Lightning Branched" },
+                    { file: "svg/variations/v10-lightning-burst-04.svg", name: "Lightning Burst" },
+                    { file: "svg/variations/v10-lightning-cascade-05.svg", name: "Lightning Cascade" },
+                    { file: "svg/variations/v10-lightning-glow-enhanced-09.svg", name: "Lightning Glow Enhanced" },
+                    { file: "svg/variations/v10-lightning-subtle-06.svg", name: "Lightning Subtle" },
+                ]
+            },
+            {
+                name: "v12 Corporate",
+                logos: [
+                    { file: "svg/variations/v12-perfect-corporate.svg", name: "Perfect Corporate" },
+                ]
+            },
+            {
+                name: "Particle Experiments",
+                logos: [
+                    { file: "svg/variations/particle01-experiment-minimal-background.svg", name: "Particle 01 Minimal BG" },
+                    { file: "svg/variations/particle01-experiment-no-circles.svg", name: "Particle 01 No Circles" },
+                    { file: "svg/variations/particle02-experiment-enhanced-density.svg", name: "Particle 02 Enhanced Density" },
+                    { file: "svg/variations/particle02-experiment-enhanced-interaction.svg", name: "Particle 02 Enhanced Interaction" },
+                    { file: "svg/variations/particle02-experiment-no-background.svg", name: "Particle 02 No BG" },
+                    { file: "svg/variations/particle02-experiment-optimized-timing.svg", name: "Particle 02 Optimized Timing" },
+                    { file: "svg/variations/particle03-experiment-burst-patterns.svg", name: "Particle 03 Burst Patterns" },
+                ]
+            },
+            {
+                name: "Plasma Experiment",
+                logos: [
+                    { file: "svg/variations/plasma01-experiment-clean-bg.svg", name: "Plasma Clean BG" },
+                ]
+            },
+            {
+                name: "Standalone Hammer Iterations",
+                logos: [
+                    { file: "hammer-iterations/v3/v3-hammer-turquoise.svg", name: "Hammer v3 Turquoise" },
+                    { file: "hammer-iterations/v4/hammer-v4.svg", name: "Hammer v4" },
+                ]
+            },
+        ];
+
+        let currentBg = "light";
+
+        function setBg(bg, btn) {
+            currentBg = bg;
+            document.querySelectorAll(".header .btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            document.querySelectorAll(".card-display").forEach(d => {
+                d.className = "card-display bg-" + bg;
+            });
+        }
+
+        function setSize(cardId, size, btn) {
+            const img = document.querySelector("#" + cardId + " img");
+            if (img) { img.style.width = size + "px"; img.style.height = size + "px"; }
+            document.querySelectorAll("#" + cardId + " .size-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+        }
+
+        function render() {
+            const gallery = document.getElementById("gallery");
+            let cardIndex = 0;
+
+            categories.forEach(cat => {
+                const section = document.createElement("div");
+                section.className = "category";
+                section.innerHTML = '<h2>' + cat.name + '<span class="category-count">(' + cat.logos.length + ')</span></h2>';
+
+                const grid = document.createElement("div");
+                grid.className = "grid";
+
+                cat.logos.forEach(logo => {
+                    const id = "card-" + cardIndex++;
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.innerHTML =
+                        '<div class="card-display bg-' + currentBg + '" id="' + id + '">' +
+                            '<img src="' + logo.file + '" alt="' + logo.name + '">' +
+                            '<div class="size-controls">' +
+                                '<button class="size-btn" onclick="setSize(\'' + id + '\', 100, this)">S</button>' +
+                                '<button class="size-btn active" onclick="setSize(\'' + id + '\', 200, this)">M</button>' +
+                                '<button class="size-btn" onclick="setSize(\'' + id + '\', 300, this)">L</button>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="card-info">' +
+                            '<h3>' + logo.name + '</h3>' +
+                            '<div class="filename">' + logo.file + '</div>' +
+                        '</div>';
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                gallery.appendChild(section);
+            });
+        }
+
+        render();
+    </script>
+</body>
+</html>
