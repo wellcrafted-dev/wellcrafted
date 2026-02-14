@@ -1,0 +1,97 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Clean hammer head gradient - no stripes! -->
+    <linearGradient id="hammerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0"/>
+      <stop offset="50%" style="stop-color:#94A3B8"/>
+      <stop offset="100%" style="stop-color:#475569"/>
+    </linearGradient>
+    
+    <!-- Genuine wood handle gradient -->
+    <linearGradient id="handleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6B4423"/>
+      <stop offset="30%" style="stop-color:#8B5A3C"/>
+      <stop offset="60%" style="stop-color:#A0826D"/>
+      <stop offset="100%" style="stop-color:#8B5A3C"/>
+    </linearGradient>
+    
+    <!-- Wood grain texture pattern -->
+    <pattern id="woodGrain" x="0" y="0" width="4" height="8" patternUnits="userSpaceOnUse">
+      <rect width="4" height="8" fill="#8B5A3C"/>
+      <path d="M0,1 Q2,2 4,1 M0,3 Q2,4 4,3 M0,5 Q2,6 4,5 M0,7 Q2,8 4,7" 
+            stroke="#6B4423" stroke-width="0.3" fill="none" opacity="0.4"/>
+    </pattern>
+    
+    <!-- Turquoise glow gradient -->
+    <radialGradient id="glowGradient" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:0.9"/>
+      <stop offset="30%" style="stop-color:#7DD3FC;stop-opacity:0.7"/>
+      <stop offset="60%" style="stop-color:#0EA5E9;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0"/>
+    </radialGradient>
+    
+    <!-- Soft blur for glow effects -->
+    <filter id="glowFilter">
+      <feGaussianBlur stdDeviation="2.5"/>
+    </filter>
+    
+    <!-- Impact glow gradient -->
+    <radialGradient id="impactGlow">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#0EA5E9;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Subtle background particles -->
+  <g opacity="0.25">
+    <circle cx="20" cy="25" r="0.8" fill="#0369A1"/>
+    <circle cx="35" cy="15" r="0.6" fill="#0C4A6E"/>
+    <circle cx="65" cy="20" r="1" fill="#0369A1"/>
+    <circle cx="78" cy="30" r="0.7" fill="#0C4A6E"/>
+    <circle cx="25" cy="85" r="0.9" fill="#0369A1"/>
+    <circle cx="80" cy="80" r="0.6" fill="#0C4A6E"/>
+    <circle cx="15" cy="60" r="0.8" fill="#0369A1"/>
+    <circle cx="85" cy="55" r="0.7" fill="#0C4A6E"/>
+  </g>
+  
+  <!-- Simple anvil base -->
+  <path d="M 35 70 L 65 70 L 62 75 L 38 75 Z" fill="#0F172A"/>
+  <rect x="40" y="75" width="20" height="6" fill="#0F172A"/>
+  
+  <!-- Background turquoise glow -->
+  <ellipse cx="50" cy="70" rx="42" ry="26" fill="url(#glowGradient)" filter="url(#glowFilter)"/>
+  
+  <!-- Hammer group - moved closer to platform -->
+  <g transform="rotate(-38 50 36) translate(0, 8)">
+    <!-- Handle with wood texture -->
+    <rect x="47" y="5" width="6" height="52" rx="1" fill="url(#handleGradient)"/>
+    <rect x="47" y="5" width="6" height="52" rx="1" fill="url(#woodGrain)" opacity="0.3"/>
+    
+    <!-- Subtle grip lines on handle -->
+    <line x1="47" y1="35" x2="53" y2="35" stroke="#6B4423" stroke-width="0.3" opacity="0.5"/>
+    <line x1="47" y1="38" x2="53" y2="38" stroke="#6B4423" stroke-width="0.3" opacity="0.5"/>
+    <line x1="47" y1="41" x2="53" y2="41" stroke="#6B4423" stroke-width="0.3" opacity="0.5"/>
+    <line x1="47" y1="44" x2="53" y2="44" stroke="#6B4423" stroke-width="0.3" opacity="0.5"/>
+    
+    <!-- Clean hammer head - NO white stripes! -->
+    <rect x="36" y="0" width="28" height="18" rx="3" fill="url(#hammerGradient)"/>
+    
+    <!-- Subtle metallic highlight on top edge -->
+    <rect x="38" y="2" width="24" height="2" rx="1" fill="#E2E8F0" opacity="0.4"/>
+    
+    <!-- Subtle shadow on bottom edge -->
+    <rect x="38" y="14" width="24" height="2" rx="1" fill="#475569" opacity="0.3"/>
+  </g>
+  
+  <!-- Minimal impact effects -->
+  <g opacity="0.8">
+    <!-- Impact point glow -->
+    <circle cx="50" cy="70" r="4" fill="url(#impactGlow)"/>
+    
+    <!-- Minimal lightning bolts - only 3 subtle ones -->
+    <path d="M50,70 L48,65 L51,63" stroke="#7DD3FC" stroke-width="0.8" fill="none" opacity="0.7"/>
+    <path d="M50,70 L52,66 L49,64" stroke="#0EA5E9" stroke-width="0.6" fill="none" opacity="0.6"/>
+    <path d="M50,70 L46,67 L48,62" stroke="#7DD3FC" stroke-width="0.5" fill="none" opacity="0.5"/>
+  </g>
+</svg>

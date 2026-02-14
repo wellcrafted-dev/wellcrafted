@@ -1,0 +1,271 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Plasma-forged steel gradient with orange highlights -->
+    <linearGradient id="plasma8" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#FF3E00;stop-opacity:0.1" />
+      <stop offset="25%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#F97316;stop-opacity:0.08" />
+      <stop offset="85%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Titanium handle with orange animation -->
+    <linearGradient id="titaniumHandle8" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E2E8F0;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#F97316;stop-opacity:0.12" />
+      <stop offset="40%" style="stop-color:#FF3E00;stop-opacity:0.08" />
+      <stop offset="60%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#CE422B;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <!-- Plasma energy field with orange tint -->
+    <radialGradient id="plasmaField8" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#F0F9FF;stop-opacity:1" />
+      <stop offset="15%" style="stop-color:#FF3E00;stop-opacity:0.08" />
+      <stop offset="25%" style="stop-color:#7DD3FC;stop-opacity:0.9" />
+      <stop offset="45%" style="stop-color:#0EA5E9;stop-opacity:0.7" />
+      <stop offset="65%" style="stop-color:#0284C7;stop-opacity:0.5" />
+      <stop offset="85%" style="stop-color:#0369A1;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0C4A6E;stop-opacity:0" />
+    </radialGradient>
+    <!-- Synchronized orange animation gradient -->
+    <radialGradient id="orangeSync3" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FF3E00;stop-opacity:0.2" />
+      <stop offset="30%" style="stop-color:#F97316;stop-opacity:0.15" />
+      <stop offset="60%" style="stop-color:#CE422B;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#0EA5E9;stop-opacity:1" />
+    </radialGradient>
+    <!-- Orange-blue synchronized flow -->
+    <linearGradient id="orangeBlueSync3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#FF3E00;stop-opacity:0.25" />
+      <stop offset="40%" style="stop-color:#0284C7;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#F97316;stop-opacity:0.2" />
+      <stop offset="80%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#CE422B;stop-opacity:0.15" />
+    </linearGradient>
+    <!-- Synchronized motion gradient -->
+    <linearGradient id="motionSync3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7DD3FC;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#FF3E00;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#0EA5E9;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#F97316;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#0284C7;stop-opacity:1" />
+    </linearGradient>
+    <!-- Quantum distortion -->
+    <filter id="quantumDistort8">
+      <feTurbulence baseFrequency="0.08" numOctaves="3"/>
+      <feDisplacementMap in="SourceGraphic" scale="4"/>
+    </filter>
+    <!-- Enhanced velocity blur -->
+    <filter id="hyperVelocity8">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4,1.2"/>
+    </filter>
+    <!-- Energy core glow -->
+    <filter id="energyGlow8">
+      <feGaussianBlur stdDeviation="3"/>
+      <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+  
+  <!-- High-tech anvil base -->
+  <path d="M 20,78 L 30,75 L 70,75 L 80,78 L 76,88 L 24,88 Z" fill="#0F172A" stroke="#0369A1" stroke-width="0.5"/>
+  <rect x="32" y="72" width="36" height="6" rx="2" fill="#1E293B" stroke="#0EA5E9" stroke-width="0.3"/>
+  <!-- Tech surface pattern -->
+  <rect x="34" y="72" width="32" height="2" fill="#0284C7" opacity="0.6"/>
+  <rect x="36" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="44" y="74" width="4" height="2" fill="#F97316" opacity="0.3"/>
+  <rect x="52" y="74" width="4" height="2" fill="#7DD3FC" opacity="0.4"/>
+  <rect x="60" y="74" width="4" height="2" fill="#CE422B" opacity="0.25"/>
+  
+  <!-- Synchronized plasma field animation -->
+  <ellipse cx="50" cy="75" rx="40" ry="24" fill="url(#plasmaField8)" opacity="0.95">
+    <animateTransform attributeName="transform" type="scale" values="1;1.1;1" dur="3.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.95;0.7;0.95" dur="2.8s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Quantum distortion trails with synchronized animation (15% orange) -->
+  <g opacity="0.6" filter="url(#quantumDistort8)">
+    <path d="M 15,15 Q 30,5 50,75" stroke="url(#orangeBlueSync3)" stroke-width="3" fill="none" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 85,15 Q 70,5 50,75" stroke="url(#motionSync3)" stroke-width="3" fill="none" opacity="0.8">
+      <animate attributeName="opacity" values="0.2;0.8;0.2" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,0 Q 40,30 50,75" stroke="url(#orangeBlueSync3)" stroke-width="2.5" fill="none" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.1;0.7" dur="2.4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,0 Q 60,30 50,75" stroke="#0284C7" stroke-width="2.5" fill="none" opacity="0.6">
+      <animate attributeName="opacity" values="0.1;0.7;0.1" dur="2.4s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- Synchronized hyper-velocity motion blur -->
+  <g opacity="0.5" filter="url(#hyperVelocity8)">
+    <rect x="46" y="2" width="8" height="56" fill="url(#motionSync3)" transform="rotate(-38 50 30)">
+      <animateTransform attributeName="transform" type="rotate" values="-38 50 30;-44 50 30;-38 50 30" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.5;1" dur="1.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="44" y="-2" width="8" height="56" fill="#0284C7" transform="rotate(-34 48 26)">
+      <animateTransform attributeName="transform" type="rotate" values="-34 48 26;-28 48 26;-34 48 26" dur="1.7s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.7s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="42" y="-6" width="8" height="56" fill="url(#orangeBlueSync3)" transform="rotate(-30 46 22)">
+      <animateTransform attributeName="transform" type="rotate" values="-30 46 22;-24 46 22;-30 46 22" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- Main plasma hammer with synchronized animation flow -->
+  <g transform="rotate(-38 50 36)">
+    <animateTransform attributeName="transform" type="rotate" values="-38 50 36;-32 50 36;-38 50 36" dur="3s" repeatCount="indefinite"/>
+    <!-- Titanium handle with synchronized grip -->
+    <rect x="47" y="2" width="6" height="52" rx="3" fill="url(#titaniumHandle8)"/>
+    <!-- Synchronized tech grip pattern -->
+    <rect x="47.2" y="12" width="5.6" height="1" fill="url(#orangeBlueSync3)" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="16" width="5.6" height="1" fill="url(#motionSync3)" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="20" width="5.6" height="1" fill="url(#orangeBlueSync3)" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="24" width="5.6" height="1" fill="#0EA5E9" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="28" width="5.6" height="1" fill="url(#motionSync3)" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="32" width="5.6" height="1" fill="url(#orangeBlueSync3)" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="47.2" y="36" width="5.6" height="1" fill="url(#motionSync3)" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <!-- Plasma-forged hammer head -->
+    <rect x="36" y="-4" width="28" height="18" rx="4" fill="url(#plasma8)"/>
+    <!-- Energy core with synchronized animation -->
+    <rect x="38" y="1" width="24" height="3" fill="url(#orangeSync3)" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.4;0.8" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="38" y="8" width="24" height="3" fill="#0C4A6E" opacity="0.8"/>
+    <!-- Tech details with synchronized animation -->
+    <circle cx="42" cy="5" r="1" fill="#FF3E00" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="58" cy="5" r="1" fill="#F97316" opacity="0.7">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Synchronized plasma explosion core -->
+  <circle cx="50" cy="73" r="5" fill="#F0F9FF" filter="url(#energyGlow8)">
+    <animate attributeName="r" values="5;2;5" dur="1s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.5;1" dur="1s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Synchronized particle burst (15% orange integration) -->
+  <g opacity="0.9">
+    <circle cx="43" cy="70" r="3" fill="url(#motionSync3)">
+      <animate attributeName="r" values="3;1;3" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="57" cy="70" r="3" fill="#F97316" opacity="0.8">
+      <animate attributeName="r" values="1;3;1" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="36" cy="72" r="2.5" fill="url(#orangeBlueSync3)" opacity="0.9">
+      <animate attributeName="r" values="2.5;0.8;2.5" dur="1.9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="64" cy="72" r="2.5" fill="#CE422B" opacity="0.7">
+      <animate attributeName="r" values="0.8;2.5;0.8" dur="1.9s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="46" cy="66" r="2" fill="#FF3E00" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="2.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="54" cy="66" r="2" fill="#F0F9FF" opacity="0.8">
+      <animate attributeName="opacity" values="0.1;0.8;0.1" dur="2.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="39" cy="76" r="1.5" fill="url(#orangeBlueSync3)" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="61" cy="76" r="1.5" fill="#F97316" opacity="0.6">
+      <animate attributeName="opacity" values="0.2;0.7;0.2" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Synchronized quantum energy discharge -->
+  <g filter="url(#quantumDistort8)" opacity="0.7">
+    <path d="M 50,73 L 30,68 L 35,70 L 25,65 L 30,67" stroke="url(#motionSync3)" stroke-width="2" fill="none">
+      <animate attributeName="opacity" values="1;0.1;1" dur="1.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,73 L 70,68 L 65,70 L 75,65 L 70,67" stroke="url(#orangeBlueSync3)" stroke-width="2" fill="none">
+      <animate attributeName="opacity" values="0.1;1;0.1" dur="1.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,73 L 42,58 L 45,62 L 38,55 L 42,59" stroke="#F97316" stroke-width="1.5" fill="none" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 50,73 L 58,58 L 55,62 L 62,55 L 58,59" stroke="#7DD3FC" stroke-width="1.5" fill="none">
+      <animate attributeName="opacity" values="0.2;0.7;0.2" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- Synchronized plasma wave rings -->
+  <g opacity="0.4">
+    <circle cx="50" cy="75" r="18" fill="none" stroke="url(#orangeBlueSync3)" stroke-width="1.5">
+      <animate attributeName="r" values="18;27;18" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.02;0.4" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="26" fill="none" stroke="url(#motionSync3)" stroke-width="1.2">
+      <animate attributeName="r" values="26;35;26" dur="1.9s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.02;0.4" dur="1.9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="75" r="34" fill="none" stroke="#0369A1" stroke-width="0.8">
+      <animate attributeName="r" values="34;43;34" dur="2.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.02;0.4" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Synchronized energy matrix particles -->
+  <g opacity="0.6">
+    <rect x="28" y="76" width="2" height="2" fill="url(#orangeBlueSync3)" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" values="0 29 77;360 29 77" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="70" y="76" width="2" height="2" fill="#F97316" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="180 71 77;540 71 77" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="44" y="58" width="1.5" height="1.5" fill="url(#motionSync3)" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="0 44.75 58.75;360 44.75 58.75" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="54" y="58" width="1.5" height="1.5" fill="#CE422B" opacity="0.6">
+      <animateTransform attributeName="transform" type="rotate" values="180 54.75 58.75;540 54.75 58.75" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.2;0.7;0.2" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- Synchronized orange animation accents (15% integration) -->
+  <ellipse cx="50" cy="75" rx="45" ry="28" fill="url(#orangeSync3)" opacity="0.35">
+    <animate attributeName="opacity" values="0.35;0.15;0.35" dur="4s" repeatCount="indefinite"/>
+    <animateTransform attributeName="transform" type="scale" values="1;1.08;1" dur="4s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Additional synchronized flow patterns -->
+  <g opacity="0.3">
+    <ellipse cx="50" cy="75" rx="38" ry="23" fill="none" stroke="url(#orangeBlueSync3)" stroke-width="1" opacity="0.6">
+      <animate attributeName="rx" values="38;44;38" dur="3.6s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="23;29;23" dur="3.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3.6s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="50" cy="75" rx="32" ry="19" fill="none" stroke="url(#motionSync3)" stroke-width="0.8" opacity="0.5">
+      <animate attributeName="rx" values="32;38;32" dur="3.2s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="19;25;19" dur="3.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.1;0.5" dur="3.2s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+</svg>
