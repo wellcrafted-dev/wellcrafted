@@ -30,7 +30,8 @@ import { createTaggedError } from 'wellcrafted/error';
 import { tryAsync, Result } from 'wellcrafted/result';
 
 const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError')
-  .withContext<{ userAgent?: string; permissions?: string; errorCode?: string }>();
+  .withContext<{ userAgent?: string; permissions?: string; errorCode?: string }>()
+  .withMessage(() => 'Recorder operation failed');
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -137,7 +138,8 @@ Let's see a complete example with a database service:
 ```typescript
 // services/db.ts
 const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError')
-  .withContext<{ operation: string; table?: string; query?: string; timestamp?: string }>();
+  .withContext<{ operation: string; table?: string; query?: string; timestamp?: string }>()
+  .withMessage(({ context }) => `DB ${context.operation} failed`);
 type DbServiceError = ReturnType<typeof DbServiceError>;
 
 export async function getAllRecordings(): Promise<Result<Recording[], DbServiceError>> {

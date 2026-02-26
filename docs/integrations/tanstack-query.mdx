@@ -320,7 +320,8 @@ A critical responsibility of the query layer is transforming service-specific er
 ```typescript
 // Service layer returns domain-specific errors with typed context
 const { RecorderServiceError } = createTaggedError("RecorderServiceError")
-  .withContext<{ action: string; deviceId?: string }>();
+  .withContext<{ action: string; deviceId?: string }>()
+  .withMessage(({ context }) => `Recorder ${context.action} failed`);
 
 // Query layer transforms them for UI consumption
 const startRecording = defineMutation({

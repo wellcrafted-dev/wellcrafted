@@ -58,255 +58,76 @@ function handleAppError(error: AppError) {
 }
 ```
 
-## Design Decision: Why No Generator Function?
+## Creating Errors with createTaggedError
 
-While this library provides the foundational `BaseError` structure and `TaggedError` type as an opinionated choice for the framework, you might wonder why there isn't a built-in generator function to simplify the creation of typed error handling functions.
-
-### The BaseError Foundation
-
-The library establishes `BaseError` as the foundation for all error types:
+The recommended way to create typed errors is with the `createTaggedError` builder. It eliminates boilerplate while giving you full type safety over context shape and cause type.
 
 ```typescript
-export type BaseError = Readonly<{
-  name: string;
-  message: string;
-  context?: Record<string, unknown>;
-  cause?: TaggedError;
-}>;
+import { createTaggedError } from 'wellcrafted/error';
 
-export type TaggedError<T extends string> = BaseError & {
-  readonly name: T;
-};
+const { ClipboardServiceError, ClipboardServiceErr } = createTaggedError('ClipboardServiceError')
+  .withContext<{ text: string }>()
+  .withCause()
+  .withMessage(() => 'Clipboard operation failed');
+
+type ClipboardServiceError = ReturnType<typeof ClipboardServiceError>;
 ```
 
-This structure is an **opinionated design choice** that provides:
-- **Consistent error shape** across all applications
-- **Serializable error objects** that can cross any boundary
-- **Rich context preservation** for debugging and monitoring
-- **Type-safe discrimination** through the `name` tag
+`.withMessage(fn)` is the **required terminal step** — it accepts a function that computes the message from `{ name, context?, cause? }` and returns the factory functions `ClipboardServiceError` and `ClipboardServiceErr`.
 
-### The Generator Function Experiment
+### Usage at Call Sites
 
-A helper function like `createTryFns` could theoretically simplify error creation:
+At call sites, provide `context` and/or `cause`. The message is auto-computed by the template:
 
 ```typescript
-export function createTryFns<TName extends string>(name: TName) {
-	type TError = TaggedError<TName>;
-	return {
-		trySync: <T>({
-			try: operation,
-			catch: catchFn,
-		}: {
-			try: () => T;
-			catch: (error: unknown) => Omit<TError, "name">;
-		}) =>
-			trySync<T, TError>({
-				try: operation,
-				catch: (error) => Err({
-					...catchFn(error),
-					name,
-				}),
-			}),
-		tryAsync: <T>({
-			try: operation,
-			catch: catchFn,
-		}: {
-			try: () => Promise<T>;
-			catch: (error: unknown) => Omit<TError, "name">;
-		}) =>
-			tryAsync<T, TError>({
-				try: operation,
-				catch: (error) => Err({ ...catchFn(error), name }),
-			}),
-	};
-}
-```
-
-**Usage example:**
-
-```typescript
-import {
-  type Result,
-  type TaggedError,
-  createTryFns,
-} from 'wellcrafted/result';
-
-export type ClipboardServiceError = TaggedError<'ClipboardServiceError'>;
-export const clipboardService = createTryFns('ClipboardServiceError');
-
-export function createClipboardServiceExtension(): ClipboardService {
-  return {
-    setClipboardText: (text) =>
-      clipboardService.tryAsync({
-        try: () => navigator.clipboard.writeText(text),
-        catch: (error) => Err({
-          message: 'Unable to write to clipboard',
-          context: { text },
-          cause: error,
-        }),
-      }),
-
-    writeTextToCursor: (text) =>
-      clipboardService.trySync({
-        try: () => writeTextToCursor(text),
-        catch: (error) => Err({
-          message: 'Unable to paste text to cursor',
-          context: { text },
-          cause: error,
-        }),
-      }),
-  };
-}
-```
-
-### Why This Approach Was Rejected
-
-After multiple attempts at implementing and using generator functions, several ergonomic issues emerged:
-
-#### 1. **Complex Type Inference**
-The generator function creates a layer of indirection that makes TypeScript's type inference less predictable. Users often need to provide explicit type annotations that wouldn't be necessary with direct `tryAsync`/`trySync` usage.
-
-#### 2. **Verbose Function Passing**
-You end up passing around generator functions, which creates gnarly syntax:
-```typescript
-// With generator - passing functions around
-const { tryAsync } = createTryFns('MyError');
-await someFunction(tryAsync);
-
-// Without generator - plain objects are simpler
-await tryAsync({ try: operation, catch: mapper });
-```
-
-#### 3. **Hidden Error Structure**
-The generator obscures the actual error object structure, making it less clear what the final error will look like. With direct usage, the error shape is explicit and visible.
-
-#### 4. **Import Complexity**
-Generator functions require additional imports and setup:
-```typescript
-// Generator approach - more imports, more setup
-import { createTryFns, type TaggedError } from 'wellcrafted/result';
-export type MyError = TaggedError<'MyError'>;
-export const myErrorHandlers = createTryFns('MyError');
-
-// Direct approach - simpler imports
-import { tryAsync, type TaggedError } from 'wellcrafted/result';
-export type MyError = TaggedError<'MyError'>;
-```
-
-#### 5. **Reduced Flexibility**
-Generator functions lock you into a specific pattern. Direct usage allows for more flexibility in error mapping and handling edge cases.
-
-#### 6. **Plain Objects Are Better**
-Having plain, visible error objects is more transparent and easier to reason about than function-generated abstractions. You can see exactly what you're creating.
-
-### Error Constructor Functions: Another Rejected Approach
-
-You might consider a simpler alternative to generator functions: error constructor functions that just add the `name` property:
-
-```typescript
-export const ClipboardServiceErr = (
-  error: Omit<ClipboardServiceError, 'name'>,
-) => {
-  return Err({
-    name: 'ClipboardServiceError',
-    ...error,
-  });
-};
-
 export function createClipboardServiceExtension(): ClipboardService {
   return {
     setClipboardText: (text) =>
       tryAsync({
         try: () => navigator.clipboard.writeText(text),
-        catch: (error) => Err(
-          ClipboardServiceErr({
-            message: 'Unable to write to clipboard',
-            context: { text },
-            cause: error,
-          }),
+        catch: (error) => ClipboardServiceErr({
+          context: { text },
+          cause: error,
+        }),
       }),
 
     writeTextToCursor: (text) =>
       trySync({
         try: () => writeTextToCursor(text),
-        catch: (error) => Err(
-          ClipboardServiceErr({
-            message: 'Unable to paste text to cursor',
-            context: { text },
-            cause: error,
-          }),
+        catch: (error) => ClipboardServiceErr({
+          context: { text },
+          cause: error,
+        }),
       }),
   };
 }
 ```
 
-While this approach is simpler than the full generator function pattern, it still suffers from several issues that make it less desirable than direct error object creation:
-
-#### **Hidden Implementation Details**
-When you see `ClipboardServiceErr(...)` in your code, you can't immediately know what this function does without examining its implementation. The function could potentially:
-- Add multiple properties beyond just `name`
-- Transform the input in unexpected ways
-- Have side effects like logging
-- Change behavior over time as the implementation evolves
-
-#### **Unnecessary Abstraction Layer**
-The function serves only to add a single property (`name`) to an object. This minimal functionality doesn't justify the abstraction overhead. You're essentially trading one line of clarity for a function call.
-
-#### **Editor Obfuscation**
-In your text editor, when you click on `ClipboardServiceErr`, you navigate to a function definition rather than seeing the actual error structure inline. This breaks the immediate visual connection between the error usage and its shape.
-
-#### **Extra Indentation**
-Constructor functions require an additional function call, which often leads to more indentation levels:
+You can override the auto-computed message at a specific call site by passing `message`:
 
 ```typescript
-// With constructor function - more indentation
-catch: (error) => Err(
-  ClipboardServiceErr({
-    message: 'Unable to write to clipboard',
-    context: { text },
-    cause: error,
-  }),
-
-// Direct approach - flatter structure  
-catch: (error) => Err( ({
-  name: 'ClipboardServiceError',
-  message: 'Unable to write to clipboard',
+ClipboardServiceErr({
   context: { text },
   cause: error,
-}),
+  message: 'Clipboard is not available in this context',  // Overrides template
+});
 ```
 
-#### **Refactoring Trade-offs**
-Yes, constructor functions make refactoring error names easier (change in one place vs. find-and-replace), but this convenience comes at the cost of:
-- Runtime overhead (function calls)
-- Cognitive overhead (additional abstraction)
-- Debugging complexity (extra stack frame)
-- Code clarity (hidden behavior)
+### Why Hand-Rolled Constructor Functions Are Still Discouraged
 
-The refactoring benefit is a **worthwhile trade-off** for the increased transparency and simplicity of direct object creation.
+Before `createTaggedError`, some codebases used hand-rolled constructor functions like:
 
-### The Philosophy: Explicit Over Convenient
+```typescript
+export const ClipboardServiceErr = (error: Omit<ClipboardServiceError, 'name'>) =>
+  Err({ name: 'ClipboardServiceError', ...error });
+```
 
-Both generator functions and error constructor functions prioritize convenience over explicitness. The direct approach is preferred because:
+These have several problems:
+- **Hidden behavior**: The function could add extra properties, have side effects, or change over time without it being obvious at the call site.
+- **No context type enforcement**: `Omit<..., 'name'>` accepts any `message`/`context`/`cause` without shape checking.
+- **Manual `name` wiring**: You can forget or misspell it.
 
-- **What you see is what you get**: The error object shape is immediately visible
-- **No hidden behavior**: Every property is explicitly declared at the usage site
-- **Simpler mental model**: No functions to understand, just plain object creation
-- **Better inline documentation**: The error structure serves as its own documentation
-- **Minimal abstraction**: Only abstractions that provide significant value are justified
-
-**Explicit error handling over convenient abstractions.** While generator functions and constructor functions might save a few lines of code, they introduce cognitive overhead and reduce transparency. The current approach prioritizes:
-
-- **Clarity**: You can see exactly what error objects are being created
-- **Simplicity**: Fewer abstractions to learn and understand  
-- **Flexibility**: No constraints imposed by function signatures
-- **Debuggability**: Error creation is traceable and obvious
-
-### Using Alternative Patterns (If You Want To)
-
-Both the `createTryFns` generator function and error constructor patterns are viable alternatives included in or possible with the library. However, they're not the recommended approach. If you find these patterns suit your team's preferences, you can use them, but be aware of the trade-offs discussed above.
-
-**Recommendation**: Start with the direct `tryAsync`/`trySync` approach with inline error object creation. Only consider alternative patterns if you have many similar error handlers and the benefits outweigh the ergonomic costs for your specific use case.
+`createTaggedError` is the better version of this pattern — it provides the same ergonomic factory shorthand while enforcing context shape, cause type, and message computation via the builder API.
 
 ## Error Classification Framework
 
@@ -358,15 +179,19 @@ function withdrawFunds(account: Account, amount: number): Result<Account, Busine
 Error types that your code receives from functions it calls:
 
 ```typescript
-import { extractErrorMessage } from "wellcrafted/error";
+import { createTaggedError } from "wellcrafted/error";
+
+const { StorageError, StorageErr } = createTaggedError('StorageError')
+  .withContext<{ userId: string; timestamp: string }>()
+  .withCause()
+  .withMessage(() => 'Failed to save user data');
+type StorageError = ReturnType<typeof StorageError>;
 
 // Catching and re-wrapping external errors into typed error types
 async function saveUserData(user: User): Promise<Result<void, StorageError>> {
   return await tryAsync({
     try: () => database.save(user),
     catch: (error) => StorageErr({
-      name: "StorageError",
-      message: `Failed to save user data: ${extractErrorMessage(error)}`,
       context: { userId: user.id, timestamp: new Date().toISOString() },
       cause: error, // Preserve the original error
     }),
@@ -381,41 +206,46 @@ async function saveUserData(user: User): Promise<Result<void, StorageError>> {
 Error types that your current function can meaningfully address:
 
 ```typescript
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withContext<{ url: string; attempt: number; maxRetries: number }>()
+  .withCause()
+  .withMessage(({ context }) =>
+    `Request failed (attempt ${context.attempt}/${context.maxRetries})`
+  );
+type NetworkError = ReturnType<typeof NetworkError>;
+
 async function fetchWithRetry<T>(
-  url: string, 
+  url: string,
   maxRetries = 3
 ): Promise<Result<T, NetworkError>> {
   let lastError: NetworkError | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const result = await tryAsync({
       try: () => fetch(url).then(r => r.json()),
       catch: (error) => NetworkErr({
-        name: "NetworkError",
-        message: `Request failed (attempt ${attempt}/${maxRetries}): ${extractErrorMessage(error)}`,
         context: { url, attempt, maxRetries },
         cause: error,
       }),
     });
-    
+
     if (isOk(result)) {
       return result;
     }
-    
+
     lastError = result.error;
-    
+
     // Wait before retry (exponential backoff)
     if (attempt < maxRetries) {
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
-  
-  // All retries failed - return Err data structure containing NetworkError type
-  return Err({
-    name: "NetworkError",
+
+  // All retries failed — override message for this specific case
+  return NetworkErr({
+    context: { url, attempt: maxRetries, maxRetries },
     message: `All ${maxRetries} retry attempts failed`,
-    context: { url, maxRetries, finalError: lastError },
-    cause: lastError,
+    cause: lastError ?? undefined,
   });
 }
 ```
@@ -475,13 +305,17 @@ async function handleGetUser(req: Request): Promise<Response> {
 Error types that need to be converted to a more appropriate type for the calling context:
 
 ```typescript
+const { DbError, DbErr } = createTaggedError('DbError')
+  .withContext<{ sql: string }>()
+  .withCause()
+  .withMessage(() => 'Query execution failed');
+type DbError = ReturnType<typeof DbError>;
+
 // Low-level database function
 async function executeQuery(sql: string): Promise<Result<any[], DbError>> {
   return await tryAsync({
     try: () => database.query(sql),
     catch: (error) => DbErr({
-      name: "DbError",
-      message: `Query execution failed: ${extractErrorMessage(error)}`,
       context: { sql: sql.substring(0, 100) }, // Truncate for logging
       cause: error,
     }),
@@ -562,13 +396,17 @@ function validateUser(data: unknown): ValidationResult<User> {
 Add context as errors bubble up through layers:
 
 ```typescript
+const { StorageError, StorageErr } = createTaggedError('StorageError')
+  .withContext<{ path: string; contentLength: number }>()
+  .withCause()
+  .withMessage(() => 'File write failed');
+type StorageError = ReturnType<typeof StorageError>;
+
 // Storage layer
 async function writeFile(path: string, content: string): Promise<Result<void, StorageError>> {
   return await tryAsync({
     try: () => fs.writeFile(path, content),
     catch: (error) => StorageErr({
-      name: "StorageError",
-      message: `File write failed: ${extractErrorMessage(error)}`,
       context: { path, contentLength: content.length },
       cause: error,
     }),
@@ -857,6 +695,12 @@ describe("user service with database failures", () => {
 ### Gradual Migration from Throwing Errors
 
 ```typescript
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
+  .withContext<{ input: string }>()
+  .withCause()
+  .withMessage(() => 'Input is required');
+type ValidationError = ReturnType<typeof ValidationError>;
+
 // Legacy function that throws
 function legacyFunction(input: string): string {
   if (!input) {
@@ -870,8 +714,6 @@ function safeLegacyFunction(input: string): Result<string, ValidationError> {
   return trySync({
     try: () => legacyFunction(input),
     catch: (error) => ValidationErr({
-      name: "ValidationError",
-      message: extractErrorMessage(error),
       context: { input },
       cause: error,
     }),
@@ -881,12 +723,7 @@ function safeLegacyFunction(input: string): Result<string, ValidationError> {
 // New function using Result pattern directly
 function newFunction(input: string): Result<string, ValidationError> {
   if (!input) {
-    return Err({
-      name: "ValidationError",
-      message: "Input is required",
-      context: { input },
-      cause: null,
-    });
+    return ValidationErr({ context: { input } });
   }
   return Ok(input.toUpperCase());
 }

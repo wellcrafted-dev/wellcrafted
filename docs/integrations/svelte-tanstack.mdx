@@ -132,7 +132,8 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
 const { RecordingServiceError, RecordingServiceErr } = createTaggedError('RecordingServiceError')
-  .withContext<{ operation: string; recordingId?: string }>();
+  .withContext<{ operation: string; recordingId?: string }>()
+  .withMessage(({ context }) => `Recording ${context.operation} failed`);
 type RecordingServiceError = ReturnType<typeof RecordingServiceError>;
 
 export type Recording = {
