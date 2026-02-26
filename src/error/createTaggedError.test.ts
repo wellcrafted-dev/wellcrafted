@@ -450,8 +450,8 @@ describe("createTaggedError - message auto-computation", () => {
 // Message Override
 // =============================================================================
 
-describe("createTaggedError - message override", () => {
-	it("explicit message takes precedence over template", () => {
+describe("createTaggedError - message always from template", () => {
+	it("template computes message from context", () => {
 		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
 			.withContext<{ table: string; id: string }>()
 			.withMessage(
@@ -459,36 +459,19 @@ describe("createTaggedError - message override", () => {
 			);
 
 		const error = DbNotFoundError({
-			message: "Custom override message",
 			context: { table: "users", id: "123" },
 		});
 
-		expect(error.message).toBe("Custom override message");
+		expect(error.message).toBe("users '123' not found");
 	});
 
-	it("template is used when no message override is given", () => {
-		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
-			.withContext<{ table: string; id: string }>()
-			.withMessage(
-				({ context }) => `${context.table} '${context.id}' not found`,
-			);
-
-		const error = DbNotFoundError({
-			context: { table: "products", id: "99" },
-		});
-
-		expect(error.message).toBe("products '99' not found");
-	});
-
-	it("message override works on minimal errors too", () => {
+	it("static message errors need no input", () => {
 		const { SimpleError } = createTaggedError("SimpleError")
 			.withMessage(() => "Default message");
 
-		const withDefault = SimpleError({});
-		const withOverride = SimpleError({ message: "Overridden" });
+		const error = SimpleError();
 
-		expect(withDefault.message).toBe("Default message");
-		expect(withOverride.message).toBe("Overridden");
+		expect(error.message).toBe("Default message");
 	});
 });
 

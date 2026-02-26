@@ -110,13 +110,13 @@ type OptionalIfUndefined<T, TKey extends string> = undefined extends T
 
 /**
  * Input type for error factory functions.
- * `message` is optional (computed from template when omitted).
+ * Message is always computed from the template — no override escape hatch.
  * `context` and `cause` follow the same optionality rules as before.
  */
 type ErrorCallInput<
 	TContext extends JsonObject | undefined,
 	TCause extends AnyTaggedError | undefined,
-> = { message?: string } & (TContext extends undefined
+> = (TContext extends undefined
 	? Record<never, never>
 	: OptionalIfUndefined<TContext, "context">) &
 	(TCause extends undefined
@@ -128,21 +128,31 @@ type ErrorCallInput<
 // =============================================================================
 
 /**
+ * Whether the factory input resolves to an empty object (no context, no cause).
+ * When true, the input parameter becomes optional.
+ */
+type IsEmptyInput<
+	TContext extends JsonObject | undefined,
+	TCause extends AnyTaggedError | undefined,
+> = ErrorCallInput<TContext, TCause> extends Record<never, never> ? true : false;
+
+/**
  * The final factories object returned by `.withMessage()`.
  * Has factory functions, NO chain methods.
+ * When ErrorCallInput resolves to Record<never, never>, input is optional.
  */
 type FinalFactories<
 	TName extends `${string}Error`,
 	TContext extends JsonObject | undefined,
 	TCause extends AnyTaggedError | undefined,
 > = {
-	[K in TName]: (
-		input: ErrorCallInput<TContext, TCause>,
-	) => TaggedError<TName, TContext, TCause>;
+	[K in TName]: IsEmptyInput<TContext, TCause> extends true
+		? (input?: ErrorCallInput<TContext, TCause>) => TaggedError<TName, TContext, TCause>
+		: (input: ErrorCallInput<TContext, TCause>) => TaggedError<TName, TContext, TCause>;
 } & {
-	[K in ReplaceErrorWithErr<TName>]: (
-		input: ErrorCallInput<TContext, TCause>,
-	) => Err<TaggedError<TName, TContext, TCause>>;
+	[K in ReplaceErrorWithErr<TName>]: IsEmptyInput<TContext, TCause> extends true
+		? (input?: ErrorCallInput<TContext, TCause>) => Err<TaggedError<TName, TContext, TCause>>
+		: (input: ErrorCallInput<TContext, TCause>) => Err<TaggedError<TName, TContext, TCause>>;
 };
 
 /**
@@ -239,7 +249,7 @@ export function createTaggedError<TName extends `${string}Error`>(
 				fn: MessageFn<TName, TContext, TCause>,
 			): FinalFactories<TName, TContext, TCause> {
 				const errorConstructor = (
-					input: ErrorCallInput<TContext, TCause>,
+					input: ErrorCallInput<TContext, TCause> = {} as ErrorCallInput<TContext, TCause>,
 				) => {
 					const messageInput = {
 						name,
@@ -249,8 +259,7 @@ export function createTaggedError<TName extends `${string}Error`>(
 
 					return {
 						name,
-						message:
-							input.message ?? fn(messageInput),
+						message: fn(messageInput),
 						...("context" in input ? { context: input.context } : {}),
 						...("cause" in input ? { cause: input.cause } : {}),
 					} as unknown as TaggedError<TName, TContext, TCause>;
@@ -261,7 +270,7 @@ export function createTaggedError<TName extends `${string}Error`>(
 					"Err",
 				) as ReplaceErrorWithErr<TName>;
 				const errConstructor = (
-					input: ErrorCallInput<TContext, TCause>,
+					input: ErrorCallInput<TContext, TCause> = {} as ErrorCallInput<TContext, TCause>,
 				) => Err(errorConstructor(input));
 
 				return {
