@@ -11,7 +11,7 @@ describe("createTaggedError - basic usage (withMessage required)", () => {
 		.withMessage(() => "Connection failed");
 
 	it("creates error with correct name and message from template", () => {
-		const error = NetworkError({});
+		const error = NetworkError();
 
 		expect(error.name).toBe("NetworkError");
 		expect(error.message).toBe("Connection failed");
@@ -21,20 +21,20 @@ describe("createTaggedError - basic usage (withMessage required)", () => {
 		const { RecorderBusyError } = createTaggedError("RecorderBusyError")
 			.withMessage(() => "A recording is already in progress");
 
-		const error = RecorderBusyError({});
+		const error = RecorderBusyError();
 		expect(error.name).toBe("RecorderBusyError");
 		expect(error.message).toBe("A recording is already in progress");
 	});
 
 	it("has no context or cause properties on minimal error", () => {
-		const error = NetworkError({});
+		const error = NetworkError();
 
 		expect("context" in error).toBe(false);
 		expect("cause" in error).toBe(false);
 	});
 
 	it("minimal error has correct type (name and message only)", () => {
-		const error = NetworkError({});
+		const error = NetworkError();
 
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "NetworkError"; message: string }>
@@ -43,7 +43,7 @@ describe("createTaggedError - basic usage (withMessage required)", () => {
 
 	// Section: Err-wrapped factory
 	it("NetworkErr wraps error in Err result", () => {
-		const result = NetworkErr({});
+		const result = NetworkErr();
 
 		expect(result.data).toBeNull();
 		expect(result.error).toEqual({
@@ -53,7 +53,7 @@ describe("createTaggedError - basic usage (withMessage required)", () => {
 	});
 
 	it("NetworkErr result has correct data and error shape", () => {
-		const result = NetworkErr({});
+		const result = NetworkErr();
 
 		expect(result.data).toBeNull();
 		expect(result.error?.name).toBe("NetworkError");
@@ -70,7 +70,7 @@ describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
 		const { AuthError, AuthErr } = createTaggedError("AuthError")
 			.withMessage(() => "Authentication failed");
 
-		const result = AuthErr({});
+		const result = AuthErr();
 
 		expect(result.data).toBeNull();
 		expect(result.error?.name).toBe("AuthError");
@@ -199,7 +199,7 @@ describe("createTaggedError - .withCause<T>() - required cause", () => {
 			.withCause<DbError>()
 			.withMessage(({ cause }) => `Service error: ${cause.message}`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		const error = ServiceError({ cause: dbError });
 
 		expect(error.cause).toBe(dbError);
@@ -215,7 +215,7 @@ describe("createTaggedError - .withCause<T>() - required cause", () => {
 			.withCause<DbError>()
 			.withMessage(({ cause }) => `Wrapped: ${cause.message}`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		const error = WrapperError({ cause: dbError });
 
 		expectTypeOf(error.cause).toEqualTypeOf<DbError>();
@@ -241,13 +241,13 @@ describe("createTaggedError - .withCause<T | undefined>() - optional cause", () 
 		expect(err1.cause).toBeUndefined();
 
 		// With cause
-		const dbError = DbError({});
+		const dbError = DbError();
 		const err2 = ServiceError({ cause: dbError });
 		expect(err2.cause).toBe(dbError);
 	});
 
 	it("cause type includes undefined when optional", () => {
-		const dbError = DbError({});
+		const dbError = DbError();
 		const error = ServiceError({ cause: dbError });
 
 		expectTypeOf(error.cause).toEqualTypeOf<DbError | undefined>();
@@ -269,7 +269,7 @@ describe("createTaggedError - chaining order", () => {
 			.withCause<DbError | undefined>()
 			.withMessage(({ context }) => `User ${context.userId} error`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		const error = UserError({
 			context: { userId: "123" },
 			cause: dbError,
@@ -289,7 +289,7 @@ describe("createTaggedError - chaining order", () => {
 			.withContext<{ userId: string }>()
 			.withMessage(({ context }) => `User ${context.userId} error`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		const error = UserError({
 			context: { userId: "456" },
 			cause: dbError,
@@ -314,7 +314,7 @@ describe("createTaggedError - chaining order", () => {
 			.withContext<{ userId: string }>()
 			.withMessage(({ context }) => `User ${context.userId}`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 
 		const err1 = UserError1({ context: { userId: "123" }, cause: dbError });
 		const err2 = UserError2({ context: { userId: "123" }, cause: dbError });
@@ -390,7 +390,7 @@ describe("createTaggedError - message auto-computation", () => {
 			},
 		);
 
-		TestError({});
+		TestError();
 
 		expect(capturedInput).not.toBeNull();
 		expect(capturedInput!.name).toBe("TestError");
@@ -425,7 +425,7 @@ describe("createTaggedError - message auto-computation", () => {
 				return `wrapped: ${cause.message}`;
 			});
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		ServiceError({ cause: dbError });
 
 		expect(capturedCause).toBe(dbError);
@@ -516,7 +516,7 @@ describe("createTaggedError - ReturnType extraction", () => {
 			.withCause<DbError>()
 			.withMessage(({ cause }) => `Service error: ${cause.message}`);
 
-		const dbError = DbError({});
+		const dbError = DbError();
 		const serviceError = ServiceError({ cause: dbError });
 
 		expectTypeOf(serviceError.cause).toEqualTypeOf<DbError>();
@@ -616,7 +616,7 @@ describe("createTaggedError - type safety", () => {
 		const { NetworkError } = createTaggedError("NetworkError")
 			.withMessage(() => "Network error");
 
-		const error = NetworkError({});
+		const error = NetworkError();
 
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "NetworkError"; message: string }>
@@ -644,7 +644,7 @@ describe("createTaggedError - type safety", () => {
 			.withCause<CauseType | undefined>()
 			.withMessage(({ context }) => `Wrapper: ${context.wrap}`);
 
-		const cause = CauseError({});
+		const cause = CauseError();
 		const wrapper = WrapperError({ context: { wrap: true }, cause });
 
 		expectTypeOf(wrapper.cause).toEqualTypeOf<CauseType | undefined>();
@@ -757,7 +757,7 @@ describe("createTaggedError - edge cases", () => {
 		const { TestError } = createTaggedError("TestError").withMessage(
 			() => "Original",
 		);
-		const error = TestError({});
+		const error = TestError();
 
 		// Verify the object shape exists
 		expect(error.name).toBe("TestError");
@@ -808,10 +808,10 @@ describe("createTaggedError - permissive mode", () => {
 		expect(err1.cause).toBeUndefined();
 
 		// Cause accepts any tagged error
-		const err2 = FlexError({ cause: SomeError({}) });
+		const err2 = FlexError({ cause: SomeError() });
 		expect(err2.cause?.name).toBe("SomeError");
 
-		const err3 = FlexError({ cause: OtherError({}) });
+		const err3 = FlexError({ cause: OtherError() });
 		expect(err3.cause?.name).toBe("OtherError");
 	});
 
@@ -841,10 +841,10 @@ describe("createTaggedError - permissive mode", () => {
 
 		const err1 = FlexError({});
 		const err2 = FlexError({ context: { any: "data" } });
-		const err3 = FlexError({ cause: CauseError({}) });
+		const err3 = FlexError({ cause: CauseError() });
 		const err4 = FlexError({
 			context: { any: "data" },
-			cause: CauseError({}),
+			cause: CauseError(),
 		});
 
 		expect(err1.context).toBeUndefined();

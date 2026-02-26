@@ -46,7 +46,6 @@ export function createUserService(db: Database) {
       const result = await tryAsync({
         try: () => db.users.findById(id),
         catch: () => UserServiceErr({
-          message: "Failed to fetch user",
           context: { userId: id, operation: "getUser" }
         })
       });
@@ -62,7 +61,6 @@ export function createUserService(db: Database) {
       // Validation
       if (!input.email.includes('@')) {
         return UserServiceErr({
-          message: "Invalid email format",
           context: { operation: "createUser" }
         });
       }
@@ -71,7 +69,6 @@ export function createUserService(db: Database) {
       return tryAsync({
         try: () => db.users.create(input),
         catch: () => UserServiceErr({
-          message: "Failed to create user",
           context: { operation: "createUser" }
         })
       });
@@ -120,7 +117,6 @@ export function createOrderService(
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
         catch: () => PaymentServiceErr({
-          message: "Payment processing failed",
           context: { amount: input.payment.amount }
         })
       });
@@ -134,7 +130,6 @@ export function createOrderService(
           paymentId: paymentResult.data.id
         }),
         catch: () => OrderServiceErr({
-          message: "Failed to create order",
           context: { input }
         })
       });
@@ -188,7 +183,6 @@ export function createNotificationServiceDesktop(): NotificationService {
           new window.Notification("App Name", { body: message });
         },
         catch: () => NotificationServiceErr({
-          message: "Failed to show notification",
           context: { action: "notify", platform: "desktop" }
         })
       });
@@ -208,7 +202,6 @@ export function createNotificationServiceWeb(): NotificationService {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         return NotificationServiceErr({
-          message: "Notification permission denied",
           context: { action: "notify", platform: "web" }
         });
       }
@@ -218,7 +211,6 @@ export function createNotificationServiceWeb(): NotificationService {
           new Notification("App Name", { body: message });
         },
         catch: () => NotificationServiceErr({
-          message: "Failed to show notification",
           context: { action: "notify", platform: "web" }
         })
       });
@@ -316,7 +308,6 @@ export function createFileService() {
           // Permission denied? That's a real error
           if (error.code === 'EACCES') {
             return FileServiceErr({
-              message: "Permission denied",
               context: { path },
               cause: error
             });
@@ -324,7 +315,6 @@ export function createFileService() {
           
           // Unknown error - propagate
           return FileServiceErr({
-            message: "Failed to create directory",
             context: { path },
             cause: error
           });
@@ -497,7 +487,7 @@ describe('UserService', () => {
     });
     
     expect(result.error).toBeDefined();
-    expect(result.error?.message).toBe('Invalid email format');
+    expect(result.error?.message).toBe('User createUser failed');
   });
 });
 ```
@@ -533,7 +523,6 @@ const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError
 
 // Now context is required with the exact shape
 return UserServiceErr({
-  message: "Failed to update user",
   context: {
     userId,
     operation: "updateUser",
@@ -562,7 +551,6 @@ const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError
 const dbResult = await tryAsync({
   try: () => db.query(sql),
   catch: () => DatabaseErr({
-    message: "Database query failed",
     context: { sql }
   })
 });
@@ -570,7 +558,6 @@ const dbResult = await tryAsync({
 if (dbResult.error) {
   // Transform to service-level error, wrapping the database error
   return UserServiceErr({
-    message: "Failed to fetch user preferences",
     context: { userId },
     cause: dbResult.error
   });
@@ -595,7 +582,6 @@ export function createUserService(db: Database) {
       return tryAsync({
         try: () => db.users.findById(id),
         catch: () => UserServiceErr({
-          message: "Failed to fetch user",
           context: { userId: id, operation: "getUser" }
         })
       });

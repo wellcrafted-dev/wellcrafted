@@ -103,16 +103,6 @@ export function createClipboardServiceExtension(): ClipboardService {
 }
 ```
 
-You can override the auto-computed message at a specific call site by passing `message`:
-
-```typescript
-ClipboardServiceErr({
-  context: { text },
-  cause: error,
-  message: 'Clipboard is not available in this context',  // Overrides template
-});
-```
-
 ### Why Hand-Rolled Constructor Functions Are Still Discouraged
 
 Before `createTaggedError`, some codebases used hand-rolled constructor functions like:
@@ -140,34 +130,44 @@ Error types that your code detects and creates:
 
 
 ```typescript
+import { createTaggedError } from "wellcrafted/error";
+
 // Input validation error type
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
+  .withContext<{ providedAge: unknown; validRange: [number, number] }>()
+  .withMessage(({ context }) =>
+    `Age must be a number between ${context.validRange[0]} and ${context.validRange[1]}`
+  );
+type ValidationError = ReturnType<typeof ValidationError>;
+
 function validateAge(age: unknown): Result<number, ValidationError> {
   if (typeof age !== "number" || age < 0 || age > 150) {
-    return Err({
-      name: "ValidationError", // Tag that identifies this error type
-      message: "Age must be a number between 0 and 150",
+    return ValidationErr({
       context: { providedAge: age, validRange: [0, 150] },
-      cause: null,
     });
   }
   return Ok(age);
 }
 
 // Business logic error type
+const { BusinessError, BusinessErr } = createTaggedError('BusinessError')
+  .withContext<{ accountId: string; requestedAmount: number; availableBalance: number }>()
+  .withMessage(({ context }) =>
+    `Insufficient funds: requested ${context.requestedAmount}, available ${context.availableBalance}`
+  );
+type BusinessError = ReturnType<typeof BusinessError>;
+
 function withdrawFunds(account: Account, amount: number): Result<Account, BusinessError> {
   if (account.balance < amount) {
-    return Err({
-      name: "BusinessError", // Tag that identifies this error type
-      message: "Insufficient funds for withdrawal",
-      context: { 
-        accountId: account.id, 
-        requestedAmount: amount, 
-        availableBalance: account.balance 
+    return BusinessErr({
+      context: {
+        accountId: account.id,
+        requestedAmount: amount,
+        availableBalance: account.balance
       },
-      cause: null,
     });
   }
-  
+
   return Ok({
     ...account,
     balance: account.balance - amount,
@@ -241,10 +241,9 @@ async function fetchWithRetry<T>(
     }
   }
 
-  // All retries failed — override message for this specific case
+  // All retries exhausted — message template handles it
   return NetworkErr({
     context: { url, attempt: maxRetries, maxRetries },
-    message: `All ${maxRetries} retry attempts failed`,
     cause: lastError ?? undefined,
   });
 }
@@ -255,18 +254,18 @@ async function fetchWithRetry<T>(
 Error types that should be handled by a higher-level function:
 
 ```typescript
+const { UserValidationError, UserValidationErr } = createTaggedError('UserValidationError')
+  .withContext<{ providedId: number }>()
+  .withMessage(({ context }) => `User ID must be positive, got ${context.providedId}`);
+type UserValidationError = ReturnType<typeof UserValidationError>;
+
 // Just propagate database error types up - the HTTP handler will deal with them
-async function getUser(id: number): Promise<Result<User, DbError | ValidationError>> {
+async function getUser(id: number): Promise<Result<User, DbError | UserValidationError>> {
   // Validate input
   if (id <= 0) {
-    return Err({
-      name: "ValidationError",
-      message: "User ID must be positive",
-      context: { providedId: id },
-      cause: null,
-    });
+    return UserValidationErr({ context: { providedId: id } });
   }
-  
+
   // Let database error types bubble up unchanged
   const result = await database.findUser(id);
   return result; // Result<User, DbError>
@@ -279,8 +278,8 @@ async function handleGetUser(req: Request): Promise<Response> {
   
   if (isErr(result)) {
     switch (result.error.name) {
-      case "ValidationError":
-        return new Response(JSON.stringify(result.error), { 
+      case "UserValidationError":
+        return new Response(JSON.stringify(result.error), {
           status: 400,
           headers: { "Content-Type": "application/json" }
         });
@@ -322,28 +321,27 @@ async function executeQuery(sql: string): Promise<Result<any[], DbError>> {
   });
 }
 
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
+  .withContext<{ userData: { name: string; email: string } }>()
+  .withCause<DbError>()
+  .withMessage(() => 'Failed to create user');
+type UserServiceError = ReturnType<typeof UserServiceError>;
+
 // Higher-level user service transforms DB error types to domain error types
 async function createUser(userData: UserData): Promise<Result<User, UserServiceError>> {
   const result = await executeQuery(
     "INSERT INTO users (name, email) VALUES (?, ?)",
     [userData.name, userData.email]
   );
-  
+
   if (isErr(result)) {
     // Transform database error type to domain-specific error type
-    return Err({
-      name: "UserServiceError",
-      message: result.error.message.includes("UNIQUE constraint")
-        ? "A user with this email already exists"
-        : "Failed to create user",
-      context: { 
-        userData: { name: userData.name, email: userData.email },
-        originalError: result.error 
-      },
+    return UserServiceErr({
+      context: { userData: { name: userData.name, email: userData.email } },
       cause: result.error,
     });
   }
-  
+
   return Ok(result.data[0]);
 }
 ```
@@ -413,29 +411,37 @@ async function writeFile(path: string, content: string): Promise<Result<void, St
   });
 }
 
+const { DocumentServiceError, DocumentServiceErr } = createTaggedError('DocumentServiceError')
+  .withContext<{
+    documentId: string;
+    documentTitle: string;
+    userId: string;
+    attemptTimestamp: string;
+    documentSize: number;
+  }>()
+  .withCause<StorageError>()
+  .withMessage(({ context }) => `Failed to save document ${context.documentId}`);
+type DocumentServiceError = ReturnType<typeof DocumentServiceError>;
+
 // Service layer - adds business context
 async function saveDocument(doc: Document): Promise<Result<void, DocumentServiceError>> {
   const filePath = `/documents/${doc.id}.json`;
   const content = JSON.stringify(doc);
-  
+
   const result = await writeFile(filePath, content);
   if (isErr(result)) {
-    return Err({
-      name: "DocumentServiceError",
-      message: `Failed to save document: ${result.error.message}`,
+    return DocumentServiceErr({
       context: {
         documentId: doc.id,
         documentTitle: doc.title,
         userId: doc.authorId,
-        storageError: result.error,
-        // Enrich with business context
         attemptTimestamp: new Date().toISOString(),
         documentSize: content.length,
       },
       cause: result.error,
     });
   }
-  
+
   return Ok(undefined);
 }
 
@@ -477,19 +483,31 @@ When dealing with multiple independent operations:
 ```typescript
 import { partitionResults } from "wellcrafted/result";
 
+const { ProcessingError, ProcessingErr } = createTaggedError('ProcessingError')
+  .withContext<{
+    totalFiles: number;
+    successCount: number;
+    failureCount: number;
+    failures: unknown[];
+    successfulPaths: string[];
+  }>()
+  .withCause()
+  .withMessage(({ context }) =>
+    `Failed to process ${context.failureCount} out of ${context.totalFiles} files`
+  );
+type ProcessingError = ReturnType<typeof ProcessingError>;
+
 async function processMultipleFiles(paths: string[]): Promise<Result<ProcessedFile[], ProcessingError>> {
   // Process all files in parallel
   const results = await Promise.all(
     paths.map(path => processFile(path))
   );
-  
+
   // Partition successes and failures
   const { oks, errs } = partitionResults(results);
-  
+
   if (errs.length > 0) {
-    return Err({
-      name: "ProcessingError",
-      message: `Failed to process ${errs.length} out of ${paths.length} files`,
+    return ProcessingErr({
       context: {
         totalFiles: paths.length,
         successCount: oks.length,
@@ -500,7 +518,7 @@ async function processMultipleFiles(paths: string[]): Promise<Result<ProcessedFi
       cause: errs[0]?.error, // Use first error as primary cause
     });
   }
-  
+
   return Ok(oks.map(ok => ok.data));
 }
 ```
@@ -526,16 +544,13 @@ class CircuitBreaker<T, E extends BaseError> {
   async execute(): Promise<Result<T, CircuitBreakerError | E>> {
     if (this.state === "open") {
       if (Date.now() - this.lastFailureTime < this.resetTimeout) {
-        return Err({
-          name: "CircuitBreakerError",
-          message: "Circuit breaker is open",
+        return CircuitBreakerErr({
           context: {
             state: this.state,
             failureCount: this.failureCount,
             lastFailureTime: this.lastFailureTime,
             resetTimeout: this.resetTimeout,
           },
-          cause: null,
         });
       }
       this.state = "half-open";
@@ -567,7 +582,17 @@ class CircuitBreaker<T, E extends BaseError> {
   }
 }
 
-type CircuitBreakerError = TaggedError<"CircuitBreakerError">;
+const { CircuitBreakerError, CircuitBreakerErr } = createTaggedError('CircuitBreakerError')
+  .withContext<{
+    state: CircuitState;
+    failureCount: number;
+    lastFailureTime: number;
+    resetTimeout: number;
+  }>()
+  .withMessage(({ context }) =>
+    `Circuit breaker is ${context.state} after ${context.failureCount} failures`
+  );
+type CircuitBreakerError = ReturnType<typeof CircuitBreakerError>;
 ```
 
 ## Error Monitoring and Observability
@@ -663,14 +688,12 @@ class MockDatabase {
   
   async findUser(id: number): Promise<Result<User, DbError>> {
     if (this.shouldFail) {
-      return Err({
-        name: "DbError",
-        message: "Database connection failed",
-        context: { userId: id, timestamp: Date.now() },
+      return DbErr({
+        context: { sql: `SELECT * FROM users WHERE id = ${id}` },
         cause: new Error("Connection timeout"),
       });
     }
-    
+
     return Ok({ id, name: "Test User", email: "test@example.com" });
   }
 }

@@ -151,12 +151,25 @@ if (userResult.error) {
 Here's a complete example showing how Results improve a common task:
 
 ```typescript
-import { Result, Ok, Err } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { Result, Ok, tryAsync } from "wellcrafted/result";
+import { createTaggedError } from "wellcrafted/error";
 
-// Define our error types
-type ValidationError = TaggedError<"ValidationError">;
-type SubmissionError = TaggedError<"SubmissionError">;
+// Define our error types with factories
+const { ValidationError, ValidationErr } = createTaggedError("ValidationError")
+  .withContext<{ field?: string; value?: string; receivedType?: string }>()
+  .withMessage(({ context }) => {
+    if (context.receivedType) return "Invalid form data";
+    if (context.field === 'email') return "Please enter a valid email address";
+    if (context.field === 'password') return "Password must be at least 8 characters";
+    if (context.field === 'confirmPassword') return "Passwords do not match";
+    return "Validation failed";
+  });
+type ValidationError = ReturnType<typeof ValidationError>;
+
+const { SubmissionError, SubmissionErr } = createTaggedError("SubmissionError")
+  .withContext<{ email: string }>()
+  .withMessage(() => "Failed to create account");
+type SubmissionError = ReturnType<typeof SubmissionError>;
 
 // Form data interface
 interface SignupForm {
@@ -169,46 +182,26 @@ interface SignupForm {
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
   // Type check
   if (!data || typeof data !== 'object') {
-    return Err({
-      name: "ValidationError",
-      message: "Invalid form data",
-      context: { receivedType: typeof data },
-      cause: undefined
-    });
+    return ValidationErr({ context: { receivedType: typeof data } });
   }
-  
+
   const { email, password, confirmPassword } = data as any;
-  
+
   // Email validation
   if (!email || !email.includes('@')) {
-    return Err({
-      name: "ValidationError",
-      message: "Please enter a valid email address",
-      context: { field: 'email', value: email },
-      cause: undefined
-    });
+    return ValidationErr({ context: { field: 'email', value: email } });
   }
-  
+
   // Password validation
   if (!password || password.length < 8) {
-    return Err({
-      name: "ValidationError",
-      message: "Password must be at least 8 characters",
-      context: { field: 'password' },
-      cause: undefined
-    });
+    return ValidationErr({ context: { field: 'password' } });
   }
-  
+
   // Password match validation
   if (password !== confirmPassword) {
-    return Err({
-      name: "ValidationError",
-      message: "Passwords do not match",
-      context: { field: 'confirmPassword' },
-      cause: undefined
-    });
+    return ValidationErr({ context: { field: 'confirmPassword' } });
   }
-  
+
   return Ok({ email, password, confirmPassword });
 }
 
@@ -223,17 +216,15 @@ async function submitSignup(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-      
+
       if (!response.ok) {
         const error = await response.text();
         throw new Error(error);
       }
-      
+
       return response.json();
     },
-    catch: (error) => Err({
-      name: "SubmissionError",
-      message: "Failed to create account",
+    catch: (error) => SubmissionErr({
       context: { email: form.email },
       cause: error
     })
@@ -372,7 +363,7 @@ In just 5 minutes, you've learned how to:
 ```typescript
 // Import what you need
 import { Result, Ok, Err, tryAsync, trySync, isOk, isErr } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { createTaggedError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 // Create Results
@@ -387,14 +378,12 @@ if (error) { /* handle */ } else { /* use data */ }
 trySync({ try: () => risky(), catch: (e) => ... })
 tryAsync({ try: async () => risky(), catch: (e) => ... })
 
-// Create tagged errors
-type MyError = TaggedError<"MyError">;
-const error: MyError = {
-  name: "MyError",
-  message: "Something went wrong",
-  context: { /* debug info */ },
-  cause: originalError
-};
+// Create tagged errors with factories
+const { MyError, MyErr } = createTaggedError("MyError")
+  .withContext<{ /* debug info */ }>()
+  .withMessage(() => "Something went wrong");
+type MyError = ReturnType<typeof MyError>;
+const error = MyError({ context: { /* debug info */ }, cause: originalError });
 
 // Create brand types
 type MyId = string & Brand<"MyId">;

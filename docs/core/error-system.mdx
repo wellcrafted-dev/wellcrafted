@@ -77,12 +77,11 @@ function handleError(error: ValidationError | NetworkError | FileError) {
 Pure text description that explains what went wrong. Keep it clear and actionable:
 
 ```typescript
-return Err({
-  name: "ValidationError",
-  message: "Email address must contain an @ symbol",  // Clear, specific
-  context: { email: userInput },
-  cause: undefined
-});
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
+  .withContext<{ email: string }>()
+  .withMessage(({ context }) => `Email address "${context.email}" must contain an @ symbol`);
+
+return ValidationErr({ context: { email: userInput } });
 ```
 
 ### 3. `context` - Function Inputs & Debugging Data
@@ -90,17 +89,18 @@ return Err({
 The primary purpose of `context` is to capture the function's input parameters, relevant variables in the closure, and additional context:
 
 ```typescript
+const { ProcessError, ProcessErr } = createTaggedError('ProcessError')
+  .withContext<{ userId: number; options: UserOptions; timestamp: string; retryCount: number }>()
+  .withMessage(() => 'User processing failed');
+
 function processUser(id: number, options: UserOptions): Result<User, ProcessError> {
-  return Err({
-    name: "ProcessError",
-    message: "User processing failed",
+  return ProcessErr({
     context: {
       userId: id,           // Function input
-      options,              // Function input  
+      options,              // Function input
       timestamp: new Date().toISOString(),  // Additional context
       retryCount: 3         // Useful debugging info
-    },
-    cause: undefined
+    }
   });
 }
 ```
@@ -110,36 +110,51 @@ function processUser(id: number, options: UserOptions): Result<User, ProcessErro
 The `cause` property accepts another `TaggedError`, enabling error chaining. This creates a **JSON-serializable call stack** that traces how an error propagated through your application layers:
 
 ```typescript
+// Define errors for each layer
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withContext<{ host: string; port: number; timeout: number }>()
+  .withMessage(({ context }) => `Socket timeout after ${context.timeout}ms`);
+type NetworkError = ReturnType<typeof NetworkError>;
+
+const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError')
+  .withContext<{ operation: string; retries: number }>()
+  .withCause<NetworkError>()
+  .withMessage(() => 'Failed to connect to database');
+type DatabaseError = ReturnType<typeof DatabaseError>;
+
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
+  .withContext<{ userId: string; method: string }>()
+  .withCause<DatabaseError>()
+  .withMessage(() => 'Could not fetch user profile');
+type UserServiceError = ReturnType<typeof UserServiceError>;
+
+const { APIError, APIErr } = createTaggedError('APIError')
+  .withContext<{ endpoint: string; statusCode: number }>()
+  .withCause<UserServiceError>()
+  .withMessage(() => 'Internal server error');
+
 // Low-level network error
-const networkError = {
-  name: "NetworkError",
-  message: "Socket timeout after 5000ms",
+const networkError = NetworkError({
   context: { host: "db.example.com", port: 5432, timeout: 5000 }
-} satisfies TaggedError;
+});
 
 // Wrapped by database layer
-const dbError = {
-  name: "DatabaseError",
-  message: "Failed to connect to database",
+const dbError = DatabaseError({
   context: { operation: "connect", retries: 3 },
-  cause: networkError  // Chain the network error
-} satisfies TaggedError;
+  cause: networkError
+});
 
 // Wrapped by service layer
-const serviceError = {
-  name: "UserServiceError",
-  message: "Could not fetch user profile",
+const serviceError = UserServiceError({
   context: { userId: "123", method: "getUserById" },
-  cause: dbError  // Chain the database error
-} satisfies TaggedError;
+  cause: dbError
+});
 
 // Wrapped by API handler
-const apiError = {
-  name: "APIError",
-  message: "Internal server error",
+const apiError = APIError({
   context: { endpoint: "/api/users/123", statusCode: 500 },
-  cause: serviceError  // Chain the service error
-} satisfies TaggedError;
+  cause: serviceError
+});
 
 // The entire error chain is JSON-serializable!
 console.log(JSON.stringify(apiError, null, 2));
@@ -196,12 +211,13 @@ This chaining pattern provides:
 For simple errors without an underlying cause, omit the `cause` property entirely:
 
 ```typescript
-return Err({
-  name: "ValidationError",
-  message: "Invalid email format",
-  context: { email: userInput }
-  // No cause - this is where the error originated
-});
+const { ValidationErr } = createTaggedError('ValidationError')
+  .withContext<{ email: string }>()
+  .withMessage(() => 'Invalid email format');
+
+return ValidationErr({ context: { email: userInput } });
+// No cause - this is where the error originated
+```
 
 ## Creating Domain-Specific Errors
 
@@ -219,15 +235,11 @@ export type FileSystemError =
   | PermissionDeniedError 
   | DiskFullError;
 
-// Factory functions to create errors
-function createFileNotFoundError(path: string, cause?: unknown): FileNotFoundError {
-  return {
-    name: "FileNotFoundError",
-    message: `The file at path "${path}" was not found.`,
-    context: { path },
-    cause
-  };
-}
+// Use createTaggedError to define factories
+const { FileNotFoundErr } = createTaggedError('FileNotFoundError')
+  .withContext<{ path: string }>()
+  .withCause<AnyTaggedError | undefined>()
+  .withMessage(({ context }) => `The file at path "${context.path}" was not found`);
 ```
 
 ## The createTaggedError API
@@ -245,8 +257,8 @@ const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
 type NetworkError = ReturnType<typeof NetworkError>;
 
 // Two factory functions are created:
-// - NetworkError({ context?, cause?, message? }): Creates plain error object
-// - NetworkErr({ context?, cause?, message? }): Creates Err-wrapped error (for Result returns)
+// - NetworkError({ context?, cause? }): Creates plain error object
+// - NetworkErr({ context?, cause? }): Creates Err-wrapped error (for Result returns)
 ```
 
 ### `.withMessage(fn)` — Required and Terminal
@@ -261,16 +273,6 @@ const { FileError, FileErr } = createTaggedError('FileError')
 // Message is auto-computed from the template at call time
 FileErr({ context: { path: '/etc/passwd', operation: 'write' } });
 // → { name: 'FileError', message: 'write failed for /etc/passwd', context: { ... } }
-```
-
-You can override the auto-computed message at any call site:
-
-```typescript
-// Override message for a specific call site
-FileErr({
-  context: { path: '/etc/passwd', operation: 'write' },
-  message: 'Permission denied'  // Overrides the template
-});
 ```
 
 <Note>
@@ -292,7 +294,7 @@ const { FileError, FileErr } = createTaggedError('FileError')
 
 // context is REQUIRED — TypeScript enforces it
 FileErr({ context: { path: '/etc/passwd', operation: 'write' } });
-// FileErr({});  // Type error! context is required
+// FileErr();  // Type error! context is required
 ```
 
 #### Optional Typed Context
@@ -305,7 +307,7 @@ const { LogError, LogErr } = createTaggedError('LogError')
   .withMessage(() => 'Log parse failed');
 
 // context is optional
-LogErr({});
+LogErr();
 
 // When provided, it's fully typed
 LogErr({ context: { file: 'app.ts', line: 42 } });
@@ -328,7 +330,7 @@ const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withMessage(() => 'API call failed');
 
 // cause is optional but type-constrained when provided
-ApiErr({});  // OK
+ApiErr();  // OK
 ApiErr({ cause: networkError });  // OK, type-checked!
 // ApiErr({ cause: validationError });  // Type error! wrong cause type
 ```
@@ -344,7 +346,7 @@ const { UnhandledError, UnhandledErr } = createTaggedError('UnhandledError')
 
 // cause is REQUIRED
 UnhandledErr({ cause: originalError });
-// UnhandledErr({});  // Type error! cause is required
+// UnhandledErr();  // Type error! cause is required
 ```
 
 ### Combining Context and Cause
@@ -438,7 +440,7 @@ type FileError = ReturnType<typeof FileError>;
 
 ### Using in tryAsync/trySync
 
-The factory pattern works seamlessly with error mapping. Pass `context` and `cause` at the call site — `message` is auto-computed:
+The factory pattern works seamlessly with error mapping. Pass `context` and `cause` at the call site — the message is auto-computed by `.withMessage()`:
 
 ```typescript
 const { ApiError, ApiErr } = createTaggedError('ApiError')
@@ -460,21 +462,18 @@ const result = await tryAsync({
 Unlike JavaScript's Error class, TaggedErrors are plain objects that serialize perfectly:
 
 ```typescript
-const error: ValidationError = {
-  name: "ValidationError",
-  message: "Age must be between 0 and 150",
-  context: { 
-    field: "age",
-    value: -5,
-    constraints: { min: 0, max: 150 }
-  },
-  cause: undefined
-};
+const { ValidationError } = createTaggedError('ValidationError')
+  .withContext<{ field: string; value: number; constraints: { min: number; max: number } }>()
+  .withMessage(({ context }) => `${context.field} must be between ${context.constraints.min} and ${context.constraints.max}`);
+
+const error = ValidationError({
+  context: { field: "age", value: -5, constraints: { min: 0, max: 150 } }
+});
 
 // Perfect serialization
 const serialized = JSON.stringify(error);
 console.log(serialized);
-// {"name":"ValidationError","message":"Age must be between 0 and 150",...}
+// {"name":"ValidationError","message":"age must be between 0 and 150",...}
 
 // Perfect deserialization
 const deserialized = JSON.parse(serialized);
@@ -494,24 +493,21 @@ This enables:
 Always start with the function's input parameters:
 
 ```typescript
-function createDbError(
-  message: string,
-  query: string,
-  params: unknown[],
-  cause: unknown
-): DbError {
-  return {
-    name: "DbError",
-    message,
-    context: {
-      query,        // Function input
-      params,       // Function input
-      timestamp: new Date().toISOString(),  // Additional context
-      connectionPool: 'primary'             // Debugging info
-    },
-    cause,
-  };
-}
+const { DbError, DbErr } = createTaggedError('DbError')
+  .withContext<{ query: string; params: unknown[]; timestamp: string; connectionPool: string }>()
+  .withCause<AnyTaggedError | undefined>()
+  .withMessage(({ context }) => `Database query failed: ${context.query}`);
+
+// At the call site — context captures function inputs and debugging info
+DbErr({
+  context: {
+    query: 'SELECT * FROM users WHERE id = ?',  // Function input
+    params: [userId],                             // Function input
+    timestamp: new Date().toISOString(),          // Additional context
+    connectionPool: 'primary'                     // Debugging info
+  },
+  cause: originalError
+});
 ```
 
 ### 2. Make Errors Specific
@@ -545,23 +541,23 @@ function authenticateUser(
 Transform errors where you can add context:
 
 ```typescript
+const { UserServiceErr } = createTaggedError('UserServiceError')
+  .withContext<{ userId: string; operation: string }>()
+  .withCause<DbError>()
+  .withMessage(({ context }) => `Failed to ${context.operation}`);
+
 async function getUserProfile(userId: string): Result<Profile, UserServiceError> {
   // Low-level database call
   const dbResult = await queryDatabase(`SELECT * FROM users WHERE id = ?`, [userId]);
-  
+
   if (dbResult.error) {
     // Transform database error to domain error
-    return Err({
-      name: "UserServiceError",
-      message: "Failed to fetch user profile",
-      context: { 
-        userId,
-        operation: 'getUserProfile'
-      },
+    return UserServiceErr({
+      context: { userId, operation: 'getUserProfile' },
       cause: dbResult.error  // Preserve original error
     });
   }
-  
+
   return Ok(transformToProfile(dbResult.data));
 }
 ```
@@ -575,17 +571,19 @@ Structure your errors to answer these questions:
 - **What was the root cause?** (cause chain)
 
 ```typescript
+const { PaymentErr } = createTaggedError('PaymentError')
+  .withContext<{ orderId: string; amount: number; cardLast4: string }>()
+  .withCause<CardValidationError>()
+  .withMessage(() => 'Payment processing failed');
+
 function processPayment(order: Order, card: Card): Result<Receipt, PaymentError> {
   const validation = validateCard(card);
   if (validation.error) {
-    return Err({
-      name: "PaymentError",
-      message: "Payment processing failed",
+    return PaymentErr({
       context: {
         orderId: order.id,
         amount: order.total,
         cardLast4: card.number.slice(-4),  // Safe partial info
-        validationError: validation.error.message
       },
       cause: validation.error
     });
@@ -625,31 +623,26 @@ async function createOrder(input: OrderInput): Promise<Result<Order, OrderError>
 When you need to collect multiple errors:
 
 ```typescript
+const { ValidationError } = createTaggedError('ValidationError')
+  .withContext<{ field: string; value?: string }>()
+  .withMessage(({ context }) => `Validation failed for field "${context.field}"`);
+type ValidationError = ReturnType<typeof ValidationError>;
+
 function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]> {
   const errors: ValidationError[] = [];
-  
+
   if (!input.email?.includes('@')) {
-    errors.push({
-      name: "ValidationError",
-      message: "Invalid email format",
-      context: { field: 'email', value: input.email },
-      cause: undefined
-    });
+    errors.push(ValidationError({ context: { field: 'email', value: input.email } }));
   }
-  
+
   if (!input.password || input.password.length < 8) {
-    errors.push({
-      name: "ValidationError",
-      message: "Password must be at least 8 characters",
-      context: { field: 'password' },
-      cause: undefined
-    });
+    errors.push(ValidationError({ context: { field: 'password' } }));
   }
-  
+
   if (errors.length > 0) {
     return Err(errors);
   }
-  
+
   return Ok(input as ValidatedForm);
 }
 ```
@@ -659,6 +652,12 @@ function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]
 Implement retry logic with typed errors:
 
 ```typescript
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withContext<{ url: string; attempt: number; maxRetries: number }>()
+  .withCause()
+  .withMessage(({ context }) => `Request failed (attempt ${context.attempt}/${context.maxRetries})`);
+type NetworkError = ReturnType<typeof NetworkError>;
+
 async function fetchWithRetry<T>(
   url: string,
   maxRetries = 3
@@ -668,9 +667,7 @@ async function fetchWithRetry<T>(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const result = await tryAsync<T, NetworkError>({
       try: () => fetch(url).then(r => r.json()),
-      catch: (error) => Err({
-        name: "NetworkError",
-        message: `Request failed (attempt ${attempt}/${maxRetries})`,
+      catch: (error) => NetworkErr({
         context: { url, attempt, maxRetries },
         cause: error
       })
@@ -698,33 +695,34 @@ TaggedErrors are designed to work seamlessly with the Result type:
 
 ```typescript
 import { Result, Ok, Err, tryAsync } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { createTaggedError } from "wellcrafted/error";
 
-type UserNotFoundError = TaggedError<"UserNotFoundError">;
-type DatabaseError = TaggedError<"DatabaseError">;
+const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError')
+  .withContext<{ userId: string; operation: string }>()
+  .withCause()
+  .withMessage(({ context }) => `Database ${context.operation} failed`);
+type DatabaseError = ReturnType<typeof DatabaseError>;
+
+const { UserNotFoundError, UserNotFoundErr } = createTaggedError('UserNotFoundError')
+  .withContext<{ userId: string }>()
+  .withMessage(({ context }) => `User with ID ${context.userId} not found`);
+type UserNotFoundError = ReturnType<typeof UserNotFoundError>;
 
 async function getUser(id: string): Promise<Result<User, UserNotFoundError | DatabaseError>> {
   const result = await tryAsync<User, DatabaseError>({
     try: () => database.users.findById(id),
-    catch: (error) => Err({
-      name: "DatabaseError",
-      message: "Database query failed",
+    catch: (error) => DatabaseErr({
       context: { userId: id, operation: 'findById' },
       cause: error
     })
   });
-  
+
   if (result.error) return result;
-  
+
   if (!result.data) {
-    return Err({
-      name: "UserNotFoundError",
-      message: `User with ID ${id} not found`,
-      context: { userId: id },
-      cause: undefined
-    });
+    return UserNotFoundErr({ context: { userId: id } });
   }
-  
+
   return Ok(result.data);
 }
 ```

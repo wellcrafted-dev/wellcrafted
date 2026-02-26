@@ -96,24 +96,16 @@ const { DbError, DbErr } = createTaggedError('DbError')
 
 The callback receives the same fields the error will have. Context and cause are available with their exact types.
 
-### Message Auto-Computation vs Override
+### Message Auto-Computation
 
-At call sites, `message` is auto-computed from the template. You do not need to provide it:
+At call sites, `message` is always computed from the `.withMessage(fn)` template. You cannot override it at the call site.
 
 ```typescript
 DbErr({ context: { host: 'localhost', port: 5432 } });
 // error.message -> "DB connection failed at localhost:5432"
 ```
 
-For one-off cases, you can override the message by passing `message` explicitly:
-
-```typescript
-DbErr({
-  message: 'Custom message for this specific case',
-  context: { host: 'localhost', port: 5432 }
-});
-// error.message -> "Custom message for this specific case"
-```
+If you need different messages for different call sites, create separate error types:
 
 ## JSON Serializability (JsonObject Constraint)
 
@@ -168,7 +160,7 @@ const { FileError, FileErr } = createTaggedError('FileError')
 FileErr({ context: { path: '/etc/passwd', operation: 'write' } });
 // message auto-computed: "File write failed: /etc/passwd"
 
-// FileErr({}) // Type error! context is missing
+// FileErr() // Type error! context is missing
 ```
 
 Every file error without a path is useless for debugging. Required context makes it impossible to forget.
@@ -338,12 +330,9 @@ Each builder call returns two functions:
 - `NetworkError`: Creates a plain tagged error object
 - `NetworkErr`: Wraps it in `Err` for use with Result types
 
-Call sites provide `context` and/or `cause` as needed. `message` is auto-computed but can be overridden:
+Call sites provide `context` and/or `cause` as needed. `message` is always computed by the `.withMessage(fn)` template:
 
 ```typescript
-// Auto-computed message
 FileErr({ context: { path: '/tmp/x', operation: 'read' } });
-
-// Overridden message
-FileErr({ message: 'Custom message', context: { path: '/tmp/x', operation: 'read' } });
+// message -> "File read failed: /tmp/x"
 ```
