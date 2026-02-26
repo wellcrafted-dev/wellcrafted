@@ -41,7 +41,8 @@ type SessionToken = string & Brand<"SessionToken">;
 
 // Service-specific errors with typed context
 const { AuthServiceError, AuthServiceErr } = createTaggedError("AuthServiceError")
-  .withContext<{ operation: string; email?: string }>();
+  .withContext<{ operation: string; email?: string }>()
+  .withMessage(({ context }) => `Auth ${context.operation} failed`);
 type AuthServiceError = ReturnType<typeof AuthServiceError>;
 
 interface AuthenticatedUser {
@@ -179,7 +180,8 @@ type UserId = string & Brand<"UserId">;
 
 // Service errors with typed context
 const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
-  .withContext<{ operation: string; filename?: string; mimeType?: string }>();
+  .withContext<{ operation: string; filename?: string; mimeType?: string }>()
+  .withMessage(({ context }) => `File ${context.operation} failed`);
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 interface UploadedFile {
@@ -433,7 +435,8 @@ import { createTaggedError } from "wellcrafted/error";
 
 // Form validation errors with typed context
 const { ValidationError, ValidationErr } = createTaggedError("ValidationError")
-  .withContext<{ field?: string; value?: unknown }>();
+  .withContext<{ field?: string; value?: unknown }>()
+  .withMessage(() => 'Validation failed');
 type ValidationError = ReturnType<typeof ValidationError>;
 
 // Zod schemas

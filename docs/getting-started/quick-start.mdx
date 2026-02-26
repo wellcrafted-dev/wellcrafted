@@ -17,7 +17,8 @@ import { Result, Ok } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
 // Define your error with the factory function
-const { ParseError, ParseErr } = createTaggedError("ParseError");
+const { ParseError, ParseErr } = createTaggedError("ParseError")
+  .withMessage(() => 'Input is not a valid number');
 type ParseError = ReturnType<typeof ParseError>;
 
 // Instead of throwing...
@@ -35,11 +36,7 @@ function parseNumber(input: string): Result<number, ParseError> {
   
   if (isNaN(num)) {
     // Use the Err variant for direct return
-    return ParseErr({
-      message: "Input is not a valid number",
-      context: { input },
-      cause: undefined
-    });
+    return ParseErr({ context: { input } });
   }
   
   return Ok(num);
@@ -82,14 +79,14 @@ Most code you work with throws exceptions. Here's how to wrap it:
 import { trySync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-const { JsonError, JsonErr } = createTaggedError("JsonError");
+const { JsonError, JsonErr } = createTaggedError("JsonError")
+  .withMessage(() => 'Failed to parse JSON');
 type JsonError = ReturnType<typeof JsonError>;
 
 function parseJson<T>(text: string): Result<T, JsonError> {
   return trySync({
     try: () => JSON.parse(text),
     catch: (error) => JsonErr({
-      message: "Failed to parse JSON",
       context: { text: text.substring(0, 100) }, // Truncate for logging
       cause: error
     })
@@ -113,7 +110,8 @@ import { createTaggedError } from "wellcrafted/error";
 
 // Define error with typed context - endpoint is always useful for API errors
 const { ApiError, ApiErr } = createTaggedError("ApiError")
-  .withContext<{ endpoint: string; statusCode?: number }>();
+  .withContext<{ endpoint: string; statusCode?: number }>()
+  .withMessage(({ context }) => `API request failed: ${context.endpoint}`);
 type ApiError = ReturnType<typeof ApiError>;
 
 interface User {
@@ -133,7 +131,6 @@ async function fetchUser(id: number): Promise<Result<User, ApiError>> {
       return response.json();
     },
     catch: (error) => ApiErr({
-      message: "Failed to fetch user",
       context: { endpoint },  // TypeScript enforces this!
       cause: error
     })

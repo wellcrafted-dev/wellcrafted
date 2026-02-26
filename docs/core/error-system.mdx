@@ -36,7 +36,7 @@ Every `TaggedError` contains four essential properties that work together to cre
 type TaggedError<T extends string> = {
   readonly name: T;                    // 1. The discriminant
   message: string;                     // 2. Human-readable description
-  context?: Record<string, unknown>;   // 3. Function inputs & debugging data
+  context?: JsonObject;                // 3. JSON-serializable debugging data
   cause?: TaggedError;                 // 4. Root cause (another TaggedError)
 };
 ```
@@ -232,153 +232,168 @@ function createFileNotFoundError(path: string, cause?: unknown): FileNotFoundErr
 
 ## The createTaggedError API
 
-wellcrafted provides a fluent `createTaggedError` function that eliminates boilerplate while giving you full control over type constraints. It's designed around a key principle: **flexible by default, constrain when needed**.
+wellcrafted provides a fluent `createTaggedError` builder that eliminates boilerplate and enforces consistent error structure. The builder requires `.withMessage(fn)` as its **final step** — this is what gives you the factory functions.
 
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
-// Define your error
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
+// Define your error — .withMessage() is required and returns the factories
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withMessage(() => 'Network request failed');
+
+// Extract the type using ReturnType
 type NetworkError = ReturnType<typeof NetworkError>;
 
 // Two factory functions are created:
-// - NetworkError(): Creates plain error object
-// - NetworkErr(): Creates Err-wrapped error (for Result returns)
+// - NetworkError({ context?, cause?, message? }): Creates plain error object
+// - NetworkErr({ context?, cause?, message? }): Creates Err-wrapped error (for Result returns)
 ```
 
-### Default Behavior: Flexible Mode
+### `.withMessage(fn)` — Required and Terminal
 
-When you call `createTaggedError` without chaining, you get **flexible mode**:
-
-```typescript
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
-
-// Just a message - context and cause are optional
-NetworkError({ message: 'Connection timeout' });
-
-// Add context as needed - accepts any Record<string, unknown>
-NetworkError({
-  message: 'DNS lookup failed',
-  context: { host: 'api.example.com', timeout: 5000 }
-});
-
-// Chain errors when debugging - accepts any AnyTaggedError
-NetworkError({
-  message: 'Request failed',
-  cause: previousError
-});
-
-// All three together
-NetworkError({
-  message: 'API unreachable',
-  context: { endpoint: '/users', retries: 3 },
-  cause: socketError
-});
-```
-
-**In flexible mode:**
-- `context` is **optional** and accepts any `Record<string, unknown>`
-- `cause` is **optional** and accepts any `AnyTaggedError`
-
-This is ideal for rapid development, wrapping unpredictable third-party errors, or when different call sites need different context shapes.
-
-### Adding Type Constraints with Chaining
-
-Use `.withContext<T>()` and `.withCause<T>()` to add type constraints when you need them.
-
-#### Required Context: `.withContext<T>()`
-
-When you know what debugging information is **always** needed:
+`.withMessage(fn)` is the **terminal step** of the builder. It accepts a function that receives `{ name, context?, cause? }` and returns the error message string. Factories are only available after calling it.
 
 ```typescript
 const { FileError, FileErr } = createTaggedError('FileError')
-  .withContext<{ path: string; operation: 'read' | 'write' | 'delete' }>();
+  .withContext<{ path: string; operation: 'read' | 'write' | 'delete' }>()
+  .withMessage(({ context }) => `${context.operation} failed for ${context.path}`);
 
-// Context is now REQUIRED
-FileError({
-  message: 'Permission denied',
-  context: { path: '/etc/passwd', operation: 'write' }  // Must provide this!
-});
-
-// FileError({ message: 'Oops' });  // Type error! context is required
+// Message is auto-computed from the template at call time
+FileErr({ context: { path: '/etc/passwd', operation: 'write' } });
+// → { name: 'FileError', message: 'write failed for /etc/passwd', context: { ... } }
 ```
 
-Every file error without a path is useless for debugging. Required context makes it impossible to forget this information.
+You can override the auto-computed message at any call site:
 
-#### Optional Typed Context: `.withContext<T | undefined>()`
+```typescript
+// Override message for a specific call site
+FileErr({
+  context: { path: '/etc/passwd', operation: 'write' },
+  message: 'Permission denied'  // Overrides the template
+});
+```
 
-When context is helpful but not always available, include `undefined` in the union:
+<Note>
+Factories are only available on the object returned by `.withMessage()`. The builder returned by `.withContext()` and `.withCause()` does **not** have factory methods — you must call `.withMessage()` first.
+</Note>
+
+### Context Constraints: `.withContext<T>()`
+
+Use `.withContext<T>()` to enforce the shape of debugging data.
+
+#### Required Context
+
+When you know what information is **always** needed:
+
+```typescript
+const { FileError, FileErr } = createTaggedError('FileError')
+  .withContext<{ path: string; operation: 'read' | 'write' | 'delete' }>()
+  .withMessage(({ context }) => `${context.operation} failed for ${context.path}`);
+
+// context is REQUIRED — TypeScript enforces it
+FileErr({ context: { path: '/etc/passwd', operation: 'write' } });
+// FileErr({});  // Type error! context is required
+```
+
+#### Optional Typed Context
+
+Include `undefined` in the type when context isn't always available:
 
 ```typescript
 const { LogError, LogErr } = createTaggedError('LogError')
-  .withContext<{ file: string; line: number } | undefined>();
+  .withContext<{ file: string; line: number } | undefined>()
+  .withMessage(() => 'Log parse failed');
 
-// Context is optional
-LogError({ message: 'Parse failed' });
+// context is optional
+LogErr({});
 
-// But when provided, it's fully typed
-LogError({ message: 'Parse failed', context: { file: 'app.ts', line: 42 } });
-
-// LogError({ message: 'x', context: { wrong: true } });  // Type error! wrong shape
+// When provided, it's fully typed
+LogErr({ context: { file: 'app.ts', line: 42 } });
+// LogErr({ context: { wrong: true } });  // Type error! wrong shape
 ```
 
-This differs from flexible mode: flexible mode accepts **any** shape, while optional typed mode enforces the **exact** shape when context is present.
+### Cause Constraints: `.withCause<T>()`
 
-#### Typed Cause: `.withCause<T>()`
+Encode domain knowledge about what errors can cause this one.
 
-When errors have predictable causes:
+#### Optional Typed Cause
 
 ```typescript
-const { NetworkError } = createTaggedError('NetworkError');
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withMessage(() => 'Network request failed');
 type NetworkError = ReturnType<typeof NetworkError>;
 
 const { ApiError, ApiErr } = createTaggedError('ApiError')
-  .withCause<NetworkError | undefined>();
+  .withCause<NetworkError | undefined>()
+  .withMessage(() => 'API call failed');
 
-// Cause is optional, but if provided, MUST be NetworkError
-ApiError({ message: 'Request failed' });  // OK
-ApiError({ message: 'Request failed', cause: networkError });  // OK, type-checked!
-// ApiError({ message: 'x', cause: validationError });  // Type error! wrong cause type
+// cause is optional but type-constrained when provided
+ApiErr({});  // OK
+ApiErr({ cause: networkError });  // OK, type-checked!
+// ApiErr({ cause: validationError });  // Type error! wrong cause type
 ```
 
-This encodes domain knowledge: "API errors fail because of network issues, not validation issues."
+#### Required Cause
 
-#### Required Cause: `.withCause<T>()` (without undefined)
-
-For wrapper errors that must always have a cause:
+For wrapper errors that must always wrap another:
 
 ```typescript
-const { UnhandledError } = createTaggedError('UnhandledError')
-  .withCause<AnyTaggedError>();
+const { UnhandledError, UnhandledErr } = createTaggedError('UnhandledError')
+  .withCause<AnyTaggedError>()
+  .withMessage(({ cause }) => `Unhandled error: ${cause.message}`);
 
-// Cause is REQUIRED
-UnhandledError({ message: 'Unexpected error', cause: originalError });  // Must provide cause!
-// UnhandledError({ message: 'Oops' });  // Type error! cause is required
+// cause is REQUIRED
+UnhandledErr({ cause: originalError });
+// UnhandledErr({});  // Type error! cause is required
 ```
 
 ### Combining Context and Cause
 
-Chain both methods in any order:
+Chain `.withContext()` and `.withCause()` in any order before `.withMessage()`:
 
 ```typescript
-const { DbError } = createTaggedError('DbError');
+const { DbError, DbErr } = createTaggedError('DbError')
+  .withMessage(() => 'Database query failed');
 type DbError = ReturnType<typeof DbError>;
 
 const { RepoError, RepoErr } = createTaggedError('RepoError')
   .withContext<{ entity: string; operation: string }>()
-  .withCause<DbError | undefined>();
+  .withCause<DbError | undefined>()
+  .withMessage(({ context }) => `${context.operation} failed for ${context.entity}`);
 
-// Context is required, cause is optional
-RepoError({
-  message: 'Failed to fetch user',
-  context: { entity: 'User', operation: 'findById' }
-});
-
-RepoError({
-  message: 'Failed to fetch user',
+// Both provided
+RepoErr({
   context: { entity: 'User', operation: 'findById' },
   cause: dbError
 });
+
+// Cause is optional (because of | undefined)
+RepoErr({ context: { entity: 'User', operation: 'findById' } });
+```
+
+### Context Must Be JSON-Serializable
+
+`context` must conform to `JsonObject` — all values must be JSON-serializable primitives, arrays, or nested objects. This ensures errors survive any serialization boundary.
+
+```typescript
+// ✅ Valid JsonObject context
+FileErr({ context: { path: '/etc/passwd', size: 1024, tags: ['system'] } });
+
+// ❌ Not allowed — Date, functions, class instances are not JSON-serializable
+FileErr({ context: { createdAt: new Date(), handler: () => {} } });  // Type error!
+```
+
+### Extracting the Error Type
+
+Use `ReturnType<typeof FactoryFn>` to get the TypeScript type for a factory:
+
+```typescript
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withContext<{ url: string; status: number }>()
+  .withMessage(({ context }) => `Request to ${context.url} failed with ${context.status}`);
+
+type NetworkError = ReturnType<typeof NetworkError>;
+// NetworkError = TaggedError<'NetworkError', { url: string; status: number }, undefined>
 ```
 
 ### Quick Reference
@@ -386,43 +401,54 @@ RepoError({
 ```typescript
 import { createTaggedError } from 'wellcrafted/error';
 
-// 1. Flexible mode (default) - context and cause optional, loosely typed
-const { NetworkError } = createTaggedError('NetworkError');
+// Minimal — just a message template
+const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
+  .withMessage(() => 'Network request failed');
 
-// 2. Required context - context required with exact shape
-const { FileError } = createTaggedError('FileError')
-  .withContext<{ path: string }>();
+// Required context
+const { FileError, FileErr } = createTaggedError('FileError')
+  .withContext<{ path: string }>()
+  .withMessage(({ context }) => `File operation failed: ${context.path}`);
 
-// 3. Optional typed context - context optional but typed when provided
-const { LogError } = createTaggedError('LogError')
-  .withContext<{ file: string; line: number } | undefined>();
+// Optional typed context
+const { LogError, LogErr } = createTaggedError('LogError')
+  .withContext<{ file: string; line: number } | undefined>()
+  .withMessage(() => 'Log parse failed');
 
-// 4. Optional typed cause - cause optional but constrained when provided
-const { ServiceError } = createTaggedError('ServiceError')
-  .withCause<DbError | CacheError | undefined>();
+// Optional typed cause
+const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
+  .withCause<DbError | CacheError | undefined>()
+  .withMessage(() => 'Service operation failed');
 
-// 5. Required cause - for wrapper errors
-const { UnhandledError } = createTaggedError('UnhandledError')
-  .withCause<AnyTaggedError>();
+// Required cause
+const { UnhandledError, UnhandledErr } = createTaggedError('UnhandledError')
+  .withCause<AnyTaggedError>()
+  .withMessage(({ cause }) => `Unhandled: ${cause.message}`);
 
-// 6. Both context and cause
-const { ApiError } = createTaggedError('ApiError')
+// Context + cause
+const { ApiError, ApiErr } = createTaggedError('ApiError')
   .withContext<{ endpoint: string }>()
-  .withCause<NetworkError | undefined>();
+  .withCause<NetworkError | undefined>()
+  .withMessage(({ context }) => `API call failed: ${context.endpoint}`);
+
+// Extract types
+type NetworkError = ReturnType<typeof NetworkError>;
+type FileError = ReturnType<typeof FileError>;
 ```
 
 ### Using in tryAsync/trySync
 
-The factory pattern works seamlessly with error mapping:
+The factory pattern works seamlessly with error mapping. Pass `context` and `cause` at the call site — `message` is auto-computed:
 
 ```typescript
 const { ApiError, ApiErr } = createTaggedError('ApiError')
-  .withContext<{ endpoint: string }>();
+  .withContext<{ endpoint: string }>()
+  .withCause()
+  .withMessage(({ context }) => `Failed to fetch data from ${context.endpoint}`);
 
 const result = await tryAsync({
   try: () => fetch('/api/data').then(r => r.json()),
   catch: (error) => ApiErr({
-    message: 'Failed to fetch data',
     context: { endpoint: '/api/data' },
     cause: error
   })

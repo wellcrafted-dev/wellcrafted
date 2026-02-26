@@ -101,7 +101,8 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
 const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withContext<{ operation: string; userId?: string }>();
+  .withContext<{ operation: string; userId?: string }>()
+  .withMessage(({ context }) => `User ${context.operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {

@@ -26,7 +26,8 @@ import { createTaggedError } from "wellcrafted/error";
 
 // 1. Define service-specific errors with typed context
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{ userId?: string; operation: string }>();
+  .withContext<{ userId?: string; operation: string }>()
+  .withMessage(({ context }) => `User ${context.operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // 2. Create service with factory function
@@ -95,9 +96,11 @@ Services often need multiple dependencies:
 
 ```typescript
 const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError")
-  .withContext<{ amount?: number; paymentId?: string }>();
+  .withContext<{ amount?: number; paymentId?: string }>()
+  .withMessage(() => 'Payment processing failed');
 const { OrderServiceError, OrderServiceErr } = createTaggedError("OrderServiceError")
-  .withContext<{ input?: OrderInput }>();
+  .withContext<{ input?: OrderInput }>()
+  .withMessage(() => 'Order operation failed');
 
 type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
 type OrderServiceError = ReturnType<typeof OrderServiceError>;
@@ -170,7 +173,8 @@ export type NotificationService = {
 
 const { NotificationServiceError, NotificationServiceErr } =
   createTaggedError("NotificationServiceError")
-    .withContext<{ action: string; platform?: string }>();
+    .withContext<{ action: string; platform?: string }>()
+    .withMessage(({ context }) => `Notification ${context.action} failed`);
 
 type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
 
@@ -294,7 +298,8 @@ Decide whether to recover or propagate based on the error:
 ```typescript
 const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
   .withContext<{ path: string }>()
-  .withCause<Error | undefined>();
+  .withCause<Error | undefined>()
+  .withMessage(({ context }) => `File operation failed: ${context.path}`);
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 export function createFileService() {
@@ -505,10 +510,12 @@ Keep error types focused:
 
 ```typescript
 // ✅ Good - specific error type
-const { UserServiceError } = createTaggedError("UserServiceError");
+const { UserServiceError } = createTaggedError("UserServiceError")
+  .withMessage(() => 'User service operation failed');
 
 // ❌ Bad - too generic
-const { ServiceError } = createTaggedError("ServiceError");
+const { ServiceError } = createTaggedError("ServiceError")
+  .withMessage(() => 'Service operation failed');
 ```
 
 ### 2. Include Context in Errors
@@ -521,7 +528,8 @@ const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError
     userId: string;
     operation: string;
     timestamp?: string;
-  }>();
+  }>()
+  .withMessage(({ context }) => `User ${context.operation} failed`);
 
 // Now context is required with the exact shape
 return UserServiceErr({
@@ -541,12 +549,14 @@ Transform low-level errors into domain-specific ones. Use `.withCause()` to crea
 ```typescript
 // Define errors with typed causes for layered architectures
 const { DatabaseError, DatabaseErr } = createTaggedError("DatabaseError")
-  .withContext<{ sql: string }>();
+  .withContext<{ sql: string }>()
+  .withMessage(() => 'Database query failed');
 type DatabaseError = ReturnType<typeof DatabaseError>;
 
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
   .withContext<{ userId: string }>()
-  .withCause<DatabaseError | undefined>();
+  .withCause<DatabaseError | undefined>()
+  .withMessage(() => 'User service operation failed');
 
 // Low-level database error
 const dbResult = await tryAsync({
@@ -574,7 +584,8 @@ Services should only contain business logic:
 ```typescript
 // Define the error type with required context
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{ userId: string; operation: string }>();
+  .withContext<{ userId: string; operation: string }>()
+  .withMessage(({ context }) => `User ${context.operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // ✅ Good - pure business logic
