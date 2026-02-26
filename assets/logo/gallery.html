@@ -239,19 +239,21 @@
 
         let currentBg = "light";
 
+        // biome-ignore lint/correctness/noUnusedVariables: used in onclick attributes
         function setBg(bg, btn) {
             currentBg = bg;
-            document.querySelectorAll(".header .btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".header .btn").forEach(b => { b.classList.remove("active"); });
             btn.classList.add("active");
             document.querySelectorAll(".card-display").forEach(d => {
-                d.className = "card-display bg-" + bg;
+                d.className = `card-display bg-${bg}`;
             });
         }
 
+        // biome-ignore lint/correctness/noUnusedVariables: used in onclick attributes
         function setSize(cardId, size, btn) {
-            const img = document.querySelector("#" + cardId + " img");
-            if (img) { img.style.width = size + "px"; img.style.height = size + "px"; }
-            document.querySelectorAll("#" + cardId + " .size-btn").forEach(b => b.classList.remove("active"));
+            const img = document.querySelector(`#${cardId} img`);
+            if (img) { img.style.width = `${size}px`; img.style.height = `${size}px`; }
+            document.querySelectorAll(`#${cardId} .size-btn`).forEach(b => { b.classList.remove("active"); });
             btn.classList.add("active");
         }
 
@@ -262,27 +264,27 @@
             categories.forEach(cat => {
                 const section = document.createElement("div");
                 section.className = "category";
-                section.innerHTML = '<h2>' + cat.name + '<span class="category-count">(' + cat.logos.length + ')</span></h2>';
+                section.innerHTML = `<h2>${cat.name}<span class="category-count">(${cat.logos.length})</span></h2>`;
 
                 const grid = document.createElement("div");
                 grid.className = "grid";
 
                 cat.logos.forEach(logo => {
-                    const id = "card-" + cardIndex++;
+                    const id = `card-${cardIndex++}`;
                     const card = document.createElement("div");
                     card.className = "card";
                     card.innerHTML =
-                        '<div class="card-display bg-' + currentBg + '" id="' + id + '">' +
-                            '<img src="' + logo.file + '" alt="' + logo.name + '">' +
+                        `<div class="card-display bg-${currentBg}" id="${id}">` +
+                            `<img src="${logo.file}" alt="${logo.name}">` +
                             '<div class="size-controls">' +
-                                '<button class="size-btn" onclick="setSize(\'' + id + '\', 100, this)">S</button>' +
-                                '<button class="size-btn active" onclick="setSize(\'' + id + '\', 200, this)">M</button>' +
-                                '<button class="size-btn" onclick="setSize(\'' + id + '\', 300, this)">L</button>' +
+                                `<button class="size-btn" onclick="setSize('${id}', 100, this)">S</button>` +
+                                `<button class="size-btn active" onclick="setSize('${id}', 200, this)">M</button>` +
+                                `<button class="size-btn" onclick="setSize('${id}', 300, this)">L</button>` +
                             '</div>' +
                         '</div>' +
                         '<div class="card-info">' +
-                            '<h3>' + logo.name + '</h3>' +
-                            '<div class="filename">' + logo.file + '</div>' +
+                            `<h3>${logo.name}</h3>` +
+                            `<div class="filename">${logo.file}</div>` +
                         '</div>';
                     grid.appendChild(card);
                 });
