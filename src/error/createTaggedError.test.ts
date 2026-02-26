@@ -397,7 +397,7 @@ describe("createTaggedError - message auto-computation", () => {
 	});
 
 	it("template fn is called with context when provided", () => {
-		let capturedContext: { table: string; id: string } | null = null;
+		let capturedContext!: { table: string; id: string };
 
 		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
 			.withContext<{ table: string; id: string }>()
@@ -416,7 +416,7 @@ describe("createTaggedError - message auto-computation", () => {
 			.withMessage(() => "DB failure");
 		type DbError = ReturnType<typeof DbError>;
 
-		let capturedCause: DbError | null = null;
+		let capturedCause!: DbError;
 
 		const { ServiceError } = createTaggedError("ServiceError")
 			.withCause<DbError>()
@@ -837,9 +837,9 @@ describe("createTaggedError - permissive mode", () => {
 		// This is a compile-time check — JsonObject enforces JSON-serializable values
 		type IsJsonObject<T> = T extends JsonObject ? true : false;
 
-		// JsonObject itself is assignable to JsonObject
-		type Test1 = IsJsonObject<JsonObject>;
-		expectTypeOf<Test1>().toEqualTypeOf<boolean>();
+		// A concrete JSON-safe type is assignable to JsonObject
+		type Test1 = IsJsonObject<{ key: string; num: number; flag: boolean }>;
+		expectTypeOf<Test1>().toEqualTypeOf<true>();
 
 		// A concrete JSON-safe type is assignable
 		const validContext: JsonObject = { key: "value", num: 42, flag: true };
