@@ -1,40 +1,99 @@
 import { describe, it, expect, expectTypeOf } from "bun:test";
 import { createTaggedError } from "./utils.js";
-import type { TaggedError, AnyTaggedError } from "./types.js";
+import type { TaggedError, JsonObject } from "./types.js";
 
 // =============================================================================
-// Basic Usage (Minimal Errors - No Context, No Cause)
+// Basic Usage (withMessage required)
 // =============================================================================
 
-describe("createTaggedError - basic usage (minimal errors)", () => {
-	const { NetworkError, NetworkErr } = createTaggedError("NetworkError");
+describe("createTaggedError - basic usage (withMessage required)", () => {
+	const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
+		.withMessage(() => "Connection failed");
 
-	it("creates minimal error factories without chaining", () => {
-		const error = NetworkError({ message: "Connection failed" });
+	it("creates error with correct name and message from template", () => {
+		const error = NetworkError({});
 
 		expect(error.name).toBe("NetworkError");
 		expect(error.message).toBe("Connection failed");
-		// No context or cause properties exist on minimal errors
+	});
+
+	it("creates error with static message", () => {
+		const { RecorderBusyError } = createTaggedError("RecorderBusyError")
+			.withMessage(() => "A recording is already in progress");
+
+		const error = RecorderBusyError({});
+		expect(error.name).toBe("RecorderBusyError");
+		expect(error.message).toBe("A recording is already in progress");
+	});
+
+	it("has no context or cause properties on minimal error", () => {
+		const error = NetworkError({});
+
 		expect("context" in error).toBe(false);
 		expect("cause" in error).toBe(false);
 	});
 
-	it("creates Err-wrapped factory", () => {
-		const result = NetworkErr({ message: "Connection failed" });
-
-		expect(result.error).toEqual({
-			name: "NetworkError",
-			message: "Connection failed",
-		});
-		expect(result.data).toBeNull();
-	});
-
-	it("minimal error type only has name and message", () => {
-		const error = NetworkError({ message: "Error" });
+	it("minimal error has correct type (name and message only)", () => {
+		const error = NetworkError({});
 
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "NetworkError"; message: string }>
 		>();
+	});
+
+	// Section: Err-wrapped factory
+	it("NetworkErr wraps error in Err result", () => {
+		const result = NetworkErr({});
+
+		expect(result.data).toBeNull();
+		expect(result.error).toEqual({
+			name: "NetworkError",
+			message: "Connection failed",
+		});
+	});
+
+	it("NetworkErr result has correct data and error shape", () => {
+		const result = NetworkErr({});
+
+		expect(result.data).toBeNull();
+		expect(result.error?.name).toBe("NetworkError");
+		expect(result.error?.message).toBe("Connection failed");
+	});
+});
+
+// =============================================================================
+// Err-Wrapped Factory
+// =============================================================================
+
+describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
+	it("FooErr wraps error in Err result with correct data/error shape", () => {
+		const { AuthError, AuthErr } = createTaggedError("AuthError")
+			.withMessage(() => "Authentication failed");
+
+		const result = AuthErr({});
+
+		expect(result.data).toBeNull();
+		expect(result.error?.name).toBe("AuthError");
+		expect(result.error?.message).toBe("Authentication failed");
+	});
+
+	it("FooErr with context wraps correctly", () => {
+		const { ApiError, ApiErr } = createTaggedError("ApiError")
+			.withContext<{ endpoint: string; status: number }>()
+			.withMessage(
+				({ context }) =>
+					`Request to ${context.endpoint} failed with ${context.status}`,
+			);
+
+		const result = ApiErr({
+			context: { endpoint: "/users", status: 500 },
+		});
+
+		expect(result.data).toBeNull();
+		expect(result.error?.name).toBe("ApiError");
+		expect(result.error?.message).toBe(
+			"Request to /users failed with 500",
+		);
 	});
 });
 
@@ -44,69 +103,82 @@ describe("createTaggedError - basic usage (minimal errors)", () => {
 
 describe("createTaggedError - .withContext<T>() - required context", () => {
 	it("makes context required when T doesn't include undefined", () => {
-		const { ApiError } = createTaggedError("ApiError").withContext<{
-			endpoint: string;
-			status: number;
-		}>();
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(
+				({ context }) => `${context.table} '${context.id}' not found`,
+			);
+
+		const error = DbNotFoundError({
+			context: { table: "users", id: "123" },
+		});
+
+		expect(error.context).toEqual({ table: "users", id: "123" });
+	});
+
+	it("message is computed from context via template", () => {
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(
+				({ context }) => `${context.table} '${context.id}' not found`,
+			);
+
+		const error = DbNotFoundError({
+			context: { table: "users", id: "123" },
+		});
+
+		expect(error.message).toBe("users '123' not found");
+	});
+
+	it("context is typed correctly in output", () => {
+		const { ApiError } = createTaggedError("ApiError")
+			.withContext<{ endpoint: string; status: number }>()
+			.withMessage(({ context }) => `${context.endpoint} failed`);
 
 		const error = ApiError({
-			message: "Request failed",
 			context: { endpoint: "/users", status: 500 },
 		});
 
-		expect(error.context).toEqual({ endpoint: "/users", status: 500 });
 		expectTypeOf(error.context).toEqualTypeOf<{
 			endpoint: string;
 			status: number;
 		}>();
 	});
-
-	it("type error when context is omitted (verified at compile time)", () => {
-		const { ApiError } = createTaggedError("ApiError").withContext<{
-			endpoint: string;
-		}>();
-
-		// This would cause a type error if uncommented:
-		// ApiError({ message: "Failed" }); // Error: context is required
-
-		// Valid usage:
-		const error = ApiError({
-			message: "Failed",
-			context: { endpoint: "/users" },
-		});
-		expect(error.context.endpoint).toBe("/users");
-	});
 });
 
 // =============================================================================
-// .withContext<T | undefined>() - Optional Typed Context
+// .withContext<T | undefined>() - Optional Context
 // =============================================================================
 
-describe("createTaggedError - .withContext<T | undefined>() - optional typed context", () => {
-	const { LogError } = createTaggedError("LogError").withContext<
-		{ file: string; line: number } | undefined
-	>();
+describe("createTaggedError - .withContext<T | undefined>() - optional context", () => {
+	const { LogError } = createTaggedError("LogError")
+		.withContext<{ file: string; line: number } | undefined>()
+		.withMessage(({ name }) => `${name}: log error`);
 
 	it("makes context optional when T includes undefined", () => {
 		// Without context
-		const err1 = LogError({ message: "Parse failed" });
+		const err1 = LogError({});
 		expect(err1.context).toBeUndefined();
 
 		// With context
 		const err2 = LogError({
-			message: "Parse failed",
 			context: { file: "app.ts", line: 42 },
 		});
 		expect(err2.context).toEqual({ file: "app.ts", line: 42 });
 	});
 
-	it("context is typed when provided", () => {
-		const error = LogError({
-			message: "Parse failed",
-			context: { file: "app.ts", line: 42 },
-		});
+	it("message template still works when context is optional", () => {
+		const { ParseError } = createTaggedError("ParseError")
+			.withContext<{ file: string } | undefined>()
+			.withMessage(({ name }) => `${name} occurred`);
 
-		// Type should include undefined since it's optional
+		const error = ParseError({});
+		expect(error.message).toBe("ParseError occurred");
+	});
+
+	it("context type includes undefined when optional", () => {
+		const error = LogError({ context: { file: "app.ts", line: 42 } });
+
 		expectTypeOf(error.context).toEqualTypeOf<
 			{ file: string; line: number } | undefined
 		>();
@@ -119,126 +191,182 @@ describe("createTaggedError - .withContext<T | undefined>() - optional typed con
 
 describe("createTaggedError - .withCause<T>() - required cause", () => {
 	it("makes cause required when T doesn't include undefined", () => {
-		const { DbError } = createTaggedError("DbError");
-		type _DbError = ReturnType<typeof DbError>;
+		const { DbError, DbErr: _DbErr } = createTaggedError("DbError")
+			.withMessage(() => "Database error");
+		type DbError = ReturnType<typeof DbError>;
 
-		const { UnhandledError } =
-			createTaggedError("UnhandledError").withCause<AnyTaggedError>();
+		const { ServiceError } = createTaggedError("ServiceError")
+			.withCause<DbError>()
+			.withMessage(({ cause }) => `Service error: ${cause.message}`);
 
-		const dbError = DbError({ message: "Connection failed" });
-		const error = UnhandledError({
-			message: "Unexpected error",
-			cause: dbError,
-		});
+		const dbError = DbError({});
+		const error = ServiceError({ cause: dbError });
 
 		expect(error.cause).toBe(dbError);
+		expect(error.message).toBe("Service error: Database error");
+	});
+
+	it("cause is correctly typed in output", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB error");
+		type DbError = ReturnType<typeof DbError>;
+
+		const { WrapperError } = createTaggedError("WrapperError")
+			.withCause<DbError>()
+			.withMessage(({ cause }) => `Wrapped: ${cause.message}`);
+
+		const dbError = DbError({});
+		const error = WrapperError({ cause: dbError });
+
+		expectTypeOf(error.cause).toEqualTypeOf<DbError>();
 	});
 });
 
 // =============================================================================
-// .withCause<T | undefined>() - Optional Typed Cause
+// .withCause<T | undefined>() - Optional Cause
 // =============================================================================
 
-describe("createTaggedError - .withCause<T | undefined>() - optional typed cause", () => {
-	const { DbError } = createTaggedError("DbError");
+describe("createTaggedError - .withCause<T | undefined>() - optional cause", () => {
+	const { DbError } = createTaggedError("DbError")
+		.withMessage(() => "Database error");
 	type DbError = ReturnType<typeof DbError>;
 
-	const { ServiceError } = createTaggedError("ServiceError").withCause<
-		DbError | undefined
-	>();
+	const { ServiceError } = createTaggedError("ServiceError")
+		.withCause<DbError | undefined>()
+		.withMessage(() => "Service error");
 
 	it("makes cause optional when T includes undefined", () => {
 		// Without cause
-		const err1 = ServiceError({ message: "Failed" });
+		const err1 = ServiceError({});
 		expect(err1.cause).toBeUndefined();
 
 		// With cause
-		const dbError = DbError({ message: "Connection failed" });
-		const err2 = ServiceError({ message: "Failed", cause: dbError });
+		const dbError = DbError({});
+		const err2 = ServiceError({ cause: dbError });
 		expect(err2.cause).toBe(dbError);
 	});
 
-	it("cause is typed when provided", () => {
-		const dbError = DbError({ message: "Connection failed" });
-		const error = ServiceError({ message: "Failed", cause: dbError });
+	it("cause type includes undefined when optional", () => {
+		const dbError = DbError({});
+		const error = ServiceError({ cause: dbError });
 
 		expectTypeOf(error.cause).toEqualTypeOf<DbError | undefined>();
 	});
 });
 
 // =============================================================================
-// Chaining .withContext and .withCause
+// Chaining Order
 // =============================================================================
 
-describe("createTaggedError - chaining .withContext and .withCause", () => {
-	it("supports chaining in any order", () => {
-		const { DbError } = createTaggedError("DbError");
+describe("createTaggedError - chaining order", () => {
+	it("withContext().withCause().withMessage() works", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB error");
 		type DbError = ReturnType<typeof DbError>;
 
-		// Context first, then cause
-		const { UserError: UserError1 } = createTaggedError("UserError")
+		const { UserError } = createTaggedError("UserError")
 			.withContext<{ userId: string }>()
-			.withCause<DbError | undefined>();
-
-		// Cause first, then context
-		const { UserError: UserError2 } = createTaggedError("UserError")
 			.withCause<DbError | undefined>()
-			.withContext<{ userId: string }>();
+			.withMessage(({ context }) => `User ${context.userId} error`);
 
-		const dbError = DbError({ message: "Query failed" });
-
-		const err1 = UserError1({
-			message: "User not found",
+		const dbError = DbError({});
+		const error = UserError({
 			context: { userId: "123" },
 			cause: dbError,
 		});
 
-		const err2 = UserError2({
-			message: "User not found",
-			context: { userId: "123" },
-			cause: dbError,
-		});
-
-		expect(err1.context).toEqual({ userId: "123" });
-		expect(err1.cause).toBe(dbError);
-		expect(err2.context).toEqual({ userId: "123" });
-		expect(err2.cause).toBe(dbError);
+		expect(error.context).toEqual({ userId: "123" });
+		expect(error.cause).toBe(dbError);
 	});
 
-	it("full example with required context and optional cause", () => {
-		const { DbError } = createTaggedError("DbError");
+	it("withCause().withContext().withMessage() also works", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB error");
 		type DbError = ReturnType<typeof DbError>;
 
-		const { CacheError } = createTaggedError("CacheError");
-		type CacheError = ReturnType<typeof CacheError>;
+		const { UserError } = createTaggedError("UserError")
+			.withCause<DbError | undefined>()
+			.withContext<{ userId: string }>()
+			.withMessage(({ context }) => `User ${context.userId} error`);
+
+		const dbError = DbError({});
+		const error = UserError({
+			context: { userId: "456" },
+			cause: dbError,
+		});
+
+		expect(error.context).toEqual({ userId: "456" });
+		expect(error.cause).toBe(dbError);
+	});
+
+	it("both chaining orders produce the same runtime shape", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB error");
+		type DbError = ReturnType<typeof DbError>;
+
+		const { UserError: UserError1 } = createTaggedError("UserError")
+			.withContext<{ userId: string }>()
+			.withCause<DbError | undefined>()
+			.withMessage(({ context }) => `User ${context.userId}`);
+
+		const { UserError: UserError2 } = createTaggedError("UserError")
+			.withCause<DbError | undefined>()
+			.withContext<{ userId: string }>()
+			.withMessage(({ context }) => `User ${context.userId}`);
+
+		const dbError = DbError({});
+
+		const err1 = UserError1({ context: { userId: "123" }, cause: dbError });
+		const err2 = UserError2({ context: { userId: "123" }, cause: dbError });
+
+		expect(err1.name).toBe(err2.name);
+		expect(err1.message).toBe(err2.message);
+		expect(err1.context).toEqual(err2.context);
+		expect(err1.cause).toEqual(err2.cause);
+	});
+});
+
+// =============================================================================
+// Full Example with Context + Cause
+// =============================================================================
+
+describe("createTaggedError - full example with context and cause", () => {
+	it("RepoError wrapping DbError", () => {
+		const { DbError, DbErr: _DbErr } = createTaggedError("DbError")
+			.withContext<{ query: string }>()
+			.withMessage(({ context }) => `Query failed: ${context.query}`);
+		type DbError = ReturnType<typeof DbError>;
 
 		const { RepoError, RepoErr } = createTaggedError("RepoError")
 			.withContext<{ entity: string; operation: string }>()
-			.withCause<DbError | CacheError | undefined>();
+			.withCause<DbError | undefined>()
+			.withMessage(
+				({ context }) =>
+					`${context.entity}.${context.operation} failed`,
+			);
 
 		// Without cause
 		const err1 = RepoError({
-			message: "Entity not found",
 			context: { entity: "User", operation: "findById" },
 		});
 
 		expect(err1.name).toBe("RepoError");
+		expect(err1.message).toBe("User.findById failed");
 		expect(err1.context).toEqual({ entity: "User", operation: "findById" });
 		expect(err1.cause).toBeUndefined();
 
 		// With cause
-		const dbError = DbError({ message: "Connection timeout" });
+		const dbError = DbError({ context: { query: "SELECT * FROM users" } });
 		const err2 = RepoError({
-			message: "Failed to fetch user",
 			context: { entity: "User", operation: "findById" },
 			cause: dbError,
 		});
 
 		expect(err2.cause).toBe(dbError);
+		expect(err2.cause?.name).toBe("DbError");
 
 		// Err-wrapped version
 		const result = RepoErr({
-			message: "Entity not found",
 			context: { entity: "User", operation: "findById" },
 		});
 
@@ -248,20 +376,146 @@ describe("createTaggedError - chaining .withContext and .withCause", () => {
 });
 
 // =============================================================================
-// Type Extraction with ReturnType
+// Message Auto-Computation
 // =============================================================================
 
-describe("createTaggedError - type extraction with ReturnType", () => {
-	it("ReturnType correctly infers error type", () => {
-		const { FileError } = createTaggedError("FileError").withContext<{
-			path: string;
-		}>();
+describe("createTaggedError - message auto-computation", () => {
+	it("template fn is called with name", () => {
+		let capturedInput: { name: string } | null = null;
 
+		const { TestError } = createTaggedError("TestError").withMessage(
+			(input) => {
+				capturedInput = input;
+				return "computed message";
+			},
+		);
+
+		TestError({});
+
+		expect(capturedInput).not.toBeNull();
+		expect(capturedInput!.name).toBe("TestError");
+	});
+
+	it("template fn is called with context when provided", () => {
+		let capturedContext: { table: string; id: string } | null = null;
+
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(({ context }) => {
+				capturedContext = context;
+				return `${context.table} '${context.id}' not found`;
+			});
+
+		DbNotFoundError({ context: { table: "users", id: "42" } });
+
+		expect(capturedContext).toEqual({ table: "users", id: "42" });
+	});
+
+	it("template fn is called with cause when provided", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB failure");
+		type DbError = ReturnType<typeof DbError>;
+
+		let capturedCause: DbError | null = null;
+
+		const { ServiceError } = createTaggedError("ServiceError")
+			.withCause<DbError>()
+			.withMessage(({ cause }) => {
+				capturedCause = cause;
+				return `wrapped: ${cause.message}`;
+			});
+
+		const dbError = DbError({});
+		ServiceError({ cause: dbError });
+
+		expect(capturedCause).toBe(dbError);
+	});
+
+	it("message is auto-computed when not provided", () => {
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(
+				({ context }) => `${context.table} '${context.id}' not found`,
+			);
+
+		const error = DbNotFoundError({
+			context: { table: "users", id: "123" },
+		});
+
+		expect(error.message).toBe("users '123' not found");
+	});
+});
+
+// =============================================================================
+// Message Override
+// =============================================================================
+
+describe("createTaggedError - message override", () => {
+	it("explicit message takes precedence over template", () => {
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(
+				({ context }) => `${context.table} '${context.id}' not found`,
+			);
+
+		const error = DbNotFoundError({
+			message: "Custom override message",
+			context: { table: "users", id: "123" },
+		});
+
+		expect(error.message).toBe("Custom override message");
+	});
+
+	it("template is used when no message override is given", () => {
+		const { DbNotFoundError } = createTaggedError("DbNotFoundError")
+			.withContext<{ table: string; id: string }>()
+			.withMessage(
+				({ context }) => `${context.table} '${context.id}' not found`,
+			);
+
+		const error = DbNotFoundError({
+			context: { table: "products", id: "99" },
+		});
+
+		expect(error.message).toBe("products '99' not found");
+	});
+
+	it("message override works on minimal errors too", () => {
+		const { SimpleError } = createTaggedError("SimpleError")
+			.withMessage(() => "Default message");
+
+		const withDefault = SimpleError({});
+		const withOverride = SimpleError({ message: "Overridden" });
+
+		expect(withDefault.message).toBe("Default message");
+		expect(withOverride.message).toBe("Overridden");
+	});
+});
+
+// =============================================================================
+// ReturnType Extraction
+// =============================================================================
+
+describe("createTaggedError - ReturnType extraction", () => {
+	it("ReturnType works for minimal errors", () => {
+		const { SimpleError } = createTaggedError("SimpleError")
+			.withMessage(() => "Simple");
+		type SimpleError = ReturnType<typeof SimpleError>;
+
+		expectTypeOf<SimpleError>().toEqualTypeOf<
+			Readonly<{ name: "SimpleError"; message: string }>
+		>();
+	});
+
+	it("ReturnType works for errors with required context", () => {
+		const { FileError } = createTaggedError("FileError")
+			.withContext<{ path: string }>()
+			.withMessage(({ context }) => `File not found: ${context.path}`);
 		type FileError = ReturnType<typeof FileError>;
 
 		const error: FileError = {
 			name: "FileError",
-			message: "Not found",
+			message: "File not found: /etc/config",
 			context: { path: "/etc/config" },
 		};
 
@@ -269,96 +523,63 @@ describe("createTaggedError - type extraction with ReturnType", () => {
 			TaggedError<"FileError", { path: string }, undefined>
 		>();
 	});
-});
 
-// =============================================================================
-// Builder Methods Return Factories at Every Stage
-// =============================================================================
-
-describe("createTaggedError - builder methods return factories at every stage", () => {
-	it("factories are available immediately after createTaggedError", () => {
-		const builder = createTaggedError("NetworkError");
-
-		// Can use factories directly (minimal error)
-		const error = builder.NetworkError({ message: "Failed" });
-		expect(error.name).toBe("NetworkError");
-
-		// Can also chain to add context
-		const { NetworkError } = builder.withContext<{ url: string }>();
-		const typedError = NetworkError({
-			message: "Failed",
-			context: { url: "https://example.com" },
-		});
-		expect(typedError.context.url).toBe("https://example.com");
-	});
-
-	it("factories are available after each chaining method", () => {
-		const afterContext = createTaggedError("ApiError").withContext<{
-			endpoint: string;
-		}>();
-
-		// Can use factories here
-		const err1 = afterContext.ApiError({
-			message: "Failed",
-			context: { endpoint: "/users" },
-		});
-		expect(err1.name).toBe("ApiError");
-
-		// Can continue chaining
-		const { DbError } = createTaggedError("DbError");
+	it("ReturnType can be used as a cause type in another error", () => {
+		const { DbError } = createTaggedError("DbError")
+			.withMessage(() => "DB error");
 		type DbError = ReturnType<typeof DbError>;
 
-		const afterCause = afterContext.withCause<DbError | undefined>();
-		const err2 = afterCause.ApiError({
-			message: "Failed",
-			context: { endpoint: "/users" },
-		});
-		expect(err2.name).toBe("ApiError");
+		const { ServiceError } = createTaggedError("ServiceError")
+			.withCause<DbError>()
+			.withMessage(({ cause }) => `Service error: ${cause.message}`);
+
+		const dbError = DbError({});
+		const serviceError = ServiceError({ cause: dbError });
+
+		expectTypeOf(serviceError.cause).toEqualTypeOf<DbError>();
 	});
 });
 
 // =============================================================================
-// Error Chaining (with explicit .withContext and .withCause)
+// Error Chaining / JSON Serializable
 // =============================================================================
 
-describe("createTaggedError - Error Chaining", () => {
-	it("supports multi-level error chains with explicit types", () => {
-		// Level 1: Database error with context
-		const { DatabaseError } = createTaggedError("DatabaseError").withContext<{
-			query: string;
-			table: string;
-		}>();
+describe("createTaggedError - error chaining and JSON serialization", () => {
+	it("supports multi-level error chains", () => {
+		const { DatabaseError } = createTaggedError("DatabaseError")
+			.withContext<{ query: string; table: string }>()
+			.withMessage(({ context }) => `Query failed on ${context.table}`);
 		type DatabaseError = ReturnType<typeof DatabaseError>;
 
-		const dbError = DatabaseError({
-			message: "Query failed",
-			context: { query: "SELECT * FROM users", table: "users" },
-		});
-
-		// Level 2: Repository error wrapping database error
 		const { RepositoryError } = createTaggedError("RepositoryError")
 			.withContext<{ entity: string; operation: string }>()
-			.withCause<DatabaseError | undefined>();
+			.withCause<DatabaseError | undefined>()
+			.withMessage(
+				({ context }) =>
+					`${context.entity}.${context.operation} failed`,
+			);
 		type RepositoryError = ReturnType<typeof RepositoryError>;
 
+		const { ServiceError } = createTaggedError("ServiceError")
+			.withContext<{ service: string; method: string }>()
+			.withCause<RepositoryError | undefined>()
+			.withMessage(
+				({ context }) =>
+					`${context.service}.${context.method} failed`,
+			);
+
+		const dbError = DatabaseError({
+			context: { query: "SELECT * FROM users", table: "users" },
+		});
 		const repoError = RepositoryError({
-			message: "Failed to fetch user",
 			context: { entity: "User", operation: "findById" },
 			cause: dbError,
 		});
-
-		// Level 3: Service error wrapping repository error
-		const { ServiceError } = createTaggedError("ServiceError")
-			.withContext<{ service: string; method: string }>()
-			.withCause<RepositoryError | undefined>();
-
 		const serviceError = ServiceError({
-			message: "User service failed",
 			context: { service: "UserService", method: "getProfile" },
 			cause: repoError,
 		});
 
-		// Verify the chain
 		expect(serviceError.name).toBe("ServiceError");
 		expect(serviceError.cause?.name).toBe("RepositoryError");
 		expect(serviceError.cause?.cause?.name).toBe("DatabaseError");
@@ -368,23 +589,25 @@ describe("createTaggedError - Error Chaining", () => {
 	});
 
 	it("errors are JSON serializable", () => {
-		const { NetworkError } = createTaggedError("NetworkError").withContext<{
-			host: string;
-			port: number;
-		}>();
+		const { NetworkError } = createTaggedError("NetworkError")
+			.withContext<{ host: string; port: number }>()
+			.withMessage(
+				({ context }) =>
+					`Connection to ${context.host}:${context.port} failed`,
+			);
 		type NetworkError = ReturnType<typeof NetworkError>;
 
 		const { ApiError } = createTaggedError("ApiError")
 			.withContext<{ endpoint: string }>()
-			.withCause<NetworkError | undefined>();
+			.withCause<NetworkError | undefined>()
+			.withMessage(
+				({ context }) => `Request to ${context.endpoint} failed`,
+			);
 
 		const networkError = NetworkError({
-			message: "Connection failed",
 			context: { host: "example.com", port: 443 },
 		});
-
 		const apiError = ApiError({
-			message: "Request failed",
 			context: { endpoint: "/api/users" },
 			cause: networkError,
 		});
@@ -393,10 +616,11 @@ describe("createTaggedError - Error Chaining", () => {
 		const parsed = JSON.parse(json);
 
 		expect(parsed.name).toBe("ApiError");
-		expect(parsed.message).toBe("Request failed");
+		expect(parsed.message).toBe("Request to /api/users failed");
 		expect(parsed.context.endpoint).toBe("/api/users");
 		expect(parsed.cause.name).toBe("NetworkError");
 		expect(parsed.cause.context.host).toBe("example.com");
+		expect(parsed.cause.context.port).toBe(443);
 	});
 });
 
@@ -404,96 +628,107 @@ describe("createTaggedError - Error Chaining", () => {
 // Type Safety
 // =============================================================================
 
-describe("createTaggedError - Type Safety", () => {
-	const { NetworkError } = createTaggedError("NetworkError");
-
+describe("createTaggedError - type safety", () => {
 	it("minimal errors have correct types (no context, no cause)", () => {
-		const error = NetworkError({ message: "Error" });
+		const { NetworkError } = createTaggedError("NetworkError")
+			.withMessage(() => "Network error");
 
-		// Minimal error only has name and message
+		const error = NetworkError({});
+
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "NetworkError"; message: string }>
 		>();
 	});
 
-	it("required context mode requires context", () => {
+	it("required context mode gives precise typing", () => {
 		type Ctx = { filename: string };
-		const { FileError } = createTaggedError("FileError").withContext<Ctx>();
+		const { FileError } = createTaggedError("FileError")
+			.withContext<Ctx>()
+			.withMessage(({ context }) => `${context.filename} not found`);
 
-		const error = FileError({
-			message: "Error",
-			context: { filename: "test.txt" },
-		});
+		const error = FileError({ context: { filename: "test.txt" } });
 
-		// Fixed context mode has precise typing
 		expectTypeOf(error.context).toEqualTypeOf<{ filename: string }>();
 	});
 
-	it("chained context and cause constrains types", () => {
-		// Define the cause type explicitly
-		const { CauseError } = createTaggedError("CauseError");
+	it("chained context and cause constrains types correctly", () => {
+		const { CauseError } = createTaggedError("CauseError")
+			.withMessage(() => "Root cause");
 		type CauseType = ReturnType<typeof CauseError>;
 
 		const { WrapperError } = createTaggedError("WrapperError")
 			.withContext<{ wrap: boolean }>()
-			.withCause<CauseType | undefined>();
+			.withCause<CauseType | undefined>()
+			.withMessage(({ context }) => `Wrapper: ${context.wrap}`);
 
-		const cause = CauseError({ message: "Root cause" });
+		const cause = CauseError({});
+		const wrapper = WrapperError({ context: { wrap: true }, cause });
 
-		const wrapper = WrapperError({
-			message: "Wrapped",
-			context: { wrap: true },
-			cause: cause,
-		});
-
-		// Cause is optional but constrained to CauseType when provided
 		expectTypeOf(wrapper.cause).toEqualTypeOf<CauseType | undefined>();
 	});
+});
 
-	it("ReturnType works correctly for minimal errors", () => {
-		type NetworkErrorType = ReturnType<typeof NetworkError>;
+// =============================================================================
+// Builder Has NO Factories
+// =============================================================================
 
-		// Minimal error only has name and message
-		expectTypeOf<NetworkErrorType>().toEqualTypeOf<
-			Readonly<{ name: "NetworkError"; message: string }>
-		>();
+describe("createTaggedError - builder has NO factories", () => {
+	it("builder does not have factory properties before withMessage", () => {
+		const builder = createTaggedError("FooError");
+
+		// The builder should NOT have FooError or FooErr as properties
+		expect("FooError" in builder).toBe(false);
+		expect("FooErr" in builder).toBe(false);
 	});
 
-	it("ReturnType works correctly with context", () => {
-		type Ctx = { endpoint: string };
-		const { ApiError } = createTaggedError("ApiError").withContext<Ctx>();
-
-		type ApiErrorType = ReturnType<typeof ApiError>;
-
-		// Context should be required and typed
-		expectTypeOf<ApiErrorType>().toExtend<{
-			name: "ApiError";
-			message: string;
-			context: { endpoint: string };
+	it("builder after withContext does not have factory properties", () => {
+		const builder = createTaggedError("FooError").withContext<{
+			x: string;
 		}>();
+
+		expect("FooError" in builder).toBe(false);
+		expect("FooErr" in builder).toBe(false);
 	});
 
-	it("TaggedError type with optional typed context", () => {
-		// Direct use of TaggedError type with union
-		type OptionalContextError = TaggedError<
-			"OptionalError",
-			{ code: string } | undefined
-		>;
+	it("builder after withCause does not have factory properties", () => {
+		const { SomeError } = createTaggedError("SomeError").withMessage(
+			() => "some",
+		);
+		type SomeError = ReturnType<typeof SomeError>;
 
-		// The context should be optional but typed
-		const err1: OptionalContextError = {
-			name: "OptionalError",
-			message: "No context",
-		};
-		const err2: OptionalContextError = {
-			name: "OptionalError",
-			message: "With context",
-			context: { code: "E001" },
-		};
+		const builder = createTaggedError("FooError").withCause<
+			SomeError | undefined
+		>();
 
-		expectTypeOf(err1.context).toEqualTypeOf<{ code: string } | undefined>();
-		expect(err1.context).toBeUndefined();
-		expect(err2.context?.code).toBe("E001");
+		expect("FooError" in builder).toBe(false);
+		expect("FooErr" in builder).toBe(false);
+	});
+
+	it("withMessage returns object WITH factory properties", () => {
+		const factories = createTaggedError("FooError").withMessage(
+			() => "foo",
+		);
+
+		expect("FooError" in factories).toBe(true);
+		expect("FooErr" in factories).toBe(true);
+	});
+
+	it("builder has withContext, withCause, withMessage methods", () => {
+		const builder = createTaggedError("FooError");
+
+		expect("withContext" in builder).toBe(true);
+		expect("withCause" in builder).toBe(true);
+		expect("withMessage" in builder).toBe(true);
+	});
+
+	it("withMessage result does NOT have chain methods", () => {
+		const factories = createTaggedError("FooError").withMessage(
+			() => "foo",
+		);
+
+		expect("withContext" in factories).toBe(false);
+		expect("withCause" in factories).toBe(false);
+		expect("withMessage" in factories).toBe(false);
 	});
 });
 
@@ -501,11 +736,13 @@ describe("createTaggedError - Type Safety", () => {
 // Edge Cases
 // =============================================================================
 
-describe("createTaggedError - Edge Cases", () => {
-	it("handles empty context object with explicit context type", () => {
-		const { TestError } =
-			createTaggedError("TestError").withContext<Record<string, unknown>>();
-		const error = TestError({ message: "Error", context: {} });
+describe("createTaggedError - edge cases", () => {
+	it("handles empty context object {}", () => {
+		const { TestError } = createTaggedError("TestError")
+			.withContext<JsonObject>()
+			.withMessage(() => "Test error");
+
+		const error = TestError({ context: {} });
 
 		expect(error.context).toEqual({});
 	});
@@ -516,10 +753,11 @@ describe("createTaggedError - Edge Cases", () => {
 			array: number[];
 			nullable: null;
 		};
-		const { TestError } =
-			createTaggedError("TestError").withContext<NestedContext>();
+		const { TestError } = createTaggedError("TestError")
+			.withContext<NestedContext>()
+			.withMessage(({ context }) => `value: ${context.nested.deeply.value}`);
+
 		const error = TestError({
-			message: "Error",
 			context: {
 				nested: { deeply: { value: 123 } },
 				array: [1, 2, 3],
@@ -532,151 +770,98 @@ describe("createTaggedError - Edge Cases", () => {
 		expect(error.context.nullable).toBeNull();
 	});
 
-	it("error objects are readonly", () => {
-		const { TestError } = createTaggedError("TestError");
-		const error = TestError({ message: "Original" });
+	it("error objects are typed as Readonly", () => {
+		const { TestError } = createTaggedError("TestError").withMessage(
+			() => "Original",
+		);
+		const error = TestError({});
 
-		// TypeScript should prevent this, but verify at runtime the object shape
-		expect(Object.isFrozen(error)).toBe(false); // Not frozen, but typed as Readonly
+		// Verify the object shape exists
 		expect(error.name).toBe("TestError");
+		expect(error.message).toBe("Original");
+
+		// TypeScript types it as Readonly (verified via type system)
+		expectTypeOf(error).toEqualTypeOf<
+			Readonly<{ name: "TestError"; message: string }>
+		>();
 	});
 });
 
 // =============================================================================
-// Permissive Mode (Migration Path)
+// Permissive Mode
 // =============================================================================
 
-describe("createTaggedError - Permissive Mode (Migration Path)", () => {
-	const { SomeError } = createTaggedError("SomeError");
-	const { OtherError } = createTaggedError("OtherError");
-
-	it("can opt into permissive context with Record<string, unknown> | undefined", () => {
-		const { FlexibleError } = createTaggedError("FlexibleError").withContext<
-			Record<string, unknown> | undefined
-		>();
-
-		// Without context
-		const err1 = FlexibleError({ message: "Error" });
-		expect(err1.context).toBeUndefined();
-
-		// With any context shape
-		const err2 = FlexibleError({
-			message: "Error",
-			context: { anything: "goes", nested: { data: 123 } },
-		});
-		expect(err2.context).toEqual({ anything: "goes", nested: { data: 123 } });
-	});
-
-	it("can opt into permissive cause with AnyTaggedError | undefined", () => {
-		const { FlexibleError } = createTaggedError("FlexibleError").withCause<
-			AnyTaggedError | undefined
-		>();
-
-		// Without cause
-		const err1 = FlexibleError({ message: "Error" });
-		expect(err1.cause).toBeUndefined();
-
-		// With any tagged error as cause
-		const err2 = FlexibleError({
-			message: "Error",
-			cause: SomeError({ message: "Some" }),
-		});
-		expect(err2.cause?.name).toBe("SomeError");
-
-		const err3 = FlexibleError({
-			message: "Error",
-			cause: OtherError({ message: "Other" }),
-		});
-		expect(err3.cause?.name).toBe("OtherError");
-	});
-
-	it("fully permissive mode replicates old behavior", () => {
-		const { LegacyError } = createTaggedError("LegacyError")
-			.withContext<Record<string, unknown> | undefined>()
-			.withCause<AnyTaggedError | undefined>();
-
-		const { CauseError } = createTaggedError("CauseError");
-
-		// Can use it just like old flexible mode
-		const err1 = LegacyError({ message: "Error" });
-		const err2 = LegacyError({
-			message: "Error",
-			context: { any: "data" },
-		});
-		const err3 = LegacyError({
-			message: "Error",
-			cause: CauseError({ message: "Cause" }),
-		});
-		const err4 = LegacyError({
-			message: "Error",
-			context: { any: "data" },
-			cause: CauseError({ message: "Cause" }),
-		});
-
-		expect(err1.context).toBeUndefined();
-		expect(err2.context).toEqual({ any: "data" });
-		expect(err3.cause?.name).toBe("CauseError");
-		expect(err4.context).toEqual({ any: "data" });
-		expect(err4.cause?.name).toBe("CauseError");
-	});
-
-	it(".withContext() without generic defaults to optional permissive context", () => {
-		// When called without a generic, defaults to Record<string, unknown> | undefined
-		const { FlexError } = createTaggedError("FlexError").withContext();
+describe("createTaggedError - permissive mode", () => {
+	it(".withContext() without generic defaults to JsonObject | undefined", () => {
+		const { FlexError } = createTaggedError("FlexError")
+			.withContext()
+			.withMessage(() => "Flex error");
 
 		// Context is optional
-		const err1 = FlexError({ message: "Error" });
+		const err1 = FlexError({});
 		expect(err1.context).toBeUndefined();
 
-		// Context accepts any shape
+		// Context accepts any JsonObject shape
 		const err2 = FlexError({
-			message: "Error",
 			context: { anything: "works", nested: { value: 123 } },
 		});
 		expect(err2.context).toEqual({ anything: "works", nested: { value: 123 } });
 	});
 
-	it(".withCause() without generic defaults to optional any tagged error", () => {
-		// When called without a generic, defaults to AnyTaggedError | undefined
-		const { FlexError } = createTaggedError("FlexError").withCause();
+	it(".withCause() without generic defaults to AnyTaggedError | undefined", () => {
+		const { SomeError } = createTaggedError("SomeError").withMessage(
+			() => "some",
+		);
+		const { OtherError } = createTaggedError("OtherError").withMessage(
+			() => "other",
+		);
+
+		const { FlexError } = createTaggedError("FlexError")
+			.withCause()
+			.withMessage(() => "Flex error");
 
 		// Cause is optional
-		const err1 = FlexError({ message: "Error" });
+		const err1 = FlexError({});
 		expect(err1.cause).toBeUndefined();
 
 		// Cause accepts any tagged error
-		const err2 = FlexError({
-			message: "Error",
-			cause: SomeError({ message: "Some" }),
-		});
+		const err2 = FlexError({ cause: SomeError({}) });
 		expect(err2.cause?.name).toBe("SomeError");
 
-		const err3 = FlexError({
-			message: "Error",
-			cause: OtherError({ message: "Other" }),
-		});
+		const err3 = FlexError({ cause: OtherError({}) });
 		expect(err3.cause?.name).toBe("OtherError");
 	});
 
+	it("Record<string, unknown> is NOT assignable to JsonObject (type safety)", () => {
+		// JsonObject = Record<string, JsonValue>, which is stricter than Record<string, unknown>
+		// This is a compile-time check — JsonObject enforces JSON-serializable values
+		type IsJsonObject<T> = T extends JsonObject ? true : false;
+
+		// JsonObject itself is assignable to JsonObject
+		type Test1 = IsJsonObject<JsonObject>;
+		expectTypeOf<Test1>().toEqualTypeOf<boolean>();
+
+		// A concrete JSON-safe type is assignable
+		const validContext: JsonObject = { key: "value", num: 42, flag: true };
+		expect(validContext).toEqual({ key: "value", num: 42, flag: true });
+	});
+
 	it(".withContext().withCause() without generics gives fully permissive error", () => {
-		// Chaining both without generics gives the old permissive behavior
+		const { CauseError } = createTaggedError("CauseError").withMessage(
+			() => "Cause",
+		);
+
 		const { FlexError } = createTaggedError("FlexError")
 			.withContext()
-			.withCause();
+			.withCause()
+			.withMessage(() => "Flex error");
 
-		const { CauseError } = createTaggedError("CauseError");
-
-		// All combinations work
-		const err1 = FlexError({ message: "Error" });
-		const err2 = FlexError({ message: "Error", context: { any: "data" } });
-		const err3 = FlexError({
-			message: "Error",
-			cause: CauseError({ message: "Cause" }),
-		});
+		const err1 = FlexError({});
+		const err2 = FlexError({ context: { any: "data" } });
+		const err3 = FlexError({ cause: CauseError({}) });
 		const err4 = FlexError({
-			message: "Error",
 			context: { any: "data" },
-			cause: CauseError({ message: "Cause" }),
+			cause: CauseError({}),
 		});
 
 		expect(err1.context).toBeUndefined();
