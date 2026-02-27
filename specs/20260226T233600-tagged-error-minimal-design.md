@@ -81,7 +81,7 @@ Access: `error.context.status`, `error.context.provider`
 ### The new design (flat)
 
 ```typescript
-type TaggedError<TName extends string, TFields extends JsonObject = {}> = Readonly<
+type TaggedError<TName extends string, TFields extends JsonObject = Record<never, never>> = Readonly<
   { name: TName; message: string } & TFields
 >;
 ```
@@ -149,6 +149,10 @@ But this is a readability preference, not a structural problem. And the grouping
 const { name, message, ...rest } = error;
 // rest = { status: 401, provider: 'openai' }
 ```
+
+### The serialization win
+
+Flat errors are trivially JSON-serializable and reconstructible. No nested structure to preserve or recreate across boundaries (IPC, worker messages, network). `JSON.parse(JSON.stringify(error))` round-trips perfectly since every field is a top-level `JsonValue`. The nested `context` design required consumers to know about the nesting to reconstruct errors — flat errors are just plain objects.
 
 ### The generic operations argument (and why it's fine)
 
@@ -403,6 +407,12 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
     return {
       withFields: <P extends ValidFields<P>>() => createBuilder<P>(),
       withMessage: (fn: (input: TFields) => string) => {
+        // Input is optional only when TFields has no required keys (Tier 1).
+        // When TFields has required keys (Tier 2/3), the argument is required.
+        // This is enforced via a conditional type on the factory signature:
+        //   TFields extends Record<never, never>
+        //     ? (input?: TFields) => TaggedError<TName, TFields>
+        //     : (input: TFields) => TaggedError<TName, TFields>
         const errorConstructor = (input?: TFields) => ({
           name,
           message: fn(input ?? {} as TFields),
@@ -426,6 +436,7 @@ Key changes:
 - **No nesting** — `input` is spread directly onto the error object
 - **No conditional context/cause handling** — just `...(input ?? {})`
 - **`ValidFields` enforced** at the `.withFields()` call to prevent reserved key collisions
+- **Implementation note on `ValidFields`**: The self-referential constraint `<P extends ValidFields<P>>` works in TypeScript but may produce cryptic error messages (e.g., "Type 'X' does not satisfy constraint 'never'" instead of "'name' is a reserved field"). During implementation, test the developer experience and consider alternative approaches (e.g., a branded error type or mapped type with `@ts-expect-error` guidance) if the diagnostics are unclear.
 
 ---
 
