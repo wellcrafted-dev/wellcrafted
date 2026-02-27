@@ -120,16 +120,29 @@ An error IS its properties. `{ name: 'ResponseError', message: 'HTTP 401', statu
 
 ### The namespace collision argument (and why it's solvable)
 
-The main counter-argument: "what if a context field is named `name` or `message`?" This is trivially prevented at the type level:
+The main counter-argument: "what if a context field is named `name` or `message`?" This is trivially prevented at the type level. Two approaches:
+
+**Approach 1: Conditional type (standalone utility)**
 
 ```typescript
 type ReservedKeys = 'name' | 'message';
-
-type ValidFields<T extends Record<string, JsonValue>> =
+type ValidFields<T extends JsonObject> =
   keyof T & ReservedKeys extends never ? T : never;
 ```
 
-TypeScript would reject `.withFields<{ name: string }>()` at compile time. The builder API already enforces types — adding one more constraint is trivial.
+This resolves to `T` when valid, `never` when a reserved key is present. Useful as a standalone utility type, but cannot be used as a self-referential generic constraint (`<P extends ValidFields<P>>` causes circular reference errors in TypeScript).
+
+**Approach 2: Intersection constraint (used in the builder)**
+
+```typescript
+type NoReservedKeys = { name?: never; message?: never };
+// In the builder:
+withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
+```
+
+Any type with `name` or `message` as a key fails to extend `{ name?: never }`, producing a clear compile error. This is the pattern used in the actual implementation because it works cleanly as a generic constraint without circular references.
+
+TypeScript rejects `.withFields<{ name: string }>()` at compile time with either approach. The builder uses Approach 2; `ValidFields<T>` is exported as a standalone utility for consumers.
 
 ### The structured logging argument (and why it's minor)
 
@@ -399,25 +412,29 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
 }
 ```
 
-### New implementation (simplified)
+### New implementation (as built)
 
 ```typescript
+// Constraint that prevents reserved keys from appearing in fields.
+// Uses the `{ key?: never }` pattern — any type with `name` or `message`
+// as a key will fail to extend this constraint.
+type NoReservedKeys = { name?: never; message?: never };
+
 function createTaggedError<TName extends `${string}Error`>(name: TName) {
   function createBuilder<TFields extends JsonObject>() {
     return {
-      withFields: <P extends ValidFields<P>>() => createBuilder<P>(),
+      withFields: <T extends JsonObject & NoReservedKeys>() => createBuilder<T>(),
       withMessage: (fn: (input: TFields) => string) => {
-        // Input is optional only when TFields has no required keys (Tier 1).
-        // When TFields has required keys (Tier 2/3), the argument is required.
-        // This is enforced via a conditional type on the factory signature:
-        //   TFields extends Record<never, never>
-        //     ? (input?: TFields) => TaggedError<TName, TFields>
-        //     : (input: TFields) => TaggedError<TName, TFields>
-        const errorConstructor = (input?: TFields) => ({
-          name,
-          message: fn(input ?? {} as TFields),
-          ...(input ?? {}),
-        });
+        // Input is optional when TFields is empty or all keys are optional.
+        // This is enforced via IsOptionalInput<TFields> conditional type.
+        const errorConstructor = (input?: TFields) => {
+          const fields = (input ?? {}) as TFields;
+          return {
+            name,
+            message: fn(fields),
+            ...fields,
+          };
+        };
         const errName = name.replace(/Error$/, 'Err');
         const errConstructor = (input?: TFields) => Err(errorConstructor(input));
         return {
@@ -434,9 +451,9 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
 Key changes:
 - **One type parameter** (`TFields`) instead of two (`TContext`, `TCause`)
 - **No nesting** — `input` is spread directly onto the error object
-- **No conditional context/cause handling** — just `...(input ?? {})`
-- **`ValidFields` enforced** at the `.withFields()` call to prevent reserved key collisions
-- **Implementation note on `ValidFields`**: The self-referential constraint `<P extends ValidFields<P>>` works in TypeScript but may produce cryptic error messages (e.g., "Type 'X' does not satisfy constraint 'never'" instead of "'name' is a reserved field"). During implementation, test the developer experience and consider alternative approaches (e.g., a branded error type or mapped type with `@ts-expect-error` guidance) if the diagnostics are unclear.
+- **No conditional context/cause handling** — just `...fields`
+- **`NoReservedKeys` constraint** at `.withFields()` prevents `name`/`message` collisions
+- **Implementation note**: The spec originally proposed `<P extends ValidFields<P>>` (self-referential constraint), but this causes circular constraint errors in TypeScript. The `{ name?: never; message?: never }` intersection pattern works cleanly — any type with `name` or `message` as a key cannot extend `NoReservedKeys`, producing a clear compile error. `ValidFields<T>` remains exported as a standalone utility type.
 
 ---
 
