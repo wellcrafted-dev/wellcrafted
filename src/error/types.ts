@@ -21,28 +21,6 @@ export type JsonObject = Record<string, JsonValue>;
 export type AnyTaggedError = { name: string; message: string };
 
 /**
- * Keys reserved by the TaggedError type itself.
- * Fields with these names cannot be used in `.withFields<T>()`.
- */
-type ReservedKeys = "name" | "message";
-
-/**
- * Compile-time guard that rejects field types containing reserved keys.
- * Resolves to `T` when valid, `never` when a reserved key is present.
- *
- * @example
- * ```ts
- * // OK — no reserved keys
- * type Valid = ValidFields<{ status: number }>; // { status: number }
- *
- * // Rejected — 'name' is reserved
- * type Invalid = ValidFields<{ name: string }>; // never
- * ```
- */
-export type ValidFields<T extends JsonObject> =
-	keyof T & ReservedKeys extends never ? T : never;
-
-/**
  * A tagged error type for type-safe error handling.
  * Uses the `name` property as a discriminator for tagged unions.
  * Additional fields are spread flat on the error object.

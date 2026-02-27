@@ -198,7 +198,7 @@ function handleError(error: AppError): string {
     case "NetworkError":
       return "Check your internet connection";
     case "ValidationError":
-      return `Invalid ${error.context.field}`;
+      return `Invalid ${error.field}`;
     // TypeScript ensures all cases are handled!
   }
 }
@@ -322,8 +322,7 @@ async function getUser(id: string): Result<User, UserServiceError> {
     return Err({
       name: "UserServiceError",
       message: "Failed to fetch user",
-      context: { userId: id, originalError: result.error },
-      cause: result.error
+      userId: id,
     });
   }
   

@@ -108,16 +108,13 @@ async function processPayment(
     mapErr: (error): GatewayError => ({
       name: "GatewayError",
       message: "Payment gateway request failed",
-      context: {
-        orderId: order.id,
-        amount: order.total,
-        currency: order.currency,
-        paymentMethodId: paymentMethod.id,
-        customerId: order.customerId,
-        gatewayResponse: error.response?.status,
-        timestamp: new Date().toISOString()
-      },
-      cause: error
+      orderId: order.id,
+      amount: order.total,
+      currency: order.currency,
+      paymentMethodId: paymentMethod.id,
+      customerId: order.customerId,
+      gatewayResponse: error.response?.status,
+      timestamp: new Date().toISOString(),
     })
   });
   
@@ -131,17 +128,15 @@ async function processPayment(
 ```json
 {
   "level": "error",
-  "name": "GatewayError", 
+  "name": "GatewayError",
   "message": "Payment gateway request failed",
-  "context": {
-    "orderId": "ord_abc123",
-    "amount": 2999,
-    "currency": "USD", 
-    "paymentMethodId": "pm_xyz789",
-    "customerId": "cus_def456",
-    "gatewayResponse": 402,
-    "timestamp": "2024-03-15T02:14:33.127Z"
-  },
+  "orderId": "ord_abc123",
+  "amount": 2999,
+  "currency": "USD",
+  "paymentMethodId": "pm_xyz789",
+  "customerId": "cus_def456",
+  "gatewayResponse": 402,
+  "timestamp": "2024-03-15T02:14:33.127Z",
   "traceId": "trace_ghi012"
 }
 ```
@@ -170,12 +165,9 @@ async function updateProfile(
     return Err({
       name: "DatabaseError",
       message: "Failed to update user profile",
-      context: {
-        userId,
-        updateFields: Object.keys(data),
-        timestamp: new Date().toISOString()
-      },
-      cause: error
+      userId,
+      updateFields: Object.keys(data),
+      timestamp: new Date().toISOString(),
     });
   }
   
@@ -200,7 +192,7 @@ async function handleProfileUpdate(req: Request): Promise<Response> {
       case "ValidationError":
         return new Response(JSON.stringify({
           error: "Invalid profile data",
-          details: error.context
+          details: error
         }), { status: 400 });
       case "AuthError":
         return new Response(JSON.stringify({
@@ -259,42 +251,37 @@ async function fetchUserData(
             return {
               name: "RateLimitError",
               message: "API rate limit exceeded",
-              context: {
-                userId: id,
-                retryAfter: error.retryAfter,
-                timestamp: new Date().toISOString()
-              },
-              cause: error
+              userId: id,
+              retryAfter: error.retryAfter,
+              timestamp: new Date().toISOString(),
             };
           case "auth":
             return {
-              name: "AuthError", 
+              name: "AuthError",
               message: "Authentication failed",
-              context: { userId: id, status: error.status },
-              cause: error
+              userId: id,
+              status: error.status,
             };
           case "not_found":
             return {
               name: "NotFoundError",
               message: "User not found",
-              context: { userId: id },
-              cause: error
+              userId: id,
             };
           default:
             return {
               name: "NetworkError",
               message: "Network request failed",
-              context: { userId: id, status: error.status },
-              cause: error
+              userId: id,
+              status: error.status,
             };
         }
       }
-      
+
       return {
         name: "NetworkError",
         message: "Unexpected error",
-        context: { userId: id },
-        cause: error
+        userId: id,
       };
     }
   });
@@ -308,7 +295,7 @@ async function handleUserRequest(userId: string) {
     switch (error.name) {
       case "RateLimitError":
         // Specific handling for rate limits
-        const retryAfter = parseInt(error.context.retryAfter || "60");
+        const retryAfter = parseInt(error.retryAfter || "60");
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         return handleUserRequest(userId); // Retry after delay
         
@@ -364,13 +351,11 @@ Whispering is a production desktop/web application built with wellcrafted patter
   "level": "error",
   "name": "TranscriptionError",
   "message": "OpenAI API key invalid",
-  "context": {
-    "provider": "openai",
-    "modelName": "whisper-1", 
-    "audioLengthSeconds": 142,
-    "apiKeyLength": 8,
-    "timestamp": "2024-03-15T14:22:18.193Z"
-  },
+  "provider": "openai",
+  "modelName": "whisper-1",
+  "audioLengthSeconds": 142,
+  "apiKeyLength": 8,
+  "timestamp": "2024-03-15T14:22:18.193Z",
   "traceId": "trace_abc123"
 }
 ```
@@ -462,7 +447,7 @@ TypeScript's discriminated unions ensure exhaustive error handling:
 function handleApiError(error: ApiError) {
   switch (error.name) {
     case "RateLimitError":
-      return showRetryAfterDelay(error.context.retryAfter);
+      return showRetryAfterDelay(error.retryAfter);
     case "AuthError":
       return redirectToLogin();
     case "NetworkError":
@@ -490,21 +475,18 @@ wellcrafted errors:
 {
   "name": "ApiError",
   "message": "Failed to fetch user data",
-  "context": {
-    "userId": "user_123",
-    "endpoint": "/api/users/user_123",
-    "requestMethod": "GET",
-    "responseStatus": 503,
-    "responseTime": 5432,
-    "retryAttempt": 2,
-    "maxRetries": 3,
-    "requestHeaders": {
-      "authorization": "Bearer ***",
-      "user-agent": "MyApp/1.2.3"
-    },
-    "timestamp": "2024-03-15T09:31:42.194Z"
+  "userId": "user_123",
+  "endpoint": "/api/users/user_123",
+  "requestMethod": "GET",
+  "responseStatus": 503,
+  "responseTime": 5432,
+  "retryAttempt": 2,
+  "maxRetries": 3,
+  "requestHeaders": {
+    "authorization": "Bearer ***",
+    "user-agent": "MyApp/1.2.3"
   },
-  "cause": { /* original error */ }
+  "timestamp": "2024-03-15T09:31:42.194Z"
 }
 ```
 
@@ -517,32 +499,25 @@ wellcrafted errors:
 const databaseError = {
   name: "DatabaseError",
   message: "Connection timeout",
-  context: { query: "SELECT * FROM users WHERE id = ?", timeout: 5000 }
+  query: "SELECT * FROM users WHERE id = ?",
+  timeout: 5000,
 };
 
-// API layer enrichment  
+// API layer enrichment
 const apiError = {
   name: "ApiError",
   message: "Failed to fetch user",
-  context: { 
-    userId: "user_123",
-    endpoint: "/api/users/user_123",
-    originalError: databaseError 
-  },
-  cause: databaseError
+  userId: "user_123",
+  endpoint: "/api/users/user_123",
 };
 
 // Application layer enrichment
 const userError = {
-  name: "UserError", 
+  name: "UserError",
   message: "Profile load failed",
-  context: {
-    feature: "profile-page",
-    userId: "user_123",
-    userAgent: "Chrome/91.0",
-    apiError: apiError
-  },
-  cause: apiError
+  feature: "profile-page",
+  userId: "user_123",
+  userAgent: "Chrome/91.0",
 };
 ```
 
@@ -559,8 +534,8 @@ wellcrafted's consistent error structure enables powerful monitoring:
 function recordErrorMetrics(error: BaseError) {
   metrics.increment("errors.total", {
     errorType: error.name,
-    service: error.context.service,
-    endpoint: error.context.endpoint
+    service: error.service,
+    endpoint: error.endpoint
   });
   
   // Different alert thresholds for different error types

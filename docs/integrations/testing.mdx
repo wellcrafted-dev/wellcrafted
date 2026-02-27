@@ -74,39 +74,36 @@ describe('UserService', () => {
     expect(result).toEqual(Err({
       name: 'UserServiceError',
       message: 'Email is required',
-      context: { input: { name: 'John', email: '' } },
-      cause: undefined,
+      input: { name: 'John', email: '' },
     }));
   });
 
   it('should return validation error for invalid email', async () => {
-    const result = await userService.createUser({ 
-      name: 'John', 
-      email: 'invalid-email' 
+    const result = await userService.createUser({
+      name: 'John',
+      email: 'invalid-email'
     });
-    
+
     expect(result).toEqual(Err({
       name: 'UserServiceError',
       message: 'Invalid email format',
-      context: { email: 'invalid-email' },
-      cause: undefined,
+      email: 'invalid-email',
     }));
   });
 
   it('should handle database connection error', async () => {
     const dbError = new Error('Connection failed');
     mockDb.create.mockRejectedValue(dbError);
-    
-    const result = await userService.createUser({ 
-      name: 'John', 
-      email: 'john@example.com' 
+
+    const result = await userService.createUser({
+      name: 'John',
+      email: 'john@example.com'
     });
-    
+
     expect(result).toEqual(Err({
       name: 'UserServiceError',
       message: 'Failed to create user',
-      context: { input: { name: 'John', email: 'john@example.com' } },
-      cause: dbError,
+      input: { name: 'John', email: 'john@example.com' },
     }));
   });
 
@@ -217,12 +214,9 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Name is required',
-        context: {
-          input: { ...validInput, name: '', password: '[REDACTED]' }
-        },
-        cause: undefined,
+        input: { ...validInput, name: '', password: '[REDACTED]' },
       }));
-      
+
       // Ensure no database calls were made
       expect(mockDb.user.findUnique).not.toHaveBeenCalled();
       expect(mockDb.user.create).not.toHaveBeenCalled();
@@ -237,8 +231,7 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Invalid email format',
-        context: { email: 'invalid-email' },
-        cause: undefined,
+        email: 'invalid-email',
       }));
     });
 
@@ -251,8 +244,7 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Password must be at least 8 characters long',
-        context: { passwordLength: 3 },
-        cause: undefined,
+        passwordLength: 3,
       }));
     });
 
@@ -265,12 +257,9 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Email already exists',
-        context: {
-          input: { ...validInput, password: '[REDACTED]' }
-        },
-        cause: expect.any(Error),
+        input: { ...validInput, password: '[REDACTED]' },
       }));
-      
+
       expect(mockDb.user.create).not.toHaveBeenCalled();
     });
 
@@ -283,17 +272,14 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Failed to create user',
-        context: {
-          input: { ...validInput, password: '[REDACTED]' }
-        },
-        cause: dbError,
+        input: { ...validInput, password: '[REDACTED]' },
       }));
     });
 
     it('handles database constraint violation', async () => {
       const constraintError = new Error('Unique constraint violation');
       constraintError.code = 'P2002'; // Prisma unique constraint error
-      
+
       mockDb.user.findUnique.mockResolvedValue(null);
       mockDb.user.create.mockRejectedValue(constraintError);
 
@@ -302,10 +288,7 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Failed to create user',
-        context: {
-          input: { ...validInput, password: '[REDACTED]' }
-        },
-        cause: constraintError,
+        input: { ...validInput, password: '[REDACTED]' },
       }));
     });
   });
@@ -345,10 +328,9 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'User ID is required',
-        context: { id: '' },
-        cause: undefined,
+        id: '',
       }));
-      
+
       expect(mockDb.user.findUnique).not.toHaveBeenCalled();
     });
 
@@ -360,8 +342,7 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'User not found',
-        context: { userId: 'non-existent' },
-        cause: expect.any(Error),
+        userId: 'non-existent',
       }));
     });
 
@@ -374,8 +355,7 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Failed to fetch user',
-        context: { userId: '1' },
-        cause: dbError,
+        userId: '1',
       }));
     });
   });
@@ -419,8 +399,8 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'User not found',
-        context: { userId: 'non-existent', updates: { name: 'New Name' } },
-        cause: expect.any(Error),
+        userId: 'non-existent',
+        updates: { name: 'New Name' },
       }));
     });
 
@@ -439,8 +419,8 @@ describe('UserService', () => {
       expect(result).toEqual(Err({
         name: 'UserServiceError',
         message: 'Email already exists',
-        context: { userId: '1', updates: { email: 'conflict@example.com' } },
-        cause: expect.any(Error),
+        userId: '1',
+        updates: { email: 'conflict@example.com' },
       }));
     });
   });
@@ -514,8 +494,7 @@ describe('User Queries', () => {
       const serviceError = {
         name: 'UserServiceError',
         message: 'Database connection failed',
-        context: { operation: 'getAllUsers' },
-        cause: new Error('Connection timeout'),
+        operation: 'getAllUsers',
       };
 
       vi.mocked(userService.getAllUsers).mockResolvedValue(Err(serviceError));
@@ -618,8 +597,7 @@ describe('User Queries', () => {
       const serviceError = {
         name: 'UserServiceError',
         message: 'Email already exists',
-        context: { email: 'existing@example.com' },
-        cause: undefined,
+        email: 'existing@example.com',
       };
 
       vi.mocked(userService.createUser).mockResolvedValue(Err(serviceError));
@@ -667,8 +645,7 @@ describe('User Queries', () => {
       const serviceError = {
         name: 'UserServiceError',
         message: 'Invalid email format',
-        context: { email: 'invalid-email' },
-        cause: undefined,
+        email: 'invalid-email',
       };
 
       vi.mocked(userService.createUser).mockResolvedValue(Err(serviceError));
@@ -683,8 +660,7 @@ describe('User Queries', () => {
             return Err({
               name: 'UIError',
               message: getUIErrorMessage(result.error),
-              context: result.error.context,
-              cause: result.error,
+              email: result.error.email,
             });
           }
 
@@ -702,8 +678,7 @@ describe('User Queries', () => {
       expect(result).toEqual(Err({
         name: 'UIError',
         message: 'Please enter a valid email address',
-        context: { email: 'invalid-email' },
-        cause: serviceError,
+        email: 'invalid-email',
       }));
     });
   });
@@ -791,8 +766,7 @@ describe('UserList Component', () => {
     const errorResult = Err({
       name: 'UserServiceError',
       message: 'Database connection failed',
-      context: { operation: 'getAllUsers' },
-      cause: new Error('Connection timeout'),
+      operation: 'getAllUsers',
     });
 
     vi.mocked(userService.getAllUsers).mockResolvedValue(errorResult);
@@ -827,8 +801,6 @@ describe('UserList Component', () => {
     const errorResult = Err({
       name: 'UserServiceError',
       message: 'Network error',
-      context: {},
-      cause: new Error('Network timeout'),
     });
 
     const successResult = Ok({
@@ -942,8 +914,7 @@ describe('UserProfile Component', () => {
     const errorResult = Err({
       name: 'UserServiceError',
       message: 'User not found',
-      context: { userId: '1' },
-      cause: undefined,
+      userId: '1',
     });
 
     vi.mocked(userService.getUserById).mockResolvedValue(errorResult);
@@ -1015,8 +986,7 @@ describe('Users API Routes', () => {
       const errorResult = Err({
         name: 'UserServiceError',
         message: 'Database connection failed',
-        context: { operation: 'getAllUsers' },
-        cause: new Error('Connection timeout'),
+        operation: 'getAllUsers',
       });
 
       vi.mocked(userService.getAllUsers).mockResolvedValue(errorResult);
@@ -1030,7 +1000,7 @@ describe('Users API Routes', () => {
         error: {
           name: 'UserServiceError',
           message: 'Database connection failed',
-          context: { operation: 'getAllUsers' },
+          operation: 'getAllUsers',
         },
         timestamp: expect.any(String),
       });
@@ -1114,8 +1084,7 @@ describe('Users API Routes', () => {
       const errorResult = Err({
         name: 'UserServiceError',
         message: 'Email already exists',
-        context: { input: userData },
-        cause: undefined,
+        input: userData,
       });
 
       vi.mocked(userService.createUser).mockResolvedValue(errorResult);
@@ -1151,10 +1120,8 @@ describe('Users API Routes', () => {
         error: {
           name: 'InternalServerError',
           message: 'An unexpected error occurred',
-          context: {
-            path: '/api/users',
-            method: 'GET',
-          },
+          path: '/api/users',
+          method: 'GET',
         },
       });
     });
@@ -1236,8 +1203,6 @@ export const TestDataFactory = {
   userServiceError: (overrides: Partial<UserServiceError> = {}): UserServiceError => ({
     name: 'UserServiceError',
     message: 'Test error',
-    context: {},
-    cause: undefined,
     ...overrides,
   }),
 
@@ -1256,14 +1221,12 @@ export const ErrorScenarios = {
   validationError: (field: string, value: any) => ({
     name: 'ValidationError',
     message: `Invalid ${field}`,
-    context: { [field]: value },
-    cause: undefined,
+    [field]: value,
   }),
   notFoundError: (resource: string, id: string) => ({
     name: 'UserServiceError',
     message: `${resource} not found`,
-    context: { [`${resource.toLowerCase()}Id`]: id },
-    cause: undefined,
+    [`${resource.toLowerCase()}Id`]: id,
   }),
 };
 

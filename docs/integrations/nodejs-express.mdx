@@ -136,7 +136,9 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 import { db } from '../db';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
+  .withFields<{ operation: string; userId?: string }>()
+  .withMessage(({ operation }) => `User service ${operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
@@ -187,21 +189,13 @@ export async function getAllUsers(
 
       return { users, total };
     },
-    catch: (error) => UserServiceErr({
-      message: 'Failed to fetch users from database',
-      context: { limit, offset },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'getAllUsers' }),
   });
 }
 
 export async function getUserById(id: string): Promise<Result<User, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'getUserById', userId: id });
   }
 
   return tryAsync({
@@ -224,46 +218,26 @@ export async function getUserById(id: string): Promise<Result<User, UserServiceE
 
       return user;
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to fetch user',
-      context: { userId: id },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'getUserById', userId: id }),
   });
 }
 
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   // Input validation
   if (!input.email?.trim()) {
-    return UserServiceErr({
-      message: 'Email is required',
-      context: { input: { ...input, password: '[REDACTED]' } },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   if (!input.email.includes('@')) {
-    return UserServiceErr({
-      message: 'Invalid email format',
-      context: { email: input.email },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   if (!input.name?.trim()) {
-    return UserServiceErr({
-      message: 'Name is required',
-      context: { input: { ...input, password: '[REDACTED]' } },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   if (!input.password || input.password.length < 8) {
-    return UserServiceErr({
-      message: 'Password must be at least 8 characters long',
-      context: { passwordLength: input.password?.length || 0 },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   return tryAsync({
@@ -300,30 +274,18 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
 
       return user;
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to create user',
-      context: { input: { ...input, password: '[REDACTED]' } },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'createUser' }),
   });
 }
 
 export async function updateUser(id: string, input: UpdateUserInput): Promise<Result<User, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id, input },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'updateUser', userId: id });
   }
 
   // Validate input if provided
   if (input.email !== undefined && !input.email.includes('@')) {
-    return UserServiceErr({
-      message: 'Invalid email format',
-      context: { userId: id, email: input.email },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'updateUser', userId: id });
   }
 
   return tryAsync({
@@ -364,21 +326,13 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Re
 
       return user;
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to update user',
-      context: { userId: id, input },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'updateUser', userId: id }),
   });
 }
 
 export async function deleteUser(id: string): Promise<Result<void, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'deleteUser', userId: id });
   }
 
   return tryAsync({
@@ -392,11 +346,7 @@ export async function deleteUser(id: string): Promise<Result<void, UserServiceEr
       // Delete user
       await db.user.delete({ where: { id } });
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to delete user',
-      context: { userId: id },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'deleteUser', userId: id }),
   });
 }
 
@@ -418,23 +368,16 @@ import { z } from 'zod';
 import { trySync } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
+const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
+  .withFields<{ location: string }>()
+  .withMessage(({ location }) => `Validation failed for ${location}`);
 type ValidationError = ReturnType<typeof ValidationError>;
 
 export function validateBody<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const { data: validData, error } = trySync({
       try: () => schema.parse(req.body),
-      catch: (error) => ValidationErr({
-        message: error instanceof z.ZodError 
-          ? error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-          : 'Invalid request body',
-        context: { 
-          body: req.body,
-          errors: error instanceof z.ZodError ? error.errors : undefined,
-        },
-        cause: error,
-      }),
+      catch: (error) => ValidationErr({ location: 'body' }),
     });
 
     if (error) {
@@ -450,16 +393,7 @@ export function validateParams<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const { data: validParams, error } = trySync({
       try: () => schema.parse(req.params),
-      catch: (error) => ValidationErr({
-        message: error instanceof z.ZodError 
-          ? 'Invalid URL parameters'
-          : 'Parameter validation failed',
-        context: { 
-          params: req.params,
-          errors: error instanceof z.ZodError ? error.errors : undefined,
-        },
-        cause: error,
-      }),
+      catch: (error) => ValidationErr({ location: 'params' }),
     });
 
     if (error) {
@@ -475,16 +409,7 @@ export function validateQuery<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const { data: validQuery, error } = trySync({
       try: () => schema.parse(req.query),
-      catch: (error) => ValidationErr({
-        message: error instanceof z.ZodError 
-          ? 'Invalid query parameters'
-          : 'Query validation failed',
-        context: { 
-          query: req.query,
-          errors: error instanceof z.ZodError ? error.errors : undefined,
-        },
-        cause: error,
-      }),
+      catch: (error) => ValidationErr({ location: 'query' }),
     });
 
     if (error) {
@@ -513,7 +438,6 @@ export function sendErrorResponse(res: Response, error: APIError): void {
     error: {
       name: error.name,
       message: error.message,
-      context: error.context,
     },
     timestamp: new Date().toISOString(),
   });
@@ -547,11 +471,6 @@ export function globalErrorHandler(
     error: {
       name: 'InternalServerError',
       message: 'An unexpected error occurred',
-      context: {
-        path: req.path,
-        method: req.method,
-        timestamp: new Date().toISOString(),
-      },
     },
     timestamp: new Date().toISOString(),
   });
@@ -716,7 +635,9 @@ import { PrismaClient } from '@prisma/client';
 import { tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
-const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError');
+const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError')
+  .withFields<{ operation: string }>()
+  .withMessage(({ operation }) => `Database ${operation} failed`);
 type DatabaseError = ReturnType<typeof DatabaseError>;
 
 class Database {
@@ -734,13 +655,7 @@ class Database {
         await this.prisma.$connect();
         console.log('Database connected successfully');
       },
-      catch: (error) => DatabaseErr({
-        message: 'Failed to connect to database',
-        context: { 
-          database: process.env.DATABASE_URL?.split('@')[1] || 'unknown',
-        },
-        cause: error,
-      }),
+      catch: (error) => DatabaseErr({ operation: 'connect' }),
     });
   }
 
@@ -750,11 +665,7 @@ class Database {
         await this.prisma.$disconnect();
         console.log('Database disconnected successfully');
       },
-      catch: (error) => DatabaseErr({
-        message: 'Failed to disconnect from database',
-        context: {},
-        cause: error,
-      }),
+      catch: (error) => DatabaseErr({ operation: 'disconnect' }),
     });
   }
 
@@ -767,11 +678,7 @@ class Database {
           timestamp: new Date(),
         };
       },
-      catch: (error) => DatabaseErr({
-        message: 'Database health check failed',
-        context: { timestamp: new Date().toISOString() },
-        cause: error,
-      }),
+      catch: (error) => DatabaseErr({ operation: 'healthCheck' }),
     });
   }
 
@@ -874,10 +781,6 @@ app.use('*', (req, res) => {
     error: {
       name: 'NotFoundError',
       message: `Route ${req.method} ${req.originalUrl} not found`,
-      context: {
-        method: req.method,
-        path: req.originalUrl,
-      },
     },
     timestamp: new Date().toISOString(),
   });
@@ -944,7 +847,9 @@ import { trySync } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 import { sendErrorResponse } from './errorHandler';
 
-const { AuthError, AuthErr } = createTaggedError('AuthError');
+const { AuthError, AuthErr } = createTaggedError('AuthError')
+  .withFields<{ reason: string }>()
+  .withMessage(({ reason }) => `Authentication failed: ${reason}`);
 type AuthError = ReturnType<typeof AuthError>;
 
 export interface AuthenticatedRequest extends Request {
@@ -976,13 +881,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       };
     },
     catch: (error) => AuthErr({
-      message: error instanceof Error ? error.message : 'Authentication failed',
-      context: {
-        hasAuthHeader: !!req.headers.authorization,
-        userAgent: req.headers['user-agent'],
-        ip: req.ip,
-      },
-      cause: error,
+      reason: error instanceof Error ? error.message : 'Unknown error',
     }),
   });
 
@@ -1000,21 +899,13 @@ export function requireRole(role: 'admin') {
     
     if (!authReq.user) {
       return sendErrorResponse(res, AuthErr({
-        message: 'Authentication required',
-        context: { requiredRole: role },
-        cause: undefined,
+        reason: 'Authentication required',
       }));
     }
 
     if (authReq.user.role !== role) {
       return sendErrorResponse(res, AuthErr({
-        message: `${role} role required`,
-        context: { 
-          userRole: authReq.user.role, 
-          requiredRole: role,
-          userId: authReq.user.id,
-        },
-        cause: undefined,
+        reason: `${role} role required`,
       }));
     }
 
@@ -1074,12 +965,9 @@ describe('Users API', () => {
     });
 
     it('handles service errors gracefully', async () => {
-      vi.mocked(userService.getAllUsers).mockResolvedValue(Err({
-        name: 'UserServiceError',
-        message: 'Database connection failed',
-        context: { limit: 20, offset: 0 },
-        cause: new Error('Connection timeout'),
-      }));
+      vi.mocked(userService.getAllUsers).mockResolvedValue(Err(
+        UserServiceError({ operation: 'getAllUsers' })
+      ));
 
       const response = await request(app)
         .get('/api/users')
@@ -1152,12 +1040,9 @@ describe('Users API', () => {
         password: 'password123',
       };
 
-      vi.mocked(userService.createUser).mockResolvedValue(Err({
-        name: 'UserServiceError',
-        message: 'Email already exists',
-        context: { input: userData },
-        cause: undefined,
-      }));
+      vi.mocked(userService.createUser).mockResolvedValue(Err(
+        UserServiceError({ operation: 'createUser' })
+      ));
 
       const response = await request(app)
         .post('/api/users')
@@ -1198,12 +1083,9 @@ describe('Users API', () => {
     });
 
     it('returns 404 for non-existent user', async () => {
-      vi.mocked(userService.getUserById).mockResolvedValue(Err({
-        name: 'UserServiceError',
-        message: 'User not found',
-        context: { userId: 'non-existent' },
-        cause: undefined,
-      }));
+      vi.mocked(userService.getUserById).mockResolvedValue(Err(
+        UserServiceError({ operation: 'getUserById', userId: 'non-existent' })
+      ));
 
       const response = await request(app)
         .get('/api/users/non-existent')
@@ -1244,7 +1126,9 @@ import { z } from 'zod';
 import { trySync } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
-const { ConfigError, ConfigErr } = createTaggedError('ConfigError');
+const { ConfigError, ConfigErr } = createTaggedError('ConfigError')
+  .withFields<{ reason: string }>()
+  .withMessage(({ reason }) => `Configuration error: ${reason}`);
 type ConfigError = ReturnType<typeof ConfigError>;
 
 const EnvSchema = z.object({
@@ -1262,14 +1146,9 @@ export function loadConfig() {
   const { data: config, error } = trySync({
     try: () => EnvSchema.parse(process.env),
     catch: (error) => ConfigErr({
-      message: error instanceof z.ZodError 
-        ? `Invalid environment configuration: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+      reason: error instanceof z.ZodError
+        ? error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
         : 'Failed to load configuration',
-      context: { 
-        env: process.env.NODE_ENV,
-        errors: error instanceof z.ZodError ? error.errors : undefined,
-      },
-      cause: error,
     }),
   });
 
@@ -1346,8 +1225,9 @@ Always return the same error structure:
   "success": false,
   "error": {
     "name": "UserServiceError",
-    "message": "User not found",
-    "context": { "userId": "123" }
+    "message": "User service getUserById failed",
+    "operation": "getUserById",
+    "userId": "123"
   },
   "timestamp": "2024-01-01T00:00:00.000Z"
 }
@@ -1365,20 +1245,12 @@ Keep services pure and database-focused:
 // ✅ Good - pure business logic
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   if (!input.email?.includes('@')) {
-    return UserServiceErr({
-      message: 'Invalid email format',
-      context: { email: input.email },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
-  
+
   return tryAsync({
     try: () => db.user.create({ data: input }),
-    catch: (error) => UserServiceErr({
-      message: 'Failed to create user',
-      context: { input },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'createUser' }),
   });
 }
 
@@ -1417,14 +1289,8 @@ Always include relevant debugging context:
 
 ```typescript
 return UserServiceErr({
-  message: 'Failed to update user',
-  context: {
-    userId: id,
-    updates,
-    timestamp: new Date().toISOString(),
-    operation: 'updateUser',
-  },
-  cause: error,
+  operation: 'updateUser',
+  userId: id,
 });
 ```
 

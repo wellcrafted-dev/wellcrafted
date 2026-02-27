@@ -33,25 +33,26 @@ The error system uses **tagged unions** (also called discriminated unions), wher
 ```typescript
 // The "name" property is the tag that discriminates between error types
 // Note: Error types follow the convention of ending with "Error" suffix
-type AppError = 
-  | { name: "ValidationError"; context: { field: string; value: unknown } }
-  | { name: "NetworkError"; context: { url: string; status: number } }
-  | { name: "DatabaseError"; context: { query: string; table: string } };
+// Additional fields are spread flat on the error object
+type AppError =
+  | { name: "ValidationError"; message: string; field: string; value: unknown }
+  | { name: "NetworkError"; message: string; url: string; status: number }
+  | { name: "DatabaseError"; message: string; query: string; table: string };
 
 // TypeScript can exhaustively check all cases
 function handleAppError(error: AppError) {
   switch (error.name) { // TypeScript knows this is the discriminant tag
     case "ValidationError":
       // TypeScript narrows to ValidationError type here
-      console.log(`Validation failed for field: ${error.context.field}`);
+      console.log(`Validation failed for field: ${error.field}`);
       break;
     case "NetworkError":
       // TypeScript narrows to NetworkError type here
-      console.log(`Network error: ${error.context.status}`);
+      console.log(`Network error: ${error.status}`);
       break;
     case "DatabaseError":
       // TypeScript narrows to DatabaseError type here
-      console.log(`Database error in table: ${error.context.table}`);
+      console.log(`Database error in table: ${error.table}`);
       break;
     // TypeScript will warn if we miss any cases!
   }
@@ -60,24 +61,61 @@ function handleAppError(error: AppError) {
 
 ## Creating Errors with createTaggedError
 
-The recommended way to create typed errors is with the `createTaggedError` builder. It eliminates boilerplate while giving you full type safety over context shape and cause type.
+The recommended way to create typed errors is with the `createTaggedError` builder. It eliminates boilerplate while giving you full type safety over fields and message computation.
+
+### The Three Tiers
+
+**Tier 1 — Static (no fields):**
+```typescript
+const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
+  .withMessage(() => 'A recording is already in progress');
+
+RecorderBusyErr() // no args
+```
+
+**Tier 2 — Reason-only (single descriptive field):**
+```typescript
+const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
+  .withFields<{ reason: string }>()
+  .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
+
+PlaySoundErr({ reason: extractErrorMessage(error) })
+```
+
+**Tier 3 — Structured (multiple fields):**
+```typescript
+const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
+  .withFields<{ status: number; reason?: string }>()
+  .withMessage(({ status, reason }) => `HTTP ${status}${reason ? `: ${reason}` : ''}`);
+
+ResponseErr({ status: 404 })
+```
+
+### Key Principles
+
+- `name` + `message` are the only built-in fields
+- Additional fields spread **flat** on the error object (no nested `context` bag)
+- `message` is computed by the template, **NOT** passed at call sites
+- `cause` is not special — if needed, it's just another field
+- Reserved keys (`name`, `message`) are prevented by `NoReservedKeys` at compile time
+- Builder chain: `createTaggedError('XError').withFields<F>().withMessage(fn)`
+- `.withMessage()` is the **required terminal step** — it returns the factory functions
+
+### Full Example
 
 ```typescript
 import { createTaggedError } from 'wellcrafted/error';
 
 const { ClipboardServiceError, ClipboardServiceErr } = createTaggedError('ClipboardServiceError')
-  .withContext<{ text: string }>()
-  .withCause()
+  .withFields<{ text: string; cause?: unknown }>()
   .withMessage(() => 'Clipboard operation failed');
 
 type ClipboardServiceError = ReturnType<typeof ClipboardServiceError>;
 ```
 
-`.withMessage(fn)` is the **required terminal step** — it accepts a function that computes the message from `{ name, context?, cause? }` and returns the factory functions `ClipboardServiceError` and `ClipboardServiceErr`.
-
 ### Usage at Call Sites
 
-At call sites, provide `context` and/or `cause`. The message is auto-computed by the template:
+At call sites, provide fields directly as a flat object. The message is auto-computed by the template:
 
 ```typescript
 export function createClipboardServiceExtension(): ClipboardService {
@@ -86,7 +124,7 @@ export function createClipboardServiceExtension(): ClipboardService {
       tryAsync({
         try: () => navigator.clipboard.writeText(text),
         catch: (error) => ClipboardServiceErr({
-          context: { text },
+          text,
           cause: error,
         }),
       }),
@@ -95,7 +133,7 @@ export function createClipboardServiceExtension(): ClipboardService {
       trySync({
         try: () => writeTextToCursor(text),
         catch: (error) => ClipboardServiceErr({
-          context: { text },
+          text,
           cause: error,
         }),
       }),
@@ -114,10 +152,10 @@ export const ClipboardServiceErr = (error: Omit<ClipboardServiceError, 'name'>) 
 
 These have several problems:
 - **Hidden behavior**: The function could add extra properties, have side effects, or change over time without it being obvious at the call site.
-- **No context type enforcement**: `Omit<..., 'name'>` accepts any `message`/`context`/`cause` without shape checking.
+- **No field type enforcement**: `Omit<..., 'name'>` accepts any shape without checking.
 - **Manual `name` wiring**: You can forget or misspell it.
 
-`createTaggedError` is the better version of this pattern — it provides the same ergonomic factory shorthand while enforcing context shape, cause type, and message computation via the builder API.
+`createTaggedError` is the better version of this pattern — it provides the same ergonomic factory shorthand while enforcing field types and message computation via the builder API.
 
 ## Error Classification Framework
 
@@ -134,16 +172,16 @@ import { createTaggedError } from "wellcrafted/error";
 
 // Input validation error type
 const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
-  .withContext<{ providedAge: unknown; validRange: [number, number] }>()
-  .withMessage(({ context }) =>
-    `Age must be a number between ${context.validRange[0]} and ${context.validRange[1]}`
+  .withFields<{ providedAge: unknown; validRange: [number, number] }>()
+  .withMessage(({ validRange }) =>
+    `Age must be a number between ${validRange[0]} and ${validRange[1]}`
   );
 type ValidationError = ReturnType<typeof ValidationError>;
 
 function validateAge(age: unknown): Result<number, ValidationError> {
   if (typeof age !== "number" || age < 0 || age > 150) {
     return ValidationErr({
-      context: { providedAge: age, validRange: [0, 150] },
+      providedAge: age, validRange: [0, 150],
     });
   }
   return Ok(age);
@@ -151,20 +189,18 @@ function validateAge(age: unknown): Result<number, ValidationError> {
 
 // Business logic error type
 const { BusinessError, BusinessErr } = createTaggedError('BusinessError')
-  .withContext<{ accountId: string; requestedAmount: number; availableBalance: number }>()
-  .withMessage(({ context }) =>
-    `Insufficient funds: requested ${context.requestedAmount}, available ${context.availableBalance}`
+  .withFields<{ accountId: string; requestedAmount: number; availableBalance: number }>()
+  .withMessage(({ requestedAmount, availableBalance }) =>
+    `Insufficient funds: requested ${requestedAmount}, available ${availableBalance}`
   );
 type BusinessError = ReturnType<typeof BusinessError>;
 
 function withdrawFunds(account: Account, amount: number): Result<Account, BusinessError> {
   if (account.balance < amount) {
     return BusinessErr({
-      context: {
-        accountId: account.id,
-        requestedAmount: amount,
-        availableBalance: account.balance
-      },
+      accountId: account.id,
+      requestedAmount: amount,
+      availableBalance: account.balance,
     });
   }
 
@@ -182,8 +218,7 @@ Error types that your code receives from functions it calls:
 import { createTaggedError } from "wellcrafted/error";
 
 const { StorageError, StorageErr } = createTaggedError('StorageError')
-  .withContext<{ userId: string; timestamp: string }>()
-  .withCause()
+  .withFields<{ userId: string; timestamp: string; cause?: unknown }>()
   .withMessage(() => 'Failed to save user data');
 type StorageError = ReturnType<typeof StorageError>;
 
@@ -192,8 +227,9 @@ async function saveUserData(user: User): Promise<Result<void, StorageError>> {
   return await tryAsync({
     try: () => database.save(user),
     catch: (error) => StorageErr({
-      context: { userId: user.id, timestamp: new Date().toISOString() },
-      cause: error, // Preserve the original error
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+      cause: error, // Preserve the original error as a field
     }),
   });
 }
@@ -207,10 +243,9 @@ Error types that your current function can meaningfully address:
 
 ```typescript
 const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withContext<{ url: string; attempt: number; maxRetries: number }>()
-  .withCause()
-  .withMessage(({ context }) =>
-    `Request failed (attempt ${context.attempt}/${context.maxRetries})`
+  .withFields<{ url: string; attempt: number; maxRetries: number; cause?: unknown }>()
+  .withMessage(({ attempt, maxRetries }) =>
+    `Request failed (attempt ${attempt}/${maxRetries})`
   );
 type NetworkError = ReturnType<typeof NetworkError>;
 
@@ -224,7 +259,7 @@ async function fetchWithRetry<T>(
     const result = await tryAsync({
       try: () => fetch(url).then(r => r.json()),
       catch: (error) => NetworkErr({
-        context: { url, attempt, maxRetries },
+        url, attempt, maxRetries,
         cause: error,
       }),
     });
@@ -243,7 +278,7 @@ async function fetchWithRetry<T>(
 
   // All retries exhausted — message template handles it
   return NetworkErr({
-    context: { url, attempt: maxRetries, maxRetries },
+    url, attempt: maxRetries, maxRetries,
     cause: lastError ?? undefined,
   });
 }
@@ -255,15 +290,15 @@ Error types that should be handled by a higher-level function:
 
 ```typescript
 const { UserValidationError, UserValidationErr } = createTaggedError('UserValidationError')
-  .withContext<{ providedId: number }>()
-  .withMessage(({ context }) => `User ID must be positive, got ${context.providedId}`);
+  .withFields<{ providedId: number }>()
+  .withMessage(({ providedId }) => `User ID must be positive, got ${providedId}`);
 type UserValidationError = ReturnType<typeof UserValidationError>;
 
 // Just propagate database error types up - the HTTP handler will deal with them
 async function getUser(id: number): Promise<Result<User, DbError | UserValidationError>> {
   // Validate input
   if (id <= 0) {
-    return UserValidationErr({ context: { providedId: id } });
+    return UserValidationErr({ providedId: id });
   }
 
   // Let database error types bubble up unchanged
@@ -275,7 +310,7 @@ async function getUser(id: number): Promise<Result<User, DbError | UserValidatio
 async function handleGetUser(req: Request): Promise<Response> {
   const userId = parseInt(req.params.id);
   const result = await getUser(userId);
-  
+
   if (isErr(result)) {
     switch (result.error.name) {
       case "UserValidationError":
@@ -284,15 +319,15 @@ async function handleGetUser(req: Request): Promise<Response> {
           headers: { "Content-Type": "application/json" }
         });
       case "DbError":
-        // Log the full error context but return generic message
+        // Log the full error but return generic message
         console.error("Database error:", result.error);
         return new Response(
-          JSON.stringify({ message: "Internal server error" }), 
+          JSON.stringify({ message: "Internal server error" }),
           { status: 500, headers: { "Content-Type": "application/json" }}
         );
     }
   }
-  
+
   return new Response(JSON.stringify(result.data), {
     headers: { "Content-Type": "application/json" }
   });
@@ -305,8 +340,7 @@ Error types that need to be converted to a more appropriate type for the calling
 
 ```typescript
 const { DbError, DbErr } = createTaggedError('DbError')
-  .withContext<{ sql: string }>()
-  .withCause()
+  .withFields<{ sql: string; cause?: unknown }>()
   .withMessage(() => 'Query execution failed');
 type DbError = ReturnType<typeof DbError>;
 
@@ -315,15 +349,14 @@ async function executeQuery(sql: string): Promise<Result<any[], DbError>> {
   return await tryAsync({
     try: () => database.query(sql),
     catch: (error) => DbErr({
-      context: { sql: sql.substring(0, 100) }, // Truncate for logging
+      sql: sql.substring(0, 100), // Truncate for logging
       cause: error,
     }),
   });
 }
 
 const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withContext<{ userData: { name: string; email: string } }>()
-  .withCause<DbError>()
+  .withFields<{ userData: { name: string; email: string }; cause?: DbError }>()
   .withMessage(() => 'Failed to create user');
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
@@ -337,7 +370,7 @@ async function createUser(userData: UserData): Promise<Result<User, UserServiceE
   if (isErr(result)) {
     // Transform database error type to domain-specific error type
     return UserServiceErr({
-      context: { userData: { name: userData.name, email: userData.email } },
+      userData: { name: userData.name, email: userData.email },
       cause: result.error,
     });
   }
@@ -358,7 +391,7 @@ type ValidationResult<T> = Result<T, ValidationError[]>;
 function validateUser(data: unknown): ValidationResult<User> {
   const errors: ValidationError[] = [];
   const result: Partial<User> = {};
-  
+
   // Validate each field
   const nameResult = validateName(data.name);
   if (isErr(nameResult)) {
@@ -366,37 +399,36 @@ function validateUser(data: unknown): ValidationResult<User> {
   } else {
     result.name = nameResult.data;
   }
-  
+
   const emailResult = validateEmail(data.email);
   if (isErr(emailResult)) {
     errors.push(emailResult.error);
   } else {
     result.email = emailResult.data;
   }
-  
+
   const ageResult = validateAge(data.age);
   if (isErr(ageResult)) {
     errors.push(ageResult.error);
   } else {
     result.age = ageResult.data;
   }
-  
+
   if (errors.length > 0) {
     return Err(errors);
   }
-  
+
   return Ok(result as User);
 }
 ```
 
-### Error Context Enrichment
+### Error Field Enrichment
 
-Add context as errors bubble up through layers:
+Add fields as errors bubble up through layers:
 
 ```typescript
 const { StorageError, StorageErr } = createTaggedError('StorageError')
-  .withContext<{ path: string; contentLength: number }>()
-  .withCause()
+  .withFields<{ path: string; contentLength: number; cause?: unknown }>()
   .withMessage(() => 'File write failed');
 type StorageError = ReturnType<typeof StorageError>;
 
@@ -405,25 +437,26 @@ async function writeFile(path: string, content: string): Promise<Result<void, St
   return await tryAsync({
     try: () => fs.writeFile(path, content),
     catch: (error) => StorageErr({
-      context: { path, contentLength: content.length },
+      path,
+      contentLength: content.length,
       cause: error,
     }),
   });
 }
 
 const { DocumentServiceError, DocumentServiceErr } = createTaggedError('DocumentServiceError')
-  .withContext<{
+  .withFields<{
     documentId: string;
     documentTitle: string;
     userId: string;
     attemptTimestamp: string;
     documentSize: number;
+    cause?: StorageError;
   }>()
-  .withCause<StorageError>()
-  .withMessage(({ context }) => `Failed to save document ${context.documentId}`);
+  .withMessage(({ documentId }) => `Failed to save document ${documentId}`);
 type DocumentServiceError = ReturnType<typeof DocumentServiceError>;
 
-// Service layer - adds business context
+// Service layer - adds business fields
 async function saveDocument(doc: Document): Promise<Result<void, DocumentServiceError>> {
   const filePath = `/documents/${doc.id}.json`;
   const content = JSON.stringify(doc);
@@ -431,13 +464,11 @@ async function saveDocument(doc: Document): Promise<Result<void, DocumentService
   const result = await writeFile(filePath, content);
   if (isErr(result)) {
     return DocumentServiceErr({
-      context: {
-        documentId: doc.id,
-        documentTitle: doc.title,
-        userId: doc.authorId,
-        attemptTimestamp: new Date().toISOString(),
-        documentSize: content.length,
-      },
+      documentId: doc.id,
+      documentTitle: doc.title,
+      userId: doc.authorId,
+      attemptTimestamp: new Date().toISOString(),
+      documentSize: content.length,
       cause: result.error,
     });
   }
@@ -445,33 +476,27 @@ async function saveDocument(doc: Document): Promise<Result<void, DocumentService
   return Ok(undefined);
 }
 
-// API layer - adds request context
+// API layer - adds request context by spreading additional info
 async function handleSaveDocument(req: Request): Promise<Response> {
   const document = await req.json();
   const result = await saveDocument(document);
-  
+
   if (isErr(result)) {
-    // Add HTTP request context
-    const enrichedError = {
+    // Log the error with its flat fields
+    console.error("Document save failed:", {
       ...result.error,
-      context: {
-        ...result.error.context,
-        // Add request-specific context
-        requestId: req.headers.get("x-request-id"),
-        userAgent: req.headers.get("user-agent"),
-        timestamp: new Date().toISOString(),
-      },
-    };
-    
-    // Log the enriched error
-    console.error("Document save failed:", enrichedError);
-    
+      // Add request-specific info for logging
+      requestId: req.headers.get("x-request-id"),
+      userAgent: req.headers.get("user-agent"),
+      timestamp: new Date().toISOString(),
+    });
+
     return new Response(
       JSON.stringify({ error: "Failed to save document" }),
       { status: 500, headers: { "Content-Type": "application/json" }}
     );
   }
-  
+
   return new Response(JSON.stringify({ success: true }));
 }
 ```
@@ -484,16 +509,16 @@ When dealing with multiple independent operations:
 import { partitionResults } from "wellcrafted/result";
 
 const { ProcessingError, ProcessingErr } = createTaggedError('ProcessingError')
-  .withContext<{
+  .withFields<{
     totalFiles: number;
     successCount: number;
     failureCount: number;
     failures: unknown[];
     successfulPaths: string[];
+    cause?: unknown;
   }>()
-  .withCause()
-  .withMessage(({ context }) =>
-    `Failed to process ${context.failureCount} out of ${context.totalFiles} files`
+  .withMessage(({ failureCount, totalFiles }) =>
+    `Failed to process ${failureCount} out of ${totalFiles} files`
   );
 type ProcessingError = ReturnType<typeof ProcessingError>;
 
@@ -508,13 +533,11 @@ async function processMultipleFiles(paths: string[]): Promise<Result<ProcessedFi
 
   if (errs.length > 0) {
     return ProcessingErr({
-      context: {
-        totalFiles: paths.length,
-        successCount: oks.length,
-        failureCount: errs.length,
-        failures: errs.map(err => err.error),
-        successfulPaths: oks.map((ok, i) => paths[results.indexOf(ok)]),
-      },
+      totalFiles: paths.length,
+      successCount: oks.length,
+      failureCount: errs.length,
+      failures: errs.map(err => err.error),
+      successfulPaths: oks.map((ok, i) => paths[results.indexOf(ok)]),
       cause: errs[0]?.error, // Use first error as primary cause
     });
   }
@@ -530,69 +553,67 @@ Implement resilience patterns with typed errors:
 ```typescript
 type CircuitState = "closed" | "open" | "half-open";
 
-class CircuitBreaker<T, E extends BaseError> {
-  private state: CircuitState = "closed";
-  private failureCount = 0;
-  private lastFailureTime = 0;
-  
-  constructor(
-    private readonly operation: () => Promise<Result<T, E>>,
-    private readonly failureThreshold = 5,
-    private readonly resetTimeout = 60000
-  ) {}
-  
-  async execute(): Promise<Result<T, CircuitBreakerError | E>> {
-    if (this.state === "open") {
-      if (Date.now() - this.lastFailureTime < this.resetTimeout) {
-        return CircuitBreakerErr({
-          context: {
-            state: this.state,
-            failureCount: this.failureCount,
-            lastFailureTime: this.lastFailureTime,
-            resetTimeout: this.resetTimeout,
-          },
-        });
-      }
-      this.state = "half-open";
-    }
-    
-    const result = await this.operation();
-    
-    if (isErr(result)) {
-      this.onFailure();
-      return result;
-    }
-    
-    this.onSuccess();
-    return result;
-  }
-  
-  private onSuccess(): void {
-    this.failureCount = 0;
-    this.state = "closed";
-  }
-  
-  private onFailure(): void {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-    
-    if (this.failureCount >= this.failureThreshold) {
-      this.state = "open";
-    }
-  }
-}
-
 const { CircuitBreakerError, CircuitBreakerErr } = createTaggedError('CircuitBreakerError')
-  .withContext<{
+  .withFields<{
     state: CircuitState;
     failureCount: number;
     lastFailureTime: number;
     resetTimeout: number;
   }>()
-  .withMessage(({ context }) =>
-    `Circuit breaker is ${context.state} after ${context.failureCount} failures`
+  .withMessage(({ state, failureCount }) =>
+    `Circuit breaker is ${state} after ${failureCount} failures`
   );
 type CircuitBreakerError = ReturnType<typeof CircuitBreakerError>;
+
+class CircuitBreaker<T, E extends BaseError> {
+  private state: CircuitState = "closed";
+  private failureCount = 0;
+  private lastFailureTime = 0;
+
+  constructor(
+    private readonly operation: () => Promise<Result<T, E>>,
+    private readonly failureThreshold = 5,
+    private readonly resetTimeout = 60000
+  ) {}
+
+  async execute(): Promise<Result<T, CircuitBreakerError | E>> {
+    if (this.state === "open") {
+      if (Date.now() - this.lastFailureTime < this.resetTimeout) {
+        return CircuitBreakerErr({
+          state: this.state,
+          failureCount: this.failureCount,
+          lastFailureTime: this.lastFailureTime,
+          resetTimeout: this.resetTimeout,
+        });
+      }
+      this.state = "half-open";
+    }
+
+    const result = await this.operation();
+
+    if (isErr(result)) {
+      this.onFailure();
+      return result;
+    }
+
+    this.onSuccess();
+    return result;
+  }
+
+  private onSuccess(): void {
+    this.failureCount = 0;
+    this.state = "closed";
+  }
+
+  private onFailure(): void {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+
+    if (this.failureCount >= this.failureThreshold) {
+      this.state = "open";
+    }
+  }
+}
 ```
 
 ## Error Monitoring and Observability
@@ -617,9 +638,9 @@ function logError(error: BaseError, traceId?: string): void {
     timestamp: new Date().toISOString(),
     traceId,
   };
-  
+
   console.error(JSON.stringify(logEntry));
-  
+
   // Send to monitoring service
   monitoring.recordError(logEntry);
 }
@@ -632,9 +653,8 @@ function recordErrorMetrics(error: BaseError): void {
   // Increment error counter by type
   metrics.increment("errors.total", {
     errorType: error.name,
-    function: error.context.functionName,
   });
-  
+
   // Record error rate
   metrics.histogram("errors.rate", 1, {
     errorType: error.name,
@@ -652,21 +672,19 @@ import { describe, it, expect } from "vitest";
 describe("file operations", () => {
   it("should return FsError when file does not exist", async () => {
     const result = await readFileContent("/nonexistent/file.txt");
-    
+
     expect(isErr(result)).toBe(true);
     if (isErr(result)) {
       expect(result.error.name).toBe("FsError");
       expect(result.error.message).toContain("Failed to read file content");
-      expect(result.error.context).toEqual({
-        path: "/nonexistent/file.txt",
-      });
+      expect(result.error.path).toBe("/nonexistent/file.txt");
       expect(result.error.cause).toBeDefined();
     }
   });
-  
+
   it("should handle error propagation correctly", async () => {
     const result = await initializeApp();
-    
+
     if (isErr(result)) {
       // Should be either ValidationError or FsError
       expect(["ValidationError", "FsError"]).toContain(result.error.name);
@@ -681,15 +699,15 @@ describe("file operations", () => {
 // Mock that can be configured to fail
 class MockDatabase {
   private shouldFail = false;
-  
+
   configureFail(shouldFail: boolean): void {
     this.shouldFail = shouldFail;
   }
-  
+
   async findUser(id: number): Promise<Result<User, DbError>> {
     if (this.shouldFail) {
       return DbErr({
-        context: { sql: `SELECT * FROM users WHERE id = ${id}` },
+        sql: `SELECT * FROM users WHERE id = ${id}`,
         cause: new Error("Connection timeout"),
       });
     }
@@ -702,9 +720,9 @@ describe("user service with database failures", () => {
   it("should handle database failures gracefully", async () => {
     const mockDb = new MockDatabase();
     mockDb.configureFail(true);
-    
+
     const result = await getUserService.getUser(123);
-    
+
     expect(isErr(result)).toBe(true);
     if (isErr(result)) {
       expect(result.error.name).toBe("DbError");
@@ -719,8 +737,7 @@ describe("user service with database failures", () => {
 
 ```typescript
 const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
-  .withContext<{ input: string }>()
-  .withCause()
+  .withFields<{ input: string; cause?: unknown }>()
   .withMessage(() => 'Input is required');
 type ValidationError = ReturnType<typeof ValidationError>;
 
@@ -737,7 +754,7 @@ function safeLegacyFunction(input: string): Result<string, ValidationError> {
   return trySync({
     try: () => legacyFunction(input),
     catch: (error) => ValidationErr({
-      context: { input },
+      input,
       cause: error,
     }),
   });
@@ -746,7 +763,7 @@ function safeLegacyFunction(input: string): Result<string, ValidationError> {
 // New function using Result pattern directly
 function newFunction(input: string): Result<string, ValidationError> {
   if (!input) {
-    return ValidationErr({ context: { input } });
+    return ValidationErr({ input });
   }
   return Ok(input.toUpperCase());
 }
@@ -760,13 +777,11 @@ function resultToPromise<T, E extends BaseError>(result: Result<T, E>): Promise<
   if (isOk(result)) {
     return Promise.resolve(result.data);
   }
-  
+
   // Convert error object to Error instance for promise rejection
   const error = new Error(result.error.message);
   error.name = result.error.name;
-  (error as any).context = result.error.context;
-  (error as any).cause = result.error.cause;
-  
+
   return Promise.reject(error);
 }
 
@@ -782,4 +797,4 @@ async function promiseToResult<T, E extends BaseError>(
 }
 ```
 
-This comprehensive approach to error handling provides a robust foundation for building reliable, maintainable applications with excellent observability and debugging capabilities. 
+This comprehensive approach to error handling provides a robust foundation for building reliable, maintainable applications with excellent observability and debugging capabilities.

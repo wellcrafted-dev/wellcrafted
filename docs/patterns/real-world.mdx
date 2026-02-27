@@ -39,10 +39,10 @@ import { type Brand } from "wellcrafted/brand";
 type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
-// Service-specific errors with typed context
+// Service-specific errors with typed fields
 const { AuthServiceError, AuthServiceErr } = createTaggedError("AuthServiceError")
-  .withContext<{ operation: string; email?: string; userId?: string; tokenPrefix?: string }>()
-  .withMessage(({ context }) => `Auth ${context.operation} failed`);
+  .withFields<{ operation: string; email?: string; userId?: string; tokenPrefix?: string }>()
+  .withMessage(({ operation }) => `Auth ${operation} failed`);
 type AuthServiceError = ReturnType<typeof AuthServiceError>;
 
 interface AuthenticatedUser {
@@ -65,16 +65,15 @@ export function createAuthService(
       // Find user by email
       const userResult = await tryAsync({
         try: () => db.users.findByEmail(email),
-        catch: (error) => AuthServiceErr({
-          context: { operation: "login", email: email.substring(0, email.indexOf('@')) + '@***' },
-          cause: error
+        catch: () => AuthServiceErr({
+          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
         })
       });
 
       if (userResult.error) return userResult;
       if (!userResult.data) {
         return AuthServiceErr({
-          context: { operation: "login", email: email.substring(0, email.indexOf('@')) + '@***' },
+          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
         });
       }
 
@@ -82,16 +81,15 @@ export function createAuthService(
       const isValidPassword = await hashService.verify(password, userResult.data.passwordHash);
       if (!isValidPassword) {
         return AuthServiceErr({
-          context: { operation: "login", email: email.substring(0, email.indexOf('@')) + '@***' },
+          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
         });
       }
 
       // Generate session token
       const tokenResult = await tryAsync({
         try: () => tokenService.generate(userResult.data.id),
-        catch: (error) => AuthServiceErr({
-          context: { operation: "login", userId: userResult.data.id },
-          cause: error
+        catch: () => AuthServiceErr({
+          operation: "login", userId: userResult.data.id
         })
       });
 
@@ -113,32 +111,30 @@ export function createAuthService(
     ): Promise<Result<AuthenticatedUser, AuthServiceError>> {
       const validationResult = await tryAsync({
         try: () => tokenService.validate(token),
-        catch: (error) => AuthServiceErr({
-          context: { operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...' },
-          cause: error
+        catch: () => AuthServiceErr({
+          operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...'
         })
       });
 
       if (validationResult.error) return validationResult;
       if (!validationResult.data.isValid) {
         return AuthServiceErr({
-          context: { operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...' },
+          operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...'
         });
       }
 
       // Fetch current user data
       const userResult = await tryAsync({
         try: () => db.users.findById(validationResult.data.userId),
-        catch: (error) => AuthServiceErr({
-          context: { operation: "validateSession", userId: validationResult.data.userId },
-          cause: error
+        catch: () => AuthServiceErr({
+          operation: "validateSession", userId: validationResult.data.userId
         })
       });
 
       if (userResult.error) return userResult;
       if (!userResult.data) {
         return AuthServiceErr({
-          context: { operation: "validateSession", userId: validationResult.data.userId },
+          operation: "validateSession", userId: validationResult.data.userId
         });
       }
 
@@ -166,9 +162,9 @@ import { type Brand } from "wellcrafted/brand";
 type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
-// Service errors with typed context
+// Service errors with typed fields
 const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
-  .withContext<{
+  .withFields<{
     operation: string;
     fileName?: string;
     fileSize?: number;
@@ -180,7 +176,7 @@ const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError
     userId?: string;
     ownerId?: string;
   }>()
-  .withMessage(({ context }) => `File ${context.operation} failed`);
+  .withMessage(({ operation }) => `File ${operation} failed`);
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 interface UploadedFile {
@@ -208,24 +204,20 @@ export function createFileService(
       // Validate file size
       if (file.size > MAX_FILE_SIZE) {
         return FileServiceErr({
-          context: {
-            operation: "upload",
-            fileName: file.name,
-            fileSize: file.size,
-            maxSize: MAX_FILE_SIZE
-          },
+          operation: "upload",
+          fileName: file.name,
+          fileSize: file.size,
+          maxSize: MAX_FILE_SIZE
         });
       }
 
       // Validate file type
       if (!ALLOWED_TYPES.includes(file.type)) {
         return FileServiceErr({
-          context: {
-            operation: "upload",
-            fileName: file.name,
-            fileType: file.type,
-            allowedTypes: ALLOWED_TYPES
-          },
+          operation: "upload",
+          fileName: file.name,
+          fileType: file.type,
+          allowedTypes: ALLOWED_TYPES
         });
       }
 
@@ -236,14 +228,11 @@ export function createFileService(
       // Upload to storage
       const uploadResult = await tryAsync({
         try: () => storage.upload(fileKey, file, { onProgress }),
-        catch: (error) => FileServiceErr({
-          context: {
-            operation: "upload",
-            fileName: file.name,
-            fileSize: file.size,
-            fileKey
-          },
-          cause: error
+        catch: () => FileServiceErr({
+          operation: "upload",
+          fileName: file.name,
+          fileSize: file.size,
+          fileKey
         })
       });
 
@@ -260,9 +249,8 @@ export function createFileService(
           storageKey: fileKey,
           url: uploadResult.data.url
         }),
-        catch: (error) => FileServiceErr({
-          context: { operation: "upload", fileId, fileName: file.name },
-          cause: error
+        catch: () => FileServiceErr({
+          operation: "upload", fileId, fileName: file.name
         })
       });
 
@@ -288,23 +276,22 @@ export function createFileService(
     ): Promise<Result<UploadedFile, FileServiceError>> {
       const fileResult = await tryAsync({
         try: () => db.files.findById(fileId),
-        catch: (error) => FileServiceErr({
-          context: { operation: "getFile", fileId, userId },
-          cause: error
+        catch: () => FileServiceErr({
+          operation: "getFile", fileId, userId
         })
       });
 
       if (fileResult.error) return fileResult;
       if (!fileResult.data) {
         return FileServiceErr({
-          context: { operation: "getFile", fileId, userId },
+          operation: "getFile", fileId, userId
         });
       }
 
       // Check ownership
       if (fileResult.data.userId !== userId) {
         return FileServiceErr({
-          context: { operation: "getFile", fileId, userId, ownerId: fileResult.data.userId },
+          operation: "getFile", fileId, userId, ownerId: fileResult.data.userId
         });
       }
 
@@ -424,10 +411,10 @@ import { z } from 'zod';
 import { Result, Ok, trySync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-// Form validation errors with typed context
+// Form validation errors with typed fields
 const { ValidationError, ValidationErr } = createTaggedError("ValidationError")
-  .withContext<{ field?: string; value?: unknown; receivedValue?: unknown; allErrors?: Array<{ path: string; message: string }> }>()
-  .withMessage(({ context }) => context.field ? `Validation failed on ${context.field}` : 'Validation failed');
+  .withFields<{ field?: string; value?: unknown; receivedValue?: unknown; allErrors?: Array<{ path: string; message: string }> }>()
+  .withMessage(({ field }) => field ? `Validation failed on ${field}` : 'Validation failed');
 type ValidationError = ReturnType<typeof ValidationError>;
 
 // Zod schemas
@@ -456,21 +443,16 @@ export function validateCreateUserForm(
       if (error instanceof z.ZodError) {
         const firstIssue = error.issues[0];
         return ValidationErr({
-          context: {
-            field: firstIssue.path.join('.'),
-            receivedValue: firstIssue.received,
-            allErrors: error.issues.map(issue => ({
-              path: issue.path.join('.'),
-              message: issue.message
-            }))
-          },
-          cause: error
+          field: firstIssue.path.join('.'),
+          receivedValue: firstIssue.received,
+          allErrors: error.issues.map(issue => ({
+            path: issue.path.join('.'),
+            message: issue.message
+          }))
         });
       }
 
-      return ValidationErr({
-        cause: error
-      });
+      return ValidationErr({});
     }
   });
 
@@ -491,7 +473,7 @@ async function handleSubmit(formData: unknown) {
   
   if (validationResult.error) {
     // Show field-specific error
-    const field = validationResult.error.context.field;
+    const field = validationResult.error.field;
     const message = validationResult.error.message;
     
     showFieldError(field as string, message);
@@ -711,10 +693,7 @@ export function createMediaProcessor(
       // Last resort: basic processing
       return tryAsync({
         try: () => processors.basic.process(file),
-        catch: (error) => MediaErr({
-          context: { fileName: file.name },
-          cause: error
-        })
+        catch: () => MediaErr({ fileName: file.name })
       });
     }
   };

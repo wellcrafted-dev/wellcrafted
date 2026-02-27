@@ -1,13 +1,15 @@
 # Tagged Error Minimal Design: First Principles Redesign
 
 **Created**: 2026-02-26
-**Status**: Implemented — all changes landed
+**Status**: In progress — flat design landed, message simplification next
 **Scope**: wellcrafted `TaggedError` type, `createTaggedError` builder API
 **Related**: `20260226T000000-granular-error-migration.md` (service-by-service migration, depends on this)
 
 ## Summary
 
-A critical examination of `TaggedError`'s shape, stripped to first principles. The current design has four fields: `name`, `message`, `context`, `cause`. This spec argues for two non-negotiable fields (`name`, `message`) with additional properties spread flat on the error object rather than nested under `context`.
+A critical examination of `TaggedError`'s shape, stripped to first principles. The original design had four fields: `name`, `message`, `context`, `cause`. This spec argues for two non-negotiable fields (`name`, `message`) with additional properties spread flat on the error object rather than nested under `context`.
+
+Through iterative design, the spec further simplifies: `.withMessage()` is removed as a builder step. `message` is a call-site input, like it always was in practice. The builder's job is to stamp `name` onto a typed flat object — nothing more.
 
 ---
 
@@ -49,7 +51,7 @@ This is the entire reason the pattern exists. Machine-readable. Exhaustive match
 
 ### `message` — Human-readable description
 
-Every error needs a string to show or record. Logs, toast notifications, debugging — `message` is consumed everywhere. And critically, `message` is computed from the error's data via `.withMessage()`, which is the whole point of the builder: define the template once, every call site gets a consistent message.
+Every error needs a string to show or record. Logs, toast notifications, debugging — `message` is consumed everywhere. `message` is provided by the call site, because the call site has the most context about what just happened and what the user needs to hear.
 
 ### The minimum TaggedError
 
@@ -104,17 +106,7 @@ case 'ResponseError': {
 }
 ```
 
-**2. Ergonomics in message templates**
-
-```typescript
-// Nested
-.withMessage(({ context }) => `HTTP ${context.status}`)
-
-// Flat
-.withMessage(({ status }) => `HTTP ${status}`)
-```
-
-**3. Simpler mental model**
+**2. Simpler mental model**
 
 An error IS its properties. `{ name: 'ResponseError', message: 'HTTP 401', status: 401, provider: 'openai' }` reads as a single coherent object, not a wrapper around some inner data bag.
 
@@ -142,7 +134,9 @@ withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
 
 Any type with `name` or `message` as a key fails to extend `{ name?: never }`, producing a clear compile error. This is the pattern used in the actual implementation because it works cleanly as a generic constraint without circular references.
 
-TypeScript rejects `.withFields<{ name: string }>()` at compile time with either approach. The builder uses Approach 2; `ValidFields<T>` is exported as a standalone utility for consumers.
+TypeScript rejects `.withFields<{ name: string }>()` at compile time with either approach. The builder uses Approach 2. `ValidFields<T>` was removed from the public API — it was never imported by any consumer.
+
+**Note**: Once `message` moves to a call-site input (see Decision 7 below), `NoReservedKeys` changes to `{ name?: never }` only — `message` is no longer a reserved field key because it's a built-in input handled separately from `TFields`.
 
 ### The structured logging argument (and why it's minor)
 
@@ -214,8 +208,9 @@ One extra line. And in practice, generic error handling rarely needs to iterate 
 
 ```typescript
 const { BackendError, BackendErr } = createTaggedError('BackendError')
-  .withFields<{ backend: string; cause: string }>()
-  .withMessage(({ backend }) => `${backend} failed`);
+  .withFields<{ backend: string; cause: string }>();
+
+BackendErr({ message: `${backend} failed`, backend: 'indexeddb', cause: extractErrorMessage(error) })
 ```
 
 No special type machinery. No `WithCause<TCause>` conditional type. No `.withCause()` builder step. Just a field, like any other.
@@ -230,11 +225,6 @@ No special type machinery. No `WithCause<TCause>` conditional type. No `.withCau
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 type JsonObject = Record<string, JsonValue>;
 
-// Prevent collision with reserved error fields
-type ReservedKeys = 'name' | 'message';
-type ValidFields<T extends JsonObject> =
-  keyof T & ReservedKeys extends never ? T : never;
-
 // The error type — two required fields, additional props spread flat
 type TaggedError<
   TName extends string = string,
@@ -248,148 +238,78 @@ type AnyTaggedError = { name: string; message: string };
 ### What the builder produces
 
 ```typescript
-// No extra props — just name + message
-const { FsServiceError, FsServiceErr } = createTaggedError('FsServiceError')
-  .withMessage(() => 'File system operation failed');
-// Shape: { name: 'FsServiceError', message: string }
+// No extra fields — just name + message
+const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError');
+// Shape: { name: 'RecorderBusyError', message: string }
 
-// With props — spread flat on the error
+RecorderBusyErr({ message: 'A recording is already in progress' })
+
+// With fields — spread flat on the error
 const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; reason?: string }>()
-  .withMessage(({ status }) => `HTTP ${status}`);
-// Shape: { name: 'ResponseError', message: string, status: number, reason?: string }
+  .withFields<{ status: number }>();
+// Shape: { name: 'ResponseError', message: string, status: number }
 
-// "Cause" is just another field if you want it
-const { BackendError, BackendErr } = createTaggedError('BackendError')
-  .withFields<{ backend: string; cause: string }>()
-  .withMessage(({ backend }) => `${backend} failed`);
-// Shape: { name: 'BackendError', message: string, backend: string, cause: string }
+ResponseErr({ message: `HTTP ${status}`, status: 404 })
+
+// With cause as a regular field
+const { FsReadError, FsReadErr } = createTaggedError('FsReadError')
+  .withFields<{ path: string; cause: string }>();
+// Shape: { name: 'FsReadError', message: string, path: string, cause: string }
+
+FsReadErr({
+  message: `Failed to read '${path}': ${extractErrorMessage(error)}`,
+  path,
+  cause: extractErrorMessage(error),
+})
 ```
 
 ### How the builder changes
 
 ```
-Current chain:     createTaggedError('XError').withContext<C>().withCause<E>().withMessage(fn)
-New chain:         createTaggedError('XError').withFields<F>().withMessage(fn)
+Original chain:     createTaggedError('XError').withContext<C>().withCause<E>().withMessage(fn)
+Flat design:        createTaggedError('XError').withFields<F>().withMessage(fn)
+Final design:       createTaggedError('XError').withFields<F>()
 ```
 
 - `.withContext()` → renamed to `.withFields()`
 - `.withCause()` → removed as a builder step
-- `.withMessage()` — still the required terminal step, but the message function receives `TFields` instead of `{ name, context?, cause? }`
-- **`message` is no longer accepted as factory input** — the template is the sole source of message computation
+- `.withMessage()` → removed as a builder step (see Decision 7)
+- `message` is a call-site input — always part of the factory's input type
 
-### Call site input changes
-
-```typescript
-// Current — nested under `context`
-ResponseErr({ context: { status: 404 } })
-
-// New — flat
-ResponseErr({ status: 404 })
-```
-
-The factory function's input is just `TFields` (or optional when `TFields` is empty):
+### Call site input
 
 ```typescript
-// When TFields = Record<never, never>: no argument needed
-FsServiceErr()
+// No fields: just message
+RecorderBusyErr({ message: 'A recording is already in progress' })
 
-// When TFields has required fields: argument required
-ResponseErr({ status: 404 })
-
-// When all TFields fields are optional: argument optional
-SomeErr()  // or SomeErr({ reason: 'details' })
+// With fields: message + fields
+ResponseErr({ message: `HTTP ${status}`, status: 404 })
 ```
+
+The factory input is `{ message: string } & TFields` (or just `{ message: string }` when no fields are defined).
 
 ---
 
-## Three Tiers of Error Complexity (Flat Design)
+## The Mental Model
 
-These tiers carry forward from the granular migration spec, adapted for flat props.
-
-### Tier 1: Static errors — no props, no arguments
-
-The error name + template IS the message. Use when there's no dynamic content.
-
-```typescript
-const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
-  .withMessage(() => 'A recording is already in progress');
-
-RecorderBusyErr()  // no argument needed
-// → { name: 'RecorderBusyError', message: 'A recording is already in progress' }
+```
+┌─────────────────────────────────────────────────────────┐
+│ name     →  "What broke?" (for code / switch matching)  │
+│ message  →  "What do I tell the user?" (for UI / logs)  │
+│ ...rest  →  "What else matters?" (typed per error)      │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Tier 2: Reason-only — `reason` carries `extractErrorMessage(error)`
-
-Use when the only dynamic content is the stringified caught error.
-
-```typescript
-const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
-
-PlaySoundErr({ reason: extractErrorMessage(error) })
-// → { name: 'PlaySoundError', message: 'Failed to play sound: device busy', reason: 'device busy' }
-```
-
-### Tier 3: Structured data — domain-specific fields
-
-Use when there's data worth preserving as named fields that callers branch on.
-
-```typescript
-const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; reason?: string }>()
-  .withMessage(({ status, reason }) =>
-    `HTTP ${status}${reason ? `: ${reason}` : ''}`
-  );
-
-ResponseErr({ status: 404 })
-// → { name: 'ResponseError', message: 'HTTP 404', status: 404 }
-
-ResponseErr({ status: 500, reason: 'Internal error' })
-// → { name: 'ResponseError', message: 'HTTP 500: Internal error', status: 500, reason: 'Internal error' }
-```
-
----
-
-## Message Function Signature
-
-The `.withMessage()` callback receives the error's props (without `name` and `message`, since `message` is what it's computing and `name` is always the literal string from `createTaggedError`).
-
-```typescript
-// Current signature (nested)
-type MessageFn<TContext, TCause> = (input: {
-  name: TName;
-  context?: TContext;
-  cause?: TCause;
-}) => string;
-
-// New signature (flat)
-type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
-```
-
-Examples of what the message function receives:
-
-```typescript
-// Tier 1: no props → receives {}
-.withMessage(() => 'Static message')
-
-// Tier 2: { reason: string } → receives { reason: string }
-.withMessage(({ reason }) => `Failed: ${reason}`)
-
-// Tier 3: { status: number; provider: string } → receives { status, provider }
-.withMessage(({ status, provider }) => `${provider}: HTTP ${status}`)
-```
-
-Note: `name` is NOT passed to the message function. It's redundant — the message function is already defined inside `createTaggedError('XError')`, so the name is known at definition time. If a message template truly needs the name (rare), it can close over it.
+- **Small services** (autostart, tray, sound): no extra props. `name` + `message` is the whole error.
+- **API services** (completion, transcription): extra props carry `provider`, `status`, `retryable`.
+- **CRUD services** (DB, recorder): extra props carry `operation`, `table`, `backend`.
+- **`cause`**: If a specific error type wants it, it's `cause: string` as a regular prop. Not special.
 
 ---
 
 ## Builder Implementation Sketch
 
-The runtime implementation of `createTaggedError` changes minimally. The builder is already a closure that captures `name` and returns chain methods. The key differences:
-
-### Current implementation (simplified)
+### Original implementation (simplified)
 
 ```typescript
 function createTaggedError<TName extends `${string}Error`>(name: TName) {
@@ -412,12 +332,11 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
 }
 ```
 
-### New implementation (as built)
+### Intermediate implementation (flat + withMessage)
+
+This was the first landing: flat fields, `.withMessage()` as terminal step.
 
 ```typescript
-// Constraint that prevents reserved keys from appearing in fields.
-// Uses the `{ key?: never }` pattern — any type with `name` or `message`
-// as a key will fail to extend this constraint.
 type NoReservedKeys = { name?: never; message?: never };
 
 function createTaggedError<TName extends `${string}Error`>(name: TName) {
@@ -425,8 +344,6 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
     return {
       withFields: <T extends JsonObject & NoReservedKeys>() => createBuilder<T>(),
       withMessage: (fn: (input: TFields) => string) => {
-        // Input is optional when TFields is empty or all keys are optional.
-        // This is enforced via IsOptionalInput<TFields> conditional type.
         const errorConstructor = (input?: TFields) => {
           const fields = (input ?? {}) as TFields;
           return {
@@ -448,29 +365,51 @@ function createTaggedError<TName extends `${string}Error`>(name: TName) {
 }
 ```
 
-Key changes:
-- **One type parameter** (`TFields`) instead of two (`TContext`, `TCause`)
-- **No nesting** — `input` is spread directly onto the error object
-- **No conditional context/cause handling** — just `...fields`
-- **`NoReservedKeys` constraint** at `.withFields()` prevents `name`/`message` collisions
-- **Implementation note**: The spec originally proposed `<P extends ValidFields<P>>` (self-referential constraint), but this causes circular constraint errors in TypeScript. The `{ name?: never; message?: never }` intersection pattern works cleanly — any type with `name` or `message` as a key cannot extend `NoReservedKeys`, producing a clear compile error. `ValidFields<T>` remains exported as a standalone utility type.
+### Final implementation (flat, no withMessage)
 
----
+`.withMessage()` is removed. The builder returns factories directly. `message` is a call-site input.
 
-## The Mental Model
+```typescript
+// Only `name` is reserved now — `message` is a built-in input, not a field.
+type NoReservedKeys = { name?: never };
 
+function createTaggedError<TName extends `${string}Error`>(name: TName) {
+  // Without .withFields(): factory takes { message: string }
+  // With .withFields<F>(): factory takes { message: string } & F
+  function createBuilder<TFields extends JsonObject>() {
+    const errName = name.replace(/Error$/, 'Err') as ReplaceErrorWithErr<TName>;
+
+    const errorConstructor = (input: { message: string } & TFields) => {
+      const { message, ...fields } = input;
+      return {
+        name,
+        message,
+        ...fields,
+      } as TaggedError<TName, TFields>;
+    };
+
+    const errConstructor = (input: { message: string } & TFields) =>
+      Err(errorConstructor(input));
+
+    const result = {
+      [name]: errorConstructor,
+      [errName]: errConstructor,
+      withFields: <T extends JsonObject & NoReservedKeys>() => createBuilder<T>(),
+    };
+
+    return result;
+  }
+
+  return createBuilder<Record<never, never>>();
+}
 ```
-┌─────────────────────────────────────────────────────────┐
-│ name     →  "What broke?" (for code / switch matching)  │
-│ message  →  "What do I tell the user?" (for UI / logs)  │
-│ ...rest  →  "What else matters?" (typed per error)      │
-└─────────────────────────────────────────────────────────┘
-```
 
-- **Small services** (autostart, tray, sound): no extra props. `name` + `message` is the whole error.
-- **API services** (completion, transcription): extra props carry `provider`, `status`, `retryable`.
-- **CRUD services** (DB, recorder): extra props carry `operation`, `table`, `backend`.
-- **`cause`**: If a specific error type wants it, it's `cause: string` as a regular prop. Not special.
+Key changes from intermediate → final:
+- **No `.withMessage()` step** — the builder returns factories directly
+- **`message` is a required input** at every call site
+- **`NoReservedKeys` only reserves `name`** — `message` is a built-in input, not a field collision risk
+- **No `MessageFn` type** — no template function, no input/output distinction
+- **`withFields()` is callable at any point** — returns new factories with the extended type
 
 ---
 
@@ -483,77 +422,71 @@ The concept of "context" is gone entirely. `.withFields()` says exactly what it 
 ```typescript
 createTaggedError('ResponseError')
   .withFields<{ status: number }>()
-  .withMessage(({ status }) => `HTTP ${status}`)
 ```
 
 ### 2. Fully flat input at call sites — DECIDED
 
 ```typescript
-ResponseErr({ status: 404, reason: 'Not found' })
+ResponseErr({ message: `HTTP ${status}`, status: 404 })
 ```
 
-The input shape mirrors the output shape (minus `name` and `message`). No wrapper key.
+The input shape mirrors the output shape (minus `name`). No wrapper key.
 
-### 3. Reserved keys: only `name` and `message` — DECIDED
+### 3. Reserved keys: only `name` — DECIDED
 
-Don't design for hypothetical futures. If we add a field later, we add it to the reserved list at that time.
+`name` is the only reserved key. `message` was originally reserved to prevent field collisions, but since `message` is now a built-in input (not a field), it's handled separately. If we add a built-in field later, we add it to the reserved list at that time.
 
 ### 4. `.because()` — does not exist, not adding it — DECIDED
 
 The method doesn't exist in the current v0.31.0 API. No code uses it. Not adding it.
 
-### 5. Remove explicit `message` overrides — DECIDED
+### 5. Remove explicit `message` overrides — DECIDED, THEN REVERSED
 
-This is the biggest migration concern and the most important decision in this spec.
+**Original decision**: `message` is an output of the template, not an input from the call site. The factory input type should not include `message` at all — the builder computes it.
 
-**The problem**: In the current codebase, **every single call site** passes an explicit `{ message: '...' }` string, bypassing the template function entirely. The templates are dead code at runtime:
-
-```typescript
-// Current reality — template never runs
-const { FsServiceError, FsServiceErr } = createTaggedError('FsServiceError')
-  .withMessage(() => 'File system operation failed');  // ← dead code
-
-FsServiceErr({ message: 'Failed to read config file' })  // ← always overrides
-FsServiceErr({ message: 'Failed to write recording' })   // ← always overrides
-```
-
-**The decision**: `message` is an output of the template, not an input from the call site. The factory input type should not include `message` at all — the builder computes it. The migration must:
-
-1. **Upgrade error definitions** to have templates that produce useful messages from their fields
-2. **Remove explicit `message` overrides** at every call site — pass only the fields, let the template compute the message
-3. **For errors that need per-site messages**: add a `reason: string` field (Tier 2) instead of overriding `message` directly
-
-**Before (current — message override):**
-
-```typescript
-FsServiceErr({ message: `Failed to read config: ${extractErrorMessage(error)}` })
-```
-
-**After (Tier 2 — reason field, template computes message):**
-
-```typescript
-const { FsServiceError, FsServiceErr } = createTaggedError('FsServiceError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `File system operation failed: ${reason}`);
-
-FsServiceErr({ reason: extractErrorMessage(error) })
-```
-
-**After (Tier 3 — structured fields, template computes message):**
-
-```typescript
-const { FsServiceError, FsServiceErr } = createTaggedError('FsServiceError')
-  .withFields<{ operation: string; path: string; reason: string }>()
-  .withMessage(({ operation, path }) => `Failed to ${operation} ${path}`);
-
-FsServiceErr({ operation: 'read', path: '/config.json', reason: extractErrorMessage(error) })
-```
-
-This is the whole point of the builder pattern — define the template once, every call site gets a consistent message format. If call sites can override `message`, the template is pointless and message formats become inconsistent across the codebase.
+**Reversal**: See Decision 7. `message` is a call-site input. Templates are removed.
 
 ### 6. Reconcile with the granular migration spec — DECIDED
 
-The granular error migration spec (`20260226T000000-granular-error-migration.md`) should be updated to target the flat design from this spec. Each service's migration must include removing `message` overrides and upgrading templates to be the sole source of message computation.
+The granular error migration spec (`20260226T000000-granular-error-migration.md`) should be updated to target the flat design from this spec.
+
+### 7. Remove `.withMessage()` — make `message` a call-site input — DECIDED
+
+This is the biggest revision to the spec and supersedes Decision 5.
+
+**The problem with templates**: The intermediate design required `.withMessage()` as a terminal builder step, with the template as the sole source of message computation. This had three issues:
+
+1. **Templates can't serve broad error types.** `FsServiceError` is used for reading blobs, writing configs, creating directories. No single template can produce a good message for all of those. The template either becomes so generic it's useless (`"File system operation failed"`) or the error type must be split into many granular types just to make the template specific enough.
+
+2. **The `reason` convention is a code smell.** To work around templates that can't be specific enough, the migration spec introduced a `reason: string` field convention — always populated with `extractErrorMessage(error)`. But `reason` is just `message` with a different name. Every Tier 2 error in the migration spec has `reason: string` as its only field, with a template that does nothing more than prepend a static prefix. The template's "value" is a prefix string. That's not worth a builder step.
+
+3. **Call sites have the most context.** The call site knows what operation was attempted, what file path was involved, what the user was trying to do. The template, defined once at the error type level, doesn't know any of this. Forcing all message information through typed fields means either: (a) lots of granular error types, or (b) a `reason` escape hatch that defeats the purpose.
+
+**The honest reality**: In the Epicenter codebase, every single call site already passes an explicit `{ message: '...' }` string. The templates have always been dead code. The intermediate design tried to fix this by removing `message` from the input and forcing templates — but this just shifted the problem to `reason: string`, which is the same thing.
+
+**The decision**: Accept what the codebase is already telling us. `message` is a call-site concern. The builder's value is the typed discriminant (`name`), typed fields (`.withFields()`), and the `Err` wrapper. The builder doesn't need to own message computation.
+
+```typescript
+// The entire API:
+createTaggedError('XError')                    → factory({ message })
+createTaggedError('XError').withFields<F>()    → factory({ message, ...fields })
+```
+
+**What this eliminates**:
+- The `.withMessage()` builder step
+- The `MessageFn` type
+- The three-tier complexity model (Tier 1/2/3)
+- The `reason: string` convention
+- The "template vs override" debate
+- The `IsOptionalInput` / `IsEmptyFields` conditional types (input is never optional — `message` is always required)
+
+### 8. `reason` is not a convention — DECIDED
+
+The migration spec proposed `reason: string` as a reserved field convention meaning "the output of `extractErrorMessage(error)`." This is rejected.
+
+`reason` is just `message` laundered through a field. If every Tier 2 error is `{ reason: string }` with a template of `({ reason }) => 'X failed: ${reason}'`, then the template is doing nothing useful — it's prepending a static string that the call site could just include in `message` directly.
+
+If an error type has a specific named field that happens to be called `reason` for domain-specific purposes, that's fine — it's just a field. But `reason` as a codebase-wide convention for "the stringified caught error" doesn't carry its weight.
 
 ---
 
@@ -567,13 +500,9 @@ The granular error migration work forced a question: if we're touching every err
 
 **Initial position**: Flat spreading is dangerous because context fields could collide with `name` or `message`.
 
-**Resolution**: This is trivially solved at the type level with `ValidFields<T>`. TypeScript rejects collisions at compile time. The collision argument was a lazy justification for the status quo, not a real problem.
+**Resolution**: This is trivially solved at the type level. TypeScript rejects collisions at compile time. The collision argument was a lazy justification for the status quo, not a real problem.
 
 ```typescript
-type ReservedKeys = 'name' | 'message';
-type ValidFields<T extends JsonObject> =
-  keyof T & ReservedKeys extends never ? T : never;
-
 // This would be a compile error:
 createTaggedError('X').withFields<{ name: string }>()  // ← rejected
 ```
@@ -588,7 +517,7 @@ createTaggedError('X').withFields<{ name: string }>()  // ← rejected
 
 ### The access pattern comparison
 
-The decisive argument. Side by side:
+The decisive argument for flat over nested. Side by side:
 
 ```typescript
 // Nested — current
@@ -602,23 +531,36 @@ case 'ResponseError': {
 }
 ```
 
-```typescript
-// Nested — message template
-.withMessage(({ context }) => `HTTP ${context.status}`)
-
-// Flat — message template
-.withMessage(({ status }) => `HTTP ${status}`)
-```
-
 Flat wins on ergonomics in both consumption and definition. The nested form adds a layer of indirection that nobody benefits from.
 
-### The message override debate
+### The message template debate
 
-**Initial position**: Factories should accept an optional `message` override so call sites can provide specific context.
+**Initial position (pre-spec)**: Factories should accept an optional `message` override so call sites can provide specific context. This was the v0.31.0 behavior.
 
-**Counter-evidence**: Every single call site in the codebase passes an explicit `{ message: '...' }` override, making every template function dead code. The templates never run. This defeats the entire purpose of the builder pattern — consistent message formats defined once, not ad-hoc strings scattered across dozens of call sites.
+**Intermediate position (first landing)**: Remove `message` from factory input entirely. The template (`.withMessage()`) is the sole source of message computation. Call sites that need per-instance context use a `reason: string` field or structured fields, and the template incorporates them.
 
-**Resolution**: Remove `message` from factory input entirely. The template is the sole source of message computation. Call sites that need per-instance context use a `reason: string` field (Tier 2) or structured fields (Tier 3), and the template incorporates them into a consistent format.
+**Counter-evidence against the intermediate position**: Analyzing real usage in the Epicenter services folder revealed that the intermediate design just shifted the problem:
+
+- `reason: string` appeared in nearly every error definition in the migration spec. It was always `extractErrorMessage(error)`. It was `message` with a different name.
+- Templates for broad service-level errors (`FsServiceError`, `DbServiceError`) could only produce generic prefixes. The actual useful content came from `reason` or `operation` fields — i.e., from the call site.
+- The three-tier model (static / reason-only / structured) was really two tiers: "static message" and "call site writes the interesting part through fields." The template's contribution in Tier 2 was a static prefix. Not worth a builder step.
+
+**Final position**: `message` is a call-site input. Always. The builder doesn't compute it, template it, or default it. The call site writes the message because the call site knows what happened. The builder's value is the typed `name` discriminant and typed fields — not message generation.
+
+This aligns with what the codebase was already doing. Every single call site in Epicenter passes an explicit message. The intermediate design tried to fight this pattern; the final design accepts it.
+
+### The `.withMessage()` removal debate
+
+**Question**: Is there value in `.withMessage()` as an optional convenience for static errors?
+
+For truly static errors like `RecorderBusyError`, a template saves typing the same message at every call site. But:
+
+1. How many static errors exist? A handful out of 20+ types. Not enough to justify a builder step.
+2. `RecorderBusyErr({ message: 'A recording is already in progress' })` is one extra property. Trivial.
+3. Having two modes (with template / without template) doubles the API surface and creates the "does call-site message override the template?" question.
+4. A builder with fewer concepts is a builder that's easier to learn, document, and maintain.
+
+**Resolution**: Remove `.withMessage()` entirely. The API is just `createTaggedError('XError')` + optionally `.withFields<F>()`. Two forms. No behavioral modes. What you see is what you get.
 
 ---
 
@@ -633,19 +575,29 @@ Flat wins on ergonomics in both consumption and definition. The nested form adds
 
 ## Implementation Status
 
-All core implementation is complete:
+### Phase 1: Flat design (COMPLETE)
 
 1. ~~Resolve open questions~~ — All decided (see Resolved Decisions above)
-2. ~~Implement the new `TaggedError` type and `createTaggedError` builder in wellcrafted~~
+2. ~~Implement flat `TaggedError` type and `createTaggedError` builder~~
    - ~~Flatten the error shape (no `context` wrapper)~~ — `TaggedError<TName, TFields>` with flat spread
-   - ~~Add `ValidFields<T>` compile-time guard for reserved keys~~ — `NoReservedKeys` constraint via `{ name?: never; message?: never }` pattern
+   - ~~`NoReservedKeys` constraint via `{ name?: never; message?: never }` pattern~~
    - ~~Rename `.withContext()` → `.withFields()`~~
    - ~~Remove `.withCause()` from the builder~~
    - ~~Remove `message` from factory input — template is the sole source~~
    - ~~Tests rewritten for new API~~ — 41 tests, all 3 tiers, builder shape, JSON serialization, edge cases
    - ~~Documentation updated~~ — README.md rewritten for flat API
 
-## Remaining Work (Out of Scope for This Spec)
+### Phase 2: Message simplification (TODO)
 
-3. Update the granular error migration spec to target the flat design with message override removal
-4. Migrate all error definitions and call sites (per-service, as planned in the migration spec)
+3. Remove `.withMessage()` from the builder — make `message` a required call-site input
+   - Update `NoReservedKeys` from `{ name?: never; message?: never }` to `{ name?: never }`
+   - Remove `MessageFn`, `IsEmptyFields`, `IsOptionalInput` types
+   - Factory input becomes `{ message: string } & TFields`
+   - Builder returns factories directly (no terminal step)
+   - Rewrite tests for the new API shape
+   - Update documentation
+
+### Remaining Work (Out of Scope for This Spec)
+
+4. Update the granular error migration spec to target the simplified design
+5. Migrate all error definitions and call sites (per-service, as planned in the migration spec)

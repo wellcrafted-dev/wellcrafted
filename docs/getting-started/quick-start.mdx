@@ -33,12 +33,12 @@ function parseNumberOld(input: string): number {
 // Return a Result!
 function parseNumber(input: string): Result<number, ParseError> {
   const num = parseInt(input);
-  
+
   if (isNaN(num)) {
     // Use the Err variant for direct return
-    return ParseErr({ context: { input } });
+    return ParseErr();
   }
-  
+
   return Ok(num);
 }
 ```
@@ -54,7 +54,6 @@ const result = parseNumber("42");
 const { data, error } = result;
 if (error) {
   console.error(`Error: ${error.message}`);
-  console.log("Invalid input:", error.context.input);
 } else {
   console.log(`The number is ${data}`);
 }
@@ -80,16 +79,14 @@ import { trySync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
 const { JsonError, JsonErr } = createTaggedError("JsonError")
-  .withMessage(() => 'Failed to parse JSON');
+  .withFields<{ text: string }>()
+  .withMessage(({ text }) => `Failed to parse JSON: ${text}`);
 type JsonError = ReturnType<typeof JsonError>;
 
 function parseJson<T>(text: string): Result<T, JsonError> {
   return trySync({
     try: () => JSON.parse(text),
-    catch: (error) => JsonErr({
-      context: { text: text.substring(0, 100) }, // Truncate for logging
-      cause: error
-    })
+    catch: () => JsonErr({ text: text.substring(0, 100) }) // Truncate for logging
   });
 }
 
@@ -108,10 +105,10 @@ if (error) {
 import { tryAsync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-// Define error with typed context - endpoint is always useful for API errors
+// Define error with typed fields - endpoint is always useful for API errors
 const { ApiError, ApiErr } = createTaggedError("ApiError")
-  .withContext<{ endpoint: string; statusCode?: number }>()
-  .withMessage(({ context }) => `API request failed: ${context.endpoint}`);
+  .withFields<{ endpoint: string; statusCode?: number }>()
+  .withMessage(({ endpoint }) => `API request failed: ${endpoint}`);
 type ApiError = ReturnType<typeof ApiError>;
 
 interface User {
@@ -130,10 +127,7 @@ async function fetchUser(id: number): Promise<Result<User, ApiError>> {
       }
       return response.json();
     },
-    catch: (error) => ApiErr({
-      context: { endpoint },  // TypeScript enforces this!
-      cause: error
-    })
+    catch: () => ApiErr({ endpoint })  // TypeScript enforces this!
   });
 }
 
@@ -156,19 +150,19 @@ import { createTaggedError } from "wellcrafted/error";
 
 // Define our error types with factories
 const { ValidationError, ValidationErr } = createTaggedError("ValidationError")
-  .withContext<{ field?: string; value?: string; receivedType?: string }>()
-  .withMessage(({ context }) => {
-    if (context.receivedType) return "Invalid form data";
-    if (context.field === 'email') return "Please enter a valid email address";
-    if (context.field === 'password') return "Password must be at least 8 characters";
-    if (context.field === 'confirmPassword') return "Passwords do not match";
+  .withFields<{ field?: string; value?: string; receivedType?: string }>()
+  .withMessage(({ receivedType, field }) => {
+    if (receivedType) return "Invalid form data";
+    if (field === 'email') return "Please enter a valid email address";
+    if (field === 'password') return "Password must be at least 8 characters";
+    if (field === 'confirmPassword') return "Passwords do not match";
     return "Validation failed";
   });
 type ValidationError = ReturnType<typeof ValidationError>;
 
 const { SubmissionError, SubmissionErr } = createTaggedError("SubmissionError")
-  .withContext<{ email: string }>()
-  .withMessage(() => "Failed to create account");
+  .withFields<{ email: string }>()
+  .withMessage(({ email }) => `Failed to create account for ${email}`);
 type SubmissionError = ReturnType<typeof SubmissionError>;
 
 // Form data interface
@@ -182,24 +176,24 @@ interface SignupForm {
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
   // Type check
   if (!data || typeof data !== 'object') {
-    return ValidationErr({ context: { receivedType: typeof data } });
+    return ValidationErr({ receivedType: typeof data });
   }
 
   const { email, password, confirmPassword } = data as any;
 
   // Email validation
   if (!email || !email.includes('@')) {
-    return ValidationErr({ context: { field: 'email', value: email } });
+    return ValidationErr({ field: 'email', value: email });
   }
 
   // Password validation
   if (!password || password.length < 8) {
-    return ValidationErr({ context: { field: 'password' } });
+    return ValidationErr({ field: 'password' });
   }
 
   // Password match validation
   if (password !== confirmPassword) {
-    return ValidationErr({ context: { field: 'confirmPassword' } });
+    return ValidationErr({ field: 'confirmPassword' });
   }
 
   return Ok({ email, password, confirmPassword });
@@ -224,10 +218,7 @@ async function submitSignup(
 
       return response.json();
     },
-    catch: (error) => SubmissionErr({
-      context: { email: form.email },
-      cause: error
-    })
+    catch: () => SubmissionErr({ email: form.email })
   });
 }
 
@@ -238,7 +229,7 @@ async function handleSignup(formData: unknown) {
   
   if (validationResult.error) {
     console.error("Validation failed:", validationResult.error.message);
-    highlightField(validationResult.error.context.field);
+    highlightField(validationResult.error.field);
     return;
   }
   
@@ -380,10 +371,10 @@ tryAsync({ try: async () => risky(), catch: (e) => ... })
 
 // Create tagged errors with factories
 const { MyError, MyErr } = createTaggedError("MyError")
-  .withContext<{ /* debug info */ }>()
-  .withMessage(() => "Something went wrong");
+  .withFields<{ /* structured data */ }>()
+  .withMessage(({ /* fields */ }) => "Something went wrong");
 type MyError = ReturnType<typeof MyError>;
-const error = MyError({ context: { /* debug info */ }, cause: originalError });
+const error = MyError({ /* structured data */ });
 
 // Create brand types
 type MyId = string & Brand<"MyId">;

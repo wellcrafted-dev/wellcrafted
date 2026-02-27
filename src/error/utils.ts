@@ -1,7 +1,4 @@
-import type {
-	TaggedError,
-	JsonObject,
-} from "./types.js";
+import type { TaggedError, JsonObject } from "./types.js";
 import { Err } from "../result/result.js";
 
 /**
@@ -93,8 +90,12 @@ type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
  * Whether TFields resolves to an empty object (no fields).
  * When true, the factory input parameter becomes optional.
  */
-type IsEmptyFields<TFields extends JsonObject> =
-	TFields extends Record<never, never> ? true : false;
+type IsEmptyFields<TFields extends JsonObject> = TFields extends Record<
+	never,
+	never
+>
+	? true
+	: false;
 
 /**
  * Whether all keys in TFields are optional.
@@ -157,9 +158,7 @@ type ErrorBuilder<
 	 *
 	 * @param fn - Template function that receives the fields and returns a message string
 	 */
-	withMessage(
-		fn: MessageFn<TFields>,
-	): FinalFactories<TName, TFields>;
+	withMessage(fn: MessageFn<TFields>): FinalFactories<TName, TFields>;
 };
 
 // =============================================================================
@@ -204,12 +203,8 @@ export function createTaggedError<TName extends `${string}Error`>(
 			withFields<T extends JsonObject & NoReservedKeys>() {
 				return createBuilder<T>();
 			},
-			withMessage(
-				fn: MessageFn<TFields>,
-			): FinalFactories<TName, TFields> {
-				const errorConstructor = (
-					input?: TFields,
-				) => {
+			withMessage(fn: MessageFn<TFields>): FinalFactories<TName, TFields> {
+				const errorConstructor = (input?: TFields) => {
 					const fields = (input ?? {}) as TFields;
 					return {
 						name,
@@ -222,9 +217,8 @@ export function createTaggedError<TName extends `${string}Error`>(
 					/Error$/,
 					"Err",
 				) as ReplaceErrorWithErr<TName>;
-				const errConstructor = (
-					input?: TFields,
-				) => Err(errorConstructor(input));
+				const errConstructor = (input?: TFields) =>
+					Err(errorConstructor(input));
 
 				return {
 					[name]: errorConstructor,

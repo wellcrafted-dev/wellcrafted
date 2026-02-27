@@ -24,10 +24,10 @@ Here's the recommended pattern for creating services:
 import { Result, Ok, tryAsync } from "wellcrafted/result";
 import { createTaggedError } from "wellcrafted/error";
 
-// 1. Define service-specific errors with typed context
+// 1. Define service-specific errors with typed fields
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{ userId?: string; operation: string }>()
-  .withMessage(({ context }) => `User ${context.operation} failed`);
+  .withFields<{ userId?: string; operation: string }>()
+  .withMessage(({ operation }) => `User ${operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // 2. Create service with factory function
@@ -46,7 +46,7 @@ export function createUserService(db: Database) {
       const result = await tryAsync({
         try: () => db.users.findById(id),
         catch: () => UserServiceErr({
-          context: { userId: id, operation: "getUser" }
+          userId: id, operation: "getUser"
         })
       });
 
@@ -61,7 +61,7 @@ export function createUserService(db: Database) {
       // Validation
       if (!input.email.includes('@')) {
         return UserServiceErr({
-          context: { operation: "createUser" }
+          operation: "createUser"
         });
       }
 
@@ -69,7 +69,7 @@ export function createUserService(db: Database) {
       return tryAsync({
         try: () => db.users.create(input),
         catch: () => UserServiceErr({
-          context: { operation: "createUser" }
+          operation: "createUser"
         })
       });
     },
@@ -93,10 +93,10 @@ Services often need multiple dependencies:
 
 ```typescript
 const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError")
-  .withContext<{ amount?: number; paymentId?: string }>()
+  .withFields<{ amount?: number; paymentId?: string }>()
   .withMessage(() => 'Payment processing failed');
 const { OrderServiceError, OrderServiceErr } = createTaggedError("OrderServiceError")
-  .withContext<{ input?: OrderInput }>()
+  .withFields<{ input?: OrderInput }>()
   .withMessage(() => 'Order operation failed');
 
 type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
@@ -117,7 +117,7 @@ export function createOrderService(
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
         catch: () => PaymentServiceErr({
-          context: { amount: input.payment.amount }
+          amount: input.payment.amount
         })
       });
 
@@ -130,7 +130,7 @@ export function createOrderService(
           paymentId: paymentResult.data.id
         }),
         catch: () => OrderServiceErr({
-          context: { input }
+          input
         })
       });
 
@@ -168,8 +168,8 @@ export type NotificationService = {
 
 const { NotificationServiceError, NotificationServiceErr } =
   createTaggedError("NotificationServiceError")
-    .withContext<{ action: string; platform?: string }>()
-    .withMessage(({ context }) => `Notification ${context.action} failed`);
+    .withFields<{ action: string; platform?: string }>()
+    .withMessage(({ action }) => `Notification ${action} failed`);
 
 type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
 
@@ -183,7 +183,7 @@ export function createNotificationServiceDesktop(): NotificationService {
           new window.Notification("App Name", { body: message });
         },
         catch: () => NotificationServiceErr({
-          context: { action: "notify", platform: "desktop" }
+          action: "notify", platform: "desktop"
         })
       });
     },
@@ -202,7 +202,7 @@ export function createNotificationServiceWeb(): NotificationService {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         return NotificationServiceErr({
-          context: { action: "notify", platform: "web" }
+          action: "notify", platform: "web"
         });
       }
 
@@ -211,7 +211,7 @@ export function createNotificationServiceWeb(): NotificationService {
           new Notification("App Name", { body: message });
         },
         catch: () => NotificationServiceErr({
-          context: { action: "notify", platform: "web" }
+          action: "notify", platform: "web"
         })
       });
     },
@@ -289,9 +289,8 @@ Decide whether to recover or propagate based on the error:
 
 ```typescript
 const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
-  .withContext<{ path: string }>()
-  .withCause<Error | undefined>()
-  .withMessage(({ context }) => `File operation failed: ${context.path}`);
+  .withFields<{ path: string }>()
+  .withMessage(({ path }) => `File operation failed: ${path}`);
 type FileServiceError = ReturnType<typeof FileServiceError>;
 
 export function createFileService() {
@@ -304,20 +303,14 @@ export function createFileService() {
           if (error.code === 'EEXIST') {
             return Ok(undefined);
           }
-          
+
           // Permission denied? That's a real error
           if (error.code === 'EACCES') {
-            return FileServiceErr({
-              context: { path },
-              cause: error
-            });
+            return FileServiceErr({ path });
           }
-          
+
           // Unknown error - propagate
-          return FileServiceErr({
-            context: { path },
-            cause: error
-          });
+          return FileServiceErr({ path });
         }
       });
     }
@@ -508,59 +501,51 @@ const { ServiceError } = createTaggedError("ServiceError")
   .withMessage(() => 'Service operation failed');
 ```
 
-### 2. Include Context in Errors
+### 2. Include Fields in Errors
 
-Always include relevant debugging information. Define your error with `.withContext()` to require it:
+Always include relevant debugging information. Define your error with `.withFields()` to require it:
 
 ```typescript
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{
+  .withFields<{
     userId: string;
     operation: string;
     timestamp?: string;
   }>()
-  .withMessage(({ context }) => `User ${context.operation} failed`);
+  .withMessage(({ operation }) => `User ${operation} failed`);
 
-// Now context is required with the exact shape
+// Now fields are required with the exact shape
 return UserServiceErr({
-  context: {
-    userId,
-    operation: "updateUser",
-    timestamp: new Date().toISOString()
-  }
+  userId,
+  operation: "updateUser",
+  timestamp: new Date().toISOString()
 });
 ```
 
 ### 3. Handle Errors at the Right Level
 
-Transform low-level errors into domain-specific ones. Use `.withCause()` to create error hierarchies:
+Transform low-level errors into domain-specific ones at service boundaries:
 
 ```typescript
-// Define errors with typed causes for layered architectures
+// Define errors for each layer
 const { DatabaseError, DatabaseErr } = createTaggedError("DatabaseError")
-  .withContext<{ sql: string }>()
-  .withMessage(() => 'Database query failed');
+  .withFields<{ sql: string }>()
+  .withMessage(({ sql }) => `Database query failed: ${sql}`);
 type DatabaseError = ReturnType<typeof DatabaseError>;
 
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{ userId: string }>()
-  .withCause<DatabaseError | undefined>()
-  .withMessage(() => 'User service operation failed');
+  .withFields<{ userId: string }>()
+  .withMessage(({ userId }) => `User service operation failed for ${userId}`);
 
 // Low-level database error
 const dbResult = await tryAsync({
   try: () => db.query(sql),
-  catch: () => DatabaseErr({
-    context: { sql }
-  })
+  catch: () => DatabaseErr({ sql })
 });
 
 if (dbResult.error) {
-  // Transform to service-level error, wrapping the database error
-  return UserServiceErr({
-    context: { userId },
-    cause: dbResult.error
-  });
+  // Transform to service-level error
+  return UserServiceErr({ userId });
 }
 ```
 
@@ -569,10 +554,10 @@ if (dbResult.error) {
 Services should only contain business logic:
 
 ```typescript
-// Define the error type with required context
+// Define the error type with required fields
 const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withContext<{ userId: string; operation: string }>()
-  .withMessage(({ context }) => `User ${context.operation} failed`);
+  .withFields<{ userId: string; operation: string }>()
+  .withMessage(({ operation }) => `User ${operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 // ✅ Good - pure business logic
@@ -582,7 +567,7 @@ export function createUserService(db: Database) {
       return tryAsync({
         try: () => db.users.findById(id),
         catch: () => UserServiceErr({
-          context: { userId: id, operation: "getUser" }
+          userId: id, operation: "getUser"
         })
       });
     }
