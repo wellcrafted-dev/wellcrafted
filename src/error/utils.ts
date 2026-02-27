@@ -60,21 +60,16 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * Constraint that prevents reserved keys (`name`, `message`) from appearing in fields.
- * Uses the `{ key?: never }` pattern — any type with `name` or `message` as a key
- * will fail to extend this constraint, producing a compile error.
+ * Constraint that prevents the reserved key `name` from appearing in fields.
+ * `message` is not reserved — it's a built-in input handled separately from TFields.
  */
-type NoReservedKeys = { name?: never; message?: never };
+type NoReservedKeys = { name?: never };
 
 /**
  * Replaces the "Error" suffix with "Err" suffix in error type names.
  */
 type ReplaceErrorWithErr<T extends `${string}Error`> =
 	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
-
-// =============================================================================
-// Message Function Types
-// =============================================================================
 
 /**
  * Message template function type.
@@ -86,79 +81,71 @@ type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
 // Factory Input Types
 // =============================================================================
 
-/**
- * Whether TFields resolves to an empty object (no fields).
- * When true, the factory input parameter becomes optional.
- */
-type IsEmptyFields<TFields extends JsonObject> = TFields extends Record<
-	never,
-	never
->
-	? true
-	: false;
+/** Factory input when message is required (no `.withMessage()`). */
+type RequiredMessageInput<TFields extends JsonObject> = { message: string } &
+	TFields;
+
+/** Factory input when message is optional (`.withMessage()` provides default). */
+type OptionalMessageInput<TFields extends JsonObject> = {
+	message?: string;
+} & TFields;
 
 /**
- * Whether all keys in TFields are optional.
- * When true, the factory input parameter becomes optional.
+ * Whether the entire input parameter can be omitted (called with no args).
+ * True when TFields is empty or all-optional (and message is optional via withMessage).
  */
-type IsAllOptional<TFields extends JsonObject> =
+type IsInputOptional<TFields extends JsonObject> =
 	Partial<TFields> extends TFields ? true : false;
-
-/**
- * Whether the factory input should be optional.
- * True when TFields is empty OR all fields are optional.
- */
-type IsOptionalInput<TFields extends JsonObject> =
-	IsEmptyFields<TFields> extends true
-		? true
-		: IsAllOptional<TFields> extends true
-			? true
-			: false;
 
 // =============================================================================
 // Builder & Factory Types
 // =============================================================================
 
 /**
- * The final factories object returned by `.withMessage()`.
- * Has factory functions, NO chain methods.
+ * Factories returned by `.withMessage()` — message is optional in the input.
+ * Only has factory functions, no chain methods.
  */
-type FinalFactories<
+type DefaultedFactories<
 	TName extends `${string}Error`,
 	TFields extends JsonObject,
 > = {
-	[K in TName]: IsOptionalInput<TFields> extends true
-		? (input?: TFields) => TaggedError<TName, TFields>
-		: (input: TFields) => TaggedError<TName, TFields>;
+	[K in TName]: IsInputOptional<TFields> extends true
+		? (input?: OptionalMessageInput<TFields>) => TaggedError<TName, TFields>
+		: (input: OptionalMessageInput<TFields>) => TaggedError<TName, TFields>;
 } & {
-	[K in ReplaceErrorWithErr<TName>]: IsOptionalInput<TFields> extends true
-		? (input?: TFields) => Err<TaggedError<TName, TFields>>
-		: (input: TFields) => Err<TaggedError<TName, TFields>>;
+	[K in ReplaceErrorWithErr<TName>]: IsInputOptional<TFields> extends true
+		? (
+				input?: OptionalMessageInput<TFields>,
+			) => Err<TaggedError<TName, TFields>>
+		: (
+				input: OptionalMessageInput<TFields>,
+			) => Err<TaggedError<TName, TFields>>;
 };
 
 /**
- * Builder interface for the fluent createTaggedError API.
- * Has chain methods only, NO factory functions.
- * Must call `.withMessage(fn)` to get factories.
+ * Builder object returned by createTaggedError (and .withFields()).
+ * Has factory functions (message required) AND chain methods.
  */
 type ErrorBuilder<
 	TName extends `${string}Error`,
 	TFields extends JsonObject = Record<never, never>,
 > = {
-	/**
-	 * Defines the additional fields for this error type.
-	 * Fields are spread flat on the error object.
-	 * Reserved keys (`name`, `message`) are rejected at compile time.
-	 */
+	[K in TName]: (
+		input: RequiredMessageInput<TFields>,
+	) => TaggedError<TName, TFields>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: (
+		input: RequiredMessageInput<TFields>,
+	) => Err<TaggedError<TName, TFields>>;
+} & {
+	/** Defines additional fields spread flat on the error object. */
 	withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
 
 	/**
-	 * Terminal method that defines how the error message is computed from its fields.
-	 * Returns the factory functions — this is the only way to get them.
-	 *
-	 * @param fn - Template function that receives the fields and returns a message string
+	 * Provides a default message template. Returns factories where `message` is optional.
+	 * Call-site `message` always overrides the template when both exist.
 	 */
-	withMessage(fn: MessageFn<TFields>): FinalFactories<TName, TFields>;
+	withMessage(fn: MessageFn<TFields>): DefaultedFactories<TName, TFields>;
 };
 
 // =============================================================================
@@ -168,62 +155,99 @@ type ErrorBuilder<
 /**
  * Creates a new tagged error type with a fluent builder API.
  *
- * The builder provides `.withFields<T>()` and `.withMessage(fn)`.
- * `.withMessage(fn)` is **required** and **terminal** — it returns the factory functions.
+ * Returns an object with factory functions immediately available (message required),
+ * plus `.withFields<T>()` and `.withMessage(fn)` for further configuration.
  *
- * @example Tier 1: Static error (no fields)
+ * @example No fields, message required at call site
  * ```ts
- * const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
+ * const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+ * SimpleErr({ message: 'Something went wrong' });
+ * ```
+ *
+ * @example No fields, with default message (message optional)
+ * ```ts
+ * const { RecorderBusyError } = createTaggedError('RecorderBusyError')
  *   .withMessage(() => 'A recording is already in progress');
+ * RecorderBusyError();                                        // uses default
+ * RecorderBusyError({ message: 'Custom message' });           // override
  * ```
  *
- * @example Tier 2: Reason-only error
+ * @example With fields, message required
  * ```ts
- * const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
- *   .withFields<{ reason: string }>()
- *   .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
+ * const { FsReadError } = createTaggedError('FsReadError')
+ *   .withFields<{ path: string }>();
+ * FsReadError({ message: 'Failed to read', path: '/etc/config' });
  * ```
  *
- * @example Tier 3: Structured data error
+ * @example With fields + default message (message optional, overridable)
  * ```ts
- * const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
- *   .withFields<{ status: number; reason?: string }>()
- *   .withMessage(({ status, reason }) =>
- *     `HTTP ${status}${reason ? `: ${reason}` : ''}`
- *   );
+ * const { ResponseError } = createTaggedError('ResponseError')
+ *   .withFields<{ status: number }>()
+ *   .withMessage(({ status }) => `HTTP ${status}`);
+ * ResponseError({ status: 404 });                          // message: "HTTP 404"
+ * ResponseError({ status: 404, message: 'Not found' });    // override
  * ```
  */
 export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
 ): ErrorBuilder<TName> {
+	const errName = name.replace(
+		/Error$/,
+		"Err",
+	) as ReplaceErrorWithErr<TName>;
+
 	const createBuilder = <
 		TFields extends JsonObject = Record<never, never>,
 	>(): ErrorBuilder<TName, TFields> => {
+		const errorConstructor = (
+			input: { message: string } & TFields,
+		) => {
+			const { message, ...fields } = input;
+			return {
+				name,
+				message,
+				...fields,
+			} as unknown as TaggedError<TName, TFields>;
+		};
+
+		const errConstructor = (
+			input: { message: string } & TFields,
+		) => Err(errorConstructor(input));
+
 		return {
+			[name]: errorConstructor,
+			[errName]: errConstructor,
+
 			withFields<T extends JsonObject & NoReservedKeys>() {
 				return createBuilder<T>();
 			},
-			withMessage(fn: MessageFn<TFields>): FinalFactories<TName, TFields> {
-				const errorConstructor = (input?: TFields) => {
-					const fields = (input ?? {}) as TFields;
+
+			withMessage(
+				fn: MessageFn<TFields>,
+			): DefaultedFactories<TName, TFields> {
+				const defaultedErrorConstructor = (
+					input?: { message?: string } & TFields,
+				) => {
+					const {
+						message: messageOverride,
+						...fields
+					} = (input ?? {}) as { message?: string } & TFields;
+					const message = messageOverride ?? fn(fields as TFields);
 					return {
 						name,
-						message: fn(fields),
+						message,
 						...fields,
 					} as unknown as TaggedError<TName, TFields>;
 				};
 
-				const errName = name.replace(
-					/Error$/,
-					"Err",
-				) as ReplaceErrorWithErr<TName>;
-				const errConstructor = (input?: TFields) =>
-					Err(errorConstructor(input));
+				const defaultedErrConstructor = (
+					input?: { message?: string } & TFields,
+				) => Err(defaultedErrorConstructor(input));
 
 				return {
-					[name]: errorConstructor,
-					[errName]: errConstructor,
-				} as FinalFactories<TName, TFields>;
+					[name]: defaultedErrorConstructor,
+					[errName]: defaultedErrConstructor,
+				} as DefaultedFactories<TName, TFields>;
 			},
 		} as ErrorBuilder<TName, TFields>;
 	};

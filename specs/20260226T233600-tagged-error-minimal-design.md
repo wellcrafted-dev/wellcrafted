@@ -1,7 +1,7 @@
 # Tagged Error Minimal Design: First Principles Redesign
 
 **Created**: 2026-02-26
-**Status**: In progress — flat design landed, message simplification next
+**Status**: Complete — flat design (Phase 1) and message-at-callsite (Phase 2) both landed
 **Scope**: wellcrafted `TaggedError` type, `createTaggedError` builder API
 **Related**: `20260226T000000-granular-error-migration.md` (service-by-service migration, depends on this)
 
@@ -624,17 +624,17 @@ The final design serves both: `.withMessage()` as optional default for the 59%, 
    - ~~Tests rewritten for new API~~ — 41 tests, all 3 tiers, builder shape, JSON serialization, edge cases
    - ~~Documentation updated~~ — README.md rewritten for flat API
 
-### Phase 2: Message as call-site input with optional default (TODO)
+### Phase 2: Message as call-site input with optional default (COMPLETE)
 
-3. Make `message` a call-site input, `.withMessage()` an optional default
-   - Update `NoReservedKeys` from `{ name?: never; message?: never }` to `{ name?: never }`
-   - Remove `IsEmptyFields`, `IsOptionalInput` conditional types
-   - Without `.withMessage()`: factory input is `{ message: string } & TFields`
-   - With `.withMessage()`: factory input is `{ message?: string } & TFields`, template provides default
-   - Builder returns factories directly (`.withMessage()` is no longer a required terminal step)
-   - Call-site `message` always overrides the template when both exist
-   - Rewrite tests for the new API shape
-   - Update documentation
+3. ~~Make `message` a call-site input, `.withMessage()` an optional default~~
+   - ~~Update `NoReservedKeys` from `{ name?: never; message?: never }` to `{ name?: never }`~~
+   - ~~Remove `IsEmptyFields`, `IsOptionalInput` conditional types~~ — replaced with `IsInputOptional<TFields>`
+   - ~~Without `.withMessage()`: factory input is `{ message: string } & TFields`~~
+   - ~~With `.withMessage()`: factory input is `{ message?: string } & TFields`, template provides default~~
+   - ~~Builder returns factories directly (`.withMessage()` is no longer a required terminal step)~~
+   - ~~Call-site `message` always overrides the template when both exist~~
+   - ~~Rewrite tests for the new API shape~~ — 46 tests covering all combinations
+   - ~~Update documentation~~
 
 ### Remaining Work (Out of Scope for This Spec)
 

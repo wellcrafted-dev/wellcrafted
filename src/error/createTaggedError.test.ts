@@ -3,101 +3,137 @@ import { createTaggedError } from "./utils.js";
 import type { TaggedError, JsonObject } from "./types.js";
 
 // =============================================================================
-// Tier 1: Static Errors (no fields, no arguments)
+// Without .withMessage() — message required at call site
 // =============================================================================
 
-describe("createTaggedError - Tier 1: static errors", () => {
-	const { NetworkError, NetworkErr } = createTaggedError(
-		"NetworkError",
-	).withMessage(() => "Connection failed");
+describe("createTaggedError - without .withMessage()", () => {
+	const { SimpleError, SimpleErr } = createTaggedError("SimpleError");
 
-	it("creates error with correct name and message from template", () => {
-		const error = NetworkError();
+	it("creates error with name and call-site message", () => {
+		const error = SimpleError({ message: "Something went wrong" });
 
-		expect(error.name).toBe("NetworkError");
-		expect(error.message).toBe("Connection failed");
+		expect(error.name).toBe("SimpleError");
+		expect(error.message).toBe("Something went wrong");
 	});
 
 	it("creates error with no extra properties", () => {
-		const error = NetworkError();
+		const error = SimpleError({ message: "test" });
 
 		const { name: _name, message: _message, ...rest } = error;
 		expect(Object.keys(rest)).toHaveLength(0);
 	});
 
 	it("minimal error has correct type (name and message only)", () => {
-		const error = NetworkError();
+		const error = SimpleError({ message: "test" });
 
 		expectTypeOf(error).toEqualTypeOf<
-			Readonly<{ name: "NetworkError"; message: string }>
+			Readonly<{ name: "SimpleError"; message: string }>
 		>();
 	});
 
-	it("NetworkErr wraps error in Err result", () => {
-		const result = NetworkErr();
+	it("SimpleErr wraps error in Err result", () => {
+		const result = SimpleErr({ message: "Something went wrong" });
 
 		expect(result.data).toBeNull();
 		expect(result.error).toEqual({
-			name: "NetworkError",
-			message: "Connection failed",
+			name: "SimpleError",
+			message: "Something went wrong",
 		});
 	});
+});
 
-	it("no argument needed for static errors", () => {
-		const { RecorderBusyError } = createTaggedError(
-			"RecorderBusyError",
-		).withMessage(() => "A recording is already in progress");
+// =============================================================================
+// With .withMessage() — message optional, template provides default
+// =============================================================================
 
+describe("createTaggedError - with .withMessage() (no fields)", () => {
+	const { RecorderBusyError, RecorderBusyErr } = createTaggedError(
+		"RecorderBusyError",
+	).withMessage(() => "A recording is already in progress");
+
+	it("uses default message when called with no args", () => {
 		const error = RecorderBusyError();
+
 		expect(error.name).toBe("RecorderBusyError");
 		expect(error.message).toBe("A recording is already in progress");
 	});
-});
 
-// =============================================================================
-// Tier 2: Reason-Only Errors
-// =============================================================================
+	it("call-site message overrides the default", () => {
+		const error = RecorderBusyError({
+			message: "Custom: already recording",
+		});
 
-describe("createTaggedError - Tier 2: reason-only errors", () => {
-	const { PlaySoundError, PlaySoundErr } = createTaggedError("PlaySoundError")
-		.withFields<{ reason: string }>()
-		.withMessage(({ reason }) => `Failed to play sound: ${reason}`);
-
-	it("creates error with reason field spread flat", () => {
-		const error = PlaySoundError({ reason: "device busy" });
-
-		expect(error.name).toBe("PlaySoundError");
-		expect(error.message).toBe("Failed to play sound: device busy");
-		expect(error.reason).toBe("device busy");
+		expect(error.name).toBe("RecorderBusyError");
+		expect(error.message).toBe("Custom: already recording");
 	});
 
-	it("reason is accessible as a top-level property", () => {
-		const error = PlaySoundError({ reason: "not found" });
-
-		expectTypeOf(error.reason).toEqualTypeOf<string>();
-	});
-
-	it("PlaySoundErr wraps in Err result", () => {
-		const result = PlaySoundErr({ reason: "codec error" });
+	it("Err factory uses default message", () => {
+		const result = RecorderBusyErr();
 
 		expect(result.data).toBeNull();
-		expect(result.error?.name).toBe("PlaySoundError");
-		expect(result.error?.reason).toBe("codec error");
+		expect(result.error?.name).toBe("RecorderBusyError");
+		expect(result.error?.message).toBe("A recording is already in progress");
+	});
+
+	it("Err factory accepts message override", () => {
+		const result = RecorderBusyErr({ message: "Override" });
+
+		expect(result.error?.message).toBe("Override");
 	});
 });
 
 // =============================================================================
-// Tier 3: Structured Data Errors
+// With .withFields() — message required, fields required
 // =============================================================================
 
-describe("createTaggedError - Tier 3: structured data errors", () => {
+describe("createTaggedError - with .withFields() (no .withMessage())", () => {
+	const { FsReadError, FsReadErr } = createTaggedError("FsReadError")
+		.withFields<{ path: string }>();
+
+	it("creates error with message and fields", () => {
+		const error = FsReadError({
+			message: "Failed to read config",
+			path: "/etc/config",
+		});
+
+		expect(error.name).toBe("FsReadError");
+		expect(error.message).toBe("Failed to read config");
+		expect(error.path).toBe("/etc/config");
+	});
+
+	it("fields are typed correctly in output", () => {
+		const error = FsReadError({
+			message: "test",
+			path: "/tmp/test",
+		});
+
+		expectTypeOf(error.path).toEqualTypeOf<string>();
+	});
+
+	it("FsReadErr wraps in Err result", () => {
+		const result = FsReadErr({
+			message: "Failed to read",
+			path: "/etc/config",
+		});
+
+		expect(result.data).toBeNull();
+		expect(result.error?.name).toBe("FsReadError");
+		expect(result.error?.path).toBe("/etc/config");
+	});
+});
+
+// =============================================================================
+// With .withFields() + .withMessage() — message optional, computed from fields
+// =============================================================================
+
+describe("createTaggedError - with .withFields() + .withMessage()", () => {
 	const { ResponseError, ResponseErr } = createTaggedError("ResponseError")
 		.withFields<{ status: number; reason?: string }>()
 		.withMessage(
 			({ status, reason }) => `HTTP ${status}${reason ? `: ${reason}` : ""}`,
 		);
 
-	it("creates error with required fields", () => {
+	it("computes message from fields when not provided", () => {
 		const error = ResponseError({ status: 404 });
 
 		expect(error.name).toBe("ResponseError");
@@ -105,7 +141,14 @@ describe("createTaggedError - Tier 3: structured data errors", () => {
 		expect(error.status).toBe(404);
 	});
 
-	it("creates error with required + optional fields", () => {
+	it("call-site message overrides the computed default", () => {
+		const error = ResponseError({ status: 404, message: "Not found" });
+
+		expect(error.message).toBe("Not found");
+		expect(error.status).toBe(404);
+	});
+
+	it("template receives fields including optional ones", () => {
 		const error = ResponseError({ status: 500, reason: "Internal error" });
 
 		expect(error.message).toBe("HTTP 500: Internal error");
@@ -146,85 +189,115 @@ describe("createTaggedError - Tier 3: structured data errors", () => {
 		expect(error.operation).toBe("insert");
 		expect(error.backend).toBe("indexeddb");
 	});
-});
 
-// =============================================================================
-// Err-Wrapped Factory
-// =============================================================================
-
-describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
-	it("FooErr wraps error in Err result with correct data/error shape", () => {
-		const { AuthErr } = createTaggedError("AuthError").withMessage(
-			() => "Authentication failed",
-		);
-
-		const result = AuthErr();
-
-		expect(result.data).toBeNull();
-		expect(result.error?.name).toBe("AuthError");
-		expect(result.error?.message).toBe("Authentication failed");
-	});
-
-	it("FooErr with fields wraps correctly", () => {
-		const { ApiErr } = createTaggedError("ApiError")
-			.withFields<{ endpoint: string; status: number }>()
+	it("multi-field error allows message override", () => {
+		const { DbQueryError } = createTaggedError("DbQueryError")
+			.withFields<{ table: string; operation: string; backend: string }>()
 			.withMessage(
-				({ endpoint, status }) =>
-					`Request to ${endpoint} failed with ${status}`,
+				({ table, operation }) => `Database ${operation} on ${table} failed`,
 			);
 
-		const result = ApiErr({ endpoint: "/users", status: 500 });
+		const error = DbQueryError({
+			table: "recordings",
+			operation: "insert",
+			backend: "indexeddb",
+			message: "Custom DB error",
+		});
 
-		expect(result.data).toBeNull();
-		expect(result.error?.name).toBe("ApiError");
-		expect(result.error?.message).toBe("Request to /users failed with 500");
+		expect(error.message).toBe("Custom DB error");
 	});
 });
 
 // =============================================================================
-// Optional Input (all fields optional or empty)
+// Builder Shape — factories available immediately
 // =============================================================================
 
-describe("createTaggedError - optional input", () => {
-	it("no argument needed when no fields defined", () => {
-		const { SimpleError } = createTaggedError("SimpleError").withMessage(
-			() => "Simple",
-		);
+describe("createTaggedError - builder shape", () => {
+	it("builder has factory properties immediately", () => {
+		const builder = createTaggedError("FooError");
 
-		const error = SimpleError();
-		expect(error.message).toBe("Simple");
+		expect("FooError" in builder).toBe(true);
+		expect("FooErr" in builder).toBe(true);
 	});
 
-	it("argument optional when all fields are optional", () => {
+	it("builder has withFields and withMessage methods", () => {
+		const builder = createTaggedError("FooError");
+
+		expect("withFields" in builder).toBe(true);
+		expect("withMessage" in builder).toBe(true);
+	});
+
+	it("builder after withFields has factory properties", () => {
+		const builder = createTaggedError("FooError").withFields<{
+			x: string;
+		}>();
+
+		expect("FooError" in builder).toBe(true);
+		expect("FooErr" in builder).toBe(true);
+		expect("withFields" in builder).toBe(true);
+		expect("withMessage" in builder).toBe(true);
+	});
+
+	it("withMessage returns object with ONLY factory properties", () => {
+		const factories = createTaggedError("FooError").withMessage(() => "foo");
+
+		expect("FooError" in factories).toBe(true);
+		expect("FooErr" in factories).toBe(true);
+		expect("withFields" in factories).toBe(false);
+		expect("withMessage" in factories).toBe(false);
+	});
+
+	it("builder does NOT have withContext or withCause", () => {
+		const builder = createTaggedError("FooError");
+
+		expect("withContext" in builder).toBe(false);
+		expect("withCause" in builder).toBe(false);
+	});
+});
+
+// =============================================================================
+// Optional input with .withMessage() + all-optional fields
+// =============================================================================
+
+describe("createTaggedError - optional input with .withMessage()", () => {
+	it("no argument needed when no fields + withMessage", () => {
+		const { StaticError } = createTaggedError("StaticError").withMessage(
+			() => "Static message",
+		);
+
+		const error = StaticError();
+		expect(error.message).toBe("Static message");
+	});
+
+	it("argument optional when all fields are optional + withMessage", () => {
 		const { FlexError } = createTaggedError("FlexError")
 			.withFields<{ reason?: string; details?: string }>()
 			.withMessage(({ reason }) => reason ?? "Unknown error");
 
-		// Without argument
 		const err1 = FlexError();
 		expect(err1.message).toBe("Unknown error");
 
-		// With argument
 		const err2 = FlexError({ reason: "timeout" });
 		expect(err2.message).toBe("timeout");
 		expect(err2.reason).toBe("timeout");
 	});
 
-	it("argument required when any field is required", () => {
+	it("argument required when any field is required (even with withMessage)", () => {
 		const { StrictError } = createTaggedError("StrictError")
 			.withFields<{ code: number }>()
 			.withMessage(({ code }) => `Error code: ${code}`);
 
 		const error = StrictError({ code: 42 });
 		expect(error.code).toBe(42);
+		expect(error.message).toBe("Error code: 42");
 	});
 });
 
 // =============================================================================
-// Message Auto-Computation
+// Message template behavior
 // =============================================================================
 
-describe("createTaggedError - message auto-computation", () => {
+describe("createTaggedError - message template behavior", () => {
 	it("template fn receives fields (not name)", () => {
 		let capturedInput: Record<string, unknown> | null = null;
 
@@ -239,11 +312,10 @@ describe("createTaggedError - message auto-computation", () => {
 
 		expect(capturedInput).not.toBeNull();
 		expect(capturedInput?.value).toBe(42);
-		// name is NOT passed to the message function
 		expect("name" in (capturedInput as object)).toBe(false);
 	});
 
-	it("template fn receives empty object for static errors", () => {
+	it("template fn receives empty object for no-fields errors", () => {
 		let capturedInput: unknown = null;
 
 		const { StaticError } = createTaggedError("StaticError").withMessage(
@@ -258,14 +330,14 @@ describe("createTaggedError - message auto-computation", () => {
 		expect(capturedInput).toEqual({});
 	});
 
-	it("message is always computed by template, never overridable", () => {
+	it("call-site message always overrides template", () => {
 		const { TemplateError } = createTaggedError("TemplateError")
 			.withFields<{ reason: string }>()
 			.withMessage(({ reason }) => `Template says: ${reason}`);
 
-		const error = TemplateError({ reason: "test" });
+		const error = TemplateError({ reason: "test", message: "Override" });
 
-		expect(error.message).toBe("Template says: test");
+		expect(error.message).toBe("Override");
 	});
 });
 
@@ -274,7 +346,16 @@ describe("createTaggedError - message auto-computation", () => {
 // =============================================================================
 
 describe("createTaggedError - ReturnType extraction", () => {
-	it("ReturnType works for minimal errors", () => {
+	it("ReturnType works for minimal errors (no withMessage)", () => {
+		const { SimpleError } = createTaggedError("SimpleError");
+		type SimpleError = ReturnType<typeof SimpleError>;
+
+		expectTypeOf<SimpleError>().toEqualTypeOf<
+			Readonly<{ name: "SimpleError"; message: string }>
+		>();
+	});
+
+	it("ReturnType works for errors with withMessage", () => {
 		const { SimpleError } = createTaggedError("SimpleError").withMessage(
 			() => "Simple",
 		);
@@ -287,8 +368,7 @@ describe("createTaggedError - ReturnType extraction", () => {
 
 	it("ReturnType works for errors with fields", () => {
 		const { FileError } = createTaggedError("FileError")
-			.withFields<{ path: string }>()
-			.withMessage(({ path }) => `File not found: ${path}`);
+			.withFields<{ path: string }>();
 		type FileError = ReturnType<typeof FileError>;
 
 		const error: FileError = {
@@ -300,13 +380,14 @@ describe("createTaggedError - ReturnType extraction", () => {
 		expectTypeOf(error).toExtend<TaggedError<"FileError", { path: string }>>();
 	});
 
-	it("ReturnType can be used as a field type in another error", () => {
-		// cause is just another typed field — no special machinery
+	it("cause is just another typed field", () => {
 		const { ServiceError } = createTaggedError("ServiceError")
-			.withFields<{ cause: string }>()
-			.withMessage(({ cause }) => `Service error: ${cause}`);
+			.withFields<{ cause: string }>();
 
-		const serviceError = ServiceError({ cause: "db failure" });
+		const serviceError = ServiceError({
+			message: "Service failed",
+			cause: "db failure",
+		});
 
 		expect(serviceError.cause).toBe("db failure");
 	});
@@ -336,7 +417,9 @@ describe("createTaggedError - JSON serialization", () => {
 	it("no nested structure to worry about", () => {
 		const { DbError } = createTaggedError("DbError")
 			.withFields<{ table: string; operation: string }>()
-			.withMessage(({ table, operation }) => `${operation} on ${table} failed`);
+			.withMessage(
+				({ table, operation }) => `${operation} on ${table} failed`,
+			);
 
 		const error = DbError({ table: "users", operation: "insert" });
 		const keys = Object.keys(error).sort();
@@ -361,88 +444,37 @@ describe("createTaggedError - JSON serialization", () => {
 // =============================================================================
 
 describe("createTaggedError - type safety", () => {
-	it("minimal errors have correct types (name and message only)", () => {
-		const { NetworkError } = createTaggedError("NetworkError").withMessage(
-			() => "Network error",
-		);
+	it("minimal errors have correct types", () => {
+		const { NetworkError } = createTaggedError("NetworkError");
 
-		const error = NetworkError();
+		const error = NetworkError({ message: "Network error" });
 
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "NetworkError"; message: string }>
 		>();
 	});
 
-	it("fields are typed correctly in output", () => {
+	it("errors with fields have correct types", () => {
 		const { FileError } = createTaggedError("FileError")
-			.withFields<{ path: string; size: number }>()
-			.withMessage(({ path }) => `${path} not found`);
+			.withFields<{ path: string; size: number }>();
 
-		const error = FileError({ path: "test.txt", size: 1024 });
+		const error = FileError({
+			message: "not found",
+			path: "test.txt",
+			size: 1024,
+		});
 
 		expectTypeOf(error.path).toEqualTypeOf<string>();
 		expectTypeOf(error.size).toEqualTypeOf<number>();
 	});
 
 	it("error objects are typed as Readonly", () => {
-		const { TestError } = createTaggedError("TestError").withMessage(
-			() => "Original",
-		);
-		const error = TestError();
+		const { TestError } = createTaggedError("TestError");
+		const error = TestError({ message: "Original" });
 
 		expectTypeOf(error).toEqualTypeOf<
 			Readonly<{ name: "TestError"; message: string }>
 		>();
-	});
-});
-
-// =============================================================================
-// Builder Has NO Factories
-// =============================================================================
-
-describe("createTaggedError - builder has NO factories", () => {
-	it("builder does not have factory properties before withMessage", () => {
-		const builder = createTaggedError("FooError");
-
-		expect("FooError" in builder).toBe(false);
-		expect("FooErr" in builder).toBe(false);
-	});
-
-	it("builder after withFields does not have factory properties", () => {
-		const builder = createTaggedError("FooError").withFields<{
-			x: string;
-		}>();
-
-		expect("FooError" in builder).toBe(false);
-		expect("FooErr" in builder).toBe(false);
-	});
-
-	it("withMessage returns object WITH factory properties", () => {
-		const factories = createTaggedError("FooError").withMessage(() => "foo");
-
-		expect("FooError" in factories).toBe(true);
-		expect("FooErr" in factories).toBe(true);
-	});
-
-	it("builder has withFields and withMessage methods", () => {
-		const builder = createTaggedError("FooError");
-
-		expect("withFields" in builder).toBe(true);
-		expect("withMessage" in builder).toBe(true);
-	});
-
-	it("builder does NOT have withContext or withCause", () => {
-		const builder = createTaggedError("FooError");
-
-		expect("withContext" in builder).toBe(false);
-		expect("withCause" in builder).toBe(false);
-	});
-
-	it("withMessage result does NOT have chain methods", () => {
-		const factories = createTaggedError("FooError").withMessage(() => "foo");
-
-		expect("withFields" in factories).toBe(false);
-		expect("withMessage" in factories).toBe(false);
 	});
 });
 
@@ -494,9 +526,16 @@ describe("createTaggedError - edge cases", () => {
 	});
 
 	it("error name must end in 'Error'", () => {
-		// This is enforced at the type level via template literal constraint
 		// @ts-expect-error - name must end in 'Error'
 		createTaggedError("Foo");
+	});
+
+	it("message field in fields is allowed (no longer reserved)", () => {
+		// message is a built-in input, not a reserved field key.
+		// The `message` key in the input is the built-in message, not a field collision.
+		const { TestError } = createTaggedError("TestError");
+		const error = TestError({ message: "hello" });
+		expect(error.message).toBe("hello");
 	});
 });
 
@@ -543,5 +582,22 @@ describe("createTaggedError - the console log test", () => {
 		expect(err3.name).toBe("DbQueryError");
 		expect(err3.message).toBe("Database insert on recordings failed");
 		expect(err3.table).toBe("recordings");
+	});
+
+	it("spec examples also work without withMessage", () => {
+		const { SimpleError } = createTaggedError("SimpleError");
+		const err = SimpleError({ message: "Something went wrong" });
+		expect(err.name).toBe("SimpleError");
+		expect(err.message).toBe("Something went wrong");
+
+		const { FsReadError } = createTaggedError("FsReadError")
+			.withFields<{ path: string }>();
+		const fsErr = FsReadError({
+			message: "Failed to read '/etc/config'",
+			path: "/etc/config",
+		});
+		expect(fsErr.name).toBe("FsReadError");
+		expect(fsErr.message).toBe("Failed to read '/etc/config'");
+		expect(fsErr.path).toBe("/etc/config");
 	});
 });
