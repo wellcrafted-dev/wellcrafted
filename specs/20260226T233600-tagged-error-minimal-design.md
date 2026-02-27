@@ -618,10 +618,10 @@ Flat wins on ergonomics in both consumption and definition. The nested form adds
 
 1. ~~Resolve open questions~~ — All decided (see Resolved Decisions above)
 2. Implement the new `TaggedError` type and `createTaggedError` builder in wellcrafted
-   - Rename `.withContext()` → `.withFields()`
-   - Remove `.withCause()` from the builder
-   - Flatten the error shape (no `context` wrapper)
-   - Remove `message` from factory input — template is the sole source
-   - Add `ValidFields<T>` compile-time guard for reserved keys
+   - ~~Flatten the error shape (no `context` wrapper)~~ — Done: `TaggedError<TName, TFields>` with flat spread
+   - ~~Add `ValidFields<T>` compile-time guard for reserved keys~~ — Done: rejects `name` | `message` at compile time
+   - Rename `.withContext()` → `.withFields()` — In progress (builder implementation)
+   - Remove `.withCause()` from the builder — In progress (builder implementation)
+   - Remove `message` from factory input — template is the sole source — In progress (builder implementation)
 3. Update the granular error migration spec to target the flat design with message override removal
 4. Migrate all error definitions and call sites (per-service, as planned in the migration spec)

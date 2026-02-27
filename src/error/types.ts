@@ -16,50 +16,41 @@ export type JsonValue =
 export type JsonObject = Record<string, JsonValue>;
 
 /**
- * Base type for any tagged error, used as a constraint for cause parameters.
+ * Base type for any tagged error, used as a minimum constraint.
  */
 export type AnyTaggedError = { name: string; message: string };
 
 /**
- * Helper type that adds a context property.
- * - When TContext is undefined (default): NO context property (explicit opt-in)
- * - When TContext includes undefined (e.g., `{ foo: string } | undefined`): context is OPTIONAL but typed
- * - When TContext is a specific type without undefined: context is REQUIRED with that exact type
+ * Keys reserved by the TaggedError type itself.
+ * Fields with these names cannot be used in `.withFields<T>()`.
  */
-type WithContext<TContext> = [TContext] extends [undefined]
-	? Record<never, never>
-	: [undefined] extends [TContext]
-		? { context?: Exclude<TContext, undefined> }
-		: { context: TContext };
+type ReservedKeys = "name" | "message";
 
 /**
- * Helper type that adds a cause property.
- * - When TCause is undefined (default): NO cause property (explicit opt-in)
- * - When TCause includes undefined (e.g., `NetworkError | undefined`): cause is OPTIONAL, constrained
- * - When TCause is a specific type without undefined: cause is REQUIRED
+ * Compile-time guard that rejects field types containing reserved keys.
+ * Resolves to `T` when valid, `never` when a reserved key is present.
+ *
+ * @example
+ * ```ts
+ * // OK — no reserved keys
+ * type Valid = ValidFields<{ status: number }>; // { status: number }
+ *
+ * // Rejected — 'name' is reserved
+ * type Invalid = ValidFields<{ name: string }>; // never
+ * ```
  */
-type WithCause<TCause> = [TCause] extends [undefined]
-	? Record<never, never>
-	: [undefined] extends [TCause]
-		? { cause?: Exclude<TCause, undefined> }
-		: { cause: TCause };
+export type ValidFields<T extends JsonObject> =
+	keyof T & ReservedKeys extends never ? T : never;
 
 /**
  * A tagged error type for type-safe error handling.
  * Uses the `name` property as a discriminator for tagged unions.
+ * Additional fields are spread flat on the error object.
  *
  * @template TName - The error name (discriminator for tagged unions)
- * @template TContext - Additional context data for the error (default: undefined = no context)
- * @template TCause - The type of error that caused this error (default: undefined = no cause)
+ * @template TFields - Additional fields spread flat on the error (default: none)
  */
 export type TaggedError<
 	TName extends string = string,
-	TContext extends JsonObject | undefined = undefined,
-	TCause extends AnyTaggedError | undefined = undefined,
-> = Readonly<
-	{
-		name: TName;
-		message: string;
-	} & WithContext<TContext> &
-		WithCause<TCause>
->;
+	TFields extends JsonObject = Record<never, never>,
+> = Readonly<{ name: TName; message: string } & TFields>;
