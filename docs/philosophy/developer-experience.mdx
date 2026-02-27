@@ -144,18 +144,18 @@ async function handleApiCall<T>(result: ApiResult<T>) {
     switch (result.error.name) {
       case "NetworkError":
         // TypeScript knows this is NetworkError
-        if (result.error.context.status === 429) {
-          return scheduleRetry(result.error.context.retryAfter);
+        if (result.error.status === 429) {
+          return scheduleRetry(result.error.retryAfter);
         }
         return showNetworkErrorDialog();
         
       case "AuthError":
         // TypeScript knows this is AuthError  
-        return redirectToLogin(result.error.context.returnUrl);
+        return redirectToLogin(result.error.returnUrl);
         
       case "ValidationError":
         // TypeScript knows this is ValidationError
-        return highlightValidationErrors(result.error.context.fields);
+        return highlightValidationErrors(result.error.fields);
         
       // TypeScript ensures you handle all cases
     }
@@ -205,17 +205,17 @@ if (error) {
     case "NetworkError":
       // TypeScript knows the exact shape of NetworkError
       console.error(`Network request failed: ${error.message}`, {
-        url: error.context.url,
-        status: error.context.status,
-        retryAttempt: error.context.retryAttempt
+        url: error.url,
+        status: error.status,
+        retryAttempt: error.retryAttempt
       });
       return handleNetworkError(error);
       
     case "ValidationError":
       // TypeScript knows the exact shape of ValidationError  
       console.error(`Validation failed: ${error.message}`, {
-        fields: error.context.invalidFields,
-        values: error.context.providedValues
+        fields: error.invalidFields,
+        values: error.providedValues
       });
       return handleValidationError(error);
   }
@@ -241,16 +241,17 @@ Your IDE becomes an error-handling guide:
 // When you type result.error. your IDE shows:
 result.error.name        // "NetworkError" | "AuthError" | "ValidationError"
 result.error.message     // string
-result.error.context     // varies by error type
-result.error.cause       // unknown
+result.error.url         // (on NetworkError) string
+result.error.status      // (on NetworkError) number
+// ... custom fields vary by error type
 
 // When you're in a switch statement, your IDE knows the specific type:
 switch (result.error.name) {
   case "NetworkError":
-    result.error.context.  // IDE shows: url, status, retryAttempt, etc.
+    result.error.  // IDE shows: url, status, retryAttempt, etc.
     break;
   case "AuthError":
-    result.error.context.  // IDE shows: userId, requiredPermission, etc.
+    result.error.  // IDE shows: userId, requiredPermission, etc.
     break;
 }
 ```
@@ -261,14 +262,12 @@ Click on any error name to see its definition:
 
 ```typescript
 // Click on "PaymentError" to see:
-type PaymentError = TaggedError<"PaymentError"> & {
-  context: {
-    orderId: string;
-    amount: number;
-    paymentMethod: string;
-    gatewayResponse?: string;
-  };
-};
+type PaymentError = TaggedError<"PaymentError", {
+  orderId: string;
+  amount: number;
+  paymentMethod: string;
+  gatewayResponse?: string;
+}>;
 ```
 
 **Navigation benefits**:
@@ -333,25 +332,16 @@ wellcrafted errors tell the complete story:
 {
   "name": "NetworkError",
   "message": "Failed to fetch user data after 3 retry attempts",
-  "context": {
-    "userId": "user_12345",
-    "requestUrl": "https://api.example.com/users/user_12345",
-    "requestMethod": "GET",
-    "finalStatus": 503,
-    "retryAttempts": 3,
-    "maxRetries": 3,
-    "totalRequestTime": 15432,
-    "lastRetryAt": "2024-03-15T10:23:45.678Z",
-    "userAgent": "MyApp/1.2.3",
-    "sessionId": "session_abc123"
-  },
-  "cause": {
-    "message": "Service Unavailable",
-    "status": 503,
-    "headers": {
-      "retry-after": "120"
-    }
-  }
+  "userId": "user_12345",
+  "requestUrl": "https://api.example.com/users/user_12345",
+  "requestMethod": "GET",
+  "finalStatus": 503,
+  "retryAttempts": 3,
+  "maxRetries": 3,
+  "totalRequestTime": 15432,
+  "lastRetryAt": "2024-03-15T10:23:45.678Z",
+  "userAgent": "MyApp/1.2.3",
+  "sessionId": "session_abc123"
 }
 ```
 
@@ -371,37 +361,29 @@ Complex operations create error chains that maintain context at each level:
 const dbError = {
   name: "DatabaseError",
   message: "Connection pool exhausted",
-  context: {
-    poolSize: 10,
-    activeConnections: 10,
-    queueLength: 15,
-    query: "SELECT * FROM users WHERE id = $1"
-  }
+  poolSize: 10,
+  activeConnections: 10,
+  queueLength: 15,
+  query: "SELECT * FROM users WHERE id = $1",
 };
 
-// Service layer  
+// Service layer
 const serviceError = {
   name: "UserServiceError",
   message: "Failed to load user data",
-  context: {
-    userId: "user_12345",
-    operation: "loadUserProfile",
-    timestamp: "2024-03-15T10:23:45.678Z"
-  },
-  cause: dbError
+  userId: "user_12345",
+  operation: "loadUserProfile",
+  timestamp: "2024-03-15T10:23:45.678Z",
 };
 
 // API layer
 const apiError = {
-  name: "ApiError", 
+  name: "ApiError",
   message: "User profile request failed",
-  context: {
-    endpoint: "/api/users/user_12345/profile",
-    requestId: "req_xyz789",
-    userId: "user_12345",
-    clientIP: "192.168.1.100"
-  },
-  cause: serviceError
+  endpoint: "/api/users/user_12345/profile",
+  requestId: "req_xyz789",
+  userId: "user_12345",
+  clientIP: "192.168.1.100",
 };
 ```
 
@@ -428,13 +410,10 @@ async function processPayment(order: Order): Promise<Result<Payment, PaymentErro
     return Err({
       name: "PaymentError",
       message: "Credit card charge failed",
-      context: {
-        orderId: order.id,
-        amount: order.total,
-        cardLast4: order.paymentMethod.last4,
-        gatewayResponse: paymentError.gatewayResponse
-      },
-      cause: paymentError
+      orderId: order.id,
+      amount: order.total,
+      cardLast4: order.paymentMethod.last4,
+      gatewayResponse: paymentError.gatewayResponse,
     });
   }
   
@@ -482,7 +461,7 @@ describe("payment processing", () => {
     expect(result.error).toBeDefined();
     expect(result.error?.name).toBe("PaymentError");
     expect(result.error?.message).toContain("invalid card");
-    expect(result.error?.context.cardLast4).toBe("1234");
+    expect(result.error?.cardLast4).toBe("1234");
     expect(result.data).toBeNull();
   });
   
@@ -517,7 +496,7 @@ describe("user registration", () => {
     const result = await registerUser({ ...validUserData, email: "invalid" });
     
     expect(result.error?.name).toBe("ValidationError");
-    expect(result.error?.context.field).toBe("email");
+    expect(result.error?.field).toBe("email");
   });
   
   it("should return ConflictError for duplicate email", async () => {
@@ -525,7 +504,7 @@ describe("user registration", () => {
     const result = await registerUser(validUserData); // Try duplicate
     
     expect(result.error?.name).toBe("ConflictError");
-    expect(result.error?.context.email).toBe(validUserData.email);
+    expect(result.error?.email).toBe(validUserData.email);
   });
 });
 ```
@@ -548,17 +527,16 @@ const mockUserService = {
       return Err({
         name: "UserError",
         message: "User not found",
-        context: { userId: id },
-        cause: undefined
+        userId: id,
       });
     }
-    
+
     if (id === "user_500") {
       return Err({
-        name: "UserError", 
+        name: "UserError",
         message: "Database connection failed",
-        context: { userId: id, errorCode: "DB_TIMEOUT" },
-        cause: undefined
+        userId: id,
+        errorCode: "DB_TIMEOUT",
       });
     }
     
@@ -709,8 +687,7 @@ async function getUser(id: string): Promise<Result<User, UserError>> {
     mapErr: (error): UserError => ({
       name: "UserError",
       message: extractErrorMessage(error),
-      context: { userId: id },
-      cause: error
+      userId: id,
     })
   });
 }

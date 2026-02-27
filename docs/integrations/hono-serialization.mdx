@@ -13,18 +13,16 @@ wellcrafted's Result types are plain objects that serialize perfectly over JSON.
 ```typescript
 import { Hono } from 'hono';
 import { Ok, Err, type Result } from 'wellcrafted/result';
-import { type TaggedError } from 'wellcrafted/error';
+import { createTaggedError } from 'wellcrafted/error';
 
-type UserNotFoundError = TaggedError<'UserNotFoundError'>;
+const { UserNotFoundError, UserNotFoundErr } = createTaggedError('UserNotFoundError')
+  .withFields<{ userId: string }>()
+  .withMessage(({ userId }) => `User ${userId} not found`);
+type UserNotFoundError = ReturnType<typeof UserNotFoundError>;
 
 async function getUser(id: string): Promise<Result<User, UserNotFoundError>> {
   if (!id) {
-    return Err({
-      name: 'UserNotFoundError',
-      message: 'User not found',
-      context: { userId: id },
-      cause: undefined,
-    });
+    return UserNotFoundErr({ userId: id });
   }
   return Ok({ id, name: 'Alice' });
 }
@@ -51,9 +49,8 @@ That's it. The HTTP response body contains the complete Result type:
 {
   "error": {
     "name": "UserNotFoundError",
-    "message": "User not found",
-    "context": { "userId": "123" },
-    "cause": null
+    "message": "User 123 not found",
+    "userId": "123"
   },
   "data": null
 }
@@ -79,7 +76,7 @@ const result = await response.json();
 // TypeScript knows the shape
 if (result.error) {
   console.error(`${result.error.name}: ${result.error.message}`);
-  console.log('Context:', result.error.context);
+  console.log('User ID:', result.error.userId);
 } else {
   console.log('User:', result.data);
 }

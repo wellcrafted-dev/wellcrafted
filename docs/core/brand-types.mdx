@@ -228,8 +228,7 @@ function createPositiveNumber(value: number): Result<PositiveNumber, ValidationE
     return Err({
       name: "ValidationError",
       message: "Value must be positive",
-      context: { value },
-      cause: undefined
+      value,
     });
   }
   return Ok(value as PositiveNumber);
@@ -240,8 +239,7 @@ function createNonEmptyString(value: string): Result<NonEmptyString, ValidationE
     return Err({
       name: "ValidationError",
       message: "String cannot be empty",
-      context: { value },
-      cause: undefined
+      value,
     });
   }
   return Ok(value as NonEmptyString);
@@ -282,17 +280,16 @@ function parseUserId(input: string): Result<UserId, UserIdError> {
     return Err({
       name: "UserIdError",
       message: "User ID must start with 'user_'",
-      context: { input },
-      cause: undefined
+      input,
     });
   }
-  
+
   if (input.length !== 12) {
     return Err({
       name: "UserIdError",
       message: "User ID must be exactly 12 characters",
-      context: { input, length: input.length },
-      cause: undefined
+      input,
+      length: input.length,
     });
   }
   
@@ -394,17 +391,15 @@ function createCoordinate(lat: number, lng: number): Result<GeoCoordinate, Valid
     return Err({
       name: "ValidationError",
       message: "Latitude must be between -90 and 90",
-      context: { lat },
-      cause: undefined
+      lat,
     });
   }
-  
+
   if (lng < -180 || lng > 180) {
     return Err({
       name: "ValidationError",
       message: "Longitude must be between -180 and 180",
-      context: { lng },
-      cause: undefined
+      lng,
     });
   }
   

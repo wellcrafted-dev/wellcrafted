@@ -21,8 +21,8 @@ try {
 const { data, error } = await saveUser(user);
 if (error) {
   switch (error.name) {
-    case "ValidationError": 
-      showToast(`Invalid ${error.context.field}`);
+    case "ValidationError":
+      showToast(`Invalid ${error.field}`);
       break;
     case "AuthError":
       redirectToLogin();
@@ -58,14 +58,15 @@ Structured, serializable errors with a fluent API
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
-// Minimal by default - only name and message
-const { ValidationError } = createTaggedError("ValidationError");
-ValidationError({ message: "Email is required" });
+// Static error — no fields needed
+const { ValidationError } = createTaggedError("ValidationError")
+  .withMessage(() => "Email is required");
+ValidationError();
 
-// Chain to add context and cause when needed
+// Structured error — fields are spread flat on the error object
 const { ApiError } = createTaggedError("ApiError")
-  .withContext<{ endpoint: string }>()
-  .withCause<NetworkError | undefined>();
+  .withFields<{ endpoint: string }>()
+  .withMessage(({ endpoint }) => `Request to ${endpoint} failed`);
 ```
 
 ### 🔄 Query Integration
@@ -108,22 +109,18 @@ npm install wellcrafted
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { createTaggedError, type AnyTaggedError } from "wellcrafted/error";
+import { createTaggedError } from "wellcrafted/error";
 
 // Define your error with factory function
 const { ApiError, ApiErr } = createTaggedError("ApiError")
-  .withContext<{ endpoint: string }>()
-  .withCause<AnyTaggedError | undefined>();
+  .withFields<{ endpoint: string }>()
+  .withMessage(({ endpoint }) => `Failed to fetch ${endpoint}`);
 type ApiError = ReturnType<typeof ApiError>;
 
 // Wrap any throwing operation
 const { data, error } = await tryAsync({
   try: () => fetch('/api/user').then(r => r.json()),
-  catch: (e) => ApiErr({
-    message: "Failed to fetch user",
-    context: { endpoint: '/api/user' },
-    cause: { name: "FetchError", message: String(e) }
-  })
+  catch: (e) => ApiErr({ endpoint: '/api/user' })
 });
 
 if (error) {
@@ -216,29 +213,25 @@ if (error) {
 ### Wrap Unsafe Operations
 
 ```typescript
-// Define errors with context and cause
+// Define errors with fields and message template
 const { ParseError, ParseErr } = createTaggedError("ParseError")
-  .withContext<{ input: string }>();
+  .withFields<{ input: string }>()
+  .withMessage(({ input }) => `Invalid JSON: ${input.slice(0, 50)}`);
 
 const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
-  .withContext<{ url: string }>();
+  .withFields<{ url: string }>()
+  .withMessage(({ url }) => `Request to ${url} failed`);
 
 // Synchronous
 const result = trySync({
   try: () => JSON.parse(jsonString),
-  catch: () => ParseErr({
-    message: "Invalid JSON",
-    context: { input: jsonString }
-  })
+  catch: () => ParseErr({ input: jsonString })
 });
 
 // Asynchronous
 const result = await tryAsync({
   try: () => fetch(url),
-  catch: () => NetworkErr({
-    message: "Request failed",
-    context: { url }
-  })
+  catch: () => NetworkErr({ url })
 });
 ```
 
@@ -250,7 +243,11 @@ import { createTaggedError } from "wellcrafted/error";
 import { tryAsync, Result, Ok } from "wellcrafted/result";
 
 const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
-  .withContext<{ currentState?: string; permissions?: string }>();
+  .withFields<{ currentState?: string; permissions?: string }>()
+  .withMessage(({ permissions, currentState }) => {
+    if (permissions) return `Missing ${permissions} permission`;
+    return `Invalid recorder state: ${currentState}`;
+  });
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 export function createRecorderService() {
@@ -260,10 +257,7 @@ export function createRecorderService() {
   return {
     async startRecording(): Promise<Result<void, RecorderServiceError>> {
       if (isRecording) {
-        return RecorderServiceErr({
-          message: "Already recording",
-          context: { currentState: 'recording' }
-        });
+        return RecorderServiceErr({ currentState: 'recording' });
       }
 
       return tryAsync({
@@ -273,19 +267,13 @@ export function createRecorderService() {
           // ... recording setup
           isRecording = true;
         },
-        catch: () => RecorderServiceErr({
-          message: "Failed to start recording",
-          context: { permissions: 'microphone' }
-        })
+        catch: () => RecorderServiceErr({ permissions: 'microphone' })
       });
     },
 
     async stopRecording(): Promise<Result<Blob, RecorderServiceError>> {
       if (!isRecording) {
-        return RecorderServiceErr({
-          message: "Not currently recording",
-          context: { currentState: 'idle' }
-        });
+        return RecorderServiceErr({ currentState: 'idle' });
       }
 
       // Stop recording and return blob...
@@ -379,12 +367,13 @@ const { data: parsed } = trySync({
 
 ### Propagation Pattern (May Fail)
 ```typescript
-const { ParseError, ParseErr } = createTaggedError("ParseError");
+const { ParseError, ParseErr } = createTaggedError("ParseError")
+  .withMessage(() => "Invalid JSON");
 
 // When catch can return Err<E>, function returns Result<T, E>
 const mayFail = trySync({
   try: () => JSON.parse(riskyJson),
-  catch: () => ParseErr({ message: "Invalid JSON" })
+  catch: () => ParseErr()
 });
 // mayFail: Result<object, ParseError> - Must check for errors
 if (isOk(mayFail)) {
@@ -402,7 +391,7 @@ const smartParse = trySync({
       return Ok({}); // Return Ok<T> for fallback
     }
     // Propagate other errors
-    return ParseErr({ message: "Parse failed" });
+    return ParseErr();
   }
 });
 // smartParse: Result<object, ParseError> - Mixed handling = Result type
@@ -435,9 +424,12 @@ Based on real-world usage, here's the recommended pattern for creating services 
 import { createTaggedError } from "wellcrafted/error";
 import { Result, Ok } from "wellcrafted/result";
 
-// 1. Define service-specific errors with typed context
+// 1. Define service-specific errors with typed fields and message
 const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
-  .withContext<{ isRecording: boolean }>();
+  .withFields<{ isRecording: boolean }>()
+  .withMessage(({ isRecording }) =>
+    isRecording ? "Already recording" : "Not currently recording"
+  );
 type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
 
 // 2. Create service with factory function
@@ -449,10 +441,7 @@ export function createRecorderService() {
   return {
     startRecording(): Result<void, RecorderServiceError> {
       if (isRecording) {
-        return RecorderServiceErr({
-          message: "Already recording",
-          context: { isRecording }
-        });
+        return RecorderServiceErr({ isRecording });
       }
 
       isRecording = true;
@@ -461,10 +450,7 @@ export function createRecorderService() {
 
     stopRecording(): Result<Blob, RecorderServiceError> {
       if (!isRecording) {
-        return RecorderServiceErr({
-          message: "Not currently recording",
-          context: { isRecording }
-        });
+        return RecorderServiceErr({ isRecording });
       }
 
       isRecording = false;
@@ -549,7 +535,11 @@ export async function GET(request: Request) {
 
 ```typescript
 const { FormError, FormErr } = createTaggedError("FormError")
-  .withContext<{ fields: Record<string, string[]> }>();
+  .withFields<{ fields: Record<string, string[]> }>()
+  .withMessage(({ fields }) => {
+    const fieldNames = Object.keys(fields).join(", ");
+    return `Validation failed for: ${fieldNames}`;
+  });
 
 function validateLoginForm(data: unknown): Result<LoginData, FormError> {
   const errors: Record<string, string[]> = {};
@@ -559,10 +549,7 @@ function validateLoginForm(data: unknown): Result<LoginData, FormError> {
   }
 
   if (Object.keys(errors).length > 0) {
-    return FormErr({
-      message: "Validation failed",
-      context: { fields: errors }
-    });
+    return FormErr({ fields: errors });
   }
 
   return Ok(data as LoginData);
@@ -632,10 +619,11 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 ### Error Functions
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
   - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
-  - **Default**: minimal errors with only `name` and `message`
-  - Chain `.withContext<T>()` to add typed context
-  - Chain `.withCause<T>()` to add typed cause
-  - Include `| undefined` in type to make property optional but typed
+  - Chain `.withFields<T>()` to add typed fields (spread flat on the error object)
+  - Chain `.withMessage(fn)` *(optional)* to seal the message with a template — `message` is not in the factory input type when present
+  - Without `.withMessage()`, `message` is required at the call site
+  - `name` is a reserved key — prevented at compile time by `NoReservedKeys`
+  - Factory input is flat (e.g., `{ endpoint: '/api' }`), not nested
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
 ### Types

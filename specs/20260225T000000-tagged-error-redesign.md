@@ -1,7 +1,9 @@
 # Tagged Error Redesign: Break Up Monolithic Errors, Improve Payload Structure
 
 **Created**: 2026-02-25
-**Status**: Draft
+**Status**: Superseded
+
+> **Note**: This spec is superseded by `20260226T233600-tagged-error-minimal-design.md`. The `message` override was removed in BOTH this spec's original design AND the final design, but for different reasons: this spec removed it because `.withMessage()` was mandatory (the template was the sole source of message computation), while the final design removed it because sealed `.withMessage()` templates force better error design — when the template can't produce a good message, the error type needs better fields or should be a different type.
 
 ## Problem
 
@@ -169,16 +171,19 @@ RecorderDeviceErr({ context: { deviceId } });
 
 #### Message override per instance
 
-Optional `message` override for one-off cases where the template doesn't suffice:
+> **OUTDATED**: This feature was removed before implementation. The `message` field is not accepted in `ErrorCallInput`. Messages are always computed by the `.withMessage()` callback.
+
+~~Optional `message` override for one-off cases where the template doesn't suffice:~~
 
 ```typescript
+// REMOVED — this no longer works:
 DbNotFoundErr({
   message: 'The recording you are looking for has been deleted',
   context: { table: 'recordings', id: '123' },
 });
 ```
 
-When `message` is provided, it takes precedence. When omitted, the template computes it. Either way, `error.message` is always `string`.
+~~When `message` is provided, it takes precedence. When omitted, the template computes it.~~ Either way, `error.message` is always `string`.
 
 #### Output type is unchanged
 
@@ -387,8 +392,8 @@ RecorderDeviceErr({ context: { deviceId: 'abc', deviceName: 'Blue Yeti' } });
 // -> { name: 'RecorderDeviceError', message: "Failed to acquire stream from 'Blue Yeti'",
 //    context: { deviceId: 'abc', deviceName: 'Blue Yeti' } }
 
-// No context needed
-RecorderBusyErr({});
+// No context needed — empty input is optional
+RecorderBusyErr();
 // -> { name: 'RecorderBusyError', message: 'A recording is already in progress' }
 
 // With cause
@@ -397,11 +402,11 @@ TranscriptionErr({
   cause: RecorderDeviceError({ context: { deviceId: 'abc', deviceName: 'Blue Yeti' } }),
 });
 
-// Message override
-RecorderDeviceErr({
-  message: 'Custom: device disconnected mid-recording',
-  context: { deviceId: 'abc', deviceName: 'Blue Yeti' },
-});
+// REMOVED — message override is no longer supported:
+// RecorderDeviceErr({
+//   message: 'Custom: device disconnected mid-recording',
+//   context: { deviceId: 'abc', deviceName: 'Blue Yeti' },
+// });
 
 // --- JSON serialization: just works ---
 const error = RecorderDeviceError({ context: { deviceId: 'abc', deviceName: 'Blue Yeti' } });
@@ -418,6 +423,8 @@ type RecorderDeviceError = ReturnType<typeof RecorderDeviceError>;
 
 The current `createTaggedError` runtime is minimal — `withContext`/`withCause` are no-ops that re-invoke `createBuilder()`. The new implementation adds `.withMessage()` as the terminal step that captures the template function:
 
+> **OUTDATED**: The implementation below includes `input.message ??` logic for the message override feature, which was removed. In the final implementation, `message` is always computed by `fn(...)` — there is no `message` field in `ErrorCallInput`. Additionally, `input` is optional when no context/cause is required (e.g., `RecorderBusyErr()`).
+
 ```typescript
 function createTaggedError(name) {
   const createBuilder = () => ({
@@ -426,7 +433,7 @@ function createTaggedError(name) {
     withMessage(fn) {
       const errorConstructor = (input) => ({
         name,
-        message: input.message ?? fn({
+        message: input.message ?? fn({  // OUTDATED: input.message override was removed
           name,
           ...('context' in input ? { context: input.context } : {}),
           ...('cause' in input ? { cause: input.cause } : {}),
@@ -452,7 +459,7 @@ No `deriveMessageFromName` function — the callback is always required, so ther
 ### Service Layer
 - All error definitions must end with `.withMessage(fn)` — callback is required
 - Call sites provide `context` (and optionally `cause`), not `message`
-- `message` override available for one-off cases
+- ~~`message` override available for one-off cases~~ (removed — messages are always computed by `.withMessage()` callback)
 
 ### Query Layer (`WhisperingError`)
 - `serviceError.message` extraction continues to work — always present

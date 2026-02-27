@@ -101,8 +101,8 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
 const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withContext<{ operation: string; userId?: string }>()
-  .withMessage(({ context }) => `User ${context.operation} failed`);
+  .withFields<{ operation: string; userId?: string }>()
+  .withMessage(({ operation }) => `User ${operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
@@ -135,9 +135,8 @@ export async function getUser(id: string): Promise<Result<User, UserServiceError
       return await response.json();
     },
     catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to fetch user',
-      context: { userId: id },
-      cause: error,
+      operation: 'getUser',
+      userId: id,
     }),
   });
 }
@@ -145,11 +144,7 @@ export async function getUser(id: string): Promise<Result<User, UserServiceError
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   // Validation
   if (!input.email.includes('@')) {
-    return UserServiceErr({
-      message: 'Invalid email format',
-      context: { email: input.email },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   return tryAsync({
@@ -159,17 +154,15 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       return await response.json();
     },
     catch: (error) => UserServiceErr({
-      message: 'Failed to create user',
-      context: { input },
-      cause: error,
+      operation: 'createUser',
     }),
   });
 }
@@ -182,17 +175,16 @@ export async function updateUser(user: User): Promise<Result<User, UserServiceEr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       return await response.json();
     },
     catch: (error) => UserServiceErr({
-      message: 'Failed to update user',
-      context: { userId: user.id },
-      cause: error,
+      operation: 'updateUser',
+      userId: user.id,
     }),
   });
 }
@@ -214,7 +206,7 @@ export const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000,   // 10 minutes
       retry: (failureCount, error) => {
         // Don't retry user errors (4xx), only system errors (5xx)
-        if (error?.context?.status >= 400 && error?.context?.status < 500) {
+        if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
         return failureCount < 3;
@@ -333,7 +325,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         title="Failed to load user"
         message={userQuery.error.message}
         onRetry={() => userQuery.refetch()}
-        context={userQuery.error.context}
+        error={userQuery.error}
       />
     );
   }
@@ -563,10 +555,10 @@ export function ErrorDisplay({ error, onRetry, className }: ErrorDisplayProps) {
         <h3 className="error-title">Something went wrong</h3>
         <p className="error-message">{error.message}</p>
         
-        {error.context && (
+        {error.operation && (
           <details className="error-details">
             <summary>Technical details</summary>
-            <pre>{JSON.stringify(error.context, null, 2)}</pre>
+            <pre>Operation: {error.operation}</pre>
           </details>
         )}
         
@@ -615,8 +607,6 @@ export class ErrorBoundary extends Component<Props, State> {
           error={{
             name: 'ApplicationError',
             message: this.state.error?.message || 'An unexpected error occurred',
-            context: { stack: this.state.error?.stack },
-            cause: this.state.error,
           }}
           onRetry={() => this.setState({ hasError: false, error: undefined })}
         />
@@ -702,12 +692,10 @@ describe('UserProfile', () => {
   });
 
   it('displays error when user fetch fails', async () => {
-    const errorResult = Err({
-      name: 'UserServiceError',
-      message: 'User not found',
-      context: { userId: '1' },
-      cause: undefined,
-    });
+    const errorResult = Err(UserServiceError({
+      operation: 'getUser',
+      userId: '1',
+    }));
     vi.mocked(userService.getUser).mockResolvedValue(errorResult);
 
     renderWithQuery(<UserProfile userId="1" />);
@@ -753,9 +741,8 @@ export async function getUser(id: string): Promise<Result<User, UserServiceError
       return response.json();
     },
     catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to fetch user',
-      context: { userId: id },
-      cause: error,
+      operation: 'getUser',
+      userId: id,
     }),
   });
 }
@@ -810,20 +797,12 @@ Keep services pure and platform-agnostic:
 // ✅ Good - pure business logic
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   if (!input.email.includes('@')) {
-    return UserServiceErr({
-      message: 'Invalid email format',
-      context: { email: input.email },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
-  
+
   return tryAsync({
     try: () => api.post('/users', input),
-    catch: (error) => UserServiceErr({
-      message: 'Failed to create user',
-      context: { input },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'createUser' }),
   });
 }
 
@@ -856,8 +835,6 @@ export const users = {
         return Err({
           name: 'UIError',
           message: getUIErrorMessage(result.error),
-          context: result.error.context,
-          cause: result.error,
         });
       }
       

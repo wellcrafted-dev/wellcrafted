@@ -1,8 +1,4 @@
-import type {
-	TaggedError,
-	AnyTaggedError,
-	JsonObject,
-} from "./types.js";
+import type { TaggedError, JsonObject } from "./types.js";
 import { Err } from "../result/result.js";
 
 /**
@@ -64,124 +60,85 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
+ * Constraint that prevents the reserved key `name` from appearing in fields.
+ * `message` is not reserved — when `.withMessage()` seals it, `message` is
+ * simply absent from the input type. When `.withMessage()` is not used,
+ * `message` is a built-in input handled separately from TFields.
+ */
+type NoReservedKeys = { name?: never };
+
+/**
  * Replaces the "Error" suffix with "Err" suffix in error type names.
  */
 type ReplaceErrorWithErr<T extends `${string}Error`> =
 	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
 
-// =============================================================================
-// Message Function Types
-// =============================================================================
-
-/**
- * Input provided to the message template function.
- * Contains everything the error will have except `message` (since that's what it computes).
- */
-type MessageInput<
-	TName extends string,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = { name: TName } & ([TContext] extends [undefined]
-	? Record<never, never>
-	: { context: Exclude<TContext, undefined> }) &
-	([TCause] extends [undefined]
-		? Record<never, never>
-		: { cause: Exclude<TCause, undefined> });
-
 /**
  * Message template function type.
+ * Receives the fields (without name/message) and returns a message string.
  */
-type MessageFn<
-	TName extends string,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = (input: MessageInput<TName, TContext, TCause>) => string;
+type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
 
 // =============================================================================
 // Factory Input Types
 // =============================================================================
 
-/**
- * Helper type that determines optionality based on whether T includes undefined.
- */
-type OptionalIfUndefined<T, TKey extends string> = undefined extends T
-	? { [K in TKey]?: Exclude<T, undefined> }
-	: { [K in TKey]: T };
+/** Factory input when message is required (no `.withMessage()`). */
+type RequiredMessageInput<TFields extends JsonObject> = { message: string } &
+	TFields;
 
 /**
- * Input type for error factory functions.
- * `message` is optional (computed from template when omitted).
- * `context` and `cause` follow the same optionality rules as before.
+ * Whether the entire input parameter can be omitted (called with no args).
+ * True when TFields is empty or all-optional (and message is sealed via withMessage).
  */
-type ErrorCallInput<
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = { message?: string } & (TContext extends undefined
-	? Record<never, never>
-	: OptionalIfUndefined<TContext, "context">) &
-	(TCause extends undefined
-		? Record<never, never>
-		: OptionalIfUndefined<TCause, "cause">);
+type IsInputOptional<TFields extends JsonObject> =
+	Partial<TFields> extends TFields ? true : false;
 
 // =============================================================================
 // Builder & Factory Types
 // =============================================================================
 
 /**
- * The final factories object returned by `.withMessage()`.
- * Has factory functions, NO chain methods.
+ * Factories returned by `.withMessage()` — message is sealed by the template.
+ * `message` is NOT in the input type. Only has factory functions, no chain methods.
  */
-type FinalFactories<
+type SealedFactories<
 	TName extends `${string}Error`,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
+	TFields extends JsonObject,
 > = {
-	[K in TName]: (
-		input: ErrorCallInput<TContext, TCause>,
-	) => TaggedError<TName, TContext, TCause>;
+	[K in TName]: IsInputOptional<TFields> extends true
+		? (input?: TFields) => TaggedError<TName, TFields>
+		: (input: TFields) => TaggedError<TName, TFields>;
 } & {
-	[K in ReplaceErrorWithErr<TName>]: (
-		input: ErrorCallInput<TContext, TCause>,
-	) => Err<TaggedError<TName, TContext, TCause>>;
+	[K in ReplaceErrorWithErr<TName>]: IsInputOptional<TFields> extends true
+		? (input?: TFields) => Err<TaggedError<TName, TFields>>
+		: (input: TFields) => Err<TaggedError<TName, TFields>>;
 };
 
 /**
- * Builder interface for the fluent createTaggedError API.
- * Has chain methods only, NO factory functions.
- * Must call `.withMessage(fn)` to get factories.
+ * Builder object returned by createTaggedError (and .withFields()).
+ * Has factory functions (message required) AND chain methods.
  */
 type ErrorBuilder<
 	TName extends `${string}Error`,
-	TContext extends JsonObject | undefined = undefined,
-	TCause extends AnyTaggedError | undefined = undefined,
+	TFields extends JsonObject = Record<never, never>,
 > = {
-	/**
-	 * Constrains the context type for this error.
-	 * `.withContext<T>()` where T doesn't include undefined → context is **required**
-	 * `.withContext<T | undefined>()` → context is **optional** but typed when provided
-	 */
-	withContext<
-		T extends JsonObject | undefined = JsonObject | undefined,
-	>(): ErrorBuilder<TName, T, TCause>;
+	[K in TName]: (
+		input: RequiredMessageInput<TFields>,
+	) => TaggedError<TName, TFields>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: (
+		input: RequiredMessageInput<TFields>,
+	) => Err<TaggedError<TName, TFields>>;
+} & {
+	/** Defines additional fields spread flat on the error object. */
+	withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
 
 	/**
-	 * Constrains the cause type for this error.
-	 * `.withCause<T>()` where T doesn't include undefined → cause is **required**
-	 * `.withCause<T | undefined>()` → cause is **optional** but typed when provided
+	 * Seals the message — the template owns it entirely.
+	 * `message` is NOT in the returned factory's input type.
 	 */
-	withCause<
-		T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
-	>(): ErrorBuilder<TName, TContext, T>;
-
-	/**
-	 * Terminal method that defines how the error message is computed from its data.
-	 * Returns the factory functions — this is the only way to get them.
-	 *
-	 * @param fn - Template function that receives `{ name, context?, cause? }` and returns a message string
-	 */
-	withMessage(
-		fn: MessageFn<TName, TContext, TCause>,
-	): FinalFactories<TName, TContext, TCause>;
+	withMessage(fn: MessageFn<TFields>): SealedFactories<TName, TFields>;
 };
 
 // =============================================================================
@@ -191,85 +148,97 @@ type ErrorBuilder<
 /**
  * Creates a new tagged error type with a fluent builder API.
  *
- * The builder provides `.withContext<T>()`, `.withCause<T>()`, and `.withMessage(fn)`.
- * `.withMessage(fn)` is **required** and **terminal** — it returns the factory functions.
+ * Returns an object with factory functions immediately available (message required),
+ * plus `.withFields<T>()` and `.withMessage(fn)` for further configuration.
  *
- * @example Simple error
+ * Two mutually exclusive modes:
+ * 1. **No `.withMessage()`**: `message` is required at the call site
+ * 2. **With `.withMessage()`**: message is sealed — NOT in the input type
+ *
+ * @example No fields, message required at call site
  * ```ts
- * const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
+ * const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+ * SimpleErr({ message: 'Something went wrong' });
+ * ```
+ *
+ * @example No fields, with sealed message
+ * ```ts
+ * const { RecorderBusyError } = createTaggedError('RecorderBusyError')
  *   .withMessage(() => 'A recording is already in progress');
+ * RecorderBusyError();  // message always: 'A recording is already in progress'
  * ```
  *
- * @example Error with context
+ * @example With fields, message required
  * ```ts
- * const { DbNotFoundError, DbNotFoundErr } = createTaggedError('DbNotFoundError')
- *   .withContext<{ table: string; id: string }>()
- *   .withMessage(({ context }) => `${context.table} '${context.id}' not found`);
+ * const { FsReadError } = createTaggedError('FsReadError')
+ *   .withFields<{ path: string }>();
+ * FsReadError({ message: 'Failed to read', path: '/etc/config' });
  * ```
  *
- * @example Error with context and cause
+ * @example With fields + sealed message (template computes from fields)
  * ```ts
- * const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
- *   .withContext<{ operation: string }>()
- *   .withCause<DbServiceError>()
- *   .withMessage(({ context, cause }) =>
- *     `Operation '${context.operation}' failed: ${cause.message}`
- *   );
+ * const { ResponseError } = createTaggedError('ResponseError')
+ *   .withFields<{ status: number }>()
+ *   .withMessage(({ status }) => `HTTP ${status}`);
+ * ResponseError({ status: 404 });  // message: "HTTP 404"
  * ```
  */
 export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
 ): ErrorBuilder<TName> {
-	const createBuilder = <
-		TContext extends JsonObject | undefined = undefined,
-		TCause extends AnyTaggedError | undefined = undefined,
-	>(): ErrorBuilder<TName, TContext, TCause> => {
-		return {
-			withContext<
-				T extends JsonObject | undefined = JsonObject | undefined,
-			>() {
-				return createBuilder<T, TCause>();
-			},
-			withCause<
-				T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
-			>() {
-				return createBuilder<TContext, T>();
-			},
-			withMessage(
-				fn: MessageFn<TName, TContext, TCause>,
-			): FinalFactories<TName, TContext, TCause> {
-				const errorConstructor = (
-					input: ErrorCallInput<TContext, TCause>,
-				) => {
-					const messageInput = {
-						name,
-						...("context" in input ? { context: input.context } : {}),
-						...("cause" in input ? { cause: input.cause } : {}),
-					} as MessageInput<TName, TContext, TCause>;
+	const errName = name.replace(
+		/Error$/,
+		"Err",
+	) as ReplaceErrorWithErr<TName>;
 
+	const createBuilder = <
+		TFields extends JsonObject = Record<never, never>,
+	>(): ErrorBuilder<TName, TFields> => {
+		const errorConstructor = (
+			input: { message: string } & TFields,
+		) => {
+			const { message, ...fields } = input;
+			return {
+				name,
+				message,
+				...fields,
+			} as unknown as TaggedError<TName, TFields>;
+		};
+
+		const errConstructor = (
+			input: { message: string } & TFields,
+		) => Err(errorConstructor(input));
+
+		return {
+			[name]: errorConstructor,
+			[errName]: errConstructor,
+
+			withFields<T extends JsonObject & NoReservedKeys>() {
+				return createBuilder<T>();
+			},
+
+			withMessage(
+				fn: MessageFn<TFields>,
+			): SealedFactories<TName, TFields> {
+				const sealedErrorConstructor = (input?: TFields) => {
+					const fields = (input ?? {}) as TFields;
+					const message = fn(fields);
 					return {
 						name,
-						message:
-							input.message ?? fn(messageInput),
-						...("context" in input ? { context: input.context } : {}),
-						...("cause" in input ? { cause: input.cause } : {}),
-					} as unknown as TaggedError<TName, TContext, TCause>;
+						message,
+						...fields,
+					} as unknown as TaggedError<TName, TFields>;
 				};
 
-				const errName = name.replace(
-					/Error$/,
-					"Err",
-				) as ReplaceErrorWithErr<TName>;
-				const errConstructor = (
-					input: ErrorCallInput<TContext, TCause>,
-				) => Err(errorConstructor(input));
+				const sealedErrConstructor = (input?: TFields) =>
+					Err(sealedErrorConstructor(input));
 
 				return {
-					[name]: errorConstructor,
-					[errName]: errConstructor,
-				} as FinalFactories<TName, TContext, TCause>;
+					[name]: sealedErrorConstructor,
+					[errName]: sealedErrConstructor,
+				} as SealedFactories<TName, TFields>;
 			},
-		} as ErrorBuilder<TName, TContext, TCause>;
+		} as ErrorBuilder<TName, TFields>;
 	};
 
 	return createBuilder();
