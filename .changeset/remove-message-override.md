@@ -2,4 +2,4 @@
 "wellcrafted": minor
 ---
 
-Remove `message` override from `ErrorCallInput` — the template function now always owns the message. Factory input is optional for errors with no context or cause, enabling `FooErr()` instead of `FooErr({})`.
+Redesign `createTaggedError` builder: flat `.withFields()` API replaces nested `.withContext()`/`.withCause()`, `.withMessage()` is optional and seals the message (not in factory input type), `message` required at call site when `.withMessage()` is absent. Removes `context` nesting, `cause` as first-class field, and `reason` convention.
