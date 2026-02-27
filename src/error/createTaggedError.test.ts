@@ -7,8 +7,9 @@ import type { TaggedError, JsonObject } from "./types.js";
 // =============================================================================
 
 describe("createTaggedError - Tier 1: static errors", () => {
-	const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
-		.withMessage(() => "Connection failed");
+	const { NetworkError, NetworkErr } = createTaggedError(
+		"NetworkError",
+	).withMessage(() => "Connection failed");
 
 	it("creates error with correct name and message from template", () => {
 		const error = NetworkError();
@@ -20,7 +21,7 @@ describe("createTaggedError - Tier 1: static errors", () => {
 	it("creates error with no extra properties", () => {
 		const error = NetworkError();
 
-		const { name, message, ...rest } = error;
+		const { name: _name, message: _message, ...rest } = error;
 		expect(Object.keys(rest)).toHaveLength(0);
 	});
 
@@ -43,8 +44,9 @@ describe("createTaggedError - Tier 1: static errors", () => {
 	});
 
 	it("no argument needed for static errors", () => {
-		const { RecorderBusyError } = createTaggedError("RecorderBusyError")
-			.withMessage(() => "A recording is already in progress");
+		const { RecorderBusyError } = createTaggedError(
+			"RecorderBusyError",
+		).withMessage(() => "A recording is already in progress");
 
 		const error = RecorderBusyError();
 		expect(error.name).toBe("RecorderBusyError");
@@ -91,8 +93,8 @@ describe("createTaggedError - Tier 2: reason-only errors", () => {
 describe("createTaggedError - Tier 3: structured data errors", () => {
 	const { ResponseError, ResponseErr } = createTaggedError("ResponseError")
 		.withFields<{ status: number; reason?: string }>()
-		.withMessage(({ status, reason }) =>
-			`HTTP ${status}${reason ? `: ${reason}` : ""}`,
+		.withMessage(
+			({ status, reason }) => `HTTP ${status}${reason ? `: ${reason}` : ""}`,
 		);
 
 	it("creates error with required fields", () => {
@@ -128,8 +130,8 @@ describe("createTaggedError - Tier 3: structured data errors", () => {
 	it("multi-field error with complex types", () => {
 		const { DbQueryError } = createTaggedError("DbQueryError")
 			.withFields<{ table: string; operation: string; backend: string }>()
-			.withMessage(({ table, operation }) =>
-				`Database ${operation} on ${table} failed`,
+			.withMessage(
+				({ table, operation }) => `Database ${operation} on ${table} failed`,
 			);
 
 		const error = DbQueryError({
@@ -152,8 +154,9 @@ describe("createTaggedError - Tier 3: structured data errors", () => {
 
 describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
 	it("FooErr wraps error in Err result with correct data/error shape", () => {
-		const { AuthErr } = createTaggedError("AuthError")
-			.withMessage(() => "Authentication failed");
+		const { AuthErr } = createTaggedError("AuthError").withMessage(
+			() => "Authentication failed",
+		);
 
 		const result = AuthErr();
 
@@ -174,9 +177,7 @@ describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
 
 		expect(result.data).toBeNull();
 		expect(result.error?.name).toBe("ApiError");
-		expect(result.error?.message).toBe(
-			"Request to /users failed with 500",
-		);
+		expect(result.error?.message).toBe("Request to /users failed with 500");
 	});
 });
 
@@ -186,8 +187,9 @@ describe("createTaggedError - Err-wrapped factory (FooErr)", () => {
 
 describe("createTaggedError - optional input", () => {
 	it("no argument needed when no fields defined", () => {
-		const { SimpleError } = createTaggedError("SimpleError")
-			.withMessage(() => "Simple");
+		const { SimpleError } = createTaggedError("SimpleError").withMessage(
+			() => "Simple",
+		);
 
 		const error = SimpleError();
 		expect(error.message).toBe("Simple");
@@ -236,19 +238,20 @@ describe("createTaggedError - message auto-computation", () => {
 		TestError({ value: 42 });
 
 		expect(capturedInput).not.toBeNull();
-		expect(capturedInput!.value).toBe(42);
+		expect(capturedInput?.value).toBe(42);
 		// name is NOT passed to the message function
-		expect("name" in capturedInput!).toBe(false);
+		expect("name" in (capturedInput as object)).toBe(false);
 	});
 
 	it("template fn receives empty object for static errors", () => {
 		let capturedInput: unknown = null;
 
-		const { StaticError } = createTaggedError("StaticError")
-			.withMessage((input) => {
+		const { StaticError } = createTaggedError("StaticError").withMessage(
+			(input) => {
 				capturedInput = input;
 				return "static";
-			});
+			},
+		);
 
 		StaticError();
 
@@ -272,8 +275,9 @@ describe("createTaggedError - message auto-computation", () => {
 
 describe("createTaggedError - ReturnType extraction", () => {
 	it("ReturnType works for minimal errors", () => {
-		const { SimpleError } = createTaggedError("SimpleError")
-			.withMessage(() => "Simple");
+		const { SimpleError } = createTaggedError("SimpleError").withMessage(
+			() => "Simple",
+		);
 		type SimpleError = ReturnType<typeof SimpleError>;
 
 		expectTypeOf<SimpleError>().toEqualTypeOf<
@@ -293,9 +297,7 @@ describe("createTaggedError - ReturnType extraction", () => {
 			path: "/etc/config",
 		};
 
-		expectTypeOf(error).toExtend<
-			TaggedError<"FileError", { path: string }>
-		>();
+		expectTypeOf(error).toExtend<TaggedError<"FileError", { path: string }>>();
 	});
 
 	it("ReturnType can be used as a field type in another error", () => {
@@ -348,7 +350,7 @@ describe("createTaggedError - JSON serialization", () => {
 			.withMessage(({ endpoint }) => `${endpoint} failed`);
 
 		const error = ApiError({ endpoint: "/api", status: 500 });
-		const { name, message, ...rest } = error;
+		const { name: _name, message: _message, ...rest } = error;
 
 		expect(rest).toEqual({ endpoint: "/api", status: 500 });
 	});
@@ -360,8 +362,9 @@ describe("createTaggedError - JSON serialization", () => {
 
 describe("createTaggedError - type safety", () => {
 	it("minimal errors have correct types (name and message only)", () => {
-		const { NetworkError } = createTaggedError("NetworkError")
-			.withMessage(() => "Network error");
+		const { NetworkError } = createTaggedError("NetworkError").withMessage(
+			() => "Network error",
+		);
 
 		const error = NetworkError();
 
@@ -382,8 +385,9 @@ describe("createTaggedError - type safety", () => {
 	});
 
 	it("error objects are typed as Readonly", () => {
-		const { TestError } = createTaggedError("TestError")
-			.withMessage(() => "Original");
+		const { TestError } = createTaggedError("TestError").withMessage(
+			() => "Original",
+		);
 		const error = TestError();
 
 		expectTypeOf(error).toEqualTypeOf<
@@ -414,9 +418,7 @@ describe("createTaggedError - builder has NO factories", () => {
 	});
 
 	it("withMessage returns object WITH factory properties", () => {
-		const factories = createTaggedError("FooError").withMessage(
-			() => "foo",
-		);
+		const factories = createTaggedError("FooError").withMessage(() => "foo");
 
 		expect("FooError" in factories).toBe(true);
 		expect("FooErr" in factories).toBe(true);
@@ -437,9 +439,7 @@ describe("createTaggedError - builder has NO factories", () => {
 	});
 
 	it("withMessage result does NOT have chain methods", () => {
-		const factories = createTaggedError("FooError").withMessage(
-			() => "foo",
-		);
+		const factories = createTaggedError("FooError").withMessage(() => "foo");
 
 		expect("withFields" in factories).toBe(false);
 		expect("withMessage" in factories).toBe(false);
@@ -506,8 +506,9 @@ describe("createTaggedError - edge cases", () => {
 
 describe("createTaggedError - the console log test", () => {
 	it("produces the three example shapes from the spec", () => {
-		const { RecorderBusyError } = createTaggedError("RecorderBusyError")
-			.withMessage(() => "A recording is already in progress");
+		const { RecorderBusyError } = createTaggedError(
+			"RecorderBusyError",
+		).withMessage(() => "A recording is already in progress");
 
 		const { ResponseError } = createTaggedError("ResponseError")
 			.withFields<{ provider: string; status: number; model: string }>()
@@ -516,15 +517,18 @@ describe("createTaggedError - the console log test", () => {
 		const { DbQueryError } = createTaggedError("DbQueryError")
 			.withFields<{ table: string; operation: string; backend: string }>()
 			.withMessage(
-				({ table, operation }) =>
-					`Database ${operation} on ${table} failed`,
+				({ table, operation }) => `Database ${operation} on ${table} failed`,
 			);
 
 		const err1 = RecorderBusyError();
 		expect(err1.name).toBe("RecorderBusyError");
 		expect(err1.message).toBe("A recording is already in progress");
 
-		const err2 = ResponseError({ provider: "openai", status: 401, model: "gpt-4o" });
+		const err2 = ResponseError({
+			provider: "openai",
+			status: 401,
+			model: "gpt-4o",
+		});
 		expect(err2.name).toBe("ResponseError");
 		expect(err2.message).toBe("HTTP 401");
 		expect(err2.provider).toBe("openai");

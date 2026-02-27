@@ -1,7 +1,7 @@
 # Tagged Error Minimal Design: First Principles Redesign
 
 **Created**: 2026-02-26
-**Status**: Accepted — all decisions finalized
+**Status**: Implemented — all changes landed
 **Scope**: wellcrafted `TaggedError` type, `createTaggedError` builder API
 **Related**: `20260226T000000-granular-error-migration.md` (service-by-service migration, depends on this)
 
@@ -614,15 +614,21 @@ Flat wins on ergonomics in both consumption and definition. The nested form adds
 
 ---
 
-## Next Steps
+## Implementation Status
+
+All core implementation is complete:
 
 1. ~~Resolve open questions~~ — All decided (see Resolved Decisions above)
-2. Implement the new `TaggedError` type and `createTaggedError` builder in wellcrafted
-   - ~~Flatten the error shape (no `context` wrapper)~~ — Done: `TaggedError<TName, TFields>` with flat spread
-   - ~~Add `ValidFields<T>` compile-time guard for reserved keys~~ — Done: `NoReservedKeys` constraint via `{ name?: never; message?: never }` pattern
-   - ~~Rename `.withContext()` → `.withFields()`~~ — Done
-   - ~~Remove `.withCause()` from the builder~~ — Done
-   - ~~Remove `message` from factory input — template is the sole source~~ — Done
-   - ~~Tests rewritten for new API~~ — Done: 41 tests, all 3 tiers, builder shape, JSON serialization, edge cases
+2. ~~Implement the new `TaggedError` type and `createTaggedError` builder in wellcrafted~~
+   - ~~Flatten the error shape (no `context` wrapper)~~ — `TaggedError<TName, TFields>` with flat spread
+   - ~~Add `ValidFields<T>` compile-time guard for reserved keys~~ — `NoReservedKeys` constraint via `{ name?: never; message?: never }` pattern
+   - ~~Rename `.withContext()` → `.withFields()`~~
+   - ~~Remove `.withCause()` from the builder~~
+   - ~~Remove `message` from factory input — template is the sole source~~
+   - ~~Tests rewritten for new API~~ — 41 tests, all 3 tiers, builder shape, JSON serialization, edge cases
+   - ~~Documentation updated~~ — README.md rewritten for flat API
+
+## Remaining Work (Out of Scope for This Spec)
+
 3. Update the granular error migration spec to target the flat design with message override removal
 4. Migrate all error definitions and call sites (per-service, as planned in the migration spec)
