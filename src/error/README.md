@@ -36,12 +36,29 @@ Tagged errors solve this by treating errors as plain data structures instead of 
 
 The `createTaggedError` function provides a chainable builder API with two stages:
 
-- **Builder stage**: Chain `.withFields<T>()` and `.withMessage(fn)` to define the error shape.
-- **Factory stage**: After calling `.withMessage(fn)`, you get the factories (`Error` and `Err`).
+- **Builder stage**: Chain `.withFields<T>()` and optionally `.withMessage(fn)` to define the error shape.
+- **Factory stage**: Factories are available immediately AND after `.withMessage(fn)`.
 
-`.withMessage(fn)` is **required** and **terminal** — it ends the builder chain and produces the factories.
+`.withMessage(fn)` is **optional**. Without it, `message` is required at the call site. With it, the template seals the message — `message` is not in the input type.
 
-## Three Tiers of Error Complexity
+## Tiers of Error Complexity
+
+### Tier 0: Minimal Errors — message at call site
+
+No `.withMessage()`. The call site provides the message directly.
+
+```typescript
+const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+
+SimpleErr({ message: 'Something went wrong' });
+// → { name: 'SimpleError', message: 'Something went wrong' }
+
+const { FsReadError, FsReadErr } = createTaggedError('FsReadError')
+  .withFields<{ path: string }>();
+
+FsReadErr({ message: 'Failed to read config', path: '/etc/config' });
+// → { name: 'FsReadError', message: 'Failed to read config', path: '/etc/config' }
+```
 
 ### Tier 1: Static Errors — no fields, no arguments
 
@@ -88,21 +105,24 @@ ResponseErr({ status: 500, reason: 'Internal error' });
 
 ## Builder vs FinalFactories
 
-The builder (what `createTaggedError()` returns) only has chain methods: `.withFields()`, `.withMessage()`. Factories only exist after `.withMessage()` completes the chain.
+The builder returns factories immediately. `.withMessage(fn)` is optional and returns sealed factories.
 
 ```typescript
-const builder = createTaggedError('FileError').withFields<{ path: string }>();
-// builder.FileError   <- does NOT exist
-// builder.withMessage <- exists
+// Factories available immediately — message required at call site
+const { FileError, FileErr } = createTaggedError('FileError')
+  .withFields<{ path: string }>();
+FileError({ message: 'Failed: /etc/config', path: '/etc/config' });
 
-const { FileError, FileErr } = builder.withMessage(({ path }) => `Failed: ${path}`);
-// FileError  <- exists (creates error object)
-// FileErr    <- exists (wraps in Err for Result types)
+// With .withMessage() — message sealed by template
+const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
+  .withFields<{ status: number }>()
+  .withMessage(({ status }) => `HTTP ${status}`);
+ResponseError({ status: 404 });  // message: "HTTP 404"
 ```
 
-## `.withMessage()` — The Terminal Step
+## `.withMessage()` — Seals the Message
 
-`.withMessage(fn)` is the required final step. The callback receives the fields directly (flat, not nested):
+`.withMessage(fn)` is an **optional** step that seals the message. The callback receives the fields directly (flat, not nested):
 
 ```typescript
 const { DbError, DbErr } = createTaggedError('DbError')
@@ -110,7 +130,7 @@ const { DbError, DbErr } = createTaggedError('DbError')
   .withMessage(({ host, port }) => `DB connection failed at ${host}:${port}`);
 ```
 
-Message is always computed by the template — call sites cannot override it.
+When `.withMessage()` is used, the message is sealed — `message` is not in the factory input type. The template owns it entirely.
 
 ```typescript
 DbErr({ host: 'localhost', port: 5432 });
@@ -134,7 +154,7 @@ const { name, message, ...rest } = error;
 
 ## Reserved Keys
 
-The fields `name` and `message` are reserved — they're part of every tagged error. Attempting to use them in `.withFields()` produces a compile error.
+Only `name` is reserved — attempting to use it in `.withFields()` produces a compile error. `message` is either a built-in input (without `.withMessage()`) or absent from the input entirely (with `.withMessage()`).
 
 ## JSON Serializability
 
@@ -196,28 +216,24 @@ function handleErrors(error: NetworkError | FileError) {
 ```typescript
 import { createTaggedError, type TaggedError, type AnyTaggedError } from 'wellcrafted/error';
 
-// Tier 1: Static — no fields
+// Without .withMessage() — message required at call site
+const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+SimpleErr({ message: 'Something went wrong' });
+
+// With sealed .withMessage() — static message
 const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
   .withMessage(() => 'Network request failed');
+NetworkErr();  // message: 'Network request failed'
 
-// Tier 2: Reason — single dynamic field
-const { FsServiceError, FsServiceErr } = createTaggedError('FsServiceError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `File system operation failed: ${reason}`);
-
-// Tier 3: Structured — multiple typed fields
+// With sealed .withMessage() — template computes from fields
 const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; provider: string; reason?: string }>()
+  .withFields<{ status: number; provider: string }>()
   .withMessage(({ status, provider }) => `${provider}: HTTP ${status}`);
+ResponseErr({ status: 404, provider: 'openai' });  // message: "openai: HTTP 404"
 ```
 
 Each builder call returns two functions:
 - `NetworkError`: Creates a plain tagged error object
 - `NetworkErr`: Wraps it in `Err` for use with Result types
 
-Call sites provide fields directly (flat). `message` is always computed by the `.withMessage(fn)` template:
-
-```typescript
-ResponseErr({ status: 404, provider: 'openai' });
-// message -> "openai: HTTP 404"
-```
+Two modes: without `.withMessage()`, `message` is required at the call site. With `.withMessage()`, the template seals the message — `message` is not in the input type.

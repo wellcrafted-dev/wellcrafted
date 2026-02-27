@@ -620,9 +620,9 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 - **`createTaggedError(name)`** - Creates error factory functions with fluent API
   - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
   - Chain `.withFields<T>()` to add typed fields (spread flat on the error object)
-  - Chain `.withMessage(fn)` **(required, terminal)** to define the message template
-  - `name` and `message` are reserved keys — prevented at compile time by `NoReservedKeys`
-  - Factory calls with no fields can omit the argument: `FooErr()`
+  - Chain `.withMessage(fn)` *(optional)* to seal the message with a template — `message` is not in the factory input type when present
+  - Without `.withMessage()`, `message` is required at the call site
+  - `name` is a reserved key — prevented at compile time by `NoReservedKeys`
   - Factory input is flat (e.g., `{ endpoint: '/api' }`), not nested
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 

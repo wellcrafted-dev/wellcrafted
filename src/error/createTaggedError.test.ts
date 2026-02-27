@@ -43,7 +43,7 @@ describe("createTaggedError - without .withMessage()", () => {
 });
 
 // =============================================================================
-// With .withMessage() — message optional, template provides default
+// With .withMessage() — message sealed by template, NOT in input
 // =============================================================================
 
 describe("createTaggedError - with .withMessage() (no fields)", () => {
@@ -51,34 +51,26 @@ describe("createTaggedError - with .withMessage() (no fields)", () => {
 		"RecorderBusyError",
 	).withMessage(() => "A recording is already in progress");
 
-	it("uses default message when called with no args", () => {
+	it("uses sealed message when called with no args", () => {
 		const error = RecorderBusyError();
 
 		expect(error.name).toBe("RecorderBusyError");
 		expect(error.message).toBe("A recording is already in progress");
 	});
 
-	it("call-site message overrides the default", () => {
-		const error = RecorderBusyError({
-			message: "Custom: already recording",
-		});
-
-		expect(error.name).toBe("RecorderBusyError");
-		expect(error.message).toBe("Custom: already recording");
+	it("message is always the template output (sealed)", () => {
+		// With sealed .withMessage(), there's no way to override the message.
+		// Calling with no args always produces the template message.
+		const error = RecorderBusyError();
+		expect(error.message).toBe("A recording is already in progress");
 	});
 
-	it("Err factory uses default message", () => {
+	it("Err factory uses sealed message", () => {
 		const result = RecorderBusyErr();
 
 		expect(result.data).toBeNull();
 		expect(result.error?.name).toBe("RecorderBusyError");
 		expect(result.error?.message).toBe("A recording is already in progress");
-	});
-
-	it("Err factory accepts message override", () => {
-		const result = RecorderBusyErr({ message: "Override" });
-
-		expect(result.error?.message).toBe("Override");
 	});
 });
 
@@ -123,7 +115,7 @@ describe("createTaggedError - with .withFields() (no .withMessage())", () => {
 });
 
 // =============================================================================
-// With .withFields() + .withMessage() — message optional, computed from fields
+// With .withFields() + .withMessage() — message sealed, computed from fields
 // =============================================================================
 
 describe("createTaggedError - with .withFields() + .withMessage()", () => {
@@ -133,18 +125,11 @@ describe("createTaggedError - with .withFields() + .withMessage()", () => {
 			({ status, reason }) => `HTTP ${status}${reason ? `: ${reason}` : ""}`,
 		);
 
-	it("computes message from fields when not provided", () => {
+	it("computes message from fields (sealed)", () => {
 		const error = ResponseError({ status: 404 });
 
 		expect(error.name).toBe("ResponseError");
 		expect(error.message).toBe("HTTP 404");
-		expect(error.status).toBe(404);
-	});
-
-	it("call-site message overrides the computed default", () => {
-		const error = ResponseError({ status: 404, message: "Not found" });
-
-		expect(error.message).toBe("Not found");
 		expect(error.status).toBe(404);
 	});
 
@@ -190,21 +175,22 @@ describe("createTaggedError - with .withFields() + .withMessage()", () => {
 		expect(error.backend).toBe("indexeddb");
 	});
 
-	it("multi-field error allows message override", () => {
+	it("message is sealed — no override possible via input", () => {
 		const { DbQueryError } = createTaggedError("DbQueryError")
 			.withFields<{ table: string; operation: string; backend: string }>()
 			.withMessage(
 				({ table, operation }) => `Database ${operation} on ${table} failed`,
 			);
 
+		// When .withMessage() is used, `message` is not in the input type.
+		// Even if we sneak it in at runtime, it should be ignored.
 		const error = DbQueryError({
 			table: "recordings",
 			operation: "insert",
 			backend: "indexeddb",
-			message: "Custom DB error",
 		});
 
-		expect(error.message).toBe("Custom DB error");
+		expect(error.message).toBe("Database insert on recordings failed");
 	});
 });
 
@@ -330,14 +316,14 @@ describe("createTaggedError - message template behavior", () => {
 		expect(capturedInput).toEqual({});
 	});
 
-	it("call-site message always overrides template", () => {
+	it("sealed message is always the template output", () => {
 		const { TemplateError } = createTaggedError("TemplateError")
 			.withFields<{ reason: string }>()
 			.withMessage(({ reason }) => `Template says: ${reason}`);
 
-		const error = TemplateError({ reason: "test", message: "Override" });
+		const error = TemplateError({ reason: "test" });
 
-		expect(error.message).toBe("Override");
+		expect(error.message).toBe("Template says: test");
 	});
 });
 

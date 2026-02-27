@@ -61,7 +61,9 @@ export function extractErrorMessage(error: unknown): string {
 
 /**
  * Constraint that prevents the reserved key `name` from appearing in fields.
- * `message` is not reserved — it's a built-in input handled separately from TFields.
+ * `message` is not reserved — when `.withMessage()` seals it, `message` is
+ * simply absent from the input type. When `.withMessage()` is not used,
+ * `message` is a built-in input handled separately from TFields.
  */
 type NoReservedKeys = { name?: never };
 
@@ -85,14 +87,9 @@ type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
 type RequiredMessageInput<TFields extends JsonObject> = { message: string } &
 	TFields;
 
-/** Factory input when message is optional (`.withMessage()` provides default). */
-type OptionalMessageInput<TFields extends JsonObject> = {
-	message?: string;
-} & TFields;
-
 /**
  * Whether the entire input parameter can be omitted (called with no args).
- * True when TFields is empty or all-optional (and message is optional via withMessage).
+ * True when TFields is empty or all-optional (and message is sealed via withMessage).
  */
 type IsInputOptional<TFields extends JsonObject> =
 	Partial<TFields> extends TFields ? true : false;
@@ -102,24 +99,20 @@ type IsInputOptional<TFields extends JsonObject> =
 // =============================================================================
 
 /**
- * Factories returned by `.withMessage()` — message is optional in the input.
- * Only has factory functions, no chain methods.
+ * Factories returned by `.withMessage()` — message is sealed by the template.
+ * `message` is NOT in the input type. Only has factory functions, no chain methods.
  */
-type DefaultedFactories<
+type SealedFactories<
 	TName extends `${string}Error`,
 	TFields extends JsonObject,
 > = {
 	[K in TName]: IsInputOptional<TFields> extends true
-		? (input?: OptionalMessageInput<TFields>) => TaggedError<TName, TFields>
-		: (input: OptionalMessageInput<TFields>) => TaggedError<TName, TFields>;
+		? (input?: TFields) => TaggedError<TName, TFields>
+		: (input: TFields) => TaggedError<TName, TFields>;
 } & {
 	[K in ReplaceErrorWithErr<TName>]: IsInputOptional<TFields> extends true
-		? (
-				input?: OptionalMessageInput<TFields>,
-			) => Err<TaggedError<TName, TFields>>
-		: (
-				input: OptionalMessageInput<TFields>,
-			) => Err<TaggedError<TName, TFields>>;
+		? (input?: TFields) => Err<TaggedError<TName, TFields>>
+		: (input: TFields) => Err<TaggedError<TName, TFields>>;
 };
 
 /**
@@ -142,10 +135,10 @@ type ErrorBuilder<
 	withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
 
 	/**
-	 * Provides a default message template. Returns factories where `message` is optional.
-	 * Call-site `message` always overrides the template when both exist.
+	 * Seals the message — the template owns it entirely.
+	 * `message` is NOT in the returned factory's input type.
 	 */
-	withMessage(fn: MessageFn<TFields>): DefaultedFactories<TName, TFields>;
+	withMessage(fn: MessageFn<TFields>): SealedFactories<TName, TFields>;
 };
 
 // =============================================================================
@@ -158,18 +151,21 @@ type ErrorBuilder<
  * Returns an object with factory functions immediately available (message required),
  * plus `.withFields<T>()` and `.withMessage(fn)` for further configuration.
  *
+ * Two mutually exclusive modes:
+ * 1. **No `.withMessage()`**: `message` is required at the call site
+ * 2. **With `.withMessage()`**: message is sealed — NOT in the input type
+ *
  * @example No fields, message required at call site
  * ```ts
  * const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
  * SimpleErr({ message: 'Something went wrong' });
  * ```
  *
- * @example No fields, with default message (message optional)
+ * @example No fields, with sealed message
  * ```ts
  * const { RecorderBusyError } = createTaggedError('RecorderBusyError')
  *   .withMessage(() => 'A recording is already in progress');
- * RecorderBusyError();                                        // uses default
- * RecorderBusyError({ message: 'Custom message' });           // override
+ * RecorderBusyError();  // message always: 'A recording is already in progress'
  * ```
  *
  * @example With fields, message required
@@ -179,13 +175,12 @@ type ErrorBuilder<
  * FsReadError({ message: 'Failed to read', path: '/etc/config' });
  * ```
  *
- * @example With fields + default message (message optional, overridable)
+ * @example With fields + sealed message (template computes from fields)
  * ```ts
  * const { ResponseError } = createTaggedError('ResponseError')
  *   .withFields<{ status: number }>()
  *   .withMessage(({ status }) => `HTTP ${status}`);
- * ResponseError({ status: 404 });                          // message: "HTTP 404"
- * ResponseError({ status: 404, message: 'Not found' });    // override
+ * ResponseError({ status: 404 });  // message: "HTTP 404"
  * ```
  */
 export function createTaggedError<TName extends `${string}Error`>(
@@ -224,15 +219,10 @@ export function createTaggedError<TName extends `${string}Error`>(
 
 			withMessage(
 				fn: MessageFn<TFields>,
-			): DefaultedFactories<TName, TFields> {
-				const defaultedErrorConstructor = (
-					input?: { message?: string } & TFields,
-				) => {
-					const {
-						message: messageOverride,
-						...fields
-					} = (input ?? {}) as { message?: string } & TFields;
-					const message = messageOverride ?? fn(fields as TFields);
+			): SealedFactories<TName, TFields> {
+				const sealedErrorConstructor = (input?: TFields) => {
+					const fields = (input ?? {}) as TFields;
+					const message = fn(fields);
 					return {
 						name,
 						message,
@@ -240,14 +230,13 @@ export function createTaggedError<TName extends `${string}Error`>(
 					} as unknown as TaggedError<TName, TFields>;
 				};
 
-				const defaultedErrConstructor = (
-					input?: { message?: string } & TFields,
-				) => Err(defaultedErrorConstructor(input));
+				const sealedErrConstructor = (input?: TFields) =>
+					Err(sealedErrorConstructor(input));
 
 				return {
-					[name]: defaultedErrorConstructor,
-					[errName]: defaultedErrConstructor,
-				} as DefaultedFactories<TName, TFields>;
+					[name]: sealedErrorConstructor,
+					[errName]: sealedErrConstructor,
+				} as SealedFactories<TName, TFields>;
 			},
 		} as ErrorBuilder<TName, TFields>;
 	};

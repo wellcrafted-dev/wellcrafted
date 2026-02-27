@@ -95,11 +95,13 @@ ResponseErr({ status: 404 })
 
 - `name` + `message` are the only built-in fields
 - Additional fields spread **flat** on the error object (no nested `context` bag)
-- `message` is computed by the template, **NOT** passed at call sites
+- Two mutually exclusive modes for `message`:
+  - **Without `.withMessage()`**: `message` is required at the call site
+  - **With `.withMessage()`**: the template **seals** the message — `message` is NOT in the input type
 - `cause` is not special — if needed, it's just another field
-- Reserved keys (`name`, `message`) are prevented by `NoReservedKeys` at compile time
-- Builder chain: `createTaggedError('XError').withFields<F>().withMessage(fn)`
-- `.withMessage()` is the **required terminal step** — it returns the factory functions
+- Only `name` is a reserved key — prevented by `NoReservedKeys` at compile time
+- Builder chain: `createTaggedError('XError').withFields<F>()` (factories available immediately)
+- `.withMessage(fn)` is **optional** — it seals the message when present
 
 ### Full Example
 
@@ -115,7 +117,7 @@ type ClipboardServiceError = ReturnType<typeof ClipboardServiceError>;
 
 ### Usage at Call Sites
 
-At call sites, provide fields directly as a flat object. The message is auto-computed by the template:
+At call sites, provide fields directly as a flat object. When `.withMessage()` is used, the message is sealed by the template — you only pass fields:
 
 ```typescript
 export function createClipboardServiceExtension(): ClipboardService {

@@ -74,7 +74,7 @@ function handleError(error: ValidationError | NetworkError | FileError) {
 
 ### `message` — Human-Readable Text
 
-The message is **computed by the template function** you provide to `.withMessage()`. You never pass a message at the call site — it is always derived from the fields:
+When `.withMessage()` is used, the template **seals** the message — `message` is not in the factory input type. The template computes the message from the fields:
 
 ```typescript
 const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
@@ -266,12 +266,16 @@ const { FileNotFoundErr } = createTaggedError('FileNotFoundError')
 
 ## The createTaggedError API
 
-wellcrafted provides a fluent `createTaggedError` builder that eliminates boilerplate and enforces consistent error structure. The builder requires `.withMessage(fn)` as its **final step** — this is what gives you the factory functions.
+wellcrafted provides a fluent `createTaggedError` builder that eliminates boilerplate and enforces consistent error structure. Factories are available immediately — `.withMessage(fn)` is an **optional** step that seals the message when present.
 
 ```typescript
 import { createTaggedError } from "wellcrafted/error";
 
-// Define your error — .withMessage() is required and returns the factories
+// Without .withMessage() — message required at call site
+const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+SimpleErr({ message: 'Something went wrong' });
+
+// With .withMessage() — message sealed by template
 const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
   .withMessage(() => 'Network request failed');
 
@@ -283,27 +287,33 @@ type NetworkError = ReturnType<typeof NetworkError>;
 // - NetworkErr(): Creates Err-wrapped error (for Result returns)
 ```
 
-### `.withMessage(fn)` — Required and Terminal
+### `.withMessage(fn)` — Optional, Seals the Message
 
-`.withMessage(fn)` is the **terminal step** of the builder. It accepts a function that receives the fields and returns the error message string. Factories are only available after calling it.
+`.withMessage(fn)` is an **optional** builder step. It accepts a function that receives the fields and returns the error message string. When present, `message` is NOT in the factory input type — the template owns the message entirely.
 
 ```typescript
+// With .withMessage() — message sealed by template
 const { FileError, FileErr } = createTaggedError('FileError')
   .withFields<{ path: string; operation: 'read' | 'write' | 'delete' }>()
   .withMessage(({ path, operation }) => `${operation} failed for ${path}`);
 
-// Message is auto-computed from the template at call time
 FileErr({ path: '/etc/passwd', operation: 'write' });
 // → { name: 'FileError', message: 'write failed for /etc/passwd', path: '/etc/passwd', operation: 'write' }
+
+// Without .withMessage() — message required at call site
+const { GenericError, GenericErr } = createTaggedError('GenericError')
+  .withFields<{ path: string }>();
+
+GenericErr({ message: 'Failed to process file', path: '/etc/passwd' });
 ```
 
 <Note>
-Factories are only available on the object returned by `.withMessage()`. The builder returned by `.withFields()` does **not** have factory methods — you must call `.withMessage()` first.
+Two mutually exclusive modes: without `.withMessage()`, `message` is required at the call site. With `.withMessage()`, the template seals the message — `message` is not in the input type.
 </Note>
 
 ### `.withFields<T>()` — Defining Structured Data
 
-Use `.withFields<T>()` to define additional fields spread flat on the error object. The type `T` must be a `JsonObject` and must not include the reserved keys `name` or `message`.
+Use `.withFields<T>()` to define additional fields spread flat on the error object. The type `T` must be a `JsonObject` and must not include the reserved key `name`.
 
 #### Required Fields
 
@@ -397,7 +407,7 @@ type FileError = ReturnType<typeof FileError>;
 
 ### Using in tryAsync/trySync
 
-The factory pattern works seamlessly with error mapping. Pass fields at the call site — the message is auto-computed by `.withMessage()`:
+The factory pattern works seamlessly with error mapping. When `.withMessage()` is used, pass only fields — the message is sealed by the template:
 
 ```typescript
 const { ApiError, ApiErr } = createTaggedError('ApiError')
