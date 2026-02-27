@@ -623,6 +623,6 @@ Flat wins on ergonomics in both consumption and definition. The nested form adds
    - ~~Rename `.withContext()` → `.withFields()`~~ — Done
    - ~~Remove `.withCause()` from the builder~~ — Done
    - ~~Remove `message` from factory input — template is the sole source~~ — Done
-   - Tests need updating to match new API
+   - ~~Tests rewritten for new API~~ — Done: 41 tests, all 3 tiers, builder shape, JSON serialization, edge cases
 3. Update the granular error migration spec to target the flat design with message override removal
 4. Migrate all error definitions and call sites (per-service, as planned in the migration spec)
