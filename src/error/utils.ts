@@ -1,6 +1,5 @@
 import type {
 	TaggedError,
-	AnyTaggedError,
 	JsonObject,
 } from "./types.js";
 import { Err } from "../result/result.js";
@@ -64,6 +63,13 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
+ * Constraint that prevents reserved keys (`name`, `message`) from appearing in fields.
+ * Uses the `{ key?: never }` pattern — any type with `name` or `message` as a key
+ * will fail to extend this constraint, producing a compile error.
+ */
+type NoReservedKeys = { name?: never; message?: never };
+
+/**
  * Replaces the "Error" suffix with "Err" suffix in error type names.
  */
 type ReplaceErrorWithErr<T extends `${string}Error`> =
@@ -74,85 +80,59 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
 // =============================================================================
 
 /**
- * Input provided to the message template function.
- * Contains everything the error will have except `message` (since that's what it computes).
- */
-type MessageInput<
-	TName extends string,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = { name: TName } & ([TContext] extends [undefined]
-	? Record<never, never>
-	: { context: Exclude<TContext, undefined> }) &
-	([TCause] extends [undefined]
-		? Record<never, never>
-		: { cause: Exclude<TCause, undefined> });
-
-/**
  * Message template function type.
+ * Receives the fields (without name/message) and returns a message string.
  */
-type MessageFn<
-	TName extends string,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = (input: MessageInput<TName, TContext, TCause>) => string;
+type MessageFn<TFields extends JsonObject> = (input: TFields) => string;
 
 // =============================================================================
 // Factory Input Types
 // =============================================================================
 
 /**
- * Helper type that determines optionality based on whether T includes undefined.
+ * Whether TFields resolves to an empty object (no fields).
+ * When true, the factory input parameter becomes optional.
  */
-type OptionalIfUndefined<T, TKey extends string> = undefined extends T
-	? { [K in TKey]?: Exclude<T, undefined> }
-	: { [K in TKey]: T };
+type IsEmptyFields<TFields extends JsonObject> =
+	TFields extends Record<never, never> ? true : false;
 
 /**
- * Input type for error factory functions.
- * Message is always computed from the template — no override escape hatch.
- * `context` and `cause` follow the same optionality rules as before.
+ * Whether all keys in TFields are optional.
+ * When true, the factory input parameter becomes optional.
  */
-type ErrorCallInput<
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = (TContext extends undefined
-	? Record<never, never>
-	: OptionalIfUndefined<TContext, "context">) &
-	(TCause extends undefined
-		? Record<never, never>
-		: OptionalIfUndefined<TCause, "cause">);
+type IsAllOptional<TFields extends JsonObject> =
+	Partial<TFields> extends TFields ? true : false;
+
+/**
+ * Whether the factory input should be optional.
+ * True when TFields is empty OR all fields are optional.
+ */
+type IsOptionalInput<TFields extends JsonObject> =
+	IsEmptyFields<TFields> extends true
+		? true
+		: IsAllOptional<TFields> extends true
+			? true
+			: false;
 
 // =============================================================================
 // Builder & Factory Types
 // =============================================================================
 
 /**
- * Whether the factory input resolves to an empty object (no context, no cause).
- * When true, the input parameter becomes optional.
- */
-type IsEmptyInput<
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
-> = ErrorCallInput<TContext, TCause> extends Record<never, never> ? true : false;
-
-/**
  * The final factories object returned by `.withMessage()`.
  * Has factory functions, NO chain methods.
- * When ErrorCallInput resolves to Record<never, never>, input is optional.
  */
 type FinalFactories<
 	TName extends `${string}Error`,
-	TContext extends JsonObject | undefined,
-	TCause extends AnyTaggedError | undefined,
+	TFields extends JsonObject,
 > = {
-	[K in TName]: IsEmptyInput<TContext, TCause> extends true
-		? (input?: ErrorCallInput<TContext, TCause>) => TaggedError<TName, TContext, TCause>
-		: (input: ErrorCallInput<TContext, TCause>) => TaggedError<TName, TContext, TCause>;
+	[K in TName]: IsOptionalInput<TFields> extends true
+		? (input?: TFields) => TaggedError<TName, TFields>
+		: (input: TFields) => TaggedError<TName, TFields>;
 } & {
-	[K in ReplaceErrorWithErr<TName>]: IsEmptyInput<TContext, TCause> extends true
-		? (input?: ErrorCallInput<TContext, TCause>) => Err<TaggedError<TName, TContext, TCause>>
-		: (input: ErrorCallInput<TContext, TCause>) => Err<TaggedError<TName, TContext, TCause>>;
+	[K in ReplaceErrorWithErr<TName>]: IsOptionalInput<TFields> extends true
+		? (input?: TFields) => Err<TaggedError<TName, TFields>>
+		: (input: TFields) => Err<TaggedError<TName, TFields>>;
 };
 
 /**
@@ -162,36 +142,24 @@ type FinalFactories<
  */
 type ErrorBuilder<
 	TName extends `${string}Error`,
-	TContext extends JsonObject | undefined = undefined,
-	TCause extends AnyTaggedError | undefined = undefined,
+	TFields extends JsonObject = Record<never, never>,
 > = {
 	/**
-	 * Constrains the context type for this error.
-	 * `.withContext<T>()` where T doesn't include undefined → context is **required**
-	 * `.withContext<T | undefined>()` → context is **optional** but typed when provided
+	 * Defines the additional fields for this error type.
+	 * Fields are spread flat on the error object.
+	 * Reserved keys (`name`, `message`) are rejected at compile time.
 	 */
-	withContext<
-		T extends JsonObject | undefined = JsonObject | undefined,
-	>(): ErrorBuilder<TName, T, TCause>;
+	withFields<T extends JsonObject & NoReservedKeys>(): ErrorBuilder<TName, T>;
 
 	/**
-	 * Constrains the cause type for this error.
-	 * `.withCause<T>()` where T doesn't include undefined → cause is **required**
-	 * `.withCause<T | undefined>()` → cause is **optional** but typed when provided
-	 */
-	withCause<
-		T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
-	>(): ErrorBuilder<TName, TContext, T>;
-
-	/**
-	 * Terminal method that defines how the error message is computed from its data.
+	 * Terminal method that defines how the error message is computed from its fields.
 	 * Returns the factory functions — this is the only way to get them.
 	 *
-	 * @param fn - Template function that receives `{ name, context?, cause? }` and returns a message string
+	 * @param fn - Template function that receives the fields and returns a message string
 	 */
 	withMessage(
-		fn: MessageFn<TName, TContext, TCause>,
-	): FinalFactories<TName, TContext, TCause>;
+		fn: MessageFn<TFields>,
+	): FinalFactories<TName, TFields>;
 };
 
 // =============================================================================
@@ -201,29 +169,28 @@ type ErrorBuilder<
 /**
  * Creates a new tagged error type with a fluent builder API.
  *
- * The builder provides `.withContext<T>()`, `.withCause<T>()`, and `.withMessage(fn)`.
+ * The builder provides `.withFields<T>()` and `.withMessage(fn)`.
  * `.withMessage(fn)` is **required** and **terminal** — it returns the factory functions.
  *
- * @example Simple error
+ * @example Tier 1: Static error (no fields)
  * ```ts
  * const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
  *   .withMessage(() => 'A recording is already in progress');
  * ```
  *
- * @example Error with context
+ * @example Tier 2: Reason-only error
  * ```ts
- * const { DbNotFoundError, DbNotFoundErr } = createTaggedError('DbNotFoundError')
- *   .withContext<{ table: string; id: string }>()
- *   .withMessage(({ context }) => `${context.table} '${context.id}' not found`);
+ * const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
+ *   .withFields<{ reason: string }>()
+ *   .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
  * ```
  *
- * @example Error with context and cause
+ * @example Tier 3: Structured data error
  * ```ts
- * const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
- *   .withContext<{ operation: string }>()
- *   .withCause<DbServiceError>()
- *   .withMessage(({ context, cause }) =>
- *     `Operation '${context.operation}' failed: ${cause.message}`
+ * const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
+ *   .withFields<{ status: number; reason?: string }>()
+ *   .withMessage(({ status, reason }) =>
+ *     `HTTP ${status}${reason ? `: ${reason}` : ''}`
  *   );
  * ```
  */
@@ -231,38 +198,24 @@ export function createTaggedError<TName extends `${string}Error`>(
 	name: TName,
 ): ErrorBuilder<TName> {
 	const createBuilder = <
-		TContext extends JsonObject | undefined = undefined,
-		TCause extends AnyTaggedError | undefined = undefined,
-	>(): ErrorBuilder<TName, TContext, TCause> => {
+		TFields extends JsonObject = Record<never, never>,
+	>(): ErrorBuilder<TName, TFields> => {
 		return {
-			withContext<
-				T extends JsonObject | undefined = JsonObject | undefined,
-			>() {
-				return createBuilder<T, TCause>();
-			},
-			withCause<
-				T extends AnyTaggedError | undefined = AnyTaggedError | undefined,
-			>() {
-				return createBuilder<TContext, T>();
+			withFields<T extends JsonObject & NoReservedKeys>() {
+				return createBuilder<T>();
 			},
 			withMessage(
-				fn: MessageFn<TName, TContext, TCause>,
-			): FinalFactories<TName, TContext, TCause> {
+				fn: MessageFn<TFields>,
+			): FinalFactories<TName, TFields> {
 				const errorConstructor = (
-					input: ErrorCallInput<TContext, TCause> = {} as ErrorCallInput<TContext, TCause>,
+					input?: TFields,
 				) => {
-					const messageInput = {
-						name,
-						...("context" in input ? { context: input.context } : {}),
-						...("cause" in input ? { cause: input.cause } : {}),
-					} as MessageInput<TName, TContext, TCause>;
-
+					const fields = (input ?? {}) as TFields;
 					return {
 						name,
-						message: fn(messageInput),
-						...("context" in input ? { context: input.context } : {}),
-						...("cause" in input ? { cause: input.cause } : {}),
-					} as unknown as TaggedError<TName, TContext, TCause>;
+						message: fn(fields),
+						...fields,
+					} as unknown as TaggedError<TName, TFields>;
 				};
 
 				const errName = name.replace(
@@ -270,15 +223,15 @@ export function createTaggedError<TName extends `${string}Error`>(
 					"Err",
 				) as ReplaceErrorWithErr<TName>;
 				const errConstructor = (
-					input: ErrorCallInput<TContext, TCause> = {} as ErrorCallInput<TContext, TCause>,
+					input?: TFields,
 				) => Err(errorConstructor(input));
 
 				return {
 					[name]: errorConstructor,
 					[errName]: errConstructor,
-				} as FinalFactories<TName, TContext, TCause>;
+				} as FinalFactories<TName, TFields>;
 			},
-		} as ErrorBuilder<TName, TContext, TCause>;
+		} as ErrorBuilder<TName, TFields>;
 	};
 
 	return createBuilder();
