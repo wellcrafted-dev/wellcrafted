@@ -1,7 +1,7 @@
 # Tagged Error Minimal Design: First Principles Redesign
 
 **Created**: 2026-02-26
-**Status**: Complete — flat design (Phase 1) and sealed-message (Phase 2) both landed
+**Status**: Superseded by `20260302T154500-replace-createTaggedError-with-defineErrors.md` (`defineErrors` replaces the `createTaggedError` builder entirely). Previously: Complete — flat design (Phase 1) and sealed-message (Phase 2) both landed.
 **Scope**: wellcrafted `TaggedError` type, `createTaggedError` builder API
 **Related**: `20260226T000000-granular-error-migration.md` (service-by-service migration, depends on this)
 

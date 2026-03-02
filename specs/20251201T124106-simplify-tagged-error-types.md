@@ -1,5 +1,7 @@
 # Simplify Tagged Error Types
 
+**Status**: Superseded by `20260302T154500-replace-createTaggedError-with-defineErrors.md` (`defineErrors` API replaces the entire builder chain).
+
 ## Problem
 
 The current `createTaggedError` implementation uses function overloads to provide precise call-site type inference. This works well for constructing errors, but breaks `ReturnType`:
