@@ -74,7 +74,7 @@ export async function GET() {
   
   if (error) {
     return Response.json(
-      { error: error.message, context: error.context },
+      { error: error.message, operation: error.operation },
       { status: 500 }
     );
   }
@@ -138,7 +138,9 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 import { db } from '../db';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError');
+const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
+  .withFields<{ operation: string; userId?: string }>()
+  .withMessage(({ operation }) => `User service ${operation} failed`);
 type UserServiceError = ReturnType<typeof UserServiceError>;
 
 export type User = {
@@ -162,21 +164,13 @@ export async function getAllUsers(): Promise<Result<User[], UserServiceError>> {
       });
       return users;
     },
-    catch: (error) => UserServiceErr({
-      message: 'Failed to fetch users from database',
-      context: { operation: 'getAllUsers' },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'getAllUsers' }),
   });
 }
 
 export async function getUserById(id: string): Promise<Result<User, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'getUserById', userId: id });
   }
 
   return tryAsync({
@@ -184,37 +178,25 @@ export async function getUserById(id: string): Promise<Result<User, UserServiceE
       const user = await db.user.findUnique({
         where: { id },
       });
-      
+
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       return user;
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to fetch user',
-      context: { userId: id },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'getUserById', userId: id }),
   });
 }
 
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   // Validation
   if (!input.name?.trim()) {
-    return UserServiceErr({
-      message: 'Name is required',
-      context: { input },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   if (!input.email?.includes('@')) {
-    return UserServiceErr({
-      message: 'Valid email is required',
-      context: { input },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'createUser' });
   }
 
   return tryAsync({
@@ -223,11 +205,11 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
       const existing = await db.user.findUnique({
         where: { email: input.email },
       });
-      
+
       if (existing) {
         throw new Error('Email already exists');
       }
-      
+
       return await db.user.create({
         data: {
           name: input.name.trim(),
@@ -235,21 +217,13 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
         },
       });
     },
-    catch: (error) => UserServiceErr({
-      message: error instanceof Error ? error.message : 'Failed to create user',
-      context: { input },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'createUser' }),
   });
 }
 
 export async function updateUser(id: string, input: Partial<CreateUserInput>): Promise<Result<User, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id, input },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'updateUser', userId: id });
   }
 
   return tryAsync({
@@ -260,21 +234,13 @@ export async function updateUser(id: string, input: Partial<CreateUserInput>): P
       });
       return user;
     },
-    catch: (error) => UserServiceErr({
-      message: 'Failed to update user',
-      context: { userId: id, input },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'updateUser', userId: id }),
   });
 }
 
 export async function deleteUser(id: string): Promise<Result<void, UserServiceError>> {
   if (!id) {
-    return UserServiceErr({
-      message: 'User ID is required',
-      context: { id },
-      cause: undefined,
-    });
+    return UserServiceErr({ operation: 'deleteUser', userId: id });
   }
 
   return tryAsync({
@@ -283,11 +249,7 @@ export async function deleteUser(id: string): Promise<Result<void, UserServiceEr
         where: { id },
       });
     },
-    catch: (error) => UserServiceErr({
-      message: 'Failed to delete user',
-      context: { userId: id },
-      cause: error,
-    }),
+    catch: (error) => UserServiceErr({ operation: 'deleteUser', userId: id }),
   });
 }
 ```
@@ -409,7 +371,7 @@ async function UsersList() {
       <ErrorDisplay
         title="Failed to load users"
         message={error.message}
-        context={error.context}
+        operation={error.operation}
         retry={{
           label: "Refresh page",
           action: () => window.location.reload()
@@ -478,7 +440,7 @@ export default async function UserPage({ params }: UserPageProps) {
       <ErrorDisplay
         title="Failed to load user"
         message={error.message}
-        context={error.context}
+        operation={error.operation}
       />
     );
   }
@@ -524,7 +486,7 @@ export async function GET() {
     return Response.json(
       {
         error: error.message,
-        context: error.context,
+        operation: error.operation,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
@@ -549,7 +511,7 @@ export async function POST(request: NextRequest) {
       return Response.json(
         {
           error: error.message,
-          context: error.context,
+          operation: error.operation,
           timestamp: new Date().toISOString(),
         },
         { status: statusCode }
@@ -590,7 +552,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return Response.json(
       {
         error: error.message,
-        context: error.context,
+        operation: error.operation,
         timestamp: new Date().toISOString(),
       },
       { status: statusCode }
@@ -614,7 +576,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return Response.json(
         {
           error: error.message,
-          context: error.context,
+          operation: error.operation,
           timestamp: new Date().toISOString(),
         },
         { status: statusCode }
@@ -645,7 +607,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return Response.json(
       {
         error: error.message,
-        context: error.context,
+        operation: error.operation,
         timestamp: new Date().toISOString(),
       },
       { status: statusCode }
@@ -791,7 +753,7 @@ import type { UserServiceError } from '@/lib/services/users';
 interface ErrorDisplayProps {
   title?: string;
   message: string;
-  context?: Record<string, unknown>;
+  operation?: string;
   retry?: {
     label: string;
     action: () => void;
@@ -799,10 +761,10 @@ interface ErrorDisplayProps {
   className?: string;
 }
 
-export function ErrorDisplay({ 
-  title = "Something went wrong", 
-  message, 
-  context,
+export function ErrorDisplay({
+  title = "Something went wrong",
+  message,
+  operation,
   retry,
   className = "" 
 }: ErrorDisplayProps) {
@@ -819,13 +781,13 @@ export function ErrorDisplay({
           <h3 className="text-sm font-medium text-red-800">{title}</h3>
           <p className="mt-1 text-sm text-red-700">{message}</p>
           
-          {context && (
+          {operation && (
             <details className="mt-2">
               <summary className="text-xs text-red-600 cursor-pointer">
                 Technical details
               </summary>
               <pre className="mt-1 text-xs text-red-600 bg-red-100 p-2 rounded overflow-auto">
-                {JSON.stringify(context, null, 2)}
+                Operation: {operation}
               </pre>
             </details>
           )}
@@ -927,16 +889,13 @@ export function middleware(request: NextRequest) {
       catch: (error) => ({
         name: 'AuthenticationError',
         message: error instanceof Error ? error.message : 'Authentication failed',
-        context: { path: request.nextUrl.pathname },
-        cause: error,
       }),
     });
 
     if (error) {
       return NextResponse.json(
-        { 
+        {
           error: error.message,
-          context: error.context 
         },
         { status: 401 }
       );
@@ -986,12 +945,10 @@ describe('UserPage', () => {
   });
 
   it('shows not found page when user does not exist', async () => {
-    const errorResult = Err({
-      name: 'UserServiceError',
-      message: 'User not found',
-      context: { userId: '1' },
-      cause: undefined,
-    });
+    const errorResult = Err(UserServiceError({
+      operation: 'getUserById',
+      userId: '1',
+    }));
     
     vi.mocked(userService.getUserById).mockResolvedValue(errorResult);
 
@@ -1035,12 +992,9 @@ describe('createUserAction', () => {
   });
 
   it('returns error for invalid input', async () => {
-    const errorResult = Err({
-      name: 'UserServiceError',
-      message: 'Valid email is required',
-      context: { input: { name: 'John', email: 'invalid' } },
-      cause: undefined,
-    });
+    const errorResult = Err(UserServiceError({
+      operation: 'createUser',
+    }));
     
     vi.mocked(userService.createUser).mockResolvedValue(errorResult);
 
@@ -1106,7 +1060,7 @@ Always return the same error structure:
 // ✅ Good - consistent error format
 type APIErrorResponse = {
   error: string;
-  context?: Record<string, unknown>;
+  operation?: string;
   timestamp: string;
 };
 

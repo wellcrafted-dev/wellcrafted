@@ -53,8 +53,7 @@ async function getUser(
     return Err({
       name: "UserNotFoundError",
       message: "User not found",
-      context: { userId: id },
-      cause: undefined
+      userId: id,
     });
   }
   
@@ -110,15 +109,13 @@ Traditional JavaScript errors have problems:
 wellcrafted's TaggedError solves these issues:
 
 ```typescript
-type TaggedError<T extends string> = {
-  readonly name: T;                    // Discriminant for TypeScript
-  message: string;                     // Human-readable description
-  context?: Record<string, unknown>;   // Debugging information
-  cause?: TaggedError;                 // Root cause (another TaggedError)
-}
+type TaggedError<
+  TName extends string = string,
+  TFields extends JsonObject = Record<never, never>,
+> = Readonly<{ name: TName; message: string } & TFields>;
 ```
 
-> The `context` property should include the function's input parameters and any relevant variables in the closure. This creates a complete picture of what data led to the error, making debugging straightforward.
+> Custom fields are spread directly onto the error object. Include the function's input parameters and any relevant variables as fields. This creates a complete picture of what data led to the error, making debugging straightforward.
 
 ### The Power of the Tag
 
@@ -141,7 +138,7 @@ function handleError(error: AuthError | NetworkError | ValidationError) {
       break;
     case "ValidationError":
       // TypeScript knows this is ValidationError
-      highlightInvalidFields(error.context);
+      highlightInvalidFields(error);
       break;
     // TypeScript ensures all cases are handled
   }
@@ -215,11 +212,10 @@ async function processMany(ids: string[]) {
   const errors = results.filter(r => r.error !== null);
   
   if (errors.length > 0) {
-    return Err({ 
-      name: "BatchError", 
+    return Err({
+      name: "BatchError",
       message: `Failed to fetch ${errors.length} users`,
-      context: { errors },
-      cause: undefined
+      errors,
     });
   }
   
@@ -272,8 +268,8 @@ async function fulfillOrder(
     return Err({
       name: "OrderNotFoundError",
       message: "Order not found",
-      context: { orderId, userId },
-      cause: undefined
+      orderId,
+      userId,
     });
   }
   
@@ -283,8 +279,8 @@ async function fulfillOrder(
     catch: (error) => Err({
       name: "PaymentError" as const,
       message: "Payment processing failed",
-      context: { orderId, amount: orderResult.data.total },
-      cause: error
+      orderId,
+      amount: orderResult.data.total,
     })
   });
   
@@ -302,7 +298,7 @@ if (result.error) {
       show404();
       break;
     case "PaymentError":
-      showPaymentRetry(result.error.context);
+      showPaymentRetry(result.error);
       break;
     case "ShippingError":
       notifySupport(result.error);

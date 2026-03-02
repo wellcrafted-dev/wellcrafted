@@ -57,7 +57,7 @@ async function processUser(
 Benefits:
 - **Visible error types** in function signatures - replace `throw new Error()` with `return Err()` to make errors explicit
 - **Forced error handling** by the type system
-- **Preserved error context** for debugging - the `context` property captures function inputs and state
+- **Preserved error context** for debugging - custom fields capture function inputs and state
 - **Better IntelliSense** and autocomplete
 - **Serialization-safe** - plain objects that work everywhere
 
@@ -89,8 +89,8 @@ async function fetchUser(id: string): Promise<Result<User, ApiError>> {
     catch: (error) => Err({
       name: "ApiError",
       message: "Failed to fetch user",
-      context: { userId: id, endpoint: `/api/users/${id}` },
-      cause: error
+      userId: id,
+      endpoint: `/api/users/${id}`,
     })
   });
 }
@@ -107,8 +107,7 @@ function validateEmail(email: string): Result<string, ValidationError> {
     return Err({
       name: "ValidationError",
       message: "Email must contain @ symbol",
-      context: { email },
-      cause: undefined
+      email,
     });
   }
   return Ok(email.toLowerCase());
@@ -120,8 +119,7 @@ function validateUser(data: unknown): Result<User, ValidationError> {
     return Err({
       name: "ValidationError",
       message: "Invalid user data",
-      context: { receivedType: typeof data },
-      cause: undefined
+      receivedType: typeof data,
     });
   }
   
@@ -152,8 +150,7 @@ async function saveUser(user: User): Promise<Result<void, DatabaseError>> {
     catch: (error) => Err({
       name: "DatabaseError",
       message: "Failed to save user",
-      context: { userId: user.id },
-      cause: error
+      userId: user.id,
     })
   });
 }
@@ -192,8 +189,7 @@ function parseConfig(json: string): Result<Config, ConfigError> {
     catch: (error) => Err({
       name: "ConfigError",
       message: "Invalid configuration",
-      context: { rawJson: json.substring(0, 100) },
-      cause: error
+      rawJson: json.substring(0, 100),
     })
   });
 }
@@ -287,15 +283,12 @@ async function fetchWithFallback(url: string): Promise<Result<Data, FetchError>>
   return Err({
     name: "FetchError",
     message: "All data sources failed",
-    context: {
-      url,
-      attempts: [
-        { source: 'primary', error: primaryResult.error },
-        { source: 'secondary', error: secondaryResult.error },
-        { source: 'cache', error: cacheResult.error }
-      ]
-    },
-    cause: undefined
+    url,
+    attempts: [
+      { source: 'primary', error: primaryResult.error },
+      { source: 'secondary', error: secondaryResult.error },
+      { source: 'cache', error: cacheResult.error }
+    ],
   });
 }
 ```
@@ -352,8 +345,7 @@ async function processFile(path: string): Promise<Result<string, FileError>> {
     return Err({
       name: "FileError",
       message: "Unexpected error during file processing",
-      context: { path },
-      cause: error
+      path,
     });
   }
 }
@@ -439,8 +431,7 @@ class UserService {
       catch: (error) => Err({
         name: "DatabaseError",
         message: "Failed to hash password",
-        context: { operation: 'bcrypt.hash' },
-        cause: error
+        operation: 'bcrypt.hash',
       })
     });
     if (hashResult.error) return hashResult;
@@ -469,8 +460,8 @@ class UserService {
       return Err({
         name: "ValidationError",
         message: "Invalid email address",
-        context: { field: 'email', value: input.email },
-        cause: undefined
+        field: 'email',
+        value: input.email,
       });
     }
     
@@ -478,8 +469,7 @@ class UserService {
       return Err({
         name: "ValidationError",
         message: "Password must be at least 8 characters",
-        context: { field: 'password' },
-        cause: undefined
+        field: 'password',
       });
     }
     
@@ -494,8 +484,8 @@ class UserService {
       catch: (error) => Err({
         name: "DatabaseError",
         message: "Failed to check user existence",
-        context: { email, operation: 'findByEmail' },
-        cause: error
+        email,
+        operation: 'findByEmail',
       })
     });
     
@@ -505,8 +495,7 @@ class UserService {
       return Err({
         name: "UserExistsError",
         message: "Email already registered",
-        context: { email },
-        cause: undefined
+        email,
       });
     }
     
@@ -556,7 +545,7 @@ describe('UserService', () => {
     
     expect(result.error).toBeDefined();
     expect(result.error?.name).toBe('ValidationError');
-    expect(result.error?.context.field).toBe('email');
+    expect(result.error?.field).toBe('email');
   });
   
   it('should return UserExistsError for existing user', async () => {
@@ -570,7 +559,7 @@ describe('UserService', () => {
     
     expect(result.error).toBeDefined();
     expect(result.error?.name).toBe('UserExistsError');
-    expect(result.error?.context.email).toBe('test@example.com');
+    expect(result.error?.email).toBe('test@example.com');
   });
   
   it('should return user on success', async () => {
@@ -620,18 +609,15 @@ type InvalidCredentialsError = TaggedError<"InvalidCredentialsError">;
 
 ### 4. Preserve Error Context
 
-Always include relevant debugging information:
+Always include relevant debugging information as flat fields:
 ```typescript
 return Err({
   name: "DatabaseError",
   message: "Query failed",
-  context: {
-    query: sql,
-    params,
-    duration: Date.now() - startTime,
-    connection: connectionId
-  },
-  cause: originalError
+  query: sql,
+  params,
+  duration: Date.now() - startTime,
+  connection: connectionId,
 });
 ```
 
@@ -718,8 +704,7 @@ async function ensureDirectory(path: string): Promise<Ok<void>> {
       return Err({
         name: "FileSystemError",
         message: "Failed to create directory",
-        context: { path },
-        cause: error
+        path,
       });
     }
   });
@@ -770,22 +755,20 @@ async function saveUserPreference(
         return Err({
           name: "SaveError",
           message: "Network unreachable",
-          context: { userId },
-          cause: error
+          userId,
         });
       }
-      
+
       // Duplicate key? Upsert semantics mean that's success
       if (error.code === 'DUPLICATE_KEY') {
         return Ok(undefined);
       }
-      
+
       // Unknown errors should propagate
       return Err({
         name: "SaveError",
         message: "Failed to save preference",
-        context: { userId },
-        cause: error
+        userId,
       });
     }
   });

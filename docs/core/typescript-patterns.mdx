@@ -20,9 +20,7 @@ async function getUser(id: string) {
   const user = await database.findUser(id);
   if (!user) {
     return DatabaseErr({
-      message: "User not found",
-      context: { userId: id },
-      cause: undefined
+      userId: id,
     });
   }
   return Ok(user);
@@ -108,18 +106,14 @@ export async function updateUserProfile(
   // Validation
   if (!updates.email?.includes('@')) {
     return ValidationErr({
-      message: "Invalid email format",
-      context: { field: 'email', value: updates.email },
-      cause: undefined
+      field: 'email', value: updates.email,
     });
   }
 
   // Authentication check
   if (!isAuthenticated()) {
     return AuthErr({
-      message: "Authentication required",
-      context: { operation: 'updateUserProfile' },
-      cause: undefined
+      operation: 'updateUserProfile',
     });
   }
 
@@ -127,9 +121,7 @@ export async function updateUserProfile(
   return tryAsync({
     try: () => api.updateUser(userId, updates),
     catch: (error) => NetworkErr({
-      message: "Failed to update user profile",
-      context: { userId, updates },
-      cause: error
+      userId, updates,
     })
   });
 }
@@ -148,7 +140,7 @@ async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
     switch (result.error.name) {
       case 'ValidationError':
         // TypeScript knows this is ValidationError
-        showFieldError(result.error.context.field, result.error.message);
+        showFieldError(result.error.field, result.error.message);
         break;
       case 'NetworkError':
         // TypeScript knows this is NetworkError  
@@ -236,9 +228,7 @@ export function createOpenAITranscriptionService(apiKey: string): TranscriptionS
           language: options.language,
         }),
         catch: (error) => TranscriptionErr({
-          message: "OpenAI transcription failed",
-          context: { provider: 'openai', model: options.model },
-          cause: error
+          provider: 'openai', model: options.model,
         })
       });
     },
@@ -405,9 +395,7 @@ const transcribeBlob = defineMutation({
         // TypeScript ensures exhaustive checking
         const _exhaustive: never = provider;
         return TranscriptionErr({
-          message: `Unsupported provider: ${provider}`,
-          context: { provider },
-          cause: undefined
+          provider,
         });
       }
     }
@@ -442,9 +430,7 @@ export function createRecordingService(): CRUDService<
       return tryAsync({
         try: () => database.recordings.create(input),
         catch: (error) => DatabaseErr({
-          message: "Failed to create recording",
-          context: { operation: 'create', input },
-          cause: error
+          operation: 'create', input,
         })
       });
     },
@@ -453,9 +439,7 @@ export function createRecordingService(): CRUDService<
       return tryAsync({
         try: () => database.recordings.findById(id),
         catch: (error) => DatabaseErr({
-          message: "Failed to get recording",
-          context: { operation: 'getById', id },
-          cause: error
+          operation: 'getById', id,
         })
       });
     },
@@ -611,7 +595,7 @@ if (result.error) {
 if (result.error) {
   switch (result.error.name) {
     case 'ValidationError':
-      showValidationErrors(result.error.context);
+      showValidationErrors(result.error);
       break;
     case 'NetworkError':
       showRetryOption();

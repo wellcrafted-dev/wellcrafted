@@ -318,10 +318,10 @@ const transcribeRecording = defineMutation({
 A critical responsibility of the query layer is transforming service-specific errors into UI-friendly formats:
 
 ```typescript
-// Service layer returns domain-specific errors with typed context
+// Service layer returns domain-specific errors with typed fields
 const { RecorderServiceError } = createTaggedError("RecorderServiceError")
-  .withContext<{ action: string; deviceId?: string }>()
-  .withMessage(({ context }) => `Recorder ${context.action} failed`);
+  .withFields<{ action: string; deviceId?: string }>()
+  .withMessage(({ action }) => `Recorder ${action} failed`);
 
 // Query layer transforms them for UI consumption
 const startRecording = defineMutation({

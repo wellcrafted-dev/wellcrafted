@@ -91,8 +91,7 @@ const { data, error } = await tryAsync<User, ApiError>({
   catch: (error) => Err({
     name: "ApiError",
     message: "Failed to fetch user",
-    context: { endpoint: '/api/user' },
-    cause: error
+    endpoint: '/api/user',
   })
 });
 

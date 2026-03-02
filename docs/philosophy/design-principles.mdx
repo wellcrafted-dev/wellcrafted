@@ -65,7 +65,7 @@ if (error) {
   // TypeScript knows exactly what errors are possible
   switch (error.name) {
     case "ValidationError":
-      showValidationMessages(error.context.fields);
+      showValidationMessages(error.fields);
       break;
     case "AuthError":
       redirectToLogin();
@@ -153,8 +153,7 @@ if (errors.length > 0) {
   return Err({
     name: "BatchError",
     message: `Failed to fetch ${errors.length} users`,
-    context: { errors: errors.map(e => e.error) },
-    cause: undefined
+    errors: errors.map(e => e.error),
   });
 }
 
@@ -187,16 +186,13 @@ throw new Error("Payment failed");
 
 // Explicit: Rich context for debugging
 return Err({
-  name: "PaymentError", 
+  name: "PaymentError",
   message: "Payment processing failed",
-  context: {
-    amount,
-    paymentMethodId,
-    userId,
-    attemptTimestamp: new Date().toISOString(),
-    gatewayResponse: response.status
-  },
-  cause: originalError
+  amount,
+  paymentMethodId,
+  userId,
+  attemptTimestamp: new Date().toISOString(),
+  gatewayResponse: response.status,
 });
 ```
 

@@ -1,5 +1,7 @@
 # Fluent Tagged Error API
 
+**Status**: Superseded — the `defineError` API described here was replaced by `createTaggedError` with `.withFields()` and optional `.withMessage()`. See `20260226T233600-tagged-error-minimal-design.md` for the current design.
+
 ## Problem
 
 The current `createTaggedError` function uses multiple generics with optional type parameters:

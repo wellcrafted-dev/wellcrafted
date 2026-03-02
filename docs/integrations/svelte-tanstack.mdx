@@ -132,8 +132,8 @@ import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 import { createTaggedError } from 'wellcrafted/error';
 
 const { RecordingServiceError, RecordingServiceErr } = createTaggedError('RecordingServiceError')
-  .withContext<{ operation: string; recordingId?: string }>()
-  .withMessage(({ context }) => `Recording ${context.operation} failed`);
+  .withFields<{ operation: string; recordingId?: string }>()
+  .withMessage(({ operation }) => `Recording ${operation} failed`);
 type RecordingServiceError = ReturnType<typeof RecordingServiceError>;
 
 export type Recording = {
@@ -163,21 +163,13 @@ export function createRecordingService(db: Database) {
           });
           return recordings;
         },
-        catch: (error) => RecordingServiceErr({
-          message: 'Failed to fetch recordings from database',
-          context: { operation: 'getAllRecordings' },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'getAllRecordings' }),
       });
     },
 
     async getRecording(id: string): Promise<Result<Recording, RecordingServiceError>> {
       if (!id) {
-        return RecordingServiceErr({
-          message: 'Recording ID is required',
-          context: { id },
-          cause: undefined,
-        });
+        return RecordingServiceErr({ operation: 'getRecording', recordingId: id });
       }
 
       return tryAsync({
@@ -188,22 +180,14 @@ export function createRecordingService(db: Database) {
           }
           return recording;
         },
-        catch: (error) => RecordingServiceErr({
-          message: error instanceof Error ? error.message : 'Failed to fetch recording',
-          context: { recordingId: id },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'getRecording', recordingId: id }),
       });
     },
 
     async createRecording(input: CreateRecordingInput): Promise<Result<Recording, RecordingServiceError>> {
       // Validation
       if (!input.blob || input.blob.size === 0) {
-        return RecordingServiceErr({
-          message: 'Audio blob is required and cannot be empty',
-          context: { input: { blobSize: input.blob?.size, filename: input.filename } },
-          cause: undefined,
-        });
+        return RecordingServiceErr({ operation: 'createRecording' });
       }
 
       return tryAsync({
@@ -226,21 +210,13 @@ export function createRecordingService(db: Database) {
 
           return { ...recording, audioBlob: input.blob };
         },
-        catch: (error) => RecordingServiceErr({
-          message: 'Failed to save recording',
-          context: { input },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'createRecording' }),
       });
     },
 
     async deleteRecording(id: string): Promise<Result<void, RecordingServiceError>> {
       if (!id) {
-        return RecordingServiceErr({
-          message: 'Recording ID is required',
-          context: { id },
-          cause: undefined,
-        });
+        return RecordingServiceErr({ operation: 'deleteRecording', recordingId: id });
       }
 
       return tryAsync({
@@ -259,11 +235,7 @@ export function createRecordingService(db: Database) {
           // Delete database record
           await db.recordings.delete({ where: { id } });
         },
-        catch: (error) => RecordingServiceErr({
-          message: 'Failed to delete recording',
-          context: { recordingId: id },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'deleteRecording', recordingId: id }),
       });
     },
 
@@ -276,11 +248,7 @@ export function createRecordingService(db: Database) {
           });
           return recording;
         },
-        catch: (error) => RecordingServiceErr({
-          message: 'Failed to update recording',
-          context: { recordingId: id, updates },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'updateRecording', recordingId: id }),
       });
     },
   };
@@ -809,12 +777,10 @@ Whispering's error handling system prevents runtime crashes through comprehensiv
       {error?.message || 'An unexpected error occurred'}
     </p>
     
-    {#if error?.context}
-      <details class="error-details">
-        <summary>Technical details</summary>
-        <pre>{JSON.stringify(error.context, null, 2)}</pre>
-      </details>
-    {/if}
+    <details class="error-details">
+      <summary>Technical details</summary>
+      <pre>{JSON.stringify(error, null, 2)}</pre>
+    </details>
     
     {#if action}
       <div class="error-actions">
@@ -913,9 +879,7 @@ function createRecordingServiceDesktop() {
           return result;
         },
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to start desktop recording',
-          context: { platform: 'desktop', params },
-          cause: error,
+          platform: 'desktop', params,
         }),
       });
     },
@@ -924,9 +888,7 @@ function createRecordingServiceDesktop() {
       return tryAsync({
         try: () => invoke('enumerate_audio_devices'),
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to enumerate desktop audio devices',
-          context: { platform: 'desktop' },
-          cause: error,
+          platform: 'desktop',
         }),
       });
     },
@@ -954,9 +916,7 @@ function createRecordingServiceWeb() {
           return { recorder, stream };
         },
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to start web recording',
-          context: { platform: 'web', params },
-          cause: error,
+          platform: 'web', params,
         }),
       });
     },
@@ -974,9 +934,7 @@ function createRecordingServiceWeb() {
             }));
         },
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to enumerate web audio devices',
-          context: { platform: 'web' },
-          cause: error,
+          platform: 'web',
         }),
       });
     },
@@ -1204,8 +1162,7 @@ describe('RecordingsList', () => {
     const errorResult = Err({
       name: 'RecordingServiceError',
       message: 'Database connection failed',
-      context: { operation: 'getAllRecordings' },
-      cause: undefined,
+      operation: 'getAllRecordings',
     });
     
     vi.mocked(recordingService.recordingService.getAllRecordings).mockResolvedValue(errorResult);
@@ -1323,9 +1280,7 @@ export async function getAllRecordings(): Promise<Result<Recording[], RecordingS
       return response.json();
     },
     catch: (error) => RecordingServiceErr({
-      message: 'Failed to fetch recordings from API',
-      context: { operation: 'getAllRecordings' },
-      cause: error,
+      operation: 'getAllRecordings',
     }),
   });
 }
@@ -1393,19 +1348,13 @@ export function createRecordingService(db: Database) {
     async createRecording(input: CreateRecordingInput): Promise<Result<Recording, RecordingServiceError>> {
       if (!input.blob) {
         return RecordingServiceErr({
-          message: 'Audio blob is required',
-          context: { input },
-          cause: undefined,
+          input,
         });
       }
-      
+
       return tryAsync({
         try: () => db.recordings.create(input),
-        catch: (error) => RecordingServiceErr({
-          message: 'Failed to save recording',
-          context: { input },
-          cause: error,
-        }),
+        catch: (error) => RecordingServiceErr({ operation: 'createRecording' }),
       });
     },
   };

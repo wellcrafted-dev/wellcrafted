@@ -116,9 +116,7 @@ export function createClipboardServiceDesktop(): ClipboardService {
       return tryAsync({
         try: () => writeText(text), // Tauri API
         catch: (error) => ClipboardErr({
-          message: 'Failed to copy to clipboard',
-          context: { text, platform: 'desktop' },
-          cause: error,
+          text, platform: 'desktop',
         }),
       });
     },
@@ -132,9 +130,7 @@ export function createClipboardServiceWeb(): ClipboardService {
       return tryAsync({
         try: () => navigator.clipboard.writeText(text), // Browser API
         catch: (error) => ClipboardErr({
-          message: 'Failed to copy to clipboard',
-          context: { text, platform: 'web' },
-          cause: error,
+          text, platform: 'web',
         }),
       });
     },
@@ -287,8 +283,7 @@ async function startRecording(): Promise<Result<Blob, RecorderServiceError>> {
     return Err({
       name: 'RecorderServiceError',
       message: 'A recording is already in progress. Please stop the current recording before starting a new one.',
-      context: { isRecording: true },
-      cause: undefined,
+      isRecording: true,
     });
   }
   // ... recording logic
@@ -503,9 +498,7 @@ function createDesktopRecorderService() {
       return tryAsync({
         try: () => invoke('enumerate_audio_devices'),
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to enumerate audio devices through native API',
-          context: { platform: 'desktop' },
-          cause: error,
+          platform: 'desktop',
         }),
       });
     },
@@ -522,9 +515,7 @@ function createWebRecorderService() {
           return devices.filter(device => device.kind === 'audioinput');
         },
         catch: (error) => RecorderServiceErr({
-          message: 'Failed to enumerate audio devices through browser API',
-          context: { platform: 'web' },
-          cause: error,
+          platform: 'web',
         }),
       });
     },
@@ -611,9 +602,7 @@ export function createUserService(config: { apiUrl: string }) {
       return tryAsync({
         try: () => fetch(`${config.apiUrl}/users/${id}`).then(r => r.json()),
         catch: (error) => ApiErr({
-          message: 'Failed to fetch user',
-          context: { userId: id },
-          cause: error,
+          userId: id,
         }),
       });
     },

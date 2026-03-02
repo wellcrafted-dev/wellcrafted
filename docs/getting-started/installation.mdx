@@ -143,8 +143,7 @@ export async function createUser(data: FormData) {
     catch: (error) => Err({
       name: "ServerError",
       message: "Failed to create user",
-      context: { timestamp: Date.now() },
-      cause: error
+      timestamp: Date.now(),
     })
   });
 }
@@ -184,8 +183,7 @@ router.get("/:id", async (req, res) => {
     catch: (error) => Err({
       name: "DatabaseError",
       message: "Failed to fetch user",
-      context: { userId: req.params.id },
-      cause: error
+      userId: req.params.id,
     })
   });
   
