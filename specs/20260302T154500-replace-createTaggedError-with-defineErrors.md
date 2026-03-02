@@ -330,11 +330,11 @@ The repetition is the price of full control over the output shape. The old `with
 
 ## Implementation plan
 
-### Step 1: Create `src/error/defineErrors.ts`
-~12-line runtime implementation.
+### Step 1: Create `src/error/defineErrors.ts` ✅
+~12-line runtime implementation. Done.
 
-### Step 2: Add type machinery to `src/error/types.ts`
-`ErrorBody`, `ErrorsConfig`, `FactoryPair`, `DefineErrorsReturn`, `InferError`, `InferErrorUnion`.
+### Step 2: Add type machinery to `src/error/types.ts` ✅
+`ErrorBody`, `ErrorsConfig`, `FactoryPair`, `DefineErrorsReturn`, `InferError`, `InferErrorUnion`. Done. Removed old `TaggedError` type (replaced by `InferError`).
 
 ### Step 3: Port tests → `src/error/defineErrors.test.ts`
 Port all existing tests. Add new tests for:

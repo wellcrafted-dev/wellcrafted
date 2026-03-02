@@ -1,3 +1,5 @@
+import type { Err } from "../result/result.js";
+
 /**
  * JSON-serializable value types for error context.
  * Ensures all error data can be safely serialized via JSON.stringify.
@@ -20,15 +22,65 @@ export type JsonObject = Record<string, JsonValue>;
  */
 export type AnyTaggedError = { name: string; message: string };
 
-/**
- * A tagged error type for type-safe error handling.
- * Uses the `name` property as a discriminator for tagged unions.
- * Additional fields are spread flat on the error object.
- *
- * @template TName - The error name (discriminator for tagged unions)
- * @template TFields - Additional fields spread flat on the error (default: none)
- */
-export type TaggedError<
-	TName extends string = string,
-	TFields extends JsonObject = Record<never, never>,
-> = Readonly<{ name: TName; message: string } & TFields>;
+// =============================================================================
+// defineErrors type machinery
+// =============================================================================
+
+/** Constructor return must include message and be JSON-serializable. `name` is reserved. */
+export type ErrorBody = { message: string; name?: never } & JsonObject;
+
+/** The config: each key is an error name, each value is a constructor function. */
+export type ErrorsConfig = Record<
+	`${string}Error`,
+	(...args: any[]) => ErrorBody
+>;
+
+/** Replaces the "Error" suffix with "Err" suffix. */
+type ReplaceErrorWithErr<T extends `${string}Error`> =
+	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
+
+/** Factory pair for a single error: plain factory + Err-wrapped factory. */
+type FactoryPair<
+	TName extends `${string}Error`,
+	TFn extends (...args: any[]) => ErrorBody,
+> = {
+	[K in TName]: (
+		...args: Parameters<TFn>
+	) => Readonly<{ name: TName } & ReturnType<TFn>>;
+} & {
+	[K in ReplaceErrorWithErr<TName>]: (
+		...args: Parameters<TFn>
+	) => Err<Readonly<{ name: TName } & ReturnType<TFn>>>;
+};
+
+type UnionToIntersection<U> =
+	(U extends any ? (k: U) => void : never) extends (k: infer I) => void
+		? I
+		: never;
+
+/** Return type of `defineErrors`. Maps each config entry to its factory pair. */
+export type DefineErrorsReturn<TConfig extends ErrorsConfig> =
+	UnionToIntersection<
+		{
+			[K in keyof TConfig & `${string}Error`]: FactoryPair<
+				K & `${string}Error`,
+				TConfig[K]
+			>;
+		}[keyof TConfig & `${string}Error`]
+	>;
+
+/** Extract a single error type by name from a `defineErrors` return. */
+export type InferError<T, K extends string> = K extends keyof T
+	? T[K] extends (...args: any[]) => infer R
+		? R
+		: never
+	: never;
+
+/** Extract union of ALL error types from a `defineErrors` return. */
+export type InferErrorUnion<T> = {
+	[K in keyof T & `${string}Error`]: T[K] extends (
+		...args: any[]
+	) => infer R
+		? R
+		: never;
+}[keyof T & `${string}Error`];
