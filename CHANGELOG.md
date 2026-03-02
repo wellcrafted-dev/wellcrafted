@@ -1,5 +1,11 @@
 # wellcrafted
 
+## 0.32.0
+
+### Minor Changes
+
+- 4539eb2: Redesign `createTaggedError` builder: flat `.withFields()` API replaces nested `.withContext()`/`.withCause()`, `.withMessage()` is optional and seals the message (not in factory input type), `message` required at call site when `.withMessage()` is absent. Removes `context` nesting, `cause` as first-class field, and `reason` convention.
+
 ## 0.31.0
 
 ### Minor Changes
