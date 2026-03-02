@@ -285,46 +285,23 @@ describe("createTaggedError - optional input with .withMessage()", () => {
 
 describe("createTaggedError - message template behavior", () => {
 	it("template fn receives fields (not name)", () => {
-		let capturedInput: Record<string, unknown> | null = null;
-
 		const { TestError } = createTaggedError("TestError")
 			.withFields<{ value: number }>()
 			.withMessage((input) => {
-				capturedInput = input as Record<string, unknown>;
-				return "computed";
+				return `name=${"name" in input ? "leaked" : "absent"},value=${input.value}`;
 			});
 
-		TestError({ value: 42 });
-
-		expect(capturedInput).not.toBeNull();
-		const captured = capturedInput as unknown as Record<string, unknown>;
-		expect(captured.value).toBe(42);
-		expect("name" in captured).toBe(false);
+		const error = TestError({ value: 42 });
+		expect(error.message).toBe("name=absent,value=42");
 	});
 
 	it("template fn receives empty object for no-fields errors", () => {
-		let capturedInput: unknown = null;
-
 		const { StaticError } = createTaggedError("StaticError").withMessage(
-			(input) => {
-				capturedInput = input;
-				return "static";
-			},
+			(input) => `keys=${Object.keys(input).length}`,
 		);
 
-		StaticError();
-
-		expect(capturedInput).toEqual({});
-	});
-
-	it("sealed message is always the template output", () => {
-		const { TemplateError } = createTaggedError("TemplateError")
-			.withFields<{ reason: string }>()
-			.withMessage(({ reason }) => `Template says: ${reason}`);
-
-		const error = TemplateError({ reason: "test" });
-
-		expect(error.message).toBe("Template says: test");
+		const error = StaticError();
+		expect(error.message).toBe("keys=0");
 	});
 });
 
