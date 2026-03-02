@@ -297,8 +297,9 @@ describe("createTaggedError - message template behavior", () => {
 		TestError({ value: 42 });
 
 		expect(capturedInput).not.toBeNull();
-		expect(capturedInput?.value).toBe(42);
-		expect("name" in (capturedInput as object)).toBe(false);
+		const captured = capturedInput as unknown as Record<string, unknown>;
+		expect(captured.value).toBe(42);
+		expect("name" in captured).toBe(false);
 	});
 
 	it("template fn receives empty object for no-fields errors", () => {
