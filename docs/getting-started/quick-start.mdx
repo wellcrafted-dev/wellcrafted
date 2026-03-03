@@ -165,30 +165,38 @@ Here's a complete example showing how Results improve a common task:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError, type InferErrors } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-// Define our error types with defineErrors
-// One namespace groups all related variants
-const FormError = defineErrors({
-  Validation: ({ field, value, receivedType }: { field?: string; value?: string; receivedType?: string }) => ({
-    message: (() => {
-      if (receivedType) return "Invalid form data";
-      if (field === 'email') return "Please enter a valid email address";
-      if (field === 'password') return "Password must be at least 8 characters";
-      if (field === 'confirmPassword') return "Passwords do not match";
-      return "Validation failed";
-    })(),
-    field,
-    value,
+// Separate error namespaces for validation vs submission
+// Each variant has exactly the fields it needs — no optional keys
+const ValidationError = defineErrors({
+  InvalidType: ({ receivedType }: { receivedType: string }) => ({
+    message: `Expected form data, received ${receivedType}`,
     receivedType,
   }),
+  InvalidEmail: ({ value }: { value: string }) => ({
+    message: "Please enter a valid email address",
+    field: "email" as const,
+    value,
+  }),
+  WeakPassword: () => ({
+    message: "Password must be at least 8 characters",
+    field: "password" as const,
+  }),
+  PasswordMismatch: () => ({
+    message: "Passwords do not match",
+    field: "confirmPassword" as const,
+  }),
+});
+type ValidationError = InferErrors<typeof ValidationError>;
+
+const SubmissionError = defineErrors({
   Submission: ({ email }: { email: string }) => ({
     message: `Failed to create account for ${email}`,
     email,
   }),
 });
-type ValidationError = InferError<typeof FormError.Validation>;
-type SubmissionError = InferError<typeof FormError.Submission>;
+type SubmissionError = InferErrors<typeof SubmissionError>;
 
 // Form data interface
 interface SignupForm {
@@ -201,24 +209,24 @@ interface SignupForm {
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
   // Type check
   if (!data || typeof data !== 'object') {
-    return FormError.Validation({ receivedType: typeof data });
+    return ValidationError.InvalidType({ receivedType: typeof data });
   }
 
   const { email, password, confirmPassword } = data as any;
 
   // Email validation
   if (!email || !email.includes('@')) {
-    return FormError.Validation({ field: 'email', value: email });
+    return ValidationError.InvalidEmail({ value: email ?? '' });
   }
 
   // Password validation
   if (!password || password.length < 8) {
-    return FormError.Validation({ field: 'password' });
+    return ValidationError.WeakPassword();
   }
 
   // Password match validation
   if (password !== confirmPassword) {
-    return FormError.Validation({ field: 'confirmPassword' });
+    return FormError.PasswordMismatch();
   }
 
   return Ok({ email, password, confirmPassword });
@@ -254,7 +262,10 @@ async function handleSignup(formData: unknown) {
 
   if (validationResult.error) {
     console.error("Validation failed:", validationResult.error.message);
-    highlightField(validationResult.error.field);
+    // Each variant with a field property knows exactly which field it targets
+    if ('field' in validationResult.error) {
+      highlightField(validationResult.error.field);
+    }
     return;
   }
 

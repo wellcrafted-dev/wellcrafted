@@ -89,9 +89,17 @@ import { defineErrors, type InferError } from 'wellcrafted/error';
 
 // Define specific error types
 const UserError = defineErrors({
-  Validation: ({ message }: { message: string }) => ({ message }),
-  Network: ({ message }: { message: string }) => ({ message }),
-  Auth: ({ message }: { message: string }) => ({ message }),
+  Validation: ({ field }: { field: string }) => ({
+    message: `Invalid value for ${field}`,
+    field,
+  }),
+  Network: ({ cause }: { cause: unknown }) => ({
+    message: `Network request failed: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+  Auth: () => ({
+    message: 'Not authenticated',
+  }),
 });
 
 type ValidationError = InferError<typeof UserError.Validation>;
@@ -108,22 +116,20 @@ export async function updateUserProfile(
   // Validation
   if (!updates.email?.includes('@')) {
     return UserError.Validation({
-      message: 'Invalid email address',
+      field: 'email',
     });
   }
 
   // Authentication check
   if (!isAuthenticated()) {
-    return UserError.Auth({
-      message: 'Not authenticated',
-    });
+    return UserError.Auth();
   }
 
   // Network operation
   return tryAsync({
     try: () => api.updateUser(userId, updates),
     catch: (error) => UserError.Network({
-      message: 'Network request failed',
+      cause: error,
     })
   });
 }
@@ -229,8 +235,8 @@ export function createOpenAITranscriptionService(apiKey: string): TranscriptionS
           model: options.model,
           language: options.language,
         }),
-        catch: (error) => TranscriptionError.Operation({
-          provider: 'openai', model: options.model,
+        catch: (error) => TranscriptionError.OpenAI({
+          model: options.model, cause: error,
         })
       });
     },
@@ -396,7 +402,7 @@ const transcribeBlob = defineMutation({
       default: {
         // TypeScript ensures exhaustive checking
         const _exhaustive: never = provider;
-        return TranscriptionError.Operation({
+        return TranscriptionError.UnsupportedProvider({
           provider,
         });
       }
@@ -431,8 +437,8 @@ export function createRecordingService(): CRUDService<
     async create(input) {
       return tryAsync({
         try: () => database.recordings.create(input),
-        catch: (error) => DatabaseError.Operation({
-          operation: 'create', input,
+        catch: (error) => DatabaseError.Create({
+          cause: error,
         })
       });
     },
@@ -440,8 +446,8 @@ export function createRecordingService(): CRUDService<
     async getById(id) {
       return tryAsync({
         try: () => database.recordings.findById(id),
-        catch: (error) => DatabaseError.Operation({
-          operation: 'getById', id,
+        catch: (error) => DatabaseError.Lookup({
+          id, cause: error,
         })
       });
     },
