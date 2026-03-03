@@ -63,8 +63,8 @@ wellcrafted uses subpath exports for optimal tree-shaking. Import only what you 
 // Result type utilities
 import { Result, Ok, Err, tryAsync, trySync } from "wellcrafted/result";
 
-// Error utilities  
-import { type TaggedError, extractErrorMessage } from "wellcrafted/error";
+// Error utilities
+import { defineErrors, type InferErrors, extractErrorMessage } from "wellcrafted/error";
 
 // Brand type utilities
 import { type Brand } from "wellcrafted/brand";

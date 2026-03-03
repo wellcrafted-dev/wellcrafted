@@ -191,12 +191,12 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
 ```typescript
 export function trySync<T, E>(config: {
   try: () => T;
-  mapError: (error: unknown) => E;
+  catch: (error: unknown) => Err<E>;
 }): Result<T, E> {
   try {
     return Ok(config.try());
   } catch (error) {
-    return Err(config.mapError(error));
+    return config.catch(error);
   }
 }
 ```

@@ -69,7 +69,7 @@ Start by wrapping external APIs and third-party code:
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // Before: Throwing function
 async function fetchUserOld(id: string): Promise<User> {
