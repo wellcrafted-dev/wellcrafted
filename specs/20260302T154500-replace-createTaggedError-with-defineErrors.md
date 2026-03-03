@@ -348,11 +348,11 @@ Port all existing tests (36 tests pass). Added new tests for:
 ### Step 4: Update `src/error/index.ts` ✅
 Export `defineErrors`, `InferError`, `InferErrorUnion` alongside existing exports. Old exports remain until Wave 3 cleanup.
 
-### Step 5: Move `extractErrorMessage` out of `utils.ts`
-Keep in its own file (e.g., `src/error/extractErrorMessage.ts`).
+### Step 5: Move `extractErrorMessage` out of `utils.ts` ✅
+Moved to `src/error/extractErrorMessage.ts`.
 
-### Step 6: Delete old code
-Remove builder from `utils.ts`, delete `createTaggedError.test.ts`.
+### Step 6: Delete old code ✅
+Deleted `utils.ts` (contained `createTaggedError` builder) and `createTaggedError.test.ts`.
 
 ### Step 7: Update docs
 README, ERROR_HANDLING_GUIDE.md, all docs/ referencing old API.
