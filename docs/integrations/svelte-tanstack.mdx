@@ -139,19 +139,13 @@ A reusable Svelte component for rendering query errors with contextual actions:
     if (!error || typeof error !== 'object') return null;
 
     switch (error.name) {
-      case 'RecordingServiceError':
-        if (error.message?.includes('permission')) {
-          return {
-            label: 'Grant permissions',
-            onClick: () => navigator.mediaDevices.getUserMedia({ audio: true })
-          };
-        }
-        break;
-      case 'TranscriptionServiceError':
-        if (error.message?.includes('API key')) {
-          return { label: 'Add API key', href: '/settings/transcription' };
-        }
-        break;
+      case 'Permission':
+        return {
+          label: 'Grant permissions',
+          onClick: () => navigator.mediaDevices.getUserMedia({ audio: true })
+        };
+      case 'ApiKey':
+        return { label: 'Add API key', href: '/settings/transcription' };
     }
 
     return onRetry ? { label: 'Try again', onClick: onRetry } : null;

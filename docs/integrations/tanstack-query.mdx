@@ -319,14 +319,13 @@ A critical responsibility of the query layer is transforming service-specific er
 
 ```typescript
 // Service layer returns domain-specific errors with typed fields
-const recorderErrors = defineErrors({
-  RecorderServiceError: ({ action, deviceId }: { action: string; deviceId?: string }) => ({
+const RecorderError = defineErrors({
+  Operation: ({ action, deviceId }: { action: string; deviceId?: string }) => ({
     message: `Recorder ${action} failed`,
     action,
     deviceId,
   }),
 });
-const { RecorderServiceError } = recorderErrors;
 
 // Query layer transforms them for UI consumption
 const startRecording = defineMutation({
