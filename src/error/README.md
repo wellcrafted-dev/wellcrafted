@@ -43,6 +43,7 @@ const HttpError = defineErrors({
   Network: () => ({
     message: 'Network request failed',
   }),
+  /** reason is optional — HTTP/2 dropped reason phrases, so it may be absent. */
   Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
     status,
@@ -116,6 +117,7 @@ Use when there's data worth preserving as named fields that callers branch on.
 
 ```typescript
 const ApiError = defineErrors({
+  /** reason is optional — HTTP/2 dropped reason phrases, so it may be absent. */
   Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
     status,
@@ -149,10 +151,16 @@ const AppError = defineErrors({
     model,
   }),
 
+  // Tier 2: Cause-wrapping
+  Upload: ({ cause }: { cause: unknown }) => ({
+    message: `Upload failed: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+
   // Tier 0: Call-site message with fields
-  Operation: ({ operation, message }: { operation: string; message: string }) => ({
+  Export: ({ format, message }: { format: string; message: string }) => ({
     message,
-    operation,
+    format,
   }),
 });
 ```
