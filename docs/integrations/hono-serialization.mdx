@@ -13,12 +13,16 @@ wellcrafted's Result types are plain objects that serialize perfectly over JSON.
 ```typescript
 import { Hono } from 'hono';
 import { Ok, Err, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-const { UserNotFoundError, UserNotFoundErr } = createTaggedError('UserNotFoundError')
-  .withFields<{ userId: string }>()
-  .withMessage(({ userId }) => `User ${userId} not found`);
-type UserNotFoundError = ReturnType<typeof UserNotFoundError>;
+const userErrors = defineErrors({
+  UserNotFoundError: ({ userId }: { userId: string }) => ({
+    message: `User ${userId} not found`,
+    userId,
+  }),
+});
+const { UserNotFoundError, UserNotFoundErr } = userErrors;
+type UserNotFoundError = InferError<typeof userErrors, 'UserNotFoundError'>;
 
 async function getUser(id: string): Promise<Result<User, UserNotFoundError>> {
   if (!id) {

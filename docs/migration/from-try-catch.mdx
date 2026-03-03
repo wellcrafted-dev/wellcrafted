@@ -81,7 +81,7 @@ async function fetchUserOld(id: string): Promise<User> {
 }
 
 // After: Result-returning wrapper
-type ApiError = TaggedError<"ApiError">;
+type ApiError = Readonly<{ name: "ApiError"; message: string }>;
 
 async function fetchUser(id: string): Promise<Result<User, ApiError>> {
   return tryAsync<User, ApiError>({
@@ -402,10 +402,10 @@ class UserService {
 
 ```typescript
 // Step 1: Define specific error types
-type ValidationError = TaggedError<"ValidationError">;
-type UserExistsError = TaggedError<"UserExistsError">;
-type DatabaseError = TaggedError<"DatabaseError">;
-type EmailError = TaggedError<"EmailError">;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
+type UserExistsError = Readonly<{ name: "UserExistsError"; message: string }>;
+type DatabaseError = Readonly<{ name: "DatabaseError"; message: string }>;
+type EmailError = Readonly<{ name: "EmailError"; message: string }>;
 
 type RegistrationError = 
   | ValidationError 
@@ -600,11 +600,11 @@ Use `trySync` and `tryAsync` to wrap third-party code:
 Create specific error types for each failure mode:
 ```typescript
 // ❌ Too generic
-type Error = TaggedError<"Error">;
+Readonly<{ name: "Error"; message: string }>
 
 // ✅ Specific
-type NetworkTimeoutError = TaggedError<"NetworkTimeoutError">;
-type InvalidCredentialsError = TaggedError<"InvalidCredentialsError">;
+Readonly<{ name: "NetworkTimeoutError"; message: string }>
+Readonly<{ name: "InvalidCredentialsError"; message: string }>
 ```
 
 ### 4. Preserve Error Context

@@ -135,13 +135,18 @@ Create services that work in both server and client contexts:
 ```typescript
 // lib/services/users.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 import { db } from '../db';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withFields<{ operation: string; userId?: string }>()
-  .withMessage(({ operation }) => `User service ${operation} failed`);
-type UserServiceError = ReturnType<typeof UserServiceError>;
+const userErrors = defineErrors({
+  UserServiceError: ({ operation, userId }: { operation: string; userId?: string }) => ({
+    message: `User service ${operation} failed`,
+    operation,
+    userId,
+  }),
+});
+const { UserServiceError, UserServiceErr } = userErrors;
+type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
 
 export type User = {
   id: string;

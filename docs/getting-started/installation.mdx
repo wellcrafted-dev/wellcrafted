@@ -131,20 +131,23 @@ wellcrafted works with any JavaScript framework or runtime:
 "use server";
 
 import { tryAsync } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 
-type ServerError = TaggedError<"ServerError">;
+const errors = defineErrors({
+  ServerError: ({ timestamp }: { timestamp: number }) => ({
+    message: "Failed to create user",
+    timestamp,
+  }),
+});
+const { ServerErr } = errors;
+type ServerError = InferError<typeof errors, 'ServerError'>;
 
 export async function createUser(data: FormData) {
   return tryAsync<User, ServerError>({
     try: async () => {
       // Your server action logic
     },
-    catch: (error) => Err({
-      name: "ServerError",
-      message: "Failed to create user",
-      timestamp: Date.now(),
-    })
+    catch: () => ServerErr({ timestamp: Date.now() })
   });
 }
 ```
@@ -154,9 +157,8 @@ export async function createUser(data: FormData) {
 // hooks/useUser.ts
 import { useState, useEffect } from "react";
 import { Result } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
 
-type ApiError = TaggedError<"ApiError">;
+type ApiError = Readonly<{ name: "ApiError"; message: string }>;
 
 export function useUser(id: string) {
   const [result, setResult] = useState<Result<User, ApiError> | null>(null);

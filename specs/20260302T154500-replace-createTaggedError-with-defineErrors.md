@@ -354,8 +354,11 @@ Moved to `src/error/extractErrorMessage.ts`.
 ### Step 6: Delete old code ✅
 Deleted `utils.ts` (contained `createTaggedError` builder) and `createTaggedError.test.ts`.
 
-### Step 7: Update docs
-README, ERROR_HANDLING_GUIDE.md, all docs/ referencing old API.
+### Step 7: Update docs ✅
+Updated all documentation:
+- `README.md`, `ERROR_HANDLING_GUIDE.md`, `src/error/README.md`, `src/README.md`, `AGENTS.md`
+- All `docs/` files (core, patterns, integrations, getting-started, philosophy, migration, case-studies)
+- All `TaggedError<TName, TFields>` generic type references replaced
 
 ## Critical files
 

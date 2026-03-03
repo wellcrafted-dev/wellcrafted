@@ -185,9 +185,9 @@ function processUser(result: Result<User, ApiError>) {
 With discriminated unions, TypeScript can ensure you handle all cases:
 
 ```typescript
-type AuthError = TaggedError<"AuthError">;
-type NetworkError = TaggedError<"NetworkError">;
-type ValidationError = TaggedError<"ValidationError">;
+type AuthError = Readonly<{ name: "AuthError"; message: string }>;
+type NetworkError = Readonly<{ name: "NetworkError"; message: string }>;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
 
 type AppError = AuthError | NetworkError | ValidationError;
 
@@ -275,12 +275,12 @@ function validateUserInput(input: {
 
 ```typescript
 // ❌ Too generic
-type Error = TaggedError<"Error">;
+Readonly<{ name: "Error"; message: string }>
 
 // ✅ Specific and actionable
-type UserNotFoundError = TaggedError<"UserNotFoundError">;
-type InvalidCredentialsError = TaggedError<"InvalidCredentialsError">;
-type SessionExpiredError = TaggedError<"SessionExpiredError">;
+Readonly<{ name: "UserNotFoundError"; message: string }>
+Readonly<{ name: "InvalidCredentialsError"; message: string }>
+Readonly<{ name: "SessionExpiredError"; message: string }>
 ```
 
 ### 2. Use Union Types for Multiple Errors

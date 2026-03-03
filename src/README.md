@@ -17,7 +17,7 @@ This library provides delightful TypeScript utilities including:
 import { Result, Ok, Err, isOk, isErr, trySync, tryAsync } from "wellcrafted/result";
 
 // Error utilities
-import { createTaggedError, type TaggedError, extractErrorMessage } from "wellcrafted/error";
+import { defineErrors, type InferError, type AnyTaggedError, extractErrorMessage } from "wellcrafted/error";
 
 // Brand types
 import { type Brand } from "wellcrafted/brand";
@@ -72,10 +72,13 @@ if (isOk(result)) {
 ### Safe Operation Execution
 
 ```typescript
-// Define an error type with the builder API
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `JSON parsing failed: ${reason}`);
+// Define an error type with defineErrors
+const { ValidationError, ValidationErr } = defineErrors({
+  ValidationError: ({ reason }: { reason: string }) => ({
+    message: `JSON parsing failed: ${reason}`,
+    reason,
+  }),
+});
 
 // Wrapping a potentially throwing operation
 const result = trySync({

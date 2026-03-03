@@ -28,15 +28,12 @@ TaggedError solves all these issues:
 3. **Lightweight**: No overhead of class instantiation or prototype chains
 4. **Flat structure**: Fields are spread directly on the error object — no nesting
 
-## The TaggedError Type
+## The TaggedError Shape
 
-Every `TaggedError` has a `name` and `message`, plus any additional fields spread flat on the object:
+Every tagged error has a `name` and `message`, plus any additional fields spread flat on the object:
 
 ```typescript
-type TaggedError<
-  TName extends string = string,
-  TFields extends JsonObject = Record<never, never>,
-> = Readonly<{ name: TName; message: string } & TFields>;
+Readonly<{ name: TName; message: string } & TFields>
 ```
 
 The minimal type for any tagged error is:
@@ -50,9 +47,23 @@ type AnyTaggedError = { name: string; message: string };
 This is your error's unique identifier and the key to pattern matching. Use it in `if` statements and `switch` statements to handle different error types:
 
 ```typescript
-type ValidationError = TaggedError<"ValidationError", { field: string }>;
-type NetworkError = TaggedError<"NetworkError", { url: string }>;
-type FileError = TaggedError<"FileError", { path: string }>;
+const errors = defineErrors({
+  ValidationError: ({ field }: { field: string }) => ({
+    message: `Validation failed for field "${field}"`,
+    field,
+  }),
+  NetworkError: ({ url }: { url: string }) => ({
+    message: `Network request to ${url} failed`,
+    url,
+  }),
+  FileError: ({ path }: { path: string }) => ({
+    message: `File operation failed for ${path}`,
+    path,
+  }),
+});
+type ValidationError = InferError<typeof errors, 'ValidationError'>;
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+type FileError = InferError<typeof errors, 'FileError'>;
 
 function handleError(error: ValidationError | NetworkError | FileError) {
   switch (error.name) {
@@ -74,12 +85,18 @@ function handleError(error: ValidationError | NetworkError | FileError) {
 
 ### `message` — Human-Readable Text
 
-When `.withMessage()` is used, the template **seals** the message — `message` is not in the factory input type. The template computes the message from the fields:
+When using `defineErrors`, the constructor function computes the message from the input fields — the caller never passes `message` directly:
 
 ```typescript
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError')
-  .withFields<{ email: string }>()
-  .withMessage(({ email }) => `Email address "${email}" must contain an @ symbol`);
+import { defineErrors } from 'wellcrafted/error';
+
+const errors = defineErrors({
+  ValidationError: ({ email }: { email: string }) => ({
+    message: `Email address "${email}" must contain an @ symbol`,
+    email,
+  }),
+});
+const { ValidationError, ValidationErr } = errors;
 
 return ValidationErr({ email: userInput });
 ```
@@ -89,11 +106,17 @@ return ValidationErr({ email: userInput });
 Additional data is spread directly on the error object, not nested under a `context` property. This makes access natural and concise:
 
 ```typescript
-const { ProcessError, ProcessErr } = createTaggedError('ProcessError')
-  .withFields<{ userId: number; timestamp: string; retryCount: number }>()
-  .withMessage(() => 'User processing failed');
+const errors = defineErrors({
+  ProcessError: ({ userId, timestamp, retryCount }: { userId: number; timestamp: string; retryCount: number }) => ({
+    message: 'User processing failed',
+    userId,
+    timestamp,
+    retryCount,
+  }),
+});
+const { ProcessError, ProcessErr } = errors;
 
-function processUser(id: number): Result<User, ProcessError> {
+function processUser(id: number): Result<User, InferError<typeof errors, 'ProcessError'>> {
   return ProcessErr({
     userId: id,
     timestamp: new Date().toISOString(),
@@ -111,15 +134,19 @@ Fields should include the function's input parameters and any relevant debugging
 
 ## The Three Tiers
 
-The `createTaggedError` builder supports three tiers of complexity:
+The `defineErrors` API supports three tiers of complexity:
 
 ### Tier 1: Static Error (No Fields)
 
 For errors where the message is always the same and no additional data is needed:
 
 ```typescript
-const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
-  .withMessage(() => 'A recording is already in progress');
+const errors = defineErrors({
+  RecorderBusyError: () => ({
+    message: 'A recording is already in progress',
+  }),
+});
+const { RecorderBusyError, RecorderBusyErr } = errors;
 
 // No arguments at the call site
 RecorderBusyErr();
@@ -131,9 +158,13 @@ RecorderBusyErr();
 For errors that just need a human-readable reason string:
 
 ```typescript
-const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
+const errors = defineErrors({
+  PlaySoundError: ({ reason }: { reason: string }) => ({
+    message: `Failed to play sound: ${reason}`,
+    reason,
+  }),
+});
+const { PlaySoundError, PlaySoundErr } = errors;
 
 PlaySoundErr({ reason: 'Audio context not initialized' });
 // → { name: 'PlaySoundError', message: 'Failed to play sound: Audio context not initialized', reason: 'Audio context not initialized' }
@@ -144,11 +175,14 @@ PlaySoundErr({ reason: 'Audio context not initialized' });
 For errors that carry rich, typed debugging information:
 
 ```typescript
-const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; reason?: string }>()
-  .withMessage(({ status, reason }) =>
-    `HTTP ${status}${reason ? `: ${reason}` : ''}`
-  );
+const errors = defineErrors({
+  ResponseError: ({ status, reason }: { status: number; reason?: string }) => ({
+    message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
+    status,
+    reason,
+  }),
+});
+const { ResponseError, ResponseErr } = errors;
 
 ResponseErr({ status: 404 });
 // → { name: 'ResponseError', message: 'HTTP 404', status: 404 }
@@ -159,28 +193,54 @@ ResponseErr({ status: 500, reason: 'Internal server error' });
 
 ## Error Chaining
 
-There is no dedicated `.withCause()` step. If you need to chain errors, model `cause` as just another field:
+There is no dedicated cause step. If you need to chain errors, model `cause` as just another field:
 
 ```typescript
+import { defineErrors, type InferError } from 'wellcrafted/error';
+
 // Define errors for each layer
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withFields<{ host: string; port: number; timeout: number }>()
-  .withMessage(({ timeout }) => `Socket timeout after ${timeout}ms`);
-type NetworkError = ReturnType<typeof NetworkError>;
+const networkErrors = defineErrors({
+  NetworkError: ({ host, port, timeout }: { host: string; port: number; timeout: number }) => ({
+    message: `Socket timeout after ${timeout}ms`,
+    host,
+    port,
+    timeout,
+  }),
+});
+const { NetworkError, NetworkErr } = networkErrors;
+type NetworkError = InferError<typeof networkErrors, 'NetworkError'>;
 
-const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError')
-  .withFields<{ operation: string; retries: number; cause: NetworkError }>()
-  .withMessage(() => 'Failed to connect to database');
-type DatabaseError = ReturnType<typeof DatabaseError>;
+const dbErrors = defineErrors({
+  DatabaseError: ({ operation, retries, cause }: { operation: string; retries: number; cause: NetworkError }) => ({
+    message: 'Failed to connect to database',
+    operation,
+    retries,
+    cause,
+  }),
+});
+const { DatabaseError, DatabaseErr } = dbErrors;
+type DatabaseError = InferError<typeof dbErrors, 'DatabaseError'>;
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withFields<{ userId: string; method: string; cause: DatabaseError }>()
-  .withMessage(() => 'Could not fetch user profile');
-type UserServiceError = ReturnType<typeof UserServiceError>;
+const userServiceErrors = defineErrors({
+  UserServiceError: ({ userId, method, cause }: { userId: string; method: string; cause: DatabaseError }) => ({
+    message: 'Could not fetch user profile',
+    userId,
+    method,
+    cause,
+  }),
+});
+const { UserServiceError, UserServiceErr } = userServiceErrors;
+type UserServiceError = InferError<typeof userServiceErrors, 'UserServiceError'>;
 
-const { APIError, APIErr } = createTaggedError('APIError')
-  .withFields<{ endpoint: string; statusCode: number; cause: UserServiceError }>()
-  .withMessage(() => 'Internal server error');
+const apiErrors = defineErrors({
+  APIError: ({ endpoint, statusCode, cause }: { endpoint: string; statusCode: number; cause: UserServiceError }) => ({
+    message: 'Internal server error',
+    endpoint,
+    statusCode,
+    cause,
+  }),
+});
+const { APIError, APIErr } = apiErrors;
 
 // Low-level network error
 const networkError = NetworkError({
@@ -247,96 +307,132 @@ This chaining pattern provides:
 Define a set of possible errors for each domain in your application:
 
 ```typescript
-// Define your specific error types
-export type FileNotFoundError = TaggedError<"FileNotFoundError", { path: string }>;
-export type PermissionDeniedError = TaggedError<"PermissionDeniedError", { path: string; user: string }>;
-export type DiskFullError = TaggedError<"DiskFullError", { volumeName: string }>;
+import { defineErrors, type InferError } from 'wellcrafted/error';
+
+// Define error factories for this domain
+const fileSystemErrors = defineErrors({
+  FileNotFoundError: ({ path }: { path: string }) => ({
+    message: `The file at path "${path}" was not found`,
+    path,
+  }),
+  PermissionDeniedError: ({ path, user }: { path: string; user: string }) => ({
+    message: `Permission denied for "${path}"`,
+    path,
+    user,
+  }),
+  DiskFullError: ({ volumeName }: { volumeName: string }) => ({
+    message: `Disk full on volume "${volumeName}"`,
+    volumeName,
+  }),
+});
+
+// Extract individual error types
+type FileNotFoundError = InferError<typeof fileSystemErrors, 'FileNotFoundError'>;
+type PermissionDeniedError = InferError<typeof fileSystemErrors, 'PermissionDeniedError'>;
+type DiskFullError = InferError<typeof fileSystemErrors, 'DiskFullError'>;
 
 // Create a union of all possible errors for this domain
-export type FileSystemError =
-  | FileNotFoundError
-  | PermissionDeniedError
-  | DiskFullError;
-
-// Use createTaggedError to define factories
-const { FileNotFoundErr } = createTaggedError('FileNotFoundError')
-  .withFields<{ path: string }>()
-  .withMessage(({ path }) => `The file at path "${path}" was not found`);
+type FileSystemError = FileNotFoundError | PermissionDeniedError | DiskFullError;
 ```
 
-## The createTaggedError API
+## The defineErrors API
 
-wellcrafted provides a fluent `createTaggedError` builder that eliminates boilerplate and enforces consistent error structure. Factories are available immediately — `.withMessage(fn)` is an **optional** step that seals the message when present.
+wellcrafted provides `defineErrors` — a declarative API that eliminates boilerplate and enforces consistent error structure. Each key in the config object maps to a constructor function that returns `{ message, ...fields }`. The `name` is automatically stamped from the key.
 
 ```typescript
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-// Without .withMessage() — message required at call site
-const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
-SimpleErr({ message: 'Something went wrong' });
+// Define errors with constructor functions
+const errors = defineErrors({
+  // Static error — no input, fixed message
+  NetworkError: () => ({
+    message: 'Network request failed',
+  }),
 
-// With .withMessage() — message sealed by template
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withMessage(() => 'Network request failed');
+  // Structured error — typed input, computed message
+  FileError: ({ path, operation }: { path: string; operation: string }) => ({
+    message: `${operation} failed for ${path}`,
+    path,
+    operation,
+  }),
+});
 
-// Extract the type using ReturnType
-type NetworkError = ReturnType<typeof NetworkError>;
+const { NetworkError, NetworkErr, FileError, FileErr } = errors;
 
-// Two factory functions are created:
+// Extract the type using InferError
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+
+// Two factory functions are created per error:
 // - NetworkError(): Creates plain error object
 // - NetworkErr(): Creates Err-wrapped error (for Result returns)
 ```
 
-### `.withMessage(fn)` — Optional, Seals the Message
+### Constructor Functions — Define Message and Fields Together
 
-`.withMessage(fn)` is an **optional** builder step. It accepts a function that receives the fields and returns the error message string. When present, `message` is NOT in the factory input type — the template owns the message entirely.
+Each constructor function receives the input fields and returns an object with `message` plus any additional fields to spread on the error. The `name` is stamped automatically from the key.
 
 ```typescript
-// With .withMessage() — message sealed by template
-const { FileError, FileErr } = createTaggedError('FileError')
-  .withFields<{ path: string; operation: 'read' | 'write' | 'delete' }>()
-  .withMessage(({ path, operation }) => `${operation} failed for ${path}`);
+const errors = defineErrors({
+  // Constructor computes message and returns fields
+  FileError: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
+    message: `${operation} failed for ${path}`,
+    path,
+    operation,
+  }),
+});
+const { FileError, FileErr } = errors;
 
 FileErr({ path: '/etc/passwd', operation: 'write' });
 // → { name: 'FileError', message: 'write failed for /etc/passwd', path: '/etc/passwd', operation: 'write' }
 
-// Without .withMessage() — message required at call site
-const { GenericError, GenericErr } = createTaggedError('GenericError')
-  .withFields<{ path: string }>();
+// For errors where the caller provides the message directly:
+const messageErrors = defineErrors({
+  GenericError: ({ message, path }: { message: string; path: string }) => ({
+    message,
+    path,
+  }),
+});
+const { GenericError, GenericErr } = messageErrors;
 
 GenericErr({ message: 'Failed to process file', path: '/etc/passwd' });
 ```
 
 <Note>
-Two mutually exclusive modes: without `.withMessage()`, `message` is required at the call site. With `.withMessage()`, the template seals the message — `message` is not in the input type.
+The constructor function is the single source of truth: it defines both the input shape and how the message is computed. No separate `.withFields()` or `.withMessage()` steps needed.
 </Note>
 
-### `.withFields<T>()` — Defining Structured Data
-
-Use `.withFields<T>()` to define additional fields spread flat on the error object. The type `T` must be a `JsonObject` and must not include the reserved key `name`.
-
-#### Required Fields
+### Required Fields
 
 When you know what information is **always** needed:
 
 ```typescript
-const { FileError, FileErr } = createTaggedError('FileError')
-  .withFields<{ path: string; operation: 'read' | 'write' | 'delete' }>()
-  .withMessage(({ path, operation }) => `${operation} failed for ${path}`);
+const errors = defineErrors({
+  FileError: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
+    message: `${operation} failed for ${path}`,
+    path,
+    operation,
+  }),
+});
+const { FileError, FileErr } = errors;
 
 // Fields are REQUIRED — TypeScript enforces it
 FileErr({ path: '/etc/passwd', operation: 'write' });
 // FileErr();  // Type error! fields are required
 ```
 
-#### Optional Fields
+### Optional Fields
 
 Use optional properties when fields are not always available:
 
 ```typescript
-const { LogError, LogErr } = createTaggedError('LogError')
-  .withFields<{ file?: string; line?: number }>()
-  .withMessage(() => 'Log parse failed');
+const errors = defineErrors({
+  LogError: ({ file, line }: { file?: string; line?: number } = {}) => ({
+    message: 'Log parse failed',
+    file,
+    line,
+  }),
+});
+const { LogError, LogErr } = errors;
 
 // No fields needed
 LogErr();
@@ -348,71 +444,94 @@ LogErr({ file: 'app.ts', line: 42 });
 
 ### Fields Must Be JSON-Serializable
 
-Fields must conform to `JsonObject` — all values must be JSON-serializable primitives, arrays, or nested objects. This ensures errors survive any serialization boundary.
+Fields must be JSON-serializable primitives, arrays, or nested objects. This ensures errors survive any serialization boundary.
 
 ```typescript
-// Valid JsonObject fields
-FileErr({ path: '/etc/passwd', size: 1024, tags: ['system'] });
+// Valid JSON-serializable fields
+FileErr({ path: '/etc/passwd', operation: 'read' });
 
 // Not allowed — Date, functions, class instances are not JSON-serializable
-FileErr({ createdAt: new Date(), handler: () => {} });  // Type error!
+// FileErr({ createdAt: new Date(), handler: () => {} });  // Type error!
 ```
 
 ### Extracting the Error Type
 
-Use `ReturnType<typeof FactoryFn>` to get the TypeScript type for a factory:
+Use `InferError` to get the TypeScript type for a specific error from a `defineErrors` return:
 
 ```typescript
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withFields<{ url: string; status: number }>()
-  .withMessage(({ url, status }) => `Request to ${url} failed with ${status}`);
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-type NetworkError = ReturnType<typeof NetworkError>;
-// NetworkError = TaggedError<'NetworkError', { url: string; status: number }>
+const errors = defineErrors({
+  NetworkError: ({ url, status }: { url: string; status: number }) => ({
+    message: `Request to ${url} failed with ${status}`,
+    url,
+    status,
+  }),
+});
+
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+// NetworkError = Readonly<{ name: 'NetworkError'; message: string; url: string; status: number }>
 ```
 
 ### Quick Reference
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-// Tier 1: Static — no fields, no args at call site
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withMessage(() => 'Network request failed');
+const errors = defineErrors({
+  // Tier 1: Static — no fields, no args at call site
+  NetworkError: () => ({
+    message: 'Network request failed',
+  }),
 
-// Tier 2: Reason-only
-const { ParseError, ParseErr } = createTaggedError('ParseError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `Parse failed: ${reason}`);
+  // Tier 2: Reason-only
+  ParseError: ({ reason }: { reason: string }) => ({
+    message: `Parse failed: ${reason}`,
+    reason,
+  }),
 
-// Tier 3: Structured data
-const { FileError, FileErr } = createTaggedError('FileError')
-  .withFields<{ path: string; operation: string }>()
-  .withMessage(({ path, operation }) => `File ${operation} failed: ${path}`);
+  // Tier 3: Structured data
+  FileError: ({ path, operation }: { path: string; operation: string }) => ({
+    message: `File ${operation} failed: ${path}`,
+    path,
+    operation,
+  }),
 
-// Structured with optional fields
-const { LogError, LogErr } = createTaggedError('LogError')
-  .withFields<{ file?: string; line?: number }>()
-  .withMessage(() => 'Log parse failed');
+  // Structured with optional fields
+  LogError: ({ file, line }: { file?: string; line?: number } = {}) => ({
+    message: 'Log parse failed',
+    file,
+    line,
+  }),
 
-// Chaining via cause field
-const { ServiceError, ServiceErr } = createTaggedError('ServiceError')
-  .withFields<{ endpoint: string; cause?: NetworkError }>()
-  .withMessage(({ endpoint }) => `Service call failed: ${endpoint}`);
+  // Chaining via cause field
+  ServiceError: ({ endpoint, cause }: { endpoint: string; cause?: InferError<typeof errors, 'NetworkError'> }) => ({
+    message: `Service call failed: ${endpoint}`,
+    endpoint,
+    cause,
+  }),
+});
+
+// Destructure factories
+const { NetworkError, NetworkErr, FileError, FileErr } = errors;
 
 // Extract types
-type NetworkError = ReturnType<typeof NetworkError>;
-type FileError = ReturnType<typeof FileError>;
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+type FileError = InferError<typeof errors, 'FileError'>;
 ```
 
 ### Using in tryAsync/trySync
 
-The factory pattern works seamlessly with error mapping. When `.withMessage()` is used, pass only fields — the message is sealed by the template:
+The factory pattern works seamlessly with error mapping. The constructor function handles both fields and message:
 
 ```typescript
-const { ApiError, ApiErr } = createTaggedError('ApiError')
-  .withFields<{ endpoint: string }>()
-  .withMessage(({ endpoint }) => `Failed to fetch data from ${endpoint}`);
+const errors = defineErrors({
+  ApiError: ({ endpoint }: { endpoint: string }) => ({
+    message: `Failed to fetch data from ${endpoint}`,
+    endpoint,
+  }),
+});
+const { ApiError, ApiErr } = errors;
 
 const result = await tryAsync({
   try: () => fetch('/api/data').then(r => r.json()),
@@ -425,9 +544,16 @@ const result = await tryAsync({
 Unlike JavaScript's Error class, TaggedErrors are plain objects that serialize perfectly:
 
 ```typescript
-const { ValidationError } = createTaggedError('ValidationError')
-  .withFields<{ field: string; value: number; min: number; max: number }>()
-  .withMessage(({ field, min, max }) => `${field} must be between ${min} and ${max}`);
+const errors = defineErrors({
+  ValidationError: ({ field, value, min, max }: { field: string; value: number; min: number; max: number }) => ({
+    message: `${field} must be between ${min} and ${max}`,
+    field,
+    value,
+    min,
+    max,
+  }),
+});
+const { ValidationError } = errors;
 
 const error = ValidationError({
   field: "age", value: -5, min: 0, max: 150
@@ -456,9 +582,16 @@ This enables:
 Always start with the function's input parameters:
 
 ```typescript
-const { DbError, DbErr } = createTaggedError('DbError')
-  .withFields<{ query: string; params: unknown[]; timestamp: string; connectionPool: string }>()
-  .withMessage(({ query }) => `Database query failed: ${query}`);
+const errors = defineErrors({
+  DbError: ({ query, params, timestamp, connectionPool }: { query: string; params: unknown[]; timestamp: string; connectionPool: string }) => ({
+    message: `Database query failed: ${query}`,
+    query,
+    params,
+    timestamp,
+    connectionPool,
+  }),
+});
+const { DbError, DbErr } = errors;
 
 // At the call site — fields capture function inputs and debugging info
 DbErr({
@@ -475,12 +608,12 @@ Avoid generic error types:
 
 ```typescript
 // Too generic
-type Error = TaggedError<"Error">;
+Readonly<{ name: "Error"; message: string }>
 
 // Specific and actionable
-type UserNotFoundError = TaggedError<"UserNotFoundError", { userId: string }>;
-type InvalidCredentialsError = TaggedError<"InvalidCredentialsError", { username: string }>;
-type SessionExpiredError = TaggedError<"SessionExpiredError", { sessionId: string }>;
+Readonly<{ name: "UserNotFoundError"; message: string; userId: string }>
+Readonly<{ name: "InvalidCredentialsError"; message: string; username: string }>
+Readonly<{ name: "SessionExpiredError"; message: string; sessionId: string }>
 ```
 
 ### 3. Use Union Types for Function Signatures
@@ -500,9 +633,15 @@ function authenticateUser(
 Transform errors where you can add context:
 
 ```typescript
-const { UserServiceErr } = createTaggedError('UserServiceError')
-  .withFields<{ userId: string; operation: string; cause: DbError }>()
-  .withMessage(({ operation }) => `Failed to ${operation}`);
+const errors = defineErrors({
+  UserServiceError: ({ userId, operation, cause }: { userId: string; operation: string; cause: DbError }) => ({
+    message: `Failed to ${operation}`,
+    userId,
+    operation,
+    cause,
+  }),
+});
+const { UserServiceError, UserServiceErr } = errors;
 
 async function getUserProfile(userId: string): Result<Profile, UserServiceError> {
   const dbResult = await queryDatabase(`SELECT * FROM users WHERE id = ?`, [userId]);
@@ -528,9 +667,16 @@ Structure your errors to answer these questions:
 - **What was the root cause?** (cause field if chained)
 
 ```typescript
-const { PaymentErr } = createTaggedError('PaymentError')
-  .withFields<{ orderId: string; amount: number; cardLast4: string; cause: CardValidationError }>()
-  .withMessage(() => 'Payment processing failed');
+const errors = defineErrors({
+  PaymentError: ({ orderId, amount, cardLast4, cause }: { orderId: string; amount: number; cardLast4: string; cause: CardValidationError }) => ({
+    message: 'Payment processing failed',
+    orderId,
+    amount,
+    cardLast4,
+    cause,
+  }),
+});
+const { PaymentError, PaymentErr } = errors;
 
 function processPayment(order: Order, card: Card): Result<Receipt, PaymentError> {
   const validation = validateCard(card);
@@ -577,24 +723,29 @@ async function createOrder(input: OrderInput): Promise<Result<Order, OrderError>
 When you need to collect multiple errors:
 
 ```typescript
-const { ValidationError } = createTaggedError('ValidationError')
-  .withFields<{ field: string; value?: string }>()
-  .withMessage(({ field }) => `Validation failed for field "${field}"`);
-type ValidationError = ReturnType<typeof ValidationError>;
+const errors = defineErrors({
+  ValidationError: ({ field, value }: { field: string; value?: string }) => ({
+    message: `Validation failed for field "${field}"`,
+    field,
+    value,
+  }),
+});
+const { ValidationError } = errors;
+type ValidationError = InferError<typeof errors, 'ValidationError'>;
 
 function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]> {
-  const errors: ValidationError[] = [];
+  const validationErrors: ValidationError[] = [];
 
   if (!input.email?.includes('@')) {
-    errors.push(ValidationError({ field: 'email', value: input.email }));
+    validationErrors.push(ValidationError({ field: 'email', value: input.email }));
   }
 
   if (!input.password || input.password.length < 8) {
-    errors.push(ValidationError({ field: 'password' }));
+    validationErrors.push(ValidationError({ field: 'password' }));
   }
 
-  if (errors.length > 0) {
-    return Err(errors);
+  if (validationErrors.length > 0) {
+    return Err(validationErrors);
   }
 
   return Ok(input as ValidatedForm);
@@ -606,10 +757,16 @@ function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]
 Implement retry logic with typed errors:
 
 ```typescript
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withFields<{ url: string; attempt: number; maxRetries: number }>()
-  .withMessage(({ attempt, maxRetries }) => `Request failed (attempt ${attempt}/${maxRetries})`);
-type NetworkError = ReturnType<typeof NetworkError>;
+const errors = defineErrors({
+  NetworkError: ({ url, attempt, maxRetries }: { url: string; attempt: number; maxRetries: number }) => ({
+    message: `Request failed (attempt ${attempt}/${maxRetries})`,
+    url,
+    attempt,
+    maxRetries,
+  }),
+});
+const { NetworkError, NetworkErr } = errors;
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
 
 async function fetchWithRetry<T>(
   url: string,
@@ -645,17 +802,22 @@ TaggedErrors are designed to work seamlessly with the Result type:
 
 ```typescript
 import { Result, Ok, Err, tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 
-const { DatabaseError, DatabaseErr } = createTaggedError('DatabaseError')
-  .withFields<{ userId: string; operation: string }>()
-  .withMessage(({ operation }) => `Database ${operation} failed`);
-type DatabaseError = ReturnType<typeof DatabaseError>;
-
-const { UserNotFoundError, UserNotFoundErr } = createTaggedError('UserNotFoundError')
-  .withFields<{ userId: string }>()
-  .withMessage(({ userId }) => `User with ID ${userId} not found`);
-type UserNotFoundError = ReturnType<typeof UserNotFoundError>;
+const errors = defineErrors({
+  DatabaseError: ({ userId, operation }: { userId: string; operation: string }) => ({
+    message: `Database ${operation} failed`,
+    userId,
+    operation,
+  }),
+  UserNotFoundError: ({ userId }: { userId: string }) => ({
+    message: `User with ID ${userId} not found`,
+    userId,
+  }),
+});
+const { DatabaseError, DatabaseErr, UserNotFoundError, UserNotFoundErr } = errors;
+type DatabaseError = InferError<typeof errors, 'DatabaseError'>;
+type UserNotFoundError = InferError<typeof errors, 'UserNotFoundError'>;
 
 async function getUser(id: string): Promise<Result<User, UserNotFoundError | DatabaseError>> {
   const result = await tryAsync<User, DatabaseError>({

@@ -129,12 +129,17 @@ Services are pure functions with explicit dependencies, used throughout Whisperi
 ```typescript
 // lib/services/recordings.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-const { RecordingServiceError, RecordingServiceErr } = createTaggedError('RecordingServiceError')
-  .withFields<{ operation: string; recordingId?: string }>()
-  .withMessage(({ operation }) => `Recording ${operation} failed`);
-type RecordingServiceError = ReturnType<typeof RecordingServiceError>;
+const recordingErrors = defineErrors({
+  RecordingServiceError: ({ operation, recordingId }: { operation: string; recordingId?: string }) => ({
+    message: `Recording ${operation} failed`,
+    operation,
+    recordingId,
+  }),
+});
+const { RecordingServiceError, RecordingServiceErr } = recordingErrors;
+type RecordingServiceError = InferError<typeof recordingErrors, 'RecordingServiceError'>;
 
 export type Recording = {
   id: string;

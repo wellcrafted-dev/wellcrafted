@@ -270,10 +270,9 @@ Brand types work beautifully with Result types for validated data:
 ```typescript
 import { Result, Ok, Err } from "wellcrafted/result";
 import { type Brand } from "wellcrafted/brand";
-import { type TaggedError } from "wellcrafted/error";
 
 type UserId = string & Brand<"UserId">;
-type UserIdError = TaggedError<"UserIdError">;
+type UserIdError = Readonly<{ name: "UserIdError"; message: string }>;
 
 function parseUserId(input: string): Result<UserId, UserIdError> {
   if (!input.startsWith("user_")) {

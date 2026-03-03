@@ -22,13 +22,18 @@ Here's the recommended pattern for creating services:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 
 // 1. Define service-specific errors with typed fields
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withFields<{ userId?: string; operation: string }>()
-  .withMessage(({ operation }) => `User ${operation} failed`);
-type UserServiceError = ReturnType<typeof UserServiceError>;
+const userErrors = defineErrors({
+  UserServiceError: ({ userId, operation }: { userId?: string; operation: string }) => ({
+    message: `User ${operation} failed`,
+    userId,
+    operation,
+  }),
+});
+const { UserServiceError, UserServiceErr } = userErrors;
+type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
 
 // 2. Create service with factory function
 export function createUserService(db: Database) {
@@ -92,15 +97,21 @@ export const UserServiceLive = createUserService(databaseInstance);
 Services often need multiple dependencies:
 
 ```typescript
-const { PaymentServiceError, PaymentServiceErr } = createTaggedError("PaymentServiceError")
-  .withFields<{ amount?: number; paymentId?: string }>()
-  .withMessage(() => 'Payment processing failed');
-const { OrderServiceError, OrderServiceErr } = createTaggedError("OrderServiceError")
-  .withFields<{ input?: OrderInput }>()
-  .withMessage(() => 'Order operation failed');
+const orderErrors = defineErrors({
+  PaymentServiceError: ({ amount, paymentId }: { amount?: number; paymentId?: string }) => ({
+    message: 'Payment processing failed',
+    amount,
+    paymentId,
+  }),
+  OrderServiceError: ({ input }: { input?: OrderInput }) => ({
+    message: 'Order operation failed',
+    input,
+  }),
+});
+const { PaymentServiceError, PaymentServiceErr, OrderServiceError, OrderServiceErr } = orderErrors;
 
-type PaymentServiceError = ReturnType<typeof PaymentServiceError>;
-type OrderServiceError = ReturnType<typeof OrderServiceError>;
+type PaymentServiceError = InferError<typeof orderErrors, 'PaymentServiceError'>;
+type OrderServiceError = InferError<typeof orderErrors, 'OrderServiceError'>;
 
 export function createOrderService(
   db: Database,
@@ -160,18 +171,24 @@ export function createOrderService(
 For services that need different implementations per platform:
 
 ```typescript
+import { defineErrors, type InferError } from 'wellcrafted/error';
+
 // types.ts - Define the interface
 export type NotificationService = {
   notify(message: string): Promise<Result<void, NotificationServiceError>>;
   requestPermission(): Promise<Result<boolean, NotificationServiceError>>;
 };
 
-const { NotificationServiceError, NotificationServiceErr } =
-  createTaggedError("NotificationServiceError")
-    .withFields<{ action: string; platform?: string }>()
-    .withMessage(({ action }) => `Notification ${action} failed`);
+const notificationErrors = defineErrors({
+  NotificationServiceError: ({ action, platform }: { action: string; platform?: string }) => ({
+    message: `Notification ${action} failed`,
+    action,
+    platform,
+  }),
+});
+const { NotificationServiceError, NotificationServiceErr } = notificationErrors;
 
-type NotificationServiceError = ReturnType<typeof NotificationServiceError>;
+type NotificationServiceError = InferError<typeof notificationErrors, 'NotificationServiceError'>;
 
 // desktop.ts - Desktop implementation
 export function createNotificationServiceDesktop(): NotificationService {
@@ -224,7 +241,7 @@ export function createNotificationServiceWeb(): NotificationService {
 }
 
 // index.ts - Runtime platform detection
-export const NotificationServiceLive = typeof window !== 'undefined' 
+export const NotificationServiceLive = typeof window !== 'undefined'
   ? createNotificationServiceWeb()
   : createNotificationServiceDesktop();
 ```
@@ -288,10 +305,14 @@ export function createConfigService() {
 Decide whether to recover or propagate based on the error:
 
 ```typescript
-const { FileServiceError, FileServiceErr } = createTaggedError("FileServiceError")
-  .withFields<{ path: string }>()
-  .withMessage(({ path }) => `File operation failed: ${path}`);
-type FileServiceError = ReturnType<typeof FileServiceError>;
+const fileErrors = defineErrors({
+  FileServiceError: ({ path }: { path: string }) => ({
+    message: `File operation failed: ${path}`,
+    path,
+  }),
+});
+const { FileServiceError, FileServiceErr } = fileErrors;
+type FileServiceError = InferError<typeof fileErrors, 'FileServiceError'>;
 
 export function createFileService() {
   return {
@@ -331,17 +352,17 @@ export function createSessionService(db: Database) {
         try: () => db.sessions.delete(sessionId),
         catch: () => Ok(undefined) // Session already deleted? Fine.
       });
-      
+
       await tryAsync({
         try: () => db.tempFiles.deleteBySession(sessionId),
         catch: () => Ok(undefined) // No temp files? Fine.
       });
-      
+
       await tryAsync({
         try: () => db.logs.archiveBySession(sessionId),
         catch: () => Ok(undefined) // Can't archive? Not critical.
       });
-      
+
       return Ok(undefined);
     }
   };
@@ -372,10 +393,10 @@ export function createResilientService() {
             // OR return NetworkErr(...) for propagation
           }
         });
-        
+
         if (result.data !== null) return result;
       }
-      
+
       return Ok(null); // All retries exhausted
     }
   };
@@ -417,21 +438,21 @@ export function createAppService(
       // Get user
       const userResult = await userService.getUser(userId);
       if (userResult.error) return userResult;
-      
+
       // Create order
       const orderResult = await orderService.createOrder({
         userId,
         productId,
         payment: userResult.data.defaultPaymentMethod
       });
-      
+
       if (orderResult.error) return orderResult;
-      
+
       // Send notification (don't fail purchase if notification fails)
       await notificationService.notify(
         `Order ${orderResult.data.id} confirmed!`
       );
-      
+
       return Ok(orderResult.data);
     }
   };
@@ -456,29 +477,29 @@ describe('UserService', () => {
         create: async (input) => ({ id: '123', ...input })
       }
     };
-    
+
     const service = createUserService(mockDb);
     const result = await service.createUser({
       email: 'test@example.com',
       name: 'Test User'
     });
-    
+
     expect(result).toEqual(Ok({
       id: '123',
       email: 'test@example.com',
       name: 'Test User'
     }));
   });
-  
+
   it('should reject invalid email', async () => {
     const mockDb = { users: { create: async () => {} } };
     const service = createUserService(mockDb);
-    
+
     const result = await service.createUser({
       email: 'invalid-email',
       name: 'Test User'
     });
-    
+
     expect(result.error).toBeDefined();
     expect(result.error?.message).toBe('User createUser failed');
   });
@@ -493,26 +514,38 @@ Keep error types focused:
 
 ```typescript
 // ✅ Good - specific error type
-const { UserServiceError } = createTaggedError("UserServiceError")
-  .withMessage(() => 'User service operation failed');
+const errors = defineErrors({
+  UserServiceError: () => ({
+    message: 'User service operation failed',
+  }),
+});
 
 // ❌ Bad - too generic
-const { ServiceError } = createTaggedError("ServiceError")
-  .withMessage(() => 'Service operation failed');
+const errors = defineErrors({
+  ServiceError: () => ({
+    message: 'Service operation failed',
+  }),
+});
 ```
 
 ### 2. Include Fields in Errors
 
-Always include relevant debugging information. Define your error with `.withFields()` to require it:
+Always include relevant debugging information. Define your error constructor to require it:
 
 ```typescript
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withFields<{
+const errors = defineErrors({
+  UserServiceError: ({ userId, operation, timestamp }: {
     userId: string;
     operation: string;
     timestamp?: string;
-  }>()
-  .withMessage(({ operation }) => `User ${operation} failed`);
+  }) => ({
+    message: `User ${operation} failed`,
+    userId,
+    operation,
+    timestamp,
+  }),
+});
+const { UserServiceError, UserServiceErr } = errors;
 
 // Now fields are required with the exact shape
 return UserServiceErr({
@@ -528,14 +561,22 @@ Transform low-level errors into domain-specific ones at service boundaries:
 
 ```typescript
 // Define errors for each layer
-const { DatabaseError, DatabaseErr } = createTaggedError("DatabaseError")
-  .withFields<{ sql: string }>()
-  .withMessage(({ sql }) => `Database query failed: ${sql}`);
-type DatabaseError = ReturnType<typeof DatabaseError>;
+const dbErrors = defineErrors({
+  DatabaseError: ({ sql }: { sql: string }) => ({
+    message: `Database query failed: ${sql}`,
+    sql,
+  }),
+});
+const { DatabaseError, DatabaseErr } = dbErrors;
+type DatabaseError = InferError<typeof dbErrors, 'DatabaseError'>;
 
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withFields<{ userId: string }>()
-  .withMessage(({ userId }) => `User service operation failed for ${userId}`);
+const userErrors = defineErrors({
+  UserServiceError: ({ userId }: { userId: string }) => ({
+    message: `User service operation failed for ${userId}`,
+    userId,
+  }),
+});
+const { UserServiceError, UserServiceErr } = userErrors;
 
 // Low-level database error
 const dbResult = await tryAsync({
@@ -555,10 +596,15 @@ Services should only contain business logic:
 
 ```typescript
 // Define the error type with required fields
-const { UserServiceError, UserServiceErr } = createTaggedError("UserServiceError")
-  .withFields<{ userId: string; operation: string }>()
-  .withMessage(({ operation }) => `User ${operation} failed`);
-type UserServiceError = ReturnType<typeof UserServiceError>;
+const errors = defineErrors({
+  UserServiceError: ({ userId, operation }: { userId: string; operation: string }) => ({
+    message: `User ${operation} failed`,
+    userId,
+    operation,
+  }),
+});
+const { UserServiceError, UserServiceErr } = errors;
+type UserServiceError = InferError<typeof errors, 'UserServiceError'>;
 
 // ✅ Good - pure business logic
 export function createUserService(db: Database) {
