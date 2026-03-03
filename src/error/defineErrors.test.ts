@@ -3,7 +3,7 @@ import { defineErrors } from "./defineErrors.js";
 import type {
 	AnyTaggedError,
 	InferError,
-	InferErrorUnion,
+	InferErrors,
 	JsonObject,
 } from "./types.js";
 
@@ -11,173 +11,157 @@ import type {
 // Basic factories — message at call site equivalent
 // =============================================================================
 
-describe("defineErrors - call-site message (replaces no .withMessage())", () => {
-	const errors = defineErrors({
-		SimpleError: ({ message }: { message: string }) => ({ message }),
+describe("defineErrors - call-site message", () => {
+	const SimpleError = defineErrors({
+		Simple: ({ message }: { message: string }) => ({ message }),
 	});
-	const { SimpleError, SimpleErr } = errors;
 
 	it("creates error with name and call-site message", () => {
-		const error = SimpleError({ message: "Something went wrong" });
+		const result = SimpleError.Simple({ message: "Something went wrong" });
 
-		expect(error.name).toBe("SimpleError");
-		expect(error.message).toBe("Something went wrong");
+		expect(result.error.name).toBe("Simple");
+		expect(result.error.message).toBe("Something went wrong");
+		expect(result.data).toBeNull();
 	});
 
 	it("creates error with no extra properties", () => {
-		const error = SimpleError({ message: "test" });
+		const result = SimpleError.Simple({ message: "test" });
 
-		const { name: _name, message: _message, ...rest } = error;
+		const { name: _name, message: _message, ...rest } = result.error;
 		expect(Object.keys(rest)).toHaveLength(0);
 	});
 
 	it("minimal error has correct type (name and message only)", () => {
-		const error = SimpleError({ message: "test" });
+		const result = SimpleError.Simple({ message: "test" });
 
-		expectTypeOf(error).toEqualTypeOf<
-			Readonly<{ name: "SimpleError"; message: string }>
+		expectTypeOf(result.error).toEqualTypeOf<
+			Readonly<{ name: "Simple"; message: string }>
 		>();
-	});
-
-	it("SimpleErr wraps error in Err result", () => {
-		const result = SimpleErr({ message: "Something went wrong" });
-
-		expect(result.data).toBeNull();
-		expect(result.error).toEqual({
-			name: "SimpleError",
-			message: "Something went wrong",
-		});
 	});
 });
 
 // =============================================================================
-// Static message — zero-arg factory (replaces .withMessage() no fields)
+// Static message — zero-arg factory
 // =============================================================================
 
-describe("defineErrors - static message (replaces .withMessage() no fields)", () => {
-	const errors = defineErrors({
-		RecorderBusyError: () => ({
+describe("defineErrors - static message", () => {
+	const RecordingError = defineErrors({
+		Busy: () => ({
 			message: "A recording is already in progress",
 		}),
 	});
-	const { RecorderBusyError, RecorderBusyErr } = errors;
 
 	it("uses sealed message when called with no args", () => {
-		const error = RecorderBusyError();
+		const result = RecordingError.Busy();
 
-		expect(error.name).toBe("RecorderBusyError");
-		expect(error.message).toBe("A recording is already in progress");
+		expect(result.error.name).toBe("Busy");
+		expect(result.error.message).toBe("A recording is already in progress");
 	});
 
 	it("message is always the constructor output", () => {
-		const error = RecorderBusyError();
-		expect(error.message).toBe("A recording is already in progress");
+		const result = RecordingError.Busy();
+		expect(result.error.message).toBe("A recording is already in progress");
 	});
 
-	it("Err factory uses the message", () => {
-		const result = RecorderBusyErr();
+	it("factory returns Err with correct shape", () => {
+		const result = RecordingError.Busy();
 
 		expect(result.data).toBeNull();
-		expect(result.error?.name).toBe("RecorderBusyError");
-		expect(result.error?.message).toBe("A recording is already in progress");
+		expect(result.error.name).toBe("Busy");
+		expect(result.error.message).toBe("A recording is already in progress");
 	});
 });
 
 // =============================================================================
-// Fields + call-site message (replaces .withFields() no .withMessage())
+// Fields + call-site message
 // =============================================================================
 
-describe("defineErrors - fields + call-site message (replaces .withFields())", () => {
-	const errors = defineErrors({
-		FsReadError: ({ message, path }: { message: string; path: string }) => ({
+describe("defineErrors - fields + call-site message", () => {
+	const FsError = defineErrors({
+		Read: ({ message, path }: { message: string; path: string }) => ({
 			message,
 			path,
 		}),
 	});
-	const { FsReadError, FsReadErr } = errors;
 
 	it("creates error with message and fields", () => {
-		const error = FsReadError({
+		const result = FsError.Read({
 			message: "Failed to read config",
 			path: "/etc/config",
 		});
 
-		expect(error.name).toBe("FsReadError");
-		expect(error.message).toBe("Failed to read config");
-		expect(error.path).toBe("/etc/config");
+		expect(result.error.name).toBe("Read");
+		expect(result.error.message).toBe("Failed to read config");
+		expect(result.error.path).toBe("/etc/config");
 	});
 
 	it("fields are typed correctly in output", () => {
-		const error = FsReadError({ message: "test", path: "/tmp/test" });
+		const result = FsError.Read({ message: "test", path: "/tmp/test" });
 
-		expectTypeOf(error.path).toEqualTypeOf<string>();
+		expectTypeOf(result.error.path).toEqualTypeOf<string>();
 	});
 
-	it("FsReadErr wraps in Err result", () => {
-		const result = FsReadErr({
+	it("wraps in Err result with fields accessible on .error", () => {
+		const result = FsError.Read({
 			message: "Failed to read",
 			path: "/etc/config",
 		});
 
 		expect(result.data).toBeNull();
-		expect(result.error?.name).toBe("FsReadError");
-		expect(result.error?.path).toBe("/etc/config");
+		expect(result.error.name).toBe("Read");
+		expect(result.error.path).toBe("/etc/config");
 	});
 });
 
 // =============================================================================
-// Computed message from fields (replaces .withFields() + .withMessage())
+// Computed message from fields
 // =============================================================================
 
 describe("defineErrors - computed message from fields", () => {
-	const errors = defineErrors({
-		ResponseError: ({
-			status,
-			reason,
-		}: {
-			status: number;
-			reason?: string;
-		}) => ({
+	const HttpError = defineErrors({
+		Response: ({ status, reason }: { status: number; reason?: string }) => ({
 			message: `HTTP ${status}${reason ? `: ${reason}` : ""}`,
 			status,
 			reason,
 		}),
 	});
-	const { ResponseError, ResponseErr } = errors;
 
 	it("computes message from fields", () => {
-		const error = ResponseError({ status: 404 });
+		const result = HttpError.Response({ status: 404 });
 
-		expect(error.name).toBe("ResponseError");
-		expect(error.message).toBe("HTTP 404");
-		expect(error.status).toBe(404);
+		expect(result.error.name).toBe("Response");
+		expect(result.error.message).toBe("HTTP 404");
+		expect(result.error.status).toBe(404);
 	});
 
 	it("template receives fields including optional ones", () => {
-		const error = ResponseError({ status: 500, reason: "Internal error" });
+		const result = HttpError.Response({
+			status: 500,
+			reason: "Internal error",
+		});
 
-		expect(error.message).toBe("HTTP 500: Internal error");
-		expect(error.status).toBe(500);
-		expect(error.reason).toBe("Internal error");
+		expect(result.error.message).toBe("HTTP 500: Internal error");
+		expect(result.error.status).toBe(500);
+		expect(result.error.reason).toBe("Internal error");
 	});
 
 	it("fields are typed correctly in output", () => {
-		const error = ResponseError({ status: 200 });
+		const result = HttpError.Response({ status: 200 });
 
-		expectTypeOf(error.status).toEqualTypeOf<number>();
-		expectTypeOf(error.reason).toEqualTypeOf<string | undefined>();
+		expectTypeOf(result.error.status).toEqualTypeOf<number>();
+		expectTypeOf(result.error.reason).toEqualTypeOf<string | undefined>();
 	});
 
-	it("ResponseErr wraps in Err result", () => {
-		const result = ResponseErr({ status: 503 });
+	it("wraps in Err result", () => {
+		const result = HttpError.Response({ status: 503 });
 
 		expect(result.data).toBeNull();
-		expect(result.error?.status).toBe(503);
+		expect(result.error.status).toBe(503);
 	});
 
 	it("multi-field error with complex types", () => {
-		const { DbQueryError } = defineErrors({
-			DbQueryError: ({
+		const DbError = defineErrors({
+			Query: ({
 				table,
 				operation,
 				backend,
@@ -193,17 +177,17 @@ describe("defineErrors - computed message from fields", () => {
 			}),
 		});
 
-		const error = DbQueryError({
+		const result = DbError.Query({
 			table: "recordings",
 			operation: "insert",
 			backend: "indexeddb",
 		});
 
-		expect(error.name).toBe("DbQueryError");
-		expect(error.message).toBe("Database insert on recordings failed");
-		expect(error.table).toBe("recordings");
-		expect(error.operation).toBe("insert");
-		expect(error.backend).toBe("indexeddb");
+		expect(result.error.name).toBe("Query");
+		expect(result.error.message).toBe("Database insert on recordings failed");
+		expect(result.error.table).toBe("recordings");
+		expect(result.error.operation).toBe("insert");
+		expect(result.error.backend).toBe("indexeddb");
 	});
 });
 
@@ -212,18 +196,26 @@ describe("defineErrors - computed message from fields", () => {
 // =============================================================================
 
 describe("defineErrors - factory shape", () => {
-	it("return object has factory properties", () => {
+	it("return object has variant key", () => {
 		const result = defineErrors({
-			FooError: () => ({ message: "foo" }),
+			Foo: () => ({ message: "foo" }),
 		});
 
-		expect("FooError" in result).toBe(true);
-		expect("FooErr" in result).toBe(true);
+		expect("Foo" in result).toBe(true);
+	});
+
+	it("return object does NOT have Error-suffixed or Err-suffixed keys", () => {
+		const result = defineErrors({
+			Foo: () => ({ message: "foo" }),
+		});
+
+		expect("FooErr" in result).toBe(false);
+		expect("FooError" in result).toBe(false);
 	});
 
 	it("return object does NOT have builder methods", () => {
 		const result = defineErrors({
-			FooError: () => ({ message: "foo" }),
+			Foo: () => ({ message: "foo" }),
 		});
 
 		expect("withFields" in result).toBe(false);
@@ -238,14 +230,14 @@ describe("defineErrors - factory shape", () => {
 // =============================================================================
 
 describe("defineErrors - mixed function shapes", () => {
-	const errors = defineErrors({
+	const RecordingError = defineErrors({
 		// Zero-arg static message
-		RecorderBusyError: () => ({
+		Busy: () => ({
 			message: "A recording is already in progress",
 		}),
 
 		// Computed message from fields
-		ServiceError: ({
+		Service: ({
 			operation,
 			cause,
 		}: {
@@ -258,10 +250,10 @@ describe("defineErrors - mixed function shapes", () => {
 		}),
 
 		// Call-site message
-		DbServiceError: ({ message }: { message: string }) => ({ message }),
+		Unknown: ({ message }: { message: string }) => ({ message }),
 
 		// Fields + call-site message
-		OperationError: ({
+		Operation: ({
 			operation,
 			message,
 		}: {
@@ -274,56 +266,56 @@ describe("defineErrors - mixed function shapes", () => {
 	});
 
 	it("all factories work in one defineErrors call", () => {
-		const err1 = errors.RecorderBusyError();
-		expect(err1.name).toBe("RecorderBusyError");
-		expect(err1.message).toBe("A recording is already in progress");
+		const r1 = RecordingError.Busy();
+		expect(r1.error.name).toBe("Busy");
+		expect(r1.error.message).toBe("A recording is already in progress");
 
-		const err2 = errors.ServiceError({
+		const r2 = RecordingError.Service({
 			operation: "check",
 			cause: "timeout",
 		});
-		expect(err2.name).toBe("ServiceError");
-		expect(err2.message).toBe("Failed to check: timeout");
-		expect(err2.operation).toBe("check");
+		expect(r2.error.name).toBe("Service");
+		expect(r2.error.message).toBe("Failed to check: timeout");
+		expect(r2.error.operation).toBe("check");
 
-		const err3 = errors.DbServiceError({ message: "Connection lost" });
-		expect(err3.name).toBe("DbServiceError");
-		expect(err3.message).toBe("Connection lost");
+		const r3 = RecordingError.Unknown({ message: "Connection lost" });
+		expect(r3.error.name).toBe("Unknown");
+		expect(r3.error.message).toBe("Connection lost");
 
-		const err4 = errors.OperationError({
+		const r4 = RecordingError.Operation({
 			operation: "save",
 			message: "Disk full",
 		});
-		expect(err4.name).toBe("OperationError");
-		expect(err4.message).toBe("Disk full");
-		expect(err4.operation).toBe("save");
+		expect(r4.error.name).toBe("Operation");
+		expect(r4.error.message).toBe("Disk full");
+		expect(r4.error.operation).toBe("save");
 	});
 
-	it("all Err factories work in one defineErrors call", () => {
-		const r1 = errors.RecorderBusyErr();
+	it("all factories return Err directly", () => {
+		const r1 = RecordingError.Busy();
 		expect(r1.data).toBeNull();
-		expect(r1.error.name).toBe("RecorderBusyError");
+		expect(r1.error.name).toBe("Busy");
 
-		const r2 = errors.ServiceErr({
+		const r2 = RecordingError.Service({
 			operation: "enable",
 			cause: "not found",
 		});
 		expect(r2.data).toBeNull();
-		expect(r2.error.name).toBe("ServiceError");
+		expect(r2.error.name).toBe("Service");
 	});
 });
 
 // =============================================================================
-// InferError and InferErrorUnion type extraction
+// InferError and InferErrors type extraction
 // =============================================================================
 
 describe("defineErrors - type extraction", () => {
-	const errors = defineErrors({
-		ConnectionError: ({ cause }: { cause: string }) => ({
+	const HttpError = defineErrors({
+		Connection: ({ cause }: { cause: string }) => ({
 			message: `Failed to connect: ${cause}`,
 			cause,
 		}),
-		ResponseError: ({
+		Response: ({
 			status,
 			bodyMessage,
 		}: {
@@ -336,36 +328,38 @@ describe("defineErrors - type extraction", () => {
 			status,
 			bodyMessage,
 		}),
-		ParseError: ({ cause }: { cause: string }) => ({
+		Parse: ({ cause }: { cause: string }) => ({
 			message: `Failed to parse response body: ${cause}`,
 			cause,
 		}),
 	});
 
-	it("InferError extracts a single error type", () => {
-		type ConnectionError = InferError<typeof errors, "ConnectionError">;
+	it("InferError extracts a single error type from a factory", () => {
+		type ConnectionError = InferError<typeof HttpError.Connection>;
 
 		expectTypeOf<ConnectionError>().toEqualTypeOf<
 			Readonly<{
-				name: "ConnectionError";
+				name: "Connection";
 				message: string;
 				cause: string;
 			}>
 		>();
 	});
 
-	it("InferErrorUnion extracts union of all error types", () => {
-		type HttpError = InferErrorUnion<typeof errors>;
+	it("InferErrors extracts union of all error types", () => {
+		type HttpErrorUnion = InferErrors<typeof HttpError>;
 
-		// The union should include all three error types
-		const connErr: HttpError = errors.ConnectionError({ cause: "timeout" });
-		expect(connErr.name).toBe("ConnectionError");
+		const connResult = HttpError.Connection({ cause: "timeout" });
+		const connErr: HttpErrorUnion = connResult.error;
+		expect(connErr.name).toBe("Connection");
 
-		const respErr: HttpError = errors.ResponseError({ status: 404 });
-		expect(respErr.name).toBe("ResponseError");
+		const respResult = HttpError.Response({ status: 404 });
+		const respErr: HttpErrorUnion = respResult.error;
+		expect(respErr.name).toBe("Response");
 
-		const parseErr: HttpError = errors.ParseError({ cause: "invalid json" });
-		expect(parseErr.name).toBe("ParseError");
+		const parseResult = HttpError.Parse({ cause: "invalid json" });
+		const parseErr: HttpErrorUnion = parseResult.error;
+		expect(parseErr.name).toBe("Parse");
 	});
 });
 
@@ -375,8 +369,8 @@ describe("defineErrors - type extraction", () => {
 
 describe("defineErrors - complex constructor functions", () => {
 	it("supports switch-based message computation", () => {
-		const { InvalidInputError } = defineErrors({
-			InvalidInputError: (input: {
+		const InputError = defineErrors({
+			Invalid: (input: {
 				reason: "invalid_format" | "missing_field" | "type_mismatch";
 				detail?: string;
 			}) => {
@@ -389,29 +383,29 @@ describe("defineErrors - complex constructor functions", () => {
 			},
 		});
 
-		const err1 = InvalidInputError({
+		const r1 = InputError.Invalid({
 			reason: "invalid_format",
 			detail: "email",
 		});
-		expect(err1.message).toBe("Invalid format: 'email'");
-		expect(err1.reason).toBe("invalid_format");
+		expect(r1.error.message).toBe("Invalid format: 'email'");
+		expect(r1.error.reason).toBe("invalid_format");
 
-		const err2 = InvalidInputError({ reason: "missing_field" });
-		expect(err2.message).toBe("Required field is missing");
+		const r2 = InputError.Invalid({ reason: "missing_field" });
+		expect(r2.error.message).toBe("Required field is missing");
 	});
 
 	it("supports spread of all input fields", () => {
-		const { DataError } = defineErrors({
-			DataError: (input: { table: string; operation: string }) => ({
+		const DataError = defineErrors({
+			Query: (input: { table: string; operation: string }) => ({
 				message: `${input.operation} failed on ${input.table}`,
 				...input,
 			}),
 		});
 
-		const error = DataError({ table: "users", operation: "insert" });
-		expect(error.table).toBe("users");
-		expect(error.operation).toBe("insert");
-		expect(error.message).toBe("insert failed on users");
+		const result = DataError.Query({ table: "users", operation: "insert" });
+		expect(result.error.table).toBe("users");
+		expect(result.error.operation).toBe("insert");
+		expect(result.error.message).toBe("insert failed on users");
 	});
 });
 
@@ -421,8 +415,8 @@ describe("defineErrors - complex constructor functions", () => {
 
 describe("defineErrors - JSON serialization", () => {
 	it("flat errors round-trip through JSON perfectly", () => {
-		const { ResponseError } = defineErrors({
-			ResponseError: ({
+		const HttpError = defineErrors({
+			Response: ({
 				status,
 				provider,
 			}: {
@@ -435,39 +429,33 @@ describe("defineErrors - JSON serialization", () => {
 			}),
 		});
 
-		const error = ResponseError({ status: 401, provider: "openai" });
-		const json = JSON.stringify(error);
+		const result = HttpError.Response({ status: 401, provider: "openai" });
+		const json = JSON.stringify(result.error);
 		const parsed = JSON.parse(json);
 
-		expect(parsed.name).toBe("ResponseError");
+		expect(parsed.name).toBe("Response");
 		expect(parsed.message).toBe("HTTP 401");
 		expect(parsed.status).toBe(401);
 		expect(parsed.provider).toBe("openai");
 	});
 
 	it("no nested structure to worry about", () => {
-		const { DbError } = defineErrors({
-			DbError: ({
-				table,
-				operation,
-			}: {
-				table: string;
-				operation: string;
-			}) => ({
+		const DbError = defineErrors({
+			Query: ({ table, operation }: { table: string; operation: string }) => ({
 				message: `${operation} on ${table} failed`,
 				table,
 				operation,
 			}),
 		});
 
-		const error = DbError({ table: "users", operation: "insert" });
-		const keys = Object.keys(error).sort();
+		const result = DbError.Query({ table: "users", operation: "insert" });
+		const keys = Object.keys(result.error).sort();
 		expect(keys).toEqual(["message", "name", "operation", "table"]);
 	});
 
 	it("rest spread extracts just the extra fields", () => {
-		const { ApiError } = defineErrors({
-			ApiError: ({
+		const ApiError = defineErrors({
+			Request: ({
 				endpoint,
 				status,
 			}: {
@@ -480,8 +468,8 @@ describe("defineErrors - JSON serialization", () => {
 			}),
 		});
 
-		const error = ApiError({ endpoint: "/api", status: 500 });
-		const { name: _name, message: _message, ...rest } = error;
+		const result = ApiError.Request({ endpoint: "/api", status: 500 });
+		const { name: _name, message: _message, ...rest } = result.error;
 		expect(rest).toEqual({ endpoint: "/api", status: 500 });
 	});
 });
@@ -492,20 +480,20 @@ describe("defineErrors - JSON serialization", () => {
 
 describe("defineErrors - type safety", () => {
 	it("minimal errors have correct types", () => {
-		const { NetworkError } = defineErrors({
-			NetworkError: ({ message }: { message: string }) => ({ message }),
+		const NetworkError = defineErrors({
+			Timeout: ({ message }: { message: string }) => ({ message }),
 		});
 
-		const error = NetworkError({ message: "Network error" });
+		const result = NetworkError.Timeout({ message: "Network error" });
 
-		expectTypeOf(error).toEqualTypeOf<
-			Readonly<{ name: "NetworkError"; message: string }>
+		expectTypeOf(result.error).toEqualTypeOf<
+			Readonly<{ name: "Timeout"; message: string }>
 		>();
 	});
 
 	it("errors with fields have correct types", () => {
-		const { FileError } = defineErrors({
-			FileError: ({
+		const FileError = defineErrors({
+			NotFound: ({
 				message,
 				path,
 				size,
@@ -520,33 +508,33 @@ describe("defineErrors - type safety", () => {
 			}),
 		});
 
-		const error = FileError({
+		const result = FileError.NotFound({
 			message: "not found",
 			path: "test.txt",
 			size: 1024,
 		});
 
-		expectTypeOf(error.path).toEqualTypeOf<string>();
-		expectTypeOf(error.size).toEqualTypeOf<number>();
+		expectTypeOf(result.error.path).toEqualTypeOf<string>();
+		expectTypeOf(result.error.size).toEqualTypeOf<number>();
 	});
 
-	it("error objects are frozen (immutable)", () => {
-		const { TestError } = defineErrors({
-			TestError: ({ message }: { message: string }) => ({ message }),
+	it("inner error objects are frozen (immutable)", () => {
+		const TestError = defineErrors({
+			Generic: ({ message }: { message: string }) => ({ message }),
 		});
-		const error = TestError({ message: "Original" });
+		const result = TestError.Generic({ message: "Original" });
 
-		expect(Object.isFrozen(error)).toBe(true);
+		expect(Object.isFrozen(result.error)).toBe(true);
 	});
 
 	it("assignable to AnyTaggedError", () => {
-		const { TestError } = defineErrors({
-			TestError: () => ({ message: "test" }),
+		const TestError = defineErrors({
+			Generic: () => ({ message: "test" }),
 		});
 
-		const error = TestError();
-		const _anyError: AnyTaggedError = error;
-		expect(_anyError.name).toBe("TestError");
+		const result = TestError.Generic();
+		const _anyError: AnyTaggedError = result.error;
+		expect(_anyError.name).toBe("Generic");
 		expect(_anyError.message).toBe("test");
 	});
 });
@@ -557,8 +545,8 @@ describe("defineErrors - type safety", () => {
 
 describe("defineErrors - edge cases", () => {
 	it("handles complex nested JSON values in fields", () => {
-		const { TestError } = defineErrors({
-			TestError: (input: {
+		const TestError = defineErrors({
+			Complex: (input: {
 				nested: { deeply: { value: number } };
 				array: number[];
 				nullable: null;
@@ -568,55 +556,43 @@ describe("defineErrors - edge cases", () => {
 			}),
 		});
 
-		const error = TestError({
+		const result = TestError.Complex({
 			nested: { deeply: { value: 123 } },
 			array: [1, 2, 3],
 			nullable: null,
 		});
 
-		expect(error.nested.deeply.value).toBe(123);
-		expect(error.array).toEqual([1, 2, 3]);
-		expect(error.nullable).toBeNull();
+		expect(result.error.nested.deeply.value).toBe(123);
+		expect(result.error.array).toEqual([1, 2, 3]);
+		expect(result.error.nullable).toBeNull();
 	});
 
 	it("handles empty fields object", () => {
-		const { TestError } = defineErrors({
-			TestError: (_input: JsonObject) => ({
+		const TestError = defineErrors({
+			Empty: (_input: JsonObject) => ({
 				message: "Test error",
 			}),
 		});
 
-		const error = TestError({});
-		expect(error.name).toBe("TestError");
+		const result = TestError.Empty({});
+		expect(result.error.name).toBe("Empty");
 	});
 
 	it("cause is just another field if you want it", () => {
-		const { BackendError } = defineErrors({
-			BackendError: ({
-				backend,
-				cause,
-			}: {
-				backend: string;
-				cause: string;
-			}) => ({
+		const BackendError = defineErrors({
+			Failure: ({ backend, cause }: { backend: string; cause: string }) => ({
 				message: `${backend} failed`,
 				backend,
 				cause,
 			}),
 		});
 
-		const error = BackendError({ backend: "postgres", cause: "timeout" });
-		expect(error.backend).toBe("postgres");
-		expect(error.cause).toBe("timeout");
-	});
-
-	it("error name must end in 'Error' (type-level constraint)", () => {
-		// This is enforced at the type level via `${string}Error` key constraint.
-		// Can't easily test at runtime, but the constraint exists in ErrorsConfig.
-		const errors = defineErrors({
-			FooError: () => ({ message: "foo" }),
+		const result = BackendError.Failure({
+			backend: "postgres",
+			cause: "timeout",
 		});
-		expect(errors.FooError().name).toBe("FooError");
+		expect(result.error.backend).toBe("postgres");
+		expect(result.error.cause).toBe("timeout");
 	});
 });
 
@@ -626,12 +602,26 @@ describe("defineErrors - edge cases", () => {
 
 describe("defineErrors - the console log test", () => {
 	it("produces the three example shapes from the spec", () => {
-		const errors = defineErrors({
-			RecorderBusyError: () => ({
+		const RecordingError = defineErrors({
+			Busy: () => ({
 				message: "A recording is already in progress",
 			}),
 
-			ResponseError: ({
+			Service: ({
+				operation,
+				cause,
+			}: {
+				operation: string;
+				cause: string;
+			}) => ({
+				message: `Failed to ${operation}: ${cause}`,
+				operation,
+				cause,
+			}),
+		});
+
+		const HttpError = defineErrors({
+			Response: ({
 				provider,
 				status,
 				model,
@@ -645,8 +635,10 @@ describe("defineErrors - the console log test", () => {
 				status,
 				model,
 			}),
+		});
 
-			DbQueryError: ({
+		const DbError = defineErrors({
+			Query: ({
 				table,
 				operation,
 				backend,
@@ -662,51 +654,51 @@ describe("defineErrors - the console log test", () => {
 			}),
 		});
 
-		const err1 = errors.RecorderBusyError();
-		expect(err1.name).toBe("RecorderBusyError");
-		expect(err1.message).toBe("A recording is already in progress");
+		const r1 = RecordingError.Busy();
+		expect(r1.error.name).toBe("Busy");
+		expect(r1.error.message).toBe("A recording is already in progress");
 
-		const err2 = errors.ResponseError({
+		const r2 = HttpError.Response({
 			provider: "openai",
 			status: 401,
 			model: "gpt-4o",
 		});
-		expect(err2.name).toBe("ResponseError");
-		expect(err2.message).toBe("HTTP 401");
-		expect(err2.provider).toBe("openai");
-		expect(err2.status).toBe(401);
-		expect(err2.model).toBe("gpt-4o");
+		expect(r2.error.name).toBe("Response");
+		expect(r2.error.message).toBe("HTTP 401");
+		expect(r2.error.provider).toBe("openai");
+		expect(r2.error.status).toBe(401);
+		expect(r2.error.model).toBe("gpt-4o");
 
-		const err3 = errors.DbQueryError({
+		const r3 = DbError.Query({
 			table: "recordings",
 			operation: "insert",
 			backend: "indexeddb",
 		});
-		expect(err3.name).toBe("DbQueryError");
-		expect(err3.message).toBe("Database insert on recordings failed");
-		expect(err3.table).toBe("recordings");
+		expect(r3.error.name).toBe("Query");
+		expect(r3.error.message).toBe("Database insert on recordings failed");
+		expect(r3.error.table).toBe("recordings");
 	});
 
 	it("spec examples with call-site message also work", () => {
-		const errors = defineErrors({
-			SimpleError: ({ message }: { message: string }) => ({ message }),
+		const AppError = defineErrors({
+			Simple: ({ message }: { message: string }) => ({ message }),
 
-			FsReadError: ({ message, path }: { message: string; path: string }) => ({
+			FsRead: ({ message, path }: { message: string; path: string }) => ({
 				message,
 				path,
 			}),
 		});
 
-		const err = errors.SimpleError({ message: "Something went wrong" });
-		expect(err.name).toBe("SimpleError");
-		expect(err.message).toBe("Something went wrong");
+		const r1 = AppError.Simple({ message: "Something went wrong" });
+		expect(r1.error.name).toBe("Simple");
+		expect(r1.error.message).toBe("Something went wrong");
 
-		const fsErr = errors.FsReadError({
+		const r2 = AppError.FsRead({
 			message: "Failed to read '/etc/config'",
 			path: "/etc/config",
 		});
-		expect(fsErr.name).toBe("FsReadError");
-		expect(fsErr.message).toBe("Failed to read '/etc/config'");
-		expect(fsErr.path).toBe("/etc/config");
+		expect(r2.error.name).toBe("FsRead");
+		expect(r2.error.message).toBe("Failed to read '/etc/config'");
+		expect(r2.error.path).toBe("/etc/config");
 	});
 });

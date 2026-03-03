@@ -1,46 +1,47 @@
 import { Err } from "../result/result.js";
-import type { DefineErrorsReturn, ErrorsConfig } from "./types.js";
+import type {
+	DefineErrorsReturn,
+	ErrorsConfig,
+	ValidatedConfig,
+} from "./types.js";
 
 /**
- * Defines a set of typed error factories from constructor functions.
+ * Defines a set of typed error factories using Rust-style namespaced variants.
  *
- * Each key must end in `Error` and maps to a constructor function that takes
- * input and returns `{ message, ...data }`. `defineErrors` stamps `name` from
- * the key and generates both a plain factory (`FooError`) and an `Err`-wrapped
- * factory (`FooErr`).
+ * Each key is a short variant name (the namespace provides context). Every
+ * factory returns `Err<...>` directly — ready for `trySync`/`tryAsync` catch
+ * handlers. The variant name is stamped as `name` on the error object.
  *
  * @example
  * ```ts
- * const errors = defineErrors({
- *   ConnectionError: ({ cause }: { cause: string }) => ({
+ * const HttpError = defineErrors({
+ *   Connection: ({ cause }: { cause: string }) => ({
  *     message: `Failed to connect: ${cause}`,
  *     cause,
  *   }),
- *   RecorderBusyError: () => ({
- *     message: 'A recording is already in progress',
+ *   Parse: ({ cause }: { cause: string }) => ({
+ *     message: `Failed to parse: ${cause}`,
+ *     cause,
  *   }),
  * });
  *
- * const { ConnectionError, ConnectionErr, RecorderBusyError } = errors;
+ * type HttpError = InferErrors<typeof HttpError>;
+ *
+ * const result = HttpError.Connection({ cause: 'timeout' }); // Err<...>
  * ```
  */
 export function defineErrors<const TConfig extends ErrorsConfig>(
-	config: TConfig,
+	config: TConfig & ValidatedConfig<TConfig>,
 ): DefineErrorsReturn<TConfig> {
 	const result: Record<string, unknown> = {};
 
 	for (const [name, ctor] of Object.entries(config)) {
-		const errName = name.replace(/Error$/, "Err");
-
-		const factory = (...args: unknown[]) => {
+		result[name] = (...args: unknown[]) => {
 			const body = (ctor as (...a: unknown[]) => Record<string, unknown>)(
 				...args,
 			);
-			return Object.freeze({ ...body, name });
+			return Err(Object.freeze({ ...body, name }));
 		};
-
-		result[name] = factory;
-		result[errName] = (...args: unknown[]) => Err(factory(...args));
 	}
 
 	return result as DefineErrorsReturn<TConfig>;

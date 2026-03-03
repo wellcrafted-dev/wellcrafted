@@ -33,28 +33,34 @@ export type AnyTaggedError = { name: string; message: string };
  */
 export type ErrorBody = { message: string };
 
-/** The config: each key is an error name, each value is a constructor function. */
-export type ErrorsConfig = Record<
-	`${string}Error`,
+/**
+ * Per-key validation: tells the user exactly what `name` will be stamped as.
+ * If a user provides `name` in the return object, they see a descriptive error.
+ */
+type ValidateErrorBody<K extends string> = {
+	message: string;
+	name?: `The 'name' key is reserved as '${K}'. Remove it.`;
+};
+
+/** The config: each key is a variant name, each value is a constructor function. */
+// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
+export type ErrorsConfig = Record<string, (...args: any[]) => ErrorBody>;
+
+/** Validates each config entry, injecting the key-specific `name` reservation message. */
+export type ValidatedConfig<T extends ErrorsConfig> = {
 	// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
-	(...args: any[]) => ErrorBody
->;
+	[K in keyof T & string]: T[K] extends (...args: infer A) => infer R
+		? (...args: A) => R & ValidateErrorBody<K>
+		: T[K];
+};
 
-/** Replaces the "Error" suffix with "Err" suffix. */
-type ReplaceErrorWithErr<T extends `${string}Error`> =
-	T extends `${infer TBase}Error` ? `${TBase}Err` : never;
-
-/** Factory pair for a single error: plain factory + Err-wrapped factory. */
-type FactoryPair<
-	TName extends `${string}Error`,
+/** Single factory: takes constructor args, returns Err-wrapped error. */
+type ErrorFactory<
+	TName extends string,
 	// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
 	TFn extends (...args: any[]) => ErrorBody,
 > = {
 	[K in TName]: (
-		...args: Parameters<TFn>
-	) => Readonly<{ name: TName } & ReturnType<TFn>>;
-} & {
-	[K in ReplaceErrorWithErr<TName>]: (
 		...args: Parameters<TFn>
 	) => Err<Readonly<{ name: TName } & ReturnType<TFn>>>;
 };
@@ -66,29 +72,21 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
 	? I
 	: never;
 
-/** Return type of `defineErrors`. Maps each config entry to its factory pair. */
+/** Return type of `defineErrors`. Maps each config key to its factory. */
 export type DefineErrorsReturn<TConfig extends ErrorsConfig> =
 	UnionToIntersection<
 		{
-			[K in keyof TConfig & `${string}Error`]: FactoryPair<
-				K & `${string}Error`,
-				TConfig[K]
-			>;
-		}[keyof TConfig & `${string}Error`]
+			[K in keyof TConfig & string]: ErrorFactory<K, TConfig[K]>;
+		}[keyof TConfig & string]
 	>;
 
-/** Extract a single error type by name from a `defineErrors` return. */
-export type InferError<T, K extends string> = K extends keyof T
-	? // biome-ignore lint/suspicious/noExplicitAny: required for conditional type inference
-		T[K] extends (...args: any[]) => infer R
-		? R
-		: never
-	: never;
-
-/** Extract union of ALL error types from a `defineErrors` return. */
-export type InferErrorUnion<T> = {
+/** Extract the error type from a single factory. */
+export type InferError<T> =
 	// biome-ignore lint/suspicious/noExplicitAny: required for conditional type inference
-	[K in keyof T & `${string}Error`]: T[K] extends (...args: any[]) => infer R
-		? R
-		: never;
-}[keyof T & `${string}Error`];
+	T extends (...args: any[]) => Err<infer R> ? R : never;
+
+/** Extract union of ALL error types from a defineErrors return. */
+export type InferErrors<T> = {
+	// biome-ignore lint/suspicious/noExplicitAny: required for conditional type inference
+	[K in keyof T]: T[K] extends (...args: any[]) => Err<infer R> ? R : never;
+}[keyof T];
