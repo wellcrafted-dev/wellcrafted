@@ -261,8 +261,10 @@ switch (result.error.name) {
 Click on any error name to see its definition:
 
 ```typescript
-// Click on "PaymentError" to see:
-type PaymentError = TaggedError<"PaymentError", {
+// Click on "PaymentError" to see its inferred type:
+type PaymentError = Readonly<{
+  name: "PaymentError";
+  message: string;
   orderId: string;
   amount: number;
   paymentMethod: string;

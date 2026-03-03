@@ -98,12 +98,17 @@ Create services that return Result types:
 ```typescript
 // services/api/users.ts
 import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-const { UserServiceError, UserServiceErr } = createTaggedError('UserServiceError')
-  .withFields<{ operation: string; userId?: string }>()
-  .withMessage(({ operation }) => `User ${operation} failed`);
-type UserServiceError = ReturnType<typeof UserServiceError>;
+const userErrors = defineErrors({
+  UserServiceError: ({ operation, userId }: { operation: string; userId?: string }) => ({
+    message: `User ${operation} failed`,
+    operation,
+    userId,
+  }),
+});
+const { UserServiceError, UserServiceErr } = userErrors;
+type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
 
 export type User = {
   id: string;

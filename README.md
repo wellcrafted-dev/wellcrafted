@@ -54,19 +54,22 @@ function getUser(id: UserId) { /* ... */ }
 ```
 
 ### 📋 Tagged Errors
-Structured, serializable errors with a fluent API
+Structured, serializable errors with a declarative API
 ```typescript
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 
-// Static error — no fields needed
-const { ValidationError } = createTaggedError("ValidationError")
-  .withMessage(() => "Email is required");
-ValidationError();
-
-// Structured error — fields are spread flat on the error object
-const { ApiError } = createTaggedError("ApiError")
-  .withFields<{ endpoint: string }>()
-  .withMessage(({ endpoint }) => `Request to ${endpoint} failed`);
+const errors = defineErrors({
+  // Static error — no fields needed
+  ValidationError: () => ({
+    message: "Email is required",
+  }),
+  // Structured error — fields are spread flat on the error object
+  ApiError: (fields: { endpoint: string }) => ({
+    ...fields,
+    message: `Request to ${fields.endpoint} failed`,
+  }),
+});
+const { ValidationError, ApiError } = errors;
 ```
 
 ### 🔄 Query Integration
@@ -109,13 +112,17 @@ npm install wellcrafted
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 
-// Define your error with factory function
-const { ApiError, ApiErr } = createTaggedError("ApiError")
-  .withFields<{ endpoint: string }>()
-  .withMessage(({ endpoint }) => `Failed to fetch ${endpoint}`);
-type ApiError = ReturnType<typeof ApiError>;
+// Define your errors declaratively
+const errors = defineErrors({
+  ApiError: (fields: { endpoint: string }) => ({
+    ...fields,
+    message: `Failed to fetch ${fields.endpoint}`,
+  }),
+});
+const { ApiError, ApiErr } = errors;
+type ApiError = InferError<typeof errors, "ApiError">;
 
 // Wrap any throwing operation
 const { data, error } = await tryAsync({
@@ -213,14 +220,20 @@ if (error) {
 ### Wrap Unsafe Operations
 
 ```typescript
-// Define errors with fields and message template
-const { ParseError, ParseErr } = createTaggedError("ParseError")
-  .withFields<{ input: string }>()
-  .withMessage(({ input }) => `Invalid JSON: ${input.slice(0, 50)}`);
+import { defineErrors, type InferError } from "wellcrafted/error";
 
-const { NetworkError, NetworkErr } = createTaggedError("NetworkError")
-  .withFields<{ url: string }>()
-  .withMessage(({ url }) => `Request to ${url} failed`);
+// Define errors declaratively
+const errors = defineErrors({
+  ParseError: (fields: { input: string }) => ({
+    ...fields,
+    message: `Invalid JSON: ${fields.input.slice(0, 50)}`,
+  }),
+  NetworkError: (fields: { url: string }) => ({
+    ...fields,
+    message: `Request to ${fields.url} failed`,
+  }),
+});
+const { ParseErr, NetworkErr } = errors;
 
 // Synchronous
 const result = trySync({
@@ -239,16 +252,19 @@ const result = await tryAsync({
 
 ```typescript
 // 1. Service Layer - Pure business logic
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 import { tryAsync, Result, Ok } from "wellcrafted/result";
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
-  .withFields<{ currentState?: string; permissions?: string }>()
-  .withMessage(({ permissions, currentState }) => {
-    if (permissions) return `Missing ${permissions} permission`;
-    return `Invalid recorder state: ${currentState}`;
-  });
-type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
+const recorderErrors = defineErrors({
+  RecorderServiceError: (fields: { currentState?: string; permissions?: string }) => ({
+    ...fields,
+    message: fields.permissions
+      ? `Missing ${fields.permissions} permission`
+      : `Invalid recorder state: ${fields.currentState}`,
+  }),
+});
+const { RecorderServiceError, RecorderServiceErr } = recorderErrors;
+type RecorderServiceError = InferError<typeof recorderErrors, "RecorderServiceError">;
 
 export function createRecorderService() {
   let isRecording = false;
@@ -367,8 +383,12 @@ const { data: parsed } = trySync({
 
 ### Propagation Pattern (May Fail)
 ```typescript
-const { ParseError, ParseErr } = createTaggedError("ParseError")
-  .withMessage(() => "Invalid JSON");
+const parseErrors = defineErrors({
+  ParseError: () => ({
+    message: "Invalid JSON",
+  }),
+});
+const { ParseErr } = parseErrors;
 
 // When catch can return Err<E>, function returns Result<T, E>
 const mayFail = trySync({
@@ -421,16 +441,18 @@ Based on real-world usage, here's the recommended pattern for creating services 
 ### Factory Function Pattern
 
 ```typescript
-import { createTaggedError } from "wellcrafted/error";
+import { defineErrors, type InferError } from "wellcrafted/error";
 import { Result, Ok } from "wellcrafted/result";
 
 // 1. Define service-specific errors with typed fields and message
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError("RecorderServiceError")
-  .withFields<{ isRecording: boolean }>()
-  .withMessage(({ isRecording }) =>
-    isRecording ? "Already recording" : "Not currently recording"
-  );
-type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
+const recorderErrors = defineErrors({
+  RecorderServiceError: (fields: { isRecording: boolean }) => ({
+    ...fields,
+    message: fields.isRecording ? "Already recording" : "Not currently recording",
+  }),
+});
+const { RecorderServiceError, RecorderServiceErr } = recorderErrors;
+type RecorderServiceError = InferError<typeof recorderErrors, "RecorderServiceError">;
 
 // 2. Create service with factory function
 export function createRecorderService() {
@@ -534,12 +556,16 @@ export async function GET(request: Request) {
 <summary><b>Form Validation</b></summary>
 
 ```typescript
-const { FormError, FormErr } = createTaggedError("FormError")
-  .withFields<{ fields: Record<string, string[]> }>()
-  .withMessage(({ fields }) => {
-    const fieldNames = Object.keys(fields).join(", ");
-    return `Validation failed for: ${fieldNames}`;
-  });
+import { defineErrors, type InferError } from "wellcrafted/error";
+
+const formErrors = defineErrors({
+  FormError: (fields: { fields: Record<string, string[]> }) => ({
+    ...fields,
+    message: `Validation failed for: ${Object.keys(fields.fields).join(", ")}`,
+  }),
+});
+const { FormErr } = formErrors;
+type FormError = InferError<typeof formErrors, "FormError">;
 
 function validateLoginForm(data: unknown): Result<LoginData, FormError> {
   const errors: Record<string, string[]> = {};
@@ -617,20 +643,19 @@ For comprehensive examples, service layer patterns, framework integrations, and 
 - **`defineMutation(options)`** - Define a mutation with dual interface (`.options` + callable/`.execute()`)
 
 ### Error Functions
-- **`createTaggedError(name)`** - Creates error factory functions with fluent API
-  - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped)
-  - Chain `.withFields<T>()` to add typed fields (spread flat on the error object)
-  - Chain `.withMessage(fn)` *(optional)* to seal the message with a template — `message` is not in the factory input type when present
-  - Without `.withMessage()`, `message` is required at the call site
-  - `name` is a reserved key — prevented at compile time by `NoReservedKeys`
-  - Factory input is flat (e.g., `{ endpoint: '/api' }`), not nested
+- **`defineErrors(definitions)`** - Define multiple error factories in a single declaration
+  - Each key becomes an error name; the value is a factory function returning fields + `message`
+  - Returns `{ErrorName}` (plain error) and `{ErrorName}Err` (Err-wrapped) for each key
+  - Factory functions receive typed fields and return `{ ...fields, message }`
+  - No-field errors use `() => ({ message: '...' })`
+  - `name` is a reserved key — prevented at compile time
 - **`extractErrorMessage(error)`** - Extract readable message from unknown error
 
 ### Types
 - **`Result<T, E>`** - Union of Ok<T> | Err<E>
 - **`Ok<T>`** - Success result type
 - **`Err<E>`** - Error result type
-- **`TaggedError<T>`** - Structured error type
+- **`InferError<TErrors, TName>`** - Extract error type from `defineErrors` result
 - **`Brand<T, B>`** - Branded type wrapper
 - **`ExtractOkFromResult<R>`** - Extract Ok variant from Result union
 - **`ExtractErrFromResult<R>`** - Extract Err variant from Result union

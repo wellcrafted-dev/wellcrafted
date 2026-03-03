@@ -32,7 +32,7 @@ if (userResult.error) {
   // userResult.error is DatabaseError
   console.log(userResult.error.message);
 } else {
-  // userResult.data is User  
+  // userResult.data is User
   console.log(userResult.data.email);
 }
 ```
@@ -85,16 +85,19 @@ const order = logResult(await getOrder("456"), "Get Order");
 Create flexible error unions for functions that can fail in multiple ways:
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
 // Define specific error types
-const { ValidationError, ValidationErr } = createTaggedError('ValidationError');
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError');
-const { AuthError, AuthErr } = createTaggedError('AuthError');
+const errors = defineErrors({
+  ValidationError: ({ message }: { message: string }) => ({ message }),
+  NetworkError: ({ message }: { message: string }) => ({ message }),
+  AuthError: ({ message }: { message: string }) => ({ message }),
+});
+const { ValidationError, ValidationErr, NetworkError, NetworkErr, AuthError, AuthErr } = errors;
 
-type ValidationError = ReturnType<typeof ValidationError>;
-type NetworkError = ReturnType<typeof NetworkError>;
-type AuthError = ReturnType<typeof AuthError>;
+type ValidationError = InferError<typeof errors, 'ValidationError'>;
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+type AuthError = InferError<typeof errors, 'AuthError'>;
 
 // Union type for operations that can fail in multiple ways
 type UserOperationError = ValidationError | NetworkError | AuthError;
@@ -106,14 +109,14 @@ export async function updateUserProfile(
   // Validation
   if (!updates.email?.includes('@')) {
     return ValidationErr({
-      field: 'email', value: updates.email,
+      message: 'Invalid email address',
     });
   }
 
   // Authentication check
   if (!isAuthenticated()) {
     return AuthErr({
-      operation: 'updateUserProfile',
+      message: 'Not authenticated',
     });
   }
 
@@ -121,7 +124,7 @@ export async function updateUserProfile(
   return tryAsync({
     try: () => api.updateUser(userId, updates),
     catch: (error) => NetworkErr({
-      userId, updates,
+      message: 'Network request failed',
     })
   });
 }
@@ -134,7 +137,7 @@ Use TypeScript's discriminated unions for exhaustive error handling:
 ```typescript
 async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
   const result = await updateUserProfile(userId, updates);
-  
+
   if (result.error) {
     // TypeScript knows result.error is UserOperationError
     switch (result.error.name) {
@@ -143,7 +146,7 @@ async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
         showFieldError(result.error.field, result.error.message);
         break;
       case 'NetworkError':
-        // TypeScript knows this is NetworkError  
+        // TypeScript knows this is NetworkError
         showNetworkError(result.error.message);
         break;
       case 'AuthError':
@@ -174,11 +177,11 @@ export function createRecorderService(options: RecorderOptions) {
     async startRecording(): Promise<Result<RecordingSession, RecorderServiceError>> {
       // Implementation...
     },
-    
+
     async stopRecording(): Promise<Result<Blob, RecorderServiceError>> {
       // Implementation...
     },
-    
+
     getRecordingState(): RecordingState {
       // Implementation...
     }
@@ -232,7 +235,7 @@ export function createOpenAITranscriptionService(apiKey: string): TranscriptionS
         })
       });
     },
-    
+
     getSupportedLanguages: () => ['en', 'es', 'fr', 'de'],
     isAvailable: () => Boolean(apiKey)
   };
@@ -322,7 +325,7 @@ type ServiceResponse = Result<{
   pagination: PaginationInfo;
 }, NetworkError | ValidationError>;
 
-type ResponseData = UnwrapOk<ServiceResponse>; 
+type ResponseData = UnwrapOk<ServiceResponse>;
 // { users: User[]; pagination: PaginationInfo; }
 ```
 
@@ -376,7 +379,7 @@ const transcribeBlob = defineMutation({
     blob: Blob
   ): Promise<Result<string, TranscriptionError>> => {
     const provider = settings.value['transcription.provider'];
-    
+
     switch (provider) {
       case 'openai': {
         const apiKey = settings.value['apiKeys.openai'];
@@ -434,7 +437,7 @@ export function createRecordingService(): CRUDService<
         })
       });
     },
-    
+
     async getById(id) {
       return tryAsync({
         try: () => database.recordings.findById(id),
@@ -443,7 +446,7 @@ export function createRecordingService(): CRUDService<
         })
       });
     },
-    
+
     // ... other methods
   };
 }
@@ -556,14 +559,16 @@ const expensiveQuery = createLazyQuery(async () => {
 
 ```typescript
 // DON'T: Too specific, hard to handle
-type SpecificError = 
+type SpecificError =
   | { type: 'NETWORK_TIMEOUT'; timeout: number }
   | { type: 'NETWORK_CONNECTION_REFUSED'; port: number }
   | { type: 'NETWORK_DNS_ERROR'; hostname: string };
 
-// DO: Broad categories, specific context
-const { NetworkError } = createTaggedError('NetworkError');
-// Use context field for specifics
+// DO: Broad categories, specific context via defineErrors
+const errors = defineErrors({
+  NetworkError: ({ message }: { message: string }) => ({ message }),
+});
+// Use fields for specifics
 ```
 
 ### ❌ Missing Result Annotations
@@ -576,7 +581,7 @@ export async function updateUser(id: string, updates: any) {
 
 // DO: Explicit error types in signature
 export async function updateUser(
-  id: string, 
+  id: string,
   updates: UserUpdates
 ): Promise<Result<User, ValidationError | DatabaseError | AuthError>> {
   // Clear what can go wrong

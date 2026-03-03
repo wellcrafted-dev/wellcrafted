@@ -106,13 +106,10 @@ Traditional JavaScript errors have problems:
 - They don't serialize well
 - They can't be discriminated in unions
 
-wellcrafted's TaggedError solves these issues:
+wellcrafted's tagged error pattern solves these issues. Every tagged error is a readonly plain object with a `name` discriminant, a `message`, and any additional fields spread flat:
 
 ```typescript
-type TaggedError<
-  TName extends string = string,
-  TFields extends JsonObject = Record<never, never>,
-> = Readonly<{ name: TName; message: string } & TFields>;
+Readonly<{ name: TName; message: string } & TFields>
 ```
 
 > Custom fields are spread directly onto the error object. Include the function's input parameters and any relevant variables as fields. This creates a complete picture of what data led to the error, making debugging straightforward.
@@ -122,9 +119,9 @@ type TaggedError<
 The `name` field serves as a discriminant, enabling exhaustive pattern matching:
 
 ```typescript
-type AuthError = TaggedError<"AuthError">;
-type NetworkError = TaggedError<"NetworkError">;
-type ValidationError = TaggedError<"ValidationError">;
+type AuthError = Readonly<{ name: "AuthError"; message: string }>;
+type NetworkError = Readonly<{ name: "NetworkError"; message: string }>;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
 
 function handleError(error: AuthError | NetworkError | ValidationError) {
   switch (error.name) {
@@ -250,9 +247,9 @@ type UserId = string & Brand<"UserId">;
 type OrderId = string & Brand<"OrderId">;
 
 // Tagged errors for clarity
-type OrderNotFoundError = TaggedError<"OrderNotFoundError">;
-type PaymentError = TaggedError<"PaymentError">;
-type ShippingError = TaggedError<"ShippingError">;
+type OrderNotFoundError = Readonly<{ name: "OrderNotFoundError"; message: string }>;
+type PaymentError = Readonly<{ name: "PaymentError"; message: string }>;
+type ShippingError = Readonly<{ name: "ShippingError"; message: string }>;
 
 // Result types make errors visible
 async function fulfillOrder(

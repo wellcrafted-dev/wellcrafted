@@ -1,7 +1,7 @@
 # Tagged Error Redesign: Break Up Monolithic Errors, Improve Payload Structure
 
 **Created**: 2026-02-25
-**Status**: Superseded
+**Status**: Superseded by `20260302T154500-replace-createTaggedError-with-defineErrors.md`
 
 > **Note**: This spec is superseded by `20260226T233600-tagged-error-minimal-design.md`. The `message` override was removed in BOTH this spec's original design AND the final design, but for different reasons: this spec removed it because `.withMessage()` was mandatory (the template was the sole source of message computation), while the final design removed it because sealed `.withMessage()` templates force better error design — when the template can't produce a good message, the error type needs better fields or should be a different type.
 

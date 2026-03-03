@@ -23,16 +23,22 @@ One of the most powerful patterns in wellcrafted applications is **error transfo
 
 ### 1. Service Layer: Domain-Specific Errors
 
-Services return detailed, domain-specific errors using `createTaggedError`:
+Services return detailed, domain-specific errors using `defineErrors`:
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 import { tryAsync, Result } from 'wellcrafted/result';
 
-const { RecorderServiceError, RecorderServiceErr } = createTaggedError('RecorderServiceError')
-  .withFields<{ userAgent?: string; permissions?: string; errorCode?: string }>()
-  .withMessage(() => 'Recorder operation failed');
-type RecorderServiceError = ReturnType<typeof RecorderServiceError>;
+const recorderErrors = defineErrors({
+  RecorderServiceError: ({ userAgent, permissions, errorCode }: { userAgent?: string; permissions?: string; errorCode?: string }) => ({
+    message: 'Recorder operation failed',
+    userAgent,
+    permissions,
+    errorCode,
+  }),
+});
+const { RecorderServiceError, RecorderServiceErr } = recorderErrors;
+type RecorderServiceError = InferError<typeof recorderErrors, 'RecorderServiceError'>;
 
 export function createRecorderService() {
   return {
@@ -86,8 +92,8 @@ export const recorder = {
         return Err({
           title: "❌ Unable to start recording",
           description: "Please check your microphone permissions and try again.",
-          action: { 
-            type: 'more-details', 
+          action: {
+            type: 'more-details',
             error // Preserve original for debugging
           }
         });
@@ -116,9 +122,9 @@ const startRecordingMutation = createMutation(() => recorder.startRecording.opti
 startRecordingMutation.mutate(undefined, {
   onError: (uiError) => {
     // uiError is already UI-ready
-    showToast(uiError.title, { 
+    showToast(uiError.title, {
       description: uiError.description,
-      action: uiError.action 
+      action: uiError.action
     });
   }
 });
@@ -132,10 +138,19 @@ Let's see a complete example with a database service:
 
 ```typescript
 // services/db.ts
-const { DbServiceError, DbServiceErr } = createTaggedError('DbServiceError')
-  .withFields<{ operation: string; table?: string; query?: string; timestamp?: string }>()
-  .withMessage(({ operation }) => `DB ${operation} failed`);
-type DbServiceError = ReturnType<typeof DbServiceError>;
+import { defineErrors, type InferError } from 'wellcrafted/error';
+
+const dbErrors = defineErrors({
+  DbServiceError: ({ operation, table, query, timestamp }: { operation: string; table?: string; query?: string; timestamp?: string }) => ({
+    message: `DB ${operation} failed`,
+    operation,
+    table,
+    query,
+    timestamp,
+  }),
+});
+const { DbServiceError, DbServiceErr } = dbErrors;
+type DbServiceError = InferError<typeof dbErrors, 'DbServiceError'>;
 
 export async function getAllRecordings(): Promise<Result<Recording[], DbServiceError>> {
   return tryAsync({
@@ -197,7 +212,7 @@ export const recordings = {
         return Err({
           title: "❌ Failed to load recordings",
           description: "Unable to fetch your recordings. Please check your connection and try again.",
-          action: { 
+          action: {
             type: 'retry',
             error // Keep original for debugging
           }
@@ -220,16 +235,16 @@ export const recordings = {
             action: { type: 'retry', error }
           });
         }
-        
+
         return Err({
-          title: "❌ Failed to save recording", 
+          title: "❌ Failed to save recording",
           description: "Unable to save your recording. Please try again or contact support.",
           action: { type: 'more-details', error }
         });
       }
 
       // Optimistically update cache
-      queryClient.setQueryData<Recording[]>(['recordings'], (old) => 
+      queryClient.setQueryData<Recording[]>(['recordings'], (old) =>
         old ? [...old, data] : [data]
       );
 
@@ -246,7 +261,7 @@ export const recordings = {
 <script lang="ts">
   import { createQuery, createMutation } from '@tanstack/svelte-query';
   import { rpc } from '$lib/query';
-  
+
   const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
   const createRecordingMutation = createMutation(() => rpc.recordings.createRecording.options);
 
@@ -257,7 +272,7 @@ export const recordings = {
       },
       onError: (uiError) => {
         // uiError is already UI-ready - no transformation needed
-        showToast(uiError.title, { 
+        showToast(uiError.title, {
           description: uiError.description,
           action: uiError.action?.type === 'more-details' ? {
             label: 'Show Details',
@@ -273,7 +288,7 @@ export const recordings = {
   <LoadingSpinner />
 {:else if recordingsQuery.error}
   <!-- Error is UI-ready -->
-  <ErrorBanner 
+  <ErrorBanner
     title={recordingsQuery.error.title}
     description={recordingsQuery.error.description}
     action={recordingsQuery.error.action}
@@ -314,7 +329,7 @@ export const auth = {
       if (error) {
         // Same service error, different UI message
         return Err({
-          title: "❌ Password change failed", 
+          title: "❌ Password change failed",
           description: "Your current password is incorrect.",
           action: { type: 'retry' }
         });
@@ -350,7 +365,7 @@ const validateInput = defineMutation({
           action: { type: 'continue' }
         });
       }
-      
+
       // Transform critical errors as errors
       return Err({
         title: "❌ Validation failed",
@@ -375,7 +390,7 @@ const processBatch = defineMutation({
     if (error) {
       const successCount = data?.results.filter(r => r.success).length ?? 0;
       const totalCount = items.length;
-      
+
       if (successCount === 0) {
         return Err({
           title: "❌ Batch processing failed",
@@ -383,7 +398,7 @@ const processBatch = defineMutation({
           action: { type: 'retry', error }
         });
       }
-      
+
       return Err({
         title: "⚠️ Partial success",
         description: `${successCount} of ${totalCount} items processed successfully.`,
@@ -434,7 +449,7 @@ if (userQuery.error) {
 Define standard error actions across your application:
 
 ```typescript
-type ErrorAction = 
+type ErrorAction =
   | { type: 'retry'; retryFn?: () => void }
   | { type: 'more-details'; error: any }
   | { type: 'contact-support'; supportUrl?: string }
@@ -443,8 +458,8 @@ type ErrorAction =
 
 // Standard error transformation helper
 function createUIError(
-  title: string, 
-  description: string, 
+  title: string,
+  description: string,
   action?: ErrorAction
 ): UIError {
   return { title, description, action };
@@ -509,7 +524,7 @@ describe('Recording query error transformations', () => {
 
     // Test query transformation
     const result = await recordings.getAllRecordings.fetch();
-    
+
     expect(result.error).toEqual({
       title: "❌ Failed to load recordings",
       description: "Unable to fetch your recordings. Please check your connection and try again.",

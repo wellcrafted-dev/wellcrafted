@@ -32,29 +32,51 @@ Tagged errors solve this by treating errors as plain data structures instead of 
 └─────────────────────────────────────────────────────────┘
 ```
 
-## The Fluent API
+## The `defineErrors` API
 
-The `createTaggedError` function provides a chainable builder API with two stages:
+`defineErrors` takes an object where each key is an error name (must end in `Error`) and each value is a constructor function. The constructor receives input and returns `{ message, ...data }`. `defineErrors` stamps `name` from the key and generates both a plain factory and an `Err`-wrapped factory.
 
-- **Builder stage**: Chain `.withFields<T>()` and optionally `.withMessage(fn)` to define the error shape.
-- **Factory stage**: Factories are available immediately AND after `.withMessage(fn)`.
+```typescript
+import { defineErrors, type InferError, type InferErrorUnion } from 'wellcrafted/error';
 
-`.withMessage(fn)` is **optional**. Without it, `message` is required at the call site. With it, the template seals the message — `message` is not in the input type.
+const errors = defineErrors({
+  NetworkError: () => ({
+    message: 'Network request failed',
+  }),
+  ResponseError: ({ status, reason }: { status: number; reason?: string }) => ({
+    message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
+    status,
+    reason,
+  }),
+});
+
+const { NetworkError, NetworkErr, ResponseError, ResponseErr } = errors;
+```
+
+Each entry produces two factories:
+- `NetworkError(...)`: Creates a plain tagged error object
+- `NetworkErr(...)`: Wraps it in `Err` for use with Result types
 
 ## Tiers of Error Complexity
 
 ### Tier 0: Minimal Errors — message at call site
 
-No `.withMessage()`. The call site provides the message directly.
+The constructor takes `message` as input and passes it through. The call site provides the message directly.
 
 ```typescript
-const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+const errors = defineErrors({
+  SimpleError: ({ message }: { message: string }) => ({ message }),
+
+  FsReadError: ({ message, path }: { message: string; path: string }) => ({
+    message,
+    path,
+  }),
+});
+
+const { SimpleError, SimpleErr, FsReadError, FsReadErr } = errors;
 
 SimpleErr({ message: 'Something went wrong' });
 // → { name: 'SimpleError', message: 'Something went wrong' }
-
-const { FsReadError, FsReadErr } = createTaggedError('FsReadError')
-  .withFields<{ path: string }>();
 
 FsReadErr({ message: 'Failed to read config', path: '/etc/config' });
 // → { name: 'FsReadError', message: 'Failed to read config', path: '/etc/config' }
@@ -62,11 +84,16 @@ FsReadErr({ message: 'Failed to read config', path: '/etc/config' });
 
 ### Tier 1: Static Errors — no fields, no arguments
 
-The error name + template IS the message. Use when there's no dynamic content.
+Zero-arg constructor with a fixed message. Use when there's no dynamic content.
 
 ```typescript
-const { RecorderBusyError, RecorderBusyErr } = createTaggedError('RecorderBusyError')
-  .withMessage(() => 'A recording is already in progress');
+const errors = defineErrors({
+  RecorderBusyError: () => ({
+    message: 'A recording is already in progress',
+  }),
+});
+
+const { RecorderBusyError, RecorderBusyErr } = errors;
 
 RecorderBusyErr();
 // → { name: 'RecorderBusyError', message: 'A recording is already in progress' }
@@ -77,9 +104,14 @@ RecorderBusyErr();
 Use when the only dynamic content is a stringified caught error.
 
 ```typescript
-const { PlaySoundError, PlaySoundErr } = createTaggedError('PlaySoundError')
-  .withFields<{ reason: string }>()
-  .withMessage(({ reason }) => `Failed to play sound: ${reason}`);
+const errors = defineErrors({
+  PlaySoundError: ({ reason }: { reason: string }) => ({
+    message: `Failed to play sound: ${reason}`,
+    reason,
+  }),
+});
+
+const { PlaySoundError, PlaySoundErr } = errors;
 
 PlaySoundErr({ reason: extractErrorMessage(error) });
 // → { name: 'PlaySoundError', message: 'Failed to play sound: device busy', reason: 'device busy' }
@@ -90,11 +122,15 @@ PlaySoundErr({ reason: extractErrorMessage(error) });
 Use when there's data worth preserving as named fields that callers branch on.
 
 ```typescript
-const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; reason?: string }>()
-  .withMessage(({ status, reason }) =>
-    `HTTP ${status}${reason ? `: ${reason}` : ''}`
-  );
+const errors = defineErrors({
+  ResponseError: ({ status, reason }: { status: number; reason?: string }) => ({
+    message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
+    status,
+    reason,
+  }),
+});
+
+const { ResponseError, ResponseErr } = errors;
 
 ResponseErr({ status: 404 });
 // → { name: 'ResponseError', message: 'HTTP 404', status: 404 }
@@ -103,38 +139,31 @@ ResponseErr({ status: 500, reason: 'Internal error' });
 // → { name: 'ResponseError', message: 'HTTP 500: Internal error', status: 500, reason: 'Internal error' }
 ```
 
-## Builder vs FinalFactories
+## Mixing Error Shapes
 
-The builder returns factories immediately. `.withMessage(fn)` is optional and returns sealed factories.
-
-```typescript
-// Factories available immediately — message required at call site
-const { FileError, FileErr } = createTaggedError('FileError')
-  .withFields<{ path: string }>();
-FileError({ message: 'Failed: /etc/config', path: '/etc/config' });
-
-// With .withMessage() — message sealed by template
-const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number }>()
-  .withMessage(({ status }) => `HTTP ${status}`);
-ResponseError({ status: 404 });  // message: "HTTP 404"
-```
-
-## `.withMessage()` — Seals the Message
-
-`.withMessage(fn)` is an **optional** step that seals the message. The callback receives the fields directly (flat, not nested):
+A single `defineErrors` call can contain any mix of tiers:
 
 ```typescript
-const { DbError, DbErr } = createTaggedError('DbError')
-  .withFields<{ host: string; port: number }>()
-  .withMessage(({ host, port }) => `DB connection failed at ${host}:${port}`);
-```
+const errors = defineErrors({
+  // Tier 1: Static
+  RecorderBusyError: () => ({
+    message: 'A recording is already in progress',
+  }),
 
-When `.withMessage()` is used, the message is sealed — `message` is not in the factory input type. The template owns it entirely.
+  // Tier 3: Structured
+  ResponseError: ({ provider, status, model }: { provider: string; status: number; model: string }) => ({
+    message: `HTTP ${status}`,
+    provider,
+    status,
+    model,
+  }),
 
-```typescript
-DbErr({ host: 'localhost', port: 5432 });
-// error.message -> "DB connection failed at localhost:5432"
+  // Tier 0: Call-site message with fields
+  OperationError: ({ operation, message }: { operation: string; message: string }) => ({
+    message,
+    operation,
+  }),
+});
 ```
 
 ## Flat Fields — No Nesting
@@ -154,7 +183,7 @@ const { name, message, ...rest } = error;
 
 ## Reserved Keys
 
-Only `name` is reserved — attempting to use it in `.withFields()` produces a compile error. `message` is either a built-in input (without `.withMessage()`) or absent from the input entirely (with `.withMessage()`).
+Only `name` is reserved — `defineErrors` stamps it automatically from the key. `message` is always part of the constructor's return type.
 
 ## JSON Serializability
 
@@ -175,31 +204,47 @@ const parsed = JSON.parse(JSON.stringify(error));
 There's no special `cause` machinery. If an error type needs to carry a cause, it's just another field:
 
 ```typescript
-const { BackendError } = createTaggedError('BackendError')
-  .withFields<{ backend: string; cause: string }>()
-  .withMessage(({ backend }) => `${backend} failed`);
+const errors = defineErrors({
+  BackendError: ({ backend, cause }: { backend: string; cause: string }) => ({
+    message: `${backend} failed`,
+    backend,
+    cause,
+  }),
+});
 
+const { BackendError } = errors;
 BackendError({ backend: 'postgres', cause: 'connection timeout' });
 ```
 
-## Type Annotations with ReturnType
+## Type Annotations with `InferError` and `InferErrorUnion`
 
-`ReturnType` works correctly for all tiers:
+Use `InferError` to extract a single error type from a `defineErrors` return, and `InferErrorUnion` for the union of all errors:
 
 ```typescript
-const { NetworkError } = createTaggedError('NetworkError')
-  .withMessage(() => 'Network request failed');
-type NetworkError = ReturnType<typeof NetworkError>;
+import { defineErrors, type InferError, type InferErrorUnion } from 'wellcrafted/error';
+
+const errors = defineErrors({
+  NetworkError: () => ({
+    message: 'Network request failed',
+  }),
+  FileError: ({ path }: { path: string }) => ({
+    message: `File not found: ${path}`,
+    path,
+  }),
+});
+
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
 // = Readonly<{ name: 'NetworkError'; message: string }>
 
-const { FileError } = createTaggedError('FileError')
-  .withFields<{ path: string }>()
-  .withMessage(({ path }) => `File not found: ${path}`);
-type FileError = ReturnType<typeof FileError>;
+type FileError = InferError<typeof errors, 'FileError'>;
 // = Readonly<{ name: 'FileError'; message: string; path: string }>
 
+// Union of all errors defined in this group
+type AppError = InferErrorUnion<typeof errors>;
+// = NetworkError | FileError
+
 // Use in discriminated union switches
-function handleErrors(error: NetworkError | FileError) {
+function handleErrors(error: AppError) {
   switch (error.name) {
     case 'NetworkError':
       console.log('Network failed:', error.message);
@@ -214,26 +259,38 @@ function handleErrors(error: NetworkError | FileError) {
 ## Quick Reference
 
 ```typescript
-import { createTaggedError, type TaggedError, type AnyTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError, type InferErrorUnion, type AnyTaggedError, extractErrorMessage } from 'wellcrafted/error';
 
-// Without .withMessage() — message required at call site
-const { SimpleError, SimpleErr } = createTaggedError('SimpleError');
+const errors = defineErrors({
+  // Call-site message
+  SimpleError: ({ message }: { message: string }) => ({ message }),
+
+  // Static message
+  NetworkError: () => ({
+    message: 'Network request failed',
+  }),
+
+  // Computed message from fields
+  ResponseError: ({ status, provider }: { status: number; provider: string }) => ({
+    message: `${provider}: HTTP ${status}`,
+    status,
+    provider,
+  }),
+});
+
+const { SimpleError, SimpleErr } = errors;
+const { NetworkError, NetworkErr } = errors;
+const { ResponseError, ResponseErr } = errors;
+
 SimpleErr({ message: 'Something went wrong' });
-
-// With sealed .withMessage() — static message
-const { NetworkError, NetworkErr } = createTaggedError('NetworkError')
-  .withMessage(() => 'Network request failed');
 NetworkErr();  // message: 'Network request failed'
-
-// With sealed .withMessage() — template computes from fields
-const { ResponseError, ResponseErr } = createTaggedError('ResponseError')
-  .withFields<{ status: number; provider: string }>()
-  .withMessage(({ status, provider }) => `${provider}: HTTP ${status}`);
 ResponseErr({ status: 404, provider: 'openai' });  // message: "openai: HTTP 404"
+
+// Type extraction
+type NetworkError = InferError<typeof errors, 'NetworkError'>;
+type AllErrors = InferErrorUnion<typeof errors>;
 ```
 
-Each builder call returns two functions:
+Each entry produces two factories:
 - `NetworkError`: Creates a plain tagged error object
 - `NetworkErr`: Wraps it in `Err` for use with Result types
-
-Two modes: without `.withMessage()`, `message` is required at the call site. With `.withMessage()`, the template seals the message — `message` is not in the input type.

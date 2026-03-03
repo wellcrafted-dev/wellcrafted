@@ -266,12 +266,12 @@ Whispering demonstrates how wellcrafted's error system eliminates runtime crashe
 
 ```typescript
 // Service-specific errors with rich context
-type RecorderServiceError = TaggedError<'RecorderServiceError'>;
-type TranscriptionServiceError = TaggedError<'TranscriptionServiceError'>;
-type ClipboardServiceError = TaggedError<'ClipboardServiceError'>;
+type RecorderServiceError = Readonly<{ name: 'RecorderServiceError'; message: string }>;
+type TranscriptionServiceError = Readonly<{ name: 'TranscriptionServiceError'; message: string }>;
+type ClipboardServiceError = Readonly<{ name: 'ClipboardServiceError'; message: string }>;
 
 // Application-level errors for UI
-type WhisperingError = TaggedError<'WhisperingError'>;
+type WhisperingError = Readonly<{ name: 'WhisperingError'; message: string }>;
 ```
 
 ### Error Transformation Pipeline
@@ -590,11 +590,17 @@ To implement similar architecture in your application:
 Create pure functions that return Result types:
 
 ```typescript
-import { createTaggedError } from 'wellcrafted/error';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 import { tryAsync, type Result } from 'wellcrafted/result';
 
-const { ApiError, ApiErr } = createTaggedError('ApiError');
-type ApiError = ReturnType<typeof ApiError>;
+const apiErrors = defineErrors({
+  ApiError: (fields: Record<string, unknown>) => ({
+    message: 'API request failed',
+    ...fields,
+  }),
+});
+const { ApiError, ApiErr } = apiErrors;
+type ApiError = InferError<typeof apiErrors, 'ApiError'>;
 
 export function createUserService(config: { apiUrl: string }) {
   return {

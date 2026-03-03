@@ -84,9 +84,9 @@ try {
 ### Scenario 1 Solved: Rich Error Context
 
 ```typescript
-type PaymentError = TaggedError<"PaymentError">;
-type ValidationError = TaggedError<"ValidationError">;
-type GatewayError = TaggedError<"GatewayError">;
+type PaymentError = Readonly<{ name: "PaymentError"; message: string }>;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
+type GatewayError = Readonly<{ name: "GatewayError"; message: string }>;
 
 async function processPayment(
   order: Order,
@@ -214,11 +214,11 @@ async function handleProfileUpdate(req: Request): Promise<Response> {
 ### Scenario 3 Solved: Discriminated Error Types
 
 ```typescript
-type ApiError = 
-  | TaggedError<"RateLimitError">
-  | TaggedError<"NetworkError">
-  | TaggedError<"AuthError">
-  | TaggedError<"NotFoundError">;
+type ApiError =
+  | Readonly<{ name: "RateLimitError"; message: string }>
+  | Readonly<{ name: "NetworkError"; message: string }>
+  | Readonly<{ name: "AuthError"; message: string }>
+  | Readonly<{ name: "NotFoundError"; message: string }>;
 
 async function fetchUserData(
   id: string
