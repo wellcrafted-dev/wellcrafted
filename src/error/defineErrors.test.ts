@@ -134,7 +134,10 @@ describe("defineErrors - computed message from fields", () => {
 		ResponseError: ({
 			status,
 			reason,
-		}: { status: number; reason?: string }) => ({
+		}: {
+			status: number;
+			reason?: string;
+		}) => ({
 			message: `HTTP ${status}${reason ? `: ${reason}` : ""}`,
 			status,
 			reason,
@@ -178,7 +181,11 @@ describe("defineErrors - computed message from fields", () => {
 				table,
 				operation,
 				backend,
-			}: { table: string; operation: string; backend: string }) => ({
+			}: {
+				table: string;
+				operation: string;
+				backend: string;
+			}) => ({
 				message: `Database ${operation} on ${table} failed`,
 				table,
 				operation,
@@ -257,7 +264,10 @@ describe("defineErrors - mixed function shapes", () => {
 		OperationError: ({
 			operation,
 			message,
-		}: { operation: string; message: string }) => ({
+		}: {
+			operation: string;
+			message: string;
+		}) => ({
 			message,
 			operation,
 		}),
@@ -316,7 +326,10 @@ describe("defineErrors - type extraction", () => {
 		ResponseError: ({
 			status,
 			bodyMessage,
-		}: { status: number; bodyMessage?: string }) => ({
+		}: {
+			status: number;
+			bodyMessage?: string;
+		}) => ({
 			message: bodyMessage
 				? `HTTP ${status}: ${bodyMessage}`
 				: `HTTP ${status} response`,
@@ -412,7 +425,10 @@ describe("defineErrors - JSON serialization", () => {
 			ResponseError: ({
 				status,
 				provider,
-			}: { status: number; provider: string }) => ({
+			}: {
+				status: number;
+				provider: string;
+			}) => ({
 				message: `HTTP ${status}`,
 				status,
 				provider,
@@ -434,7 +450,10 @@ describe("defineErrors - JSON serialization", () => {
 			DbError: ({
 				table,
 				operation,
-			}: { table: string; operation: string }) => ({
+			}: {
+				table: string;
+				operation: string;
+			}) => ({
 				message: `${operation} on ${table} failed`,
 				table,
 				operation,
@@ -451,7 +470,10 @@ describe("defineErrors - JSON serialization", () => {
 			ApiError: ({
 				endpoint,
 				status,
-			}: { endpoint: string; status: number }) => ({
+			}: {
+				endpoint: string;
+				status: number;
+			}) => ({
 				message: `${endpoint} failed`,
 				endpoint,
 				status,
@@ -487,7 +509,11 @@ describe("defineErrors - type safety", () => {
 				message,
 				path,
 				size,
-			}: { message: string; path: string; size: number }) => ({
+			}: {
+				message: string;
+				path: string;
+				size: number;
+			}) => ({
 				message,
 				path,
 				size,
@@ -569,7 +595,10 @@ describe("defineErrors - edge cases", () => {
 			BackendError: ({
 				backend,
 				cause,
-			}: { backend: string; cause: string }) => ({
+			}: {
+				backend: string;
+				cause: string;
+			}) => ({
 				message: `${backend} failed`,
 				backend,
 				cause,
@@ -606,7 +635,11 @@ describe("defineErrors - the console log test", () => {
 				provider,
 				status,
 				model,
-			}: { provider: string; status: number; model: string }) => ({
+			}: {
+				provider: string;
+				status: number;
+				model: string;
+			}) => ({
 				message: `HTTP ${status}`,
 				provider,
 				status,
@@ -617,7 +650,11 @@ describe("defineErrors - the console log test", () => {
 				table,
 				operation,
 				backend,
-			}: { table: string; operation: string; backend: string }) => ({
+			}: {
+				table: string;
+				operation: string;
+				backend: string;
+			}) => ({
 				message: `Database ${operation} on ${table} failed`,
 				table,
 				operation,
@@ -654,10 +691,7 @@ describe("defineErrors - the console log test", () => {
 		const errors = defineErrors({
 			SimpleError: ({ message }: { message: string }) => ({ message }),
 
-			FsReadError: ({
-				message,
-				path,
-			}: { message: string; path: string }) => ({
+			FsReadError: ({ message, path }: { message: string; path: string }) => ({
 				message,
 				path,
 			}),
