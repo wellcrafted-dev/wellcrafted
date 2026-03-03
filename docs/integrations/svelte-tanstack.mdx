@@ -192,26 +192,25 @@ Here is a complete flow from service to query definition to Svelte component.
 import { Ok, tryAsync } from 'wellcrafted/result';
 import { defineErrors } from 'wellcrafted/error';
 
-const recordingErrors = defineErrors({
-  RecordingServiceError: ({ operation }: { operation: string }) => ({
+const RecordingServiceError = defineErrors({
+  Operation: ({ operation }: { operation: string }) => ({
     message: `Recording ${operation} failed`,
     operation,
   }),
 });
-const { RecordingServiceErr } = recordingErrors;
 
 export function createRecordingService(deps: { db: DbClient }) {
   return {
     getAllRecordings: () =>
       tryAsync({
         try: () => deps.db.select().from(recordings).orderBy(desc(recordings.createdAt)),
-        catch: () => RecordingServiceErr({ operation: 'list' }),
+        catch: () => RecordingServiceError.Operation({ operation: 'list' }),
       }),
 
     deleteRecording: (id: string) =>
       tryAsync({
         try: () => deps.db.delete(recordings).where(eq(recordings.id, id)),
-        catch: () => RecordingServiceErr({ operation: 'delete' }),
+        catch: () => RecordingServiceError.Operation({ operation: 'delete' }),
       }),
   };
 }

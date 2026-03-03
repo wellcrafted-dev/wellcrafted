@@ -81,21 +81,20 @@ async function saveUser(user: User): Promise<Result<void, ValidationError | Auth
 ## Quick Example
 
 ```typescript
-import { tryAsync, Err } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { tryAsync } from "wellcrafted/result";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-const errors = defineErrors({
-  ApiError: ({ endpoint }: { endpoint: string }) => ({
+const ApiError = defineErrors({
+  Fetch: ({ endpoint }: { endpoint: string }) => ({
     message: `Failed to fetch data from ${endpoint}`,
     endpoint,
   }),
 });
-const { ApiErr } = errors;
-type ApiError = InferError<typeof errors, 'ApiError'>;
+type ApiError = InferErrors<typeof ApiError>;
 
 const { data, error } = await tryAsync<User, ApiError>({
   try: () => fetch('/api/user').then(r => r.json()),
-  catch: () => ApiErr({ endpoint: '/api/user' })
+  catch: () => ApiError.Fetch({ endpoint: '/api/user' })
 });
 
 if (error) {

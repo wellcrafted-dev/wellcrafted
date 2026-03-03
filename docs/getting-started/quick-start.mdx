@@ -14,16 +14,16 @@ Let's start by replacing a throwing function with a Result-returning one:
 
 ```typescript
 import { Result, Ok } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // Define your error with defineErrors
-const errors = defineErrors({
-  ParseError: () => ({
+// The const name IS the namespace; variant names are short
+const ParseError = defineErrors({
+  Parse: () => ({
     message: 'Input is not a valid number',
   }),
 });
-const { ParseError, ParseErr } = errors;
-type ParseError = InferError<typeof errors, 'ParseError'>;
+type ParseError = InferErrors<typeof ParseError>;
 
 // Instead of throwing...
 function parseNumberOld(input: string): number {
@@ -39,8 +39,8 @@ function parseNumber(input: string): Result<number, ParseError> {
   const num = parseInt(input);
 
   if (isNaN(num)) {
-    // Use the Err variant for direct return
-    return ParseErr();
+    // Each factory returns Err<...> directly
+    return ParseError.Parse();
   }
 
   return Ok(num);
@@ -80,21 +80,20 @@ Most code you work with throws exceptions. Here's how to wrap it:
 
 ```typescript
 import { trySync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-const jsonErrors = defineErrors({
-  JsonError: ({ text }: { text: string }) => ({
+const JsonError = defineErrors({
+  Parse: ({ text }: { text: string }) => ({
     message: `Failed to parse JSON: ${text}`,
     text,
   }),
 });
-const { JsonError, JsonErr } = jsonErrors;
-type JsonError = InferError<typeof jsonErrors, 'JsonError'>;
+type JsonError = InferErrors<typeof JsonError>;
 
 function parseJson<T>(text: string): Result<T, JsonError> {
   return trySync({
     try: () => JSON.parse(text),
-    catch: () => JsonErr({ text: text.substring(0, 100) }) // Truncate for logging
+    catch: () => JsonError.Parse({ text: text.substring(0, 100) }) // Truncate for logging
   });
 }
 
@@ -111,18 +110,17 @@ if (error) {
 
 ```typescript
 import { tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // Define error with typed fields - endpoint is always useful for API errors
-const apiErrors = defineErrors({
-  ApiError: ({ endpoint, statusCode }: { endpoint: string; statusCode?: number }) => ({
+const ApiError = defineErrors({
+  Request: ({ endpoint, statusCode }: { endpoint: string; statusCode?: number }) => ({
     message: `API request failed: ${endpoint}`,
     endpoint,
     statusCode,
   }),
 });
-const { ApiError, ApiErr } = apiErrors;
-type ApiError = InferError<typeof apiErrors, 'ApiError'>;
+type ApiError = InferErrors<typeof ApiError>;
 
 interface User {
   id: number;
@@ -140,7 +138,7 @@ async function fetchUser(id: number): Promise<Result<User, ApiError>> {
       }
       return response.json();
     },
-    catch: () => ApiErr({ endpoint })  // TypeScript enforces this!
+    catch: () => ApiError.Request({ endpoint })  // TypeScript enforces this!
   });
 }
 
@@ -159,11 +157,12 @@ Here's a complete example showing how Results improve a common task:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferError, type InferErrors } from "wellcrafted/error";
 
 // Define our error types with defineErrors
-const formErrors = defineErrors({
-  ValidationError: ({ field, value, receivedType }: { field?: string; value?: string; receivedType?: string }) => ({
+// One namespace groups all related variants
+const FormError = defineErrors({
+  Validation: ({ field, value, receivedType }: { field?: string; value?: string; receivedType?: string }) => ({
     message: (() => {
       if (receivedType) return "Invalid form data";
       if (field === 'email') return "Please enter a valid email address";
@@ -175,14 +174,13 @@ const formErrors = defineErrors({
     value,
     receivedType,
   }),
-  SubmissionError: ({ email }: { email: string }) => ({
+  Submission: ({ email }: { email: string }) => ({
     message: `Failed to create account for ${email}`,
     email,
   }),
 });
-const { ValidationError, ValidationErr, SubmissionError, SubmissionErr } = formErrors;
-type ValidationError = InferError<typeof formErrors, 'ValidationError'>;
-type SubmissionError = InferError<typeof formErrors, 'SubmissionError'>;
+type ValidationError = InferError<typeof FormError.Validation>;
+type SubmissionError = InferError<typeof FormError.Submission>;
 
 // Form data interface
 interface SignupForm {
@@ -195,24 +193,24 @@ interface SignupForm {
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
   // Type check
   if (!data || typeof data !== 'object') {
-    return ValidationErr({ receivedType: typeof data });
+    return FormError.Validation({ receivedType: typeof data });
   }
 
   const { email, password, confirmPassword } = data as any;
 
   // Email validation
   if (!email || !email.includes('@')) {
-    return ValidationErr({ field: 'email', value: email });
+    return FormError.Validation({ field: 'email', value: email });
   }
 
   // Password validation
   if (!password || password.length < 8) {
-    return ValidationErr({ field: 'password' });
+    return FormError.Validation({ field: 'password' });
   }
 
   // Password match validation
   if (password !== confirmPassword) {
-    return ValidationErr({ field: 'confirmPassword' });
+    return FormError.Validation({ field: 'confirmPassword' });
   }
 
   return Ok({ email, password, confirmPassword });
@@ -237,7 +235,7 @@ async function submitSignup(
 
       return response.json();
     },
-    catch: () => SubmissionErr({ email: form.email })
+    catch: () => FormError.Submission({ email: form.email })
   });
 }
 
@@ -322,16 +320,16 @@ const result = await processOrder("order_123");
 if (result.error) {
   // Handle any error from the chain
   switch (result.error.name) {
-    case "OrderNotFoundError":
+    case "OrderNotFound":
       show404Page();
       break;
-    case "ValidationError":
+    case "Validation":
       showValidationMessage(result.error.message);
       break;
-    case "PaymentError":
+    case "Payment":
       showPaymentRetry();
       break;
-    case "ShippingError":
+    case "Shipping":
       notifyWarehouse(result.error);
       break;
   }
@@ -373,7 +371,7 @@ In just 5 minutes, you've learned how to:
 ```typescript
 // Import what you need
 import { Result, Ok, Err, tryAsync, trySync, isOk, isErr } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors, type InferError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 // Create Results
@@ -389,15 +387,16 @@ trySync({ try: () => risky(), catch: (e) => ... })
 tryAsync({ try: async () => risky(), catch: (e) => ... })
 
 // Create tagged errors with defineErrors
-const errors = defineErrors({
-  MyError: ({ /* fields */ }: { /* types */ }) => ({
+// The const name IS the namespace; variant names are short
+const MyError = defineErrors({
+  Variant: ({ /* fields */ }: { /* types */ }) => ({
     message: "Something went wrong",
     /* ...fields */
   }),
 });
-const { MyError, MyErr } = errors;
-type MyError = InferError<typeof errors, 'MyError'>;
-const error = MyError({ /* fields */ });
+type MyError = InferErrors<typeof MyError>;            // union of all variants
+type MyVariant = InferError<typeof MyError.Variant>;  // single variant
+const result = MyError.Variant({ /* fields */ });     // returns Err<...>
 
 // Create brand types
 type MyId = string & Brand<"MyId">;

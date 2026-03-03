@@ -14,22 +14,21 @@ A complete auth service with error propagation and branded types:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
-const authErrors = defineErrors({
-  AuthServiceError: ({ operation, email, userId }: {
+const AuthServiceError = defineErrors({
+  Operation: ({ operation, email, userId }: {
     operation: string; email?: string; userId?: string;
   }) => ({
     message: `Auth ${operation} failed`,
     operation, email, userId,
   }),
 });
-const { AuthServiceErr } = authErrors;
-type AuthServiceError = InferError<typeof authErrors, 'AuthServiceError'>;
+type AuthServiceError = InferErrors<typeof AuthServiceError>;
 
 interface AuthenticatedUser {
   id: UserId;
@@ -52,21 +51,21 @@ export function createAuthService(
 
       const userResult = await tryAsync({
         try: () => db.users.findByEmail(email),
-        catch: () => AuthServiceErr({ operation: "login", email: maskedEmail })
+        catch: () => AuthServiceError.Operation({ operation: "login", email: maskedEmail })
       });
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceErr({ operation: "login", email: maskedEmail });
+        return AuthServiceError.Operation({ operation: "login", email: maskedEmail });
       }
 
       const isValid = await hashService.verify(password, userResult.data.passwordHash);
       if (!isValid) {
-        return AuthServiceErr({ operation: "login", email: maskedEmail });
+        return AuthServiceError.Operation({ operation: "login", email: maskedEmail });
       }
 
       const tokenResult = await tryAsync({
         try: () => tokenService.generate(userResult.data.id),
-        catch: () => AuthServiceErr({ operation: "login", userId: userResult.data.id })
+        catch: () => AuthServiceError.Operation({ operation: "login", userId: userResult.data.id })
       });
       if (tokenResult.error) return tokenResult;
 
@@ -86,20 +85,20 @@ export function createAuthService(
     ): Promise<Result<AuthenticatedUser, AuthServiceError>> {
       const validationResult = await tryAsync({
         try: () => tokenService.validate(token),
-        catch: () => AuthServiceErr({ operation: "validateSession" })
+        catch: () => AuthServiceError.Operation({ operation: "validateSession" })
       });
       if (validationResult.error) return validationResult;
       if (!validationResult.data.isValid) {
-        return AuthServiceErr({ operation: "validateSession" });
+        return AuthServiceError.Operation({ operation: "validateSession" });
       }
 
       const userResult = await tryAsync({
         try: () => db.users.findById(validationResult.data.userId),
-        catch: () => AuthServiceErr({ operation: "validateSession", userId: validationResult.data.userId })
+        catch: () => AuthServiceError.Operation({ operation: "validateSession", userId: validationResult.data.userId })
       });
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceErr({ operation: "validateSession", userId: validationResult.data.userId });
+        return AuthServiceError.Operation({ operation: "validateSession", userId: validationResult.data.userId });
       }
 
       return Ok({
@@ -119,14 +118,14 @@ Size limits, type checking, and storage cleanup on failure:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
-const fileErrors = defineErrors({
-  FileServiceError: ({ operation, fileName, fileSize, maxSize, fileType }: {
+const FileServiceError = defineErrors({
+  Operation: ({ operation, fileName, fileSize, maxSize, fileType }: {
     operation: string;
     fileName?: string;
     fileSize?: number;
@@ -137,8 +136,7 @@ const fileErrors = defineErrors({
     operation, fileName, fileSize, maxSize, fileType,
   }),
 });
-const { FileServiceErr } = fileErrors;
-type FileServiceError = InferError<typeof fileErrors, 'FileServiceError'>;
+type FileServiceError = InferErrors<typeof FileServiceError>;
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -151,12 +149,12 @@ export function createFileService(storage: StorageService, db: Database) {
       onProgress?: (percent: number) => void
     ): Promise<Result<{ id: FileId; url: string }, FileServiceError>> {
       if (file.size > MAX_FILE_SIZE) {
-        return FileServiceErr({
+        return FileServiceError.Operation({
           operation: "upload", fileName: file.name, fileSize: file.size, maxSize: MAX_FILE_SIZE
         });
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
-        return FileServiceErr({
+        return FileServiceError.Operation({
           operation: "upload", fileName: file.name, fileType: file.type
         });
       }
@@ -166,7 +164,7 @@ export function createFileService(storage: StorageService, db: Database) {
 
       const uploadResult = await tryAsync({
         try: () => storage.upload(fileKey, file, { onProgress }),
-        catch: () => FileServiceErr({ operation: "upload", fileName: file.name })
+        catch: () => FileServiceError.Operation({ operation: "upload", fileName: file.name })
       });
       if (uploadResult.error) return uploadResult;
 
@@ -176,7 +174,7 @@ export function createFileService(storage: StorageService, db: Database) {
           size: file.size, mimeType: file.type,
           storageKey: fileKey, url: uploadResult.data.url
         }),
-        catch: () => FileServiceErr({ operation: "upload", fileName: file.name })
+        catch: () => FileServiceError.Operation({ operation: "upload", fileName: file.name })
       });
 
       if (metadataResult.error) {
@@ -197,10 +195,10 @@ Combining wellcrafted with Zod for typed validation errors:
 ```typescript
 import { z } from 'zod';
 import { Result, Ok, trySync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-const validationErrors = defineErrors({
-  ValidationError: ({ field, allErrors }: {
+const ValidationError = defineErrors({
+  Form: ({ field, allErrors }: {
     field?: string;
     allErrors?: Array<{ path: string; message: string }>;
   }) => ({
@@ -208,8 +206,7 @@ const validationErrors = defineErrors({
     field, allErrors,
   }),
 });
-const { ValidationErr } = validationErrors;
-type ValidationError = InferError<typeof validationErrors, 'ValidationError'>;
+type ValidationError = InferErrors<typeof ValidationError>;
 
 const CreateUserSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -226,7 +223,7 @@ export function validateCreateUserForm(
     catch: (error) => {
       if (error instanceof z.ZodError) {
         const firstIssue = error.issues[0];
-        return ValidationErr({
+        return ValidationError.Form({
           field: firstIssue.path.join('.'),
           allErrors: error.issues.map(issue => ({
             path: issue.path.join('.'),
@@ -234,7 +231,7 @@ export function validateCreateUserForm(
           }))
         });
       }
-      return ValidationErr({});
+      return ValidationError.Form({});
     }
   });
 }

@@ -240,17 +240,16 @@ A complete flow from service to query layer to React component.
 ```typescript
 // services/api/users.ts
 import { tryAsync, type Result } from 'wellcrafted/result';
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-const userErrors = defineErrors({
-  UserServiceError: ({ operation, userId }: { operation: string; userId?: string }) => ({
+const UserServiceError = defineErrors({
+  Operation: ({ operation, userId }: { operation: string; userId?: string }) => ({
     message: `User ${operation} failed`,
     operation,
     userId,
   }),
 });
-const { UserServiceErr } = userErrors;
-type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
+type UserServiceError = InferErrors<typeof UserServiceError>;
 
 export type User = { id: string; name: string; email: string };
 export type CreateUserInput = { name: string; email: string };
@@ -262,13 +261,13 @@ export async function getUser(id: string): Promise<Result<User, UserServiceError
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     },
-    catch: () => UserServiceErr({ operation: 'getUser', userId: id }),
+    catch: () => UserServiceError.Operation({ operation: 'getUser', userId: id }),
   });
 }
 
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   if (!input.email.includes('@')) {
-    return UserServiceErr({ operation: 'createUser' });
+    return UserServiceError.Operation({ operation: 'createUser' });
   }
 
   return tryAsync({
@@ -281,7 +280,7 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     },
-    catch: () => UserServiceErr({ operation: 'createUser' }),
+    catch: () => UserServiceError.Operation({ operation: 'createUser' }),
   });
 }
 ```
