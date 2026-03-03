@@ -96,34 +96,6 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
 export const Err = <E>(error: E): Err<E> => ({ error, data: null });
 
 /**
- * Utility type to extract the `Ok<T>` variant from a `Result<T, E>` union type.
- *
- * If `R` is a `Result` type (e.g., `Result<string, Error>`), this type will resolve
- * to `Ok<string>`. This can be useful in generic contexts or for type narrowing.
- *
- * @template R - The `Result<T, E>` union type from which to extract the `Ok<T>` variant.
- *             Must extend `Result<unknown, unknown>`.
- */
-export type ExtractOkFromResult<R extends Result<unknown, unknown>> = Extract<
-	R,
-	{ error: null }
->;
-
-/**
- * Utility type to extract the `Err<E>` variant from a `Result<T, E>` union type.
- *
- * If `R` is a `Result` type (e.g., `Result<string, Error>`), this type will resolve
- * to `Err<Error>`. This can be useful in generic contexts or for type narrowing.
- *
- * @template R - The `Result<T, E>` union type from which to extract the `Err<E>` variant.
- *             Must extend `Result<unknown, unknown>`.
- */
-export type ExtractErrFromResult<R extends Result<unknown, unknown>> = Extract<
-	R,
-	{ data: null }
->;
-
-/**
  * Utility type to extract the success value's type `T` from a `Result<T, E>` type.
  *
  * If `R` is an `Ok<T>` variant (or a `Result<T, E>` that could be an `Ok<T>`),
