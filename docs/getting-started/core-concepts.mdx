@@ -239,7 +239,7 @@ Here's how these concepts work together in practice:
 
 ```typescript
 import { Result, Ok, Err, tryAsync } from "wellcrafted/result";
-import { type TaggedError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
 // Brand types for safety

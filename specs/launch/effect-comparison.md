@@ -38,16 +38,21 @@ Effect.runPromise(program);
 
 **Well Crafted:**
 ```typescript
-import { Result, Ok, Err } from "wellcrafted/result";
+import { Ok } from "wellcrafted/result";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
+
+const MathError = defineErrors({
+  DivisionByZero: ({ numerator, denominator }: { numerator: number; denominator: number }) => ({
+    message: "Cannot divide by zero",
+    numerator,
+    denominator,
+  }),
+});
+type MathError = InferErrors<typeof MathError>;
 
 function divide(a: number, b: number): Result<number, MathError> {
   if (b === 0) {
-    return Err({
-      name: "MathError",
-      message: "Cannot divide by zero",
-      context: { numerator: a, denominator: b },
-      cause: undefined
-    });
+    return MathError.DivisionByZero({ numerator: a, denominator: b });
   }
   return Ok(a / b);
 }
@@ -83,6 +88,15 @@ const program = Effect.gen(function* (_) {
 **Well Crafted:**
 ```typescript
 import { tryAsync } from "wellcrafted/result";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
+
+const NetworkError = defineErrors({
+  Fetch: ({ userId }: { userId: string }) => ({
+    message: "Failed to fetch user",
+    userId,
+  }),
+});
+type NetworkError = InferErrors<typeof NetworkError>;
 
 async function fetchUser(id: string) {
   return tryAsync<User, NetworkError>({
@@ -90,12 +104,7 @@ async function fetchUser(id: string) {
       const response = await fetch(`/api/users/${id}`);
       return response.json();
     },
-    mapErr: (error) => Err({
-      name: "NetworkError",
-      message: "Failed to fetch user",
-      context: { userId: id },
-      cause: error
-    })
+    catch: (error) => NetworkError.Fetch({ userId: id }),
   });
 }
 
@@ -125,7 +134,7 @@ type AppError = ValidationError | NetworkError;
 const program = pipe(
   validateInput(data),
   Effect.flatMap(saveToApi),
-  Effect.catchTag("ValidationError", (e) => 
+  Effect.catchTag("ValidationError", (e) =>
     Effect.succeed({ fallback: true })
   )
 );
@@ -133,26 +142,37 @@ const program = pipe(
 
 **Well Crafted:**
 ```typescript
-type ValidationError = TaggedError<"ValidationError">;
-type NetworkError = TaggedError<"NetworkError">;
-type AppError = ValidationError | NetworkError;
+import { Ok } from "wellcrafted/result";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
+
+const AppError = defineErrors({
+  Validation: ({ field }: { field: string }) => ({
+    message: `Invalid field: ${field}`,
+    field,
+  }),
+  Network: ({ status }: { status: number }) => ({
+    message: `Request failed with status ${status}`,
+    status,
+  }),
+});
+type AppError = InferErrors<typeof AppError>;
 
 async function processData(input: unknown) {
   const validationResult = validateInput(input);
   if (validationResult.error) {
     return validationResult;
   }
-  
+
   const saveResult = await saveToApi(validationResult.data);
   if (saveResult.error) {
     switch (saveResult.error.name) {
-      case "ValidationError":
+      case "Validation":
         return Ok({ fallback: true });
-      case "NetworkError":
+      case "Network":
         return saveResult;
     }
   }
-  
+
   return saveResult;
 }
 ```
@@ -199,15 +219,17 @@ const getUser = (id: string) =>
   });
 
 // Well Crafted (almost identical!)
+const UserError = defineErrors({
+  Fetch: ({ id }: { id: string }) => ({
+    message: "Failed to fetch user",
+    id,
+  }),
+});
+
 const getUser = (id: string) =>
   tryAsync({
     try: () => fetchUser(id),
-    mapErr: () => Err({
-      name: "UserError",
-      message: "Failed to fetch user",
-      context: { id },
-      cause: undefined
-    })
+    catch: () => UserError.Fetch({ id }),
   });
 ```
 
