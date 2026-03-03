@@ -204,10 +204,8 @@ const HttpError = defineErrors({
 HttpError.Response({ response, body: await response.json() });
 ```
 
-Use structural typing (`{ status: number }`) rather than a platform-specific `Response` type, so browser `Response`, Tauri responses, and test doubles all satisfy the constraint.
-
 <Note>
-**Why not pass the body inside the response?** The `.json()` parse stays at the call site because it's `async` and constructors are sync. The response object and the parsed body are separate parameters because of this async boundary.
+**Why `body` is separate from `response`:** The `.json()` parse stays at the call site because it's `async` and constructors are sync — the parsed body must be passed as its own parameter. The `response` parameter uses structural typing (`{ status: number }`) rather than a platform-specific `Response` type, so browser `Response`, Tauri responses, and test doubles all satisfy the constraint.
 </Note>
 
 ### 6. Genuine Enrichment (The Exception)
