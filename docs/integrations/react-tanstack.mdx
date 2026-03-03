@@ -6,318 +6,17 @@ icon: 'react'
 
 # React + TanStack Query Integration
 
-Learn how to build robust React applications using wellcrafted's Result types with TanStack Query. This guide shows production-tested patterns for error handling, data fetching, and state management.
+React-specific patterns for using wellcrafted with TanStack Query. For core concepts (dual interface, query/mutation definitions, RPC namespace), see the [TanStack Query Integration](/integrations/tanstack-query) guide.
 
-## The Problem: Error Handling Hell
+## Using Query Results in JSX
 
-Traditional React apps with async data often look like this:
-
-```tsx
-// Before: Error-prone async handling
-function UserProfile({ userId }: { userId: string }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/users/${userId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch user');
-        }
-        const userData = await response.json();
-        setUser(userData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadUser();
-  }, [userId]);
-
-  if (loading) return <Spinner />;
-  if (error) return <ErrorMessage message={error} />;
-  if (!user) return <div>User not found</div>;
-
-  return <UserDisplay user={user} />;
-}
-```
-
-**Problems with this approach:**
-- Manual state management for loading/error/data
-- Inconsistent error handling across components
-- No type safety for error states
-- Duplicated boilerplate in every component
-- Silent failures and unclear error recovery
-
-## The Solution: wellcrafted + TanStack Query
-
-With wellcrafted, the same component becomes:
+TanStack Query provides `isPending`, `error`, and `data` states that map cleanly to React rendering:
 
 ```tsx
-// After: Type-safe, robust error handling
-function UserProfile({ userId }: { userId: string }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options);
-
-  if (userQuery.isPending) return <Spinner />;
-  if (userQuery.error) return <ErrorDisplay error={userQuery.error} />;
-  if (!userQuery.data) return <div>User not found</div>;
-
-  return <UserDisplay user={userQuery.data} />;
-}
-```
-
-**Benefits:**
-- Automatic loading/error/success state management
-- Type-safe error handling with detailed error information
-- Consistent patterns across all components
-- Built-in caching, refetching, and background updates
-- Comprehensive error recovery actions
-
-## Architecture: Three-Layer Pattern
-
-Follow this proven architecture pattern from production applications:
-
-```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│  React UI   │ --> │ Query/RPC   │ --> │   Services   │
-│ Components  │     │    Layer    │     │    (Pure)    │
-└─────────────┘     └─────────────┘     └──────────────┘
-      ↑                    │
-      └────────────────────┘
-         Reactive Updates
-```
-
-### Layer 1: Services - Pure Business Logic
-
-Create services that return Result types:
-
-```typescript
-// services/api/users.ts
-import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
-import { defineErrors, type InferError } from 'wellcrafted/error';
-
-const userErrors = defineErrors({
-  UserServiceError: ({ operation, userId }: { operation: string; userId?: string }) => ({
-    message: `User ${operation} failed`,
-    operation,
-    userId,
-  }),
-});
-const { UserServiceError, UserServiceErr } = userErrors;
-type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-};
-
-export type CreateUserInput = {
-  name: string;
-  email: string;
-};
-
-export async function getUser(id: string): Promise<Result<User, UserServiceError>> {
-  return tryAsync({
-    try: async () => {
-      const response = await fetch(`/api/users/${id}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('User not found');
-        }
-        if (response.status === 401) {
-          throw new Error('Unauthorized');
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    },
-    catch: (error) => UserServiceErr({
-      operation: 'getUser',
-      userId: id,
-    }),
-  });
-}
-
-export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
-  // Validation
-  if (!input.email.includes('@')) {
-    return UserServiceErr({ operation: 'createUser' });
-  }
-
-  return tryAsync({
-    try: async () => {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    },
-    catch: (error) => UserServiceErr({
-      operation: 'createUser',
-    }),
-  });
-}
-
-export async function updateUser(user: User): Promise<Result<User, UserServiceError>> {
-  return tryAsync({
-    try: async () => {
-      const response = await fetch(`/api/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    },
-    catch: (error) => UserServiceErr({
-      operation: 'updateUser',
-      userId: user.id,
-    }),
-  });
-}
-```
-
-### Layer 2: Query Layer with wellcrafted Integration
-
-Create query definitions using wellcrafted's query utilities:
-
-```typescript
-// query/_factories.ts
-import { QueryClient } from '@tanstack/react-query';
-import { createQueryFactories } from 'wellcrafted/query';
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000,   // 10 minutes
-      retry: (failureCount, error) => {
-        // Don't retry user errors (4xx), only system errors (5xx)
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-    },
-  },
-});
-
-export const { defineQuery, defineMutation } = createQueryFactories(queryClient);
-```
-
-```typescript
-// query/users.ts
-import { defineQuery, defineMutation, queryClient } from './_factories';
-import * as userService from '../services/api/users';
-import type { User, CreateUserInput } from '../services/api/users';
-
-export const users = {
-  // Query with parameter
-  getUser: (userId: string) => 
-    defineQuery({
-      queryKey: ['users', userId],
-      queryFn: () => userService.getUser(userId),
-      enabled: !!userId, // Only run when userId exists
-    }),
-
-  // Query all users
-  getAllUsers: defineQuery({
-    queryKey: ['users'],
-    queryFn: () => userService.getAllUsers(),
-  }),
-
-  // Create user mutation
-  createUser: defineMutation({
-    mutationKey: ['users', 'create'],
-    mutationFn: async (input: CreateUserInput) => {
-      const result = await userService.createUser(input);
-      
-      if (result.error) return result;
-
-      // Optimistic cache update
-      queryClient.setQueryData(['users'], (old: User[] | undefined) => 
-        old ? [...old, result.data] : [result.data]
-      );
-
-      return result;
-    },
-    onSuccess: () => {
-      // Invalidate users list to refetch
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  }),
-
-  // Update user mutation
-  updateUser: defineMutation({
-    mutationKey: ['users', 'update'],
-    mutationFn: async (user: User) => {
-      const result = await userService.updateUser(user);
-      
-      if (result.error) return result;
-
-      // Update individual user cache
-      queryClient.setQueryData(['users', user.id], result.data);
-      
-      // Update users list cache
-      queryClient.setQueryData(['users'], (old: User[] | undefined) =>
-        old ? old.map(u => u.id === user.id ? result.data : u) : undefined
-      );
-
-      return result;
-    },
-  }),
-};
-```
-
-```typescript
-// query/index.ts - RPC Namespace
-export { queryClient } from './_factories';
-
-import { users } from './users';
-import { posts } from './posts';
-import { auth } from './auth';
-
-// This creates your RPC-like interface
-export const rpc = {
-  users,
-  posts,
-  auth,
-} as const;
-```
-
-### Layer 3: React Components with Hooks
-
-Use the dual interface pattern in components:
-
-```tsx
-// components/UserProfile.tsx
 import { useQuery } from '@tanstack/react-query';
 import { rpc } from '../query';
 
-interface UserProfileProps {
-  userId: string;
-}
-
-export function UserProfile({ userId }: UserProfileProps) {
-  // Reactive interface - automatic subscriptions
+export function UserProfile({ userId }: { userId: string }) {
   const userQuery = useQuery(rpc.users.getUser(userId).options);
 
   if (userQuery.isPending) {
@@ -326,11 +25,9 @@ export function UserProfile({ userId }: UserProfileProps) {
 
   if (userQuery.error) {
     return (
-      <ErrorCard
-        title="Failed to load user"
-        message={userQuery.error.message}
-        onRetry={() => userQuery.refetch()}
+      <ErrorDisplay
         error={userQuery.error}
+        onRetry={() => userQuery.refetch()}
       />
     );
   }
@@ -349,102 +46,9 @@ export function UserProfile({ userId }: UserProfileProps) {
 }
 ```
 
-```tsx
-// components/UserForm.tsx
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { rpc } from '../query';
+## Custom Hooks
 
-interface UserFormProps {
-  user?: User;
-  onSuccess?: (user: User) => void;
-}
-
-export function UserForm({ user, onSuccess }: UserFormProps) {
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-  });
-
-  // Reactive mutation - provides loading states
-  const createMutation = useMutation(rpc.users.createUser.options);
-  const updateMutation = useMutation(rpc.users.updateUser.options);
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (user) {
-      // Update existing user
-      const result = await updateMutation.mutateAsync({ ...user, ...formData });
-      if (result && onSuccess) onSuccess(result);
-    } else {
-      // Create new user
-      const result = await createMutation.mutateAsync(formData);
-      if (result && onSuccess) onSuccess(result);
-    }
-  }
-
-  // Or use imperatively for event handlers
-  async function handleQuickSave() {
-    const { data, error } = await rpc.users.updateUser.execute({
-      ...user!,
-      ...formData,
-    });
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success('User updated successfully');
-    onSuccess?.(data);
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="user-form">
-      <input
-        type="text"
-        placeholder="Name"
-        value={formData.name}
-        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-        disabled={isLoading}
-      />
-      
-      <input
-        type="email"
-        placeholder="Email"
-        value={formData.email}
-        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-        disabled={isLoading}
-      />
-
-      <div className="form-actions">
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : user ? 'Update User' : 'Create User'}
-        </button>
-        
-        {user && (
-          <button type="button" onClick={handleQuickSave} disabled={isLoading}>
-            Quick Save
-          </button>
-        )}
-      </div>
-
-      {(createMutation.error || updateMutation.error) && (
-        <ErrorMessage 
-          error={createMutation.error || updateMutation.error} 
-        />
-      )}
-    </form>
-  );
-}
-```
-
-## Custom Hooks for Complex Logic
-
-Create reusable hooks for common patterns:
+Wrap wellcrafted queries in custom hooks to encapsulate related state and actions:
 
 ```tsx
 // hooks/useUserManagement.ts
@@ -455,13 +59,11 @@ import { useToast } from './useToast';
 export function useUserManagement(userId?: string) {
   const toast = useToast();
 
-  // Get user data
   const userQuery = useQuery({
     ...rpc.users.getUser(userId!).options,
     enabled: !!userId,
   });
 
-  // Create user mutation
   const createUser = useMutation({
     ...rpc.users.createUser.options,
     onSuccess: (user) => {
@@ -472,7 +74,6 @@ export function useUserManagement(userId?: string) {
     },
   });
 
-  // Update user mutation
   const updateUser = useMutation({
     ...rpc.users.updateUser.options,
     onSuccess: (user) => {
@@ -483,7 +84,7 @@ export function useUserManagement(userId?: string) {
     },
   });
 
-  // Imperative actions
+  // Imperative actions for event handlers
   const actions = {
     async updateUserField(field: keyof User, value: string) {
       if (!userQuery.data) return;
@@ -504,48 +105,37 @@ export function useUserManagement(userId?: string) {
   };
 
   return {
-    // Reactive state
     user: userQuery.data,
     isLoading: userQuery.isPending || createUser.isPending || updateUser.isPending,
     error: userQuery.error || createUser.error || updateUser.error,
-    
-    // Mutations
     createUser: createUser.mutate,
     updateUser: updateUser.mutate,
-    
-    // Imperative actions
     actions,
   };
 }
 ```
 
-## Error Handling Components
+## Error Display Component
 
-Create reusable components for displaying errors:
+A reusable component for rendering wellcrafted errors with contextual actions:
 
 ```tsx
 // components/ErrorDisplay.tsx
-import type { UserServiceError } from '../services/api/users';
-
 interface ErrorDisplayProps {
-  error: UserServiceError;
+  error: { name: string; message: string; operation?: string };
   onRetry?: () => void;
   className?: string;
 }
 
 export function ErrorDisplay({ error, onRetry, className }: ErrorDisplayProps) {
   const getErrorAction = () => {
-    switch (error.name) {
-      case 'UserServiceError':
-        if (error.message.includes('not found')) {
-          return <LinkButton to="/users">Browse all users</LinkButton>;
-        }
-        if (error.message.includes('Unauthorized')) {
-          return <LinkButton to="/login">Sign in</LinkButton>;
-        }
-        break;
+    if (error.message.includes('not found')) {
+      return <LinkButton to="/users">Browse all users</LinkButton>;
     }
-    
+    if (error.message.includes('Unauthorized')) {
+      return <LinkButton to="/login">Sign in</LinkButton>;
+    }
+
     return onRetry ? (
       <button onClick={onRetry} className="retry-button">
         Try Again
@@ -555,320 +145,266 @@ export function ErrorDisplay({ error, onRetry, className }: ErrorDisplayProps) {
 
   return (
     <div className={`error-display ${className || ''}`}>
-      <div className="error-icon">⚠️</div>
       <div className="error-content">
-        <h3 className="error-title">Something went wrong</h3>
-        <p className="error-message">{error.message}</p>
-        
+        <h3>Something went wrong</h3>
+        <p>{error.message}</p>
+
         {error.operation && (
-          <details className="error-details">
+          <details>
             <summary>Technical details</summary>
             <pre>Operation: {error.operation}</pre>
           </details>
         )}
-        
-        <div className="error-actions">
-          {getErrorAction()}
-        </div>
+
+        <div className="error-actions">{getErrorAction()}</div>
       </div>
     </div>
   );
 }
 ```
 
+## Mutation Handling: Form Submission
+
+Use `useMutation` for form submissions with loading states and error display:
+
 ```tsx
-// components/ErrorBoundary.tsx
-import { Component, ReactNode } from 'react';
-import { ErrorDisplay } from './ErrorDisplay';
+// components/UserForm.tsx
+import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { rpc } from '../query';
 
-interface Props {
-  children: ReactNode;
-  fallback?: (error: Error) => ReactNode;
+interface UserFormProps {
+  user?: User;
+  onSuccess?: (user: User) => void;
 }
 
-interface State {
-  hasError: boolean;
-  error?: Error;
-}
+export function UserForm({ user, onSuccess }: UserFormProps) {
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+  });
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  const createMutation = useMutation(rpc.users.createUser.options);
+  const updateMutation = useMutation(rpc.users.updateUser.options);
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback(this.state.error!);
-      }
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
 
-      return (
-        <ErrorDisplay
-          error={{
-            name: 'ApplicationError',
-            message: this.state.error?.message || 'An unexpected error occurred',
-          }}
-          onRetry={() => this.setState({ hasError: false, error: undefined })}
-        />
-      );
+    if (user) {
+      const result = await updateMutation.mutateAsync({ ...user, ...formData });
+      if (result && onSuccess) onSuccess(result);
+    } else {
+      const result = await createMutation.mutateAsync(formData);
+      if (result && onSuccess) onSuccess(result);
     }
-
-    return this.props.children;
   }
-}
-```
 
-## App Setup
-
-Set up your React app with the query client:
-
-```tsx
-// App.tsx
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { queryClient } from './query';
-
-export function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/users/:id" element={<UserProfile />} />
-            <Route path="/users" element={<UserList />} />
-            <Route path="/users/new" element={<CreateUser />} />
-          </Routes>
-        </BrowserRouter>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <form onSubmit={handleSubmit}>
+      <input
+        type="text"
+        placeholder="Name"
+        value={formData.name}
+        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+        disabled={isLoading}
+      />
+
+      <input
+        type="email"
+        placeholder="Email"
+        value={formData.email}
+        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+        disabled={isLoading}
+      />
+
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Saving...' : user ? 'Update User' : 'Create User'}
+      </button>
+
+      {(createMutation.error || updateMutation.error) && (
+        <ErrorDisplay error={createMutation.error || updateMutation.error} />
+      )}
+    </form>
   );
 }
 ```
 
-## Testing Patterns
+## End-to-End Example
 
-Test components with mock services:
+A complete flow from service to query layer to React component.
 
-```tsx
-// __tests__/UserProfile.test.tsx
-import { render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { vi } from 'vitest';
-import { Ok, Err } from 'wellcrafted/result';
-import { UserProfile } from '../UserProfile';
-import * as userService from '../../services/api/users';
-
-// Mock the service
-vi.mock('../../services/api/users');
-
-function renderWithQuery(ui: React.ReactElement) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>
-  );
-}
-
-describe('UserProfile', () => {
-  it('displays user data when loaded successfully', async () => {
-    const mockUser = { id: '1', name: 'John Doe', email: 'john@example.com' };
-    vi.mocked(userService.getUser).mockResolvedValue(Ok(mockUser));
-
-    renderWithQuery(<UserProfile userId="1" />);
-
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-    
-    await waitFor(() => {
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-      expect(screen.getByText('john@example.com')).toBeInTheDocument();
-    });
-  });
-
-  it('displays error when user fetch fails', async () => {
-    const errorResult = Err(UserServiceError({
-      operation: 'getUser',
-      userId: '1',
-    }));
-    vi.mocked(userService.getUser).mockResolvedValue(errorResult);
-
-    renderWithQuery(<UserProfile userId="1" />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load user')).toBeInTheDocument();
-      expect(screen.getByText('User not found')).toBeInTheDocument();
-    });
-  });
-});
-```
-
-## Migration Guide
-
-### Step 1: Add Dependencies
-
-```bash
-npm install wellcrafted @tanstack/react-query
-```
-
-### Step 2: Migrate Services Gradually
-
-Start by converting one service to use Result types:
+### 1. Service Layer
 
 ```typescript
-// Before: Traditional async/await
-export async function getUser(id: string): Promise<User> {
-  const response = await fetch(`/api/users/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch user');
-  }
-  return response.json();
-}
+// services/api/users.ts
+import { tryAsync, type Result } from 'wellcrafted/result';
+import { defineErrors, type InferError } from 'wellcrafted/error';
 
-// After: Result types
+const userErrors = defineErrors({
+  UserServiceError: ({ operation, userId }: { operation: string; userId?: string }) => ({
+    message: `User ${operation} failed`,
+    operation,
+    userId,
+  }),
+});
+const { UserServiceErr } = userErrors;
+type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
+
+export type User = { id: string; name: string; email: string };
+export type CreateUserInput = { name: string; email: string };
+
 export async function getUser(id: string): Promise<Result<User, UserServiceError>> {
   return tryAsync({
     try: async () => {
       const response = await fetch(`/api/users/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch user');
-      }
-      return response.json();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
     },
-    catch: (error) => UserServiceErr({
-      operation: 'getUser',
-      userId: id,
-    }),
+    catch: () => UserServiceErr({ operation: 'getUser', userId: id }),
   });
 }
-```
 
-### Step 3: Create Query Definitions
-
-```typescript
-// Add query layer for the converted service
-export const users = {
-  getUser: (userId: string) => 
-    defineQuery({
-      queryKey: ['users', userId],
-      queryFn: () => userService.getUser(userId),
-    }),
-};
-```
-
-### Step 4: Update Components
-
-```tsx
-// Before: Manual state management
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    userService.getUser(userId)
-      .then(setUser)
-      .catch(setError)
-      .finally(() => setLoading(false));
-  }, [userId]);
-
-  // ... render logic
-}
-
-// After: Query hook
-function UserProfile({ userId }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options);
-  // Automatic loading/error/data state management
-}
-```
-
-## Best Practices
-
-### 1. Service Layer Purity
-
-Keep services pure and platform-agnostic:
-
-```typescript
-// ✅ Good - pure business logic
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   if (!input.email.includes('@')) {
     return UserServiceErr({ operation: 'createUser' });
   }
 
   return tryAsync({
-    try: () => api.post('/users', input),
-    catch: (error) => UserServiceErr({ operation: 'createUser' }),
+    try: async () => {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    },
+    catch: () => UserServiceErr({ operation: 'createUser' }),
   });
-}
-
-// ❌ Bad - UI concerns in service
-export async function createUser(input: CreateUserInput) {
-  try {
-    const user = await api.post('/users', input);
-    toast.success('User created!'); // UI concern!
-    return user;
-  } catch (error) {
-    toast.error('Failed to create user'); // UI concern!
-    throw error;
-  }
 }
 ```
 
-### 2. Error Transformation
-
-Transform service errors to UI-friendly formats in the query layer:
+### 2. Query Layer
 
 ```typescript
-// Query layer - transform errors
+// query/users.ts
+import { defineQuery, defineMutation, queryClient } from './_factories';
+import * as userService from '../services/api/users';
+import type { User, CreateUserInput } from '../services/api/users';
+
 export const users = {
+  getUser: (userId: string) =>
+    defineQuery({
+      queryKey: ['users', userId],
+      queryFn: () => userService.getUser(userId),
+      enabled: !!userId,
+    }),
+
   createUser: defineMutation({
+    mutationKey: ['users', 'create'],
     mutationFn: async (input: CreateUserInput) => {
       const result = await userService.createUser(input);
-      
-      if (result.error) {
-        // Transform to UI-friendly error
-        return Err({
-          name: 'UIError',
-          message: getUIErrorMessage(result.error),
-        });
-      }
-      
+      if (result.error) return result;
+
+      queryClient.setQueryData(['users'], (old: User[] | undefined) =>
+        old ? [...old, result.data] : [result.data]
+      );
       return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   }),
 };
+```
 
-function getUIErrorMessage(error: UserServiceError): string {
-  if (error.message.includes('Invalid email')) {
-    return 'Please enter a valid email address';
+### 3. React Component
+
+```tsx
+// pages/CreateUserPage.tsx
+import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { rpc } from '../query';
+
+export function CreateUserPage() {
+  const [formData, setFormData] = useState({ name: '', email: '' });
+  const createMutation = useMutation(rpc.users.createUser.options);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const result = await createMutation.mutateAsync(formData);
+    if (result) {
+      setFormData({ name: '', email: '' });
+    }
   }
-  if (error.message.includes('already exists')) {
-    return 'A user with this email already exists';
-  }
-  return 'Failed to create user. Please try again.';
+
+  return (
+    <div>
+      <h1>Create User</h1>
+
+      <form onSubmit={handleSubmit}>
+        <input
+          placeholder="Name"
+          value={formData.name}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          disabled={createMutation.isPending}
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          disabled={createMutation.isPending}
+        />
+        <button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Creating...' : 'Create User'}
+        </button>
+      </form>
+
+      {createMutation.error && (
+        <ErrorDisplay
+          error={createMutation.error}
+          onRetry={() => createMutation.reset()}
+        />
+      )}
+
+      {createMutation.isSuccess && (
+        <p>User created successfully!</p>
+      )}
+    </div>
+  );
 }
 ```
 
-### 3. Leverage Both Interfaces
+## Advanced Patterns
 
-Use reactive for UI state, imperative for workflows:
+### Dependent Queries
+
+```tsx
+function UserPostsPage({ userId }: { userId: string }) {
+  const userQuery = useQuery(rpc.users.getUser(userId).options);
+
+  const postsQuery = useQuery({
+    ...rpc.posts.getUserPosts(userId).options,
+    enabled: !!userQuery.data, // Only fetch when user is loaded
+  });
+
+  // ... render logic
+}
+```
+
+### Imperative Actions in React
+
+Use the imperative interface for event handlers that don't need reactive UI state:
 
 ```tsx
 function UserManagementPage() {
-  // Reactive - automatic UI updates
+  // Reactive for display
   const usersQuery = useQuery(rpc.users.getAllUsers.options);
-  
-  // Imperative - direct action execution
+
+  // Imperative for one-off actions
   async function handleBulkDelete(userIds: string[]) {
     for (const id of userIds) {
       const { error } = await rpc.users.deleteUser.execute(id);
@@ -881,68 +417,3 @@ function UserManagementPage() {
   }
 }
 ```
-
-## Advanced Patterns
-
-### Optimistic Updates
-
-```typescript
-export const users = {
-  updateUser: defineMutation({
-    mutationFn: async (user: User) => {
-      // Optimistic update
-      queryClient.setQueryData(['users', user.id], user);
-      
-      const result = await userService.updateUser(user);
-      
-      if (result.error) {
-        // Rollback on failure
-        queryClient.invalidateQueries({ queryKey: ['users', user.id] });
-        return result;
-      }
-      
-      return result;
-    },
-  }),
-};
-```
-
-### Background Sync
-
-```typescript
-export const users = {
-  getAllUsers: defineQuery({
-    queryKey: ['users'],
-    queryFn: () => userService.getAllUsers(),
-    refetchInterval: 30000, // Sync every 30 seconds
-    refetchIntervalInBackground: true,
-  }),
-};
-```
-
-### Dependent Queries
-
-```tsx
-function UserPostsPage({ userId }: { userId: string }) {
-  const userQuery = useQuery(rpc.users.getUser(userId).options);
-
-  const postsQuery = useQuery({
-    ...rpc.posts.getUserPosts(userId).options,
-    enabled: !!userQuery.data, // Only run when user is loaded
-  });
-
-  // ... render logic
-}
-```
-
-## Summary
-
-This React + TanStack Query integration provides:
-
-- **Type Safety**: All errors are typed and handled consistently
-- **Reliability**: No runtime crashes through comprehensive error handling
-- **Developer Experience**: Rich IDE support and clear error messages
-- **Performance**: Automatic caching, background updates, and optimistic updates
-- **Maintainability**: Consistent patterns and clear separation of concerns
-
-The patterns shown here are proven in production applications and scale from simple components to complex applications. Start small with one service and gradually adopt these patterns throughout your codebase.

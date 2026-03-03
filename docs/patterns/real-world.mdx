@@ -4,52 +4,31 @@ description: 'Production-tested patterns and complete examples using wellcrafted
 icon: 'code'
 ---
 
-import { Card, CardGroup } from '@mintlify/components'
-
 # Real-World Examples
 
-See wellcrafted's patterns in action with production-tested examples that demonstrate how the Result pattern, TaggedErrors, and brand types create robust, maintainable applications.
+Production-tested examples showing how `defineErrors`, `tryAsync`, and Result destructuring work together in real services.
 
-## Complete Examples
+## User Authentication Service
 
-<CardGroup>
-  <Card title="Service Layer Architecture" icon="layer-group" href="/patterns/service-layer">
-    Factory function pattern with dependency injection
-  </Card>
-  <Card title="Whispering Case Study" icon="microphone" href="/case-studies/whispering-architecture">
-    22,824-line production app architecture
-  </Card>
-  <Card title="Framework Integrations" icon="plug" href="/integrations/svelte-tanstack">
-    TanStack Query with wellcrafted patterns
-  </Card>
-</CardGroup>
-
-## Essential Patterns
-
-### User Authentication Flow
-
-A complete authentication service showing error propagation and transformation:
+A complete auth service with error propagation and branded types:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
 import { defineErrors, type InferError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
-// Brand types for safety
 type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
-// Service-specific errors with typed fields
 const authErrors = defineErrors({
-  AuthServiceError: ({ operation, email, userId, tokenPrefix }: { operation: string; email?: string; userId?: string; tokenPrefix?: string }) => ({
+  AuthServiceError: ({ operation, email, userId }: {
+    operation: string; email?: string; userId?: string;
+  }) => ({
     message: `Auth ${operation} failed`,
-    operation,
-    email,
-    userId,
-    tokenPrefix,
+    operation, email, userId,
   }),
 });
-const { AuthServiceError, AuthServiceErr } = authErrors;
+const { AuthServiceErr } = authErrors;
 type AuthServiceError = InferError<typeof authErrors, 'AuthServiceError'>;
 
 interface AuthenticatedUser {
@@ -69,37 +48,26 @@ export function createAuthService(
       email: string,
       password: string
     ): Promise<Result<{ user: AuthenticatedUser; token: SessionToken }, AuthServiceError>> {
-      // Find user by email
+      const maskedEmail = email.substring(0, email.indexOf('@')) + '@***';
+
       const userResult = await tryAsync({
         try: () => db.users.findByEmail(email),
-        catch: () => AuthServiceErr({
-          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
-        })
+        catch: () => AuthServiceErr({ operation: "login", email: maskedEmail })
       });
-
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceErr({
-          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
-        });
+        return AuthServiceErr({ operation: "login", email: maskedEmail });
       }
 
-      // Verify password
-      const isValidPassword = await hashService.verify(password, userResult.data.passwordHash);
-      if (!isValidPassword) {
-        return AuthServiceErr({
-          operation: "login", email: email.substring(0, email.indexOf('@')) + '@***'
-        });
+      const isValid = await hashService.verify(password, userResult.data.passwordHash);
+      if (!isValid) {
+        return AuthServiceErr({ operation: "login", email: maskedEmail });
       }
 
-      // Generate session token
       const tokenResult = await tryAsync({
         try: () => tokenService.generate(userResult.data.id),
-        catch: () => AuthServiceErr({
-          operation: "login", userId: userResult.data.id
-        })
+        catch: () => AuthServiceErr({ operation: "login", userId: userResult.data.id })
       });
-
       if (tokenResult.error) return tokenResult;
 
       return Ok({
@@ -118,31 +86,20 @@ export function createAuthService(
     ): Promise<Result<AuthenticatedUser, AuthServiceError>> {
       const validationResult = await tryAsync({
         try: () => tokenService.validate(token),
-        catch: () => AuthServiceErr({
-          operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...'
-        })
+        catch: () => AuthServiceErr({ operation: "validateSession" })
       });
-
       if (validationResult.error) return validationResult;
       if (!validationResult.data.isValid) {
-        return AuthServiceErr({
-          operation: "validateSession", tokenPrefix: token.substring(0, 8) + '...'
-        });
+        return AuthServiceErr({ operation: "validateSession" });
       }
 
-      // Fetch current user data
       const userResult = await tryAsync({
         try: () => db.users.findById(validationResult.data.userId),
-        catch: () => AuthServiceErr({
-          operation: "validateSession", userId: validationResult.data.userId
-        })
+        catch: () => AuthServiceErr({ operation: "validateSession", userId: validationResult.data.userId })
       });
-
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceErr({
-          operation: "validateSession", userId: validationResult.data.userId
-        });
+        return AuthServiceErr({ operation: "validateSession", userId: validationResult.data.userId });
       }
 
       return Ok({
@@ -156,295 +113,104 @@ export function createAuthService(
 }
 ```
 
-### File Upload with Validation
+## File Upload with Validation
 
-A complete file upload service with size limits, type checking, and progress tracking:
+Size limits, type checking, and storage cleanup on failure:
 
 ```typescript
-import { Result, Ok, tryAsync, trySync } from "wellcrafted/result";
+import { Result, Ok, tryAsync } from "wellcrafted/result";
 import { defineErrors, type InferError } from "wellcrafted/error";
 import { type Brand } from "wellcrafted/brand";
 
-// Brand types
 type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
-// Service errors with typed fields
 const fileErrors = defineErrors({
-  FileServiceError: ({ operation, fileName, fileSize, maxSize, fileType, allowedTypes, fileKey, fileId, userId, ownerId }: {
+  FileServiceError: ({ operation, fileName, fileSize, maxSize, fileType }: {
     operation: string;
     fileName?: string;
     fileSize?: number;
     maxSize?: number;
     fileType?: string;
-    allowedTypes?: string[];
-    fileKey?: string;
-    fileId?: string;
-    userId?: string;
-    ownerId?: string;
   }) => ({
     message: `File ${operation} failed`,
-    operation,
-    fileName,
-    fileSize,
-    maxSize,
-    fileType,
-    allowedTypes,
-    fileKey,
-    fileId,
-    userId,
-    ownerId,
+    operation, fileName, fileSize, maxSize, fileType,
   }),
 });
-const { FileServiceError, FileServiceErr } = fileErrors;
+const { FileServiceErr } = fileErrors;
 type FileServiceError = InferError<typeof fileErrors, 'FileServiceError'>;
-
-interface UploadedFile {
-  id: FileId;
-  originalName: string;
-  size: number;
-  mimeType: string;
-  url: string;
-  uploadedAt: Date;
-}
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
-export function createFileService(
-  storage: StorageService,
-  db: Database
-) {
+export function createFileService(storage: StorageService, db: Database) {
   return {
     async uploadFile(
       userId: UserId,
       file: File,
       onProgress?: (percent: number) => void
-    ): Promise<Result<UploadedFile, FileServiceError>> {
-      // Validate file size
+    ): Promise<Result<{ id: FileId; url: string }, FileServiceError>> {
       if (file.size > MAX_FILE_SIZE) {
         return FileServiceErr({
-          operation: "upload",
-          fileName: file.name,
-          fileSize: file.size,
-          maxSize: MAX_FILE_SIZE
+          operation: "upload", fileName: file.name, fileSize: file.size, maxSize: MAX_FILE_SIZE
         });
       }
-
-      // Validate file type
       if (!ALLOWED_TYPES.includes(file.type)) {
         return FileServiceErr({
-          operation: "upload",
-          fileName: file.name,
-          fileType: file.type,
-          allowedTypes: ALLOWED_TYPES
+          operation: "upload", fileName: file.name, fileType: file.type
         });
       }
 
-      // Generate unique file ID
       const fileId = crypto.randomUUID() as FileId;
       const fileKey = `${userId}/${fileId}/${file.name}`;
 
-      // Upload to storage
       const uploadResult = await tryAsync({
         try: () => storage.upload(fileKey, file, { onProgress }),
-        catch: () => FileServiceErr({
-          operation: "upload",
-          fileName: file.name,
-          fileSize: file.size,
-          fileKey
-        })
+        catch: () => FileServiceErr({ operation: "upload", fileName: file.name })
       });
-
       if (uploadResult.error) return uploadResult;
 
-      // Save metadata to database
       const metadataResult = await tryAsync({
         try: () => db.files.create({
-          id: fileId,
-          userId,
-          originalName: file.name,
-          size: file.size,
-          mimeType: file.type,
-          storageKey: fileKey,
-          url: uploadResult.data.url
+          id: fileId, userId, originalName: file.name,
+          size: file.size, mimeType: file.type,
+          storageKey: fileKey, url: uploadResult.data.url
         }),
-        catch: () => FileServiceErr({
-          operation: "upload", fileId, fileName: file.name
-        })
+        catch: () => FileServiceErr({ operation: "upload", fileName: file.name })
       });
 
       if (metadataResult.error) {
-        // Cleanup storage on database failure
-        await storage.delete(fileKey);
+        await storage.delete(fileKey); // cleanup on DB failure
         return metadataResult;
       }
 
-      return Ok({
-        id: fileId,
-        originalName: file.name,
-        size: file.size,
-        mimeType: file.type,
-        url: uploadResult.data.url,
-        uploadedAt: new Date()
-      });
-    },
-
-    async getFile(
-      fileId: FileId,
-      userId: UserId
-    ): Promise<Result<UploadedFile, FileServiceError>> {
-      const fileResult = await tryAsync({
-        try: () => db.files.findById(fileId),
-        catch: () => FileServiceErr({
-          operation: "getFile", fileId, userId
-        })
-      });
-
-      if (fileResult.error) return fileResult;
-      if (!fileResult.data) {
-        return FileServiceErr({
-          operation: "getFile", fileId, userId
-        });
-      }
-
-      // Check ownership
-      if (fileResult.data.userId !== userId) {
-        return FileServiceErr({
-          operation: "getFile", fileId, userId, ownerId: fileResult.data.userId
-        });
-      }
-
-      return Ok(fileResult.data);
+      return Ok({ id: fileId, url: uploadResult.data.url });
     }
   };
 }
 ```
 
-### API Route with Error Handling
+## Form Validation with Zod
 
-A complete Next.js API route showing error transformation and response handling:
-
-```typescript
-// app/api/users/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { createUserService } from '@/services/user-service';
-import { createAuthService } from '@/services/auth-service';
-import { isErr } from 'wellcrafted/result';
-import { type Brand } from 'wellcrafted/brand';
-
-type UserId = string & Brand<"UserId">;
-type SessionToken = string & Brand<"SessionToken">;
-
-// Error response helpers
-function errorResponse(message: string, status: number, context?: Record<string, unknown>) {
-  return NextResponse.json(
-    {
-      error: {
-        message,
-        context,
-        timestamp: new Date().toISOString()
-      }
-    },
-    { status }
-  );
-}
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    // Extract auth token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return errorResponse('Missing or invalid authorization header', 401);
-    }
-
-    const token = authHeader.substring(7) as SessionToken;
-
-    // Validate session
-    const authService = createAuthService();
-    const sessionResult = await authService.validateSession(token);
-
-    if (isErr(sessionResult)) {
-      const { error } = sessionResult;
-      return errorResponse(
-        'Authentication failed',
-        401,
-        { reason: error.message, errorId: error.name }
-      );
-    }
-
-    // Get requested user
-    const userService = createUserService();
-    const userId = params.id as UserId;
-    const userResult = await userService.getUser(userId);
-
-    if (isErr(userResult)) {
-      const { error } = userResult;
-
-      // Transform service errors to HTTP responses
-      switch (error.name) {
-        case 'UserNotFoundError':
-          return errorResponse('User not found', 404, { userId });
-        case 'UserServiceError':
-          return errorResponse(
-            'Failed to fetch user',
-            500,
-            { userId, errorId: error.name }
-          );
-        default:
-          return errorResponse('Internal server error', 500);
-      }
-    }
-
-    // Check authorization (users can only see their own data)
-    if (userResult.data.id !== sessionResult.data.id) {
-      return errorResponse('Access denied', 403, { userId });
-    }
-
-    // Return user data
-    return NextResponse.json({
-      data: {
-        id: userResult.data.id,
-        email: userResult.data.email,
-        name: userResult.data.name,
-        createdAt: userResult.data.createdAt
-      }
-    });
-
-  } catch (error) {
-    // Fallback for any unhandled errors
-    console.error('Unexpected error in GET /api/users/[id]:', error);
-    return errorResponse('Internal server error', 500);
-  }
-}
-```
-
-### Form Validation with Zod Integration
-
-Combining wellcrafted with Zod for comprehensive form validation:
+Combining wellcrafted with Zod for typed validation errors:
 
 ```typescript
 import { z } from 'zod';
 import { Result, Ok, trySync } from "wellcrafted/result";
 import { defineErrors, type InferError } from "wellcrafted/error";
 
-// Form validation errors with typed fields
 const validationErrors = defineErrors({
-  ValidationError: ({ field, value, receivedValue, allErrors }: { field?: string; value?: unknown; receivedValue?: unknown; allErrors?: Array<{ path: string; message: string }> }) => ({
+  ValidationError: ({ field, allErrors }: {
+    field?: string;
+    allErrors?: Array<{ path: string; message: string }>;
+  }) => ({
     message: field ? `Validation failed on ${field}` : 'Validation failed',
-    field,
-    value,
-    receivedValue,
-    allErrors,
+    field, allErrors,
   }),
 });
-const { ValidationError, ValidationErr } = validationErrors;
+const { ValidationErr } = validationErrors;
 type ValidationError = InferError<typeof validationErrors, 'ValidationError'>;
 
-// Zod schemas
 const CreateUserSchema = z.object({
   email: z.string().email("Invalid email address"),
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -452,88 +218,107 @@ const CreateUserSchema = z.object({
   terms: z.boolean().refine(val => val === true, "Must accept terms")
 });
 
-type CreateUserInput = z.infer<typeof CreateUserSchema>;
-
-interface ValidatedUser {
-  email: string;
-  name: string;
-  age: number;
-  acceptedTerms: boolean;
-}
-
 export function validateCreateUserForm(
   input: unknown
-): Result<ValidatedUser, ValidationError> {
-  const validationResult = trySync({
+): Result<z.infer<typeof CreateUserSchema>, ValidationError> {
+  return trySync({
     try: () => CreateUserSchema.parse(input),
     catch: (error) => {
       if (error instanceof z.ZodError) {
         const firstIssue = error.issues[0];
         return ValidationErr({
           field: firstIssue.path.join('.'),
-          receivedValue: firstIssue.received,
           allErrors: error.issues.map(issue => ({
             path: issue.path.join('.'),
             message: issue.message
           }))
         });
       }
-
       return ValidationErr({});
     }
   });
-
-  if (validationResult.error) return validationResult;
-
-  // Transform to domain object
-  return Ok({
-    email: validationResult.data.email,
-    name: validationResult.data.name,
-    age: validationResult.data.age,
-    acceptedTerms: validationResult.data.terms
-  });
 }
 
-// Usage in a form handler
+// Usage
 async function handleSubmit(formData: unknown) {
-  const validationResult = validateCreateUserForm(formData);
+  const result = validateCreateUserForm(formData);
 
-  if (validationResult.error) {
-    // Show field-specific error
-    const field = validationResult.error.field;
-    const message = validationResult.error.message;
-
-    showFieldError(field as string, message);
+  if (result.error) {
+    showFieldError(result.error.field as string, result.error.message);
     return;
   }
 
-  // Proceed with validated data
-  const userService = createUserService();
-  const createResult = await userService.createUser(validationResult.data);
-
+  const createResult = await userService.createUser(result.data);
   if (createResult.error) {
     showToast("Failed to create user: " + createResult.error.message);
     return;
   }
 
-  // Success!
   redirect(`/users/${createResult.data.id}`);
 }
 ```
 
-## Production Architecture Patterns
+## API Route with Error Transformation
 
-### Service Composition
-
-How services build on each other in complex applications:
+A Next.js API route transforming service errors into HTTP responses:
 
 ```typescript
-// High-level application service that coordinates multiple domain services
+import { NextRequest, NextResponse } from 'next/server';
+import { isErr } from 'wellcrafted/result';
+import { type Brand } from 'wellcrafted/brand';
+
+type SessionToken = string & Brand<"SessionToken">;
+type UserId = string & Brand<"UserId">;
+
+function errorResponse(message: string, status: number, context?: Record<string, unknown>) {
+  return NextResponse.json({ error: { message, context, timestamp: new Date().toISOString() } }, { status });
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return errorResponse('Missing or invalid authorization header', 401);
+  }
+
+  const token = authHeader.substring(7) as SessionToken;
+  const sessionResult = await authService.validateSession(token);
+
+  if (isErr(sessionResult)) {
+    return errorResponse('Authentication failed', 401, { reason: sessionResult.error.message });
+  }
+
+  const userId = params.id as UserId;
+  const userResult = await userService.getUser(userId);
+
+  if (isErr(userResult)) {
+    switch (userResult.error.name) {
+      case 'UserNotFoundError':
+        return errorResponse('User not found', 404, { userId });
+      default:
+        return errorResponse('Failed to fetch user', 500);
+    }
+  }
+
+  if (userResult.data.id !== sessionResult.data.id) {
+    return errorResponse('Access denied', 403);
+  }
+
+  return NextResponse.json({ data: userResult.data });
+}
+```
+
+## Service Composition
+
+Coordinating multiple services where each step returns a Result:
+
+```typescript
 export function createApplicationService(
   authService: AuthService,
   userService: UserService,
-  fileService: FileService,
-  notificationService: NotificationService
+  fileService: FileService
 ) {
   return {
     async updateUserProfile(
@@ -541,461 +326,35 @@ export function createApplicationService(
       profileData: UpdateProfileInput,
       avatarFile?: File
     ): Promise<Result<UpdatedProfile, ApplicationError>> {
-      // 1. Authenticate user
       const authResult = await authService.validateSession(token);
       if (authResult.error) return transformAuthError(authResult.error);
 
-      // 2. Upload avatar if provided
       let avatarUrl: string | undefined;
       if (avatarFile) {
-        const uploadResult = await fileService.uploadFile(
-          authResult.data.id,
-          avatarFile
-        );
+        const uploadResult = await fileService.uploadFile(authResult.data.id, avatarFile);
         if (uploadResult.error) return transformFileError(uploadResult.error);
         avatarUrl = uploadResult.data.url;
       }
 
-      // 3. Update user profile
       const updateResult = await userService.updateProfile(
         authResult.data.id,
         { ...profileData, avatarUrl }
       );
       if (updateResult.error) return transformUserError(updateResult.error);
 
-      // 4. Send notification (don't fail the operation if this fails)
-      await notificationService.notify(
-        authResult.data.id,
-        "Profile updated successfully"
-      );
-
-      return Ok({
-        user: updateResult.data,
-        message: "Profile updated successfully"
-      });
+      return Ok({ user: updateResult.data, message: "Profile updated successfully" });
     }
   };
 }
 ```
-
-### Error Boundary Integration
-
-Using wellcrafted with React Error Boundaries:
-
-```typescript
-import React from 'react';
-import { isErr } from 'wellcrafted/result';
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-  errorInfo?: React.ErrorInfo;
-}
-
-export class WellcraftedErrorBoundary extends React.Component<
-  React.PropsWithChildren<{}>,
-  ErrorBoundaryState
-> {
-  constructor(props: React.PropsWithChildren<{}>) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return {
-      hasError: true,
-      error
-    };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.setState({ errorInfo });
-
-    // Log structured error information
-    if (error.cause && typeof error.cause === 'object' && 'name' in error.cause) {
-      // This is likely a wellcrafted TaggedError
-      console.error('Wellcrafted error caught by boundary:', {
-        boundaryError: error.message,
-        originalError: error.cause,
-        stack: errorInfo.componentStack
-      });
-    } else {
-      console.error('Unhandled error in React tree:', error, errorInfo);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="error-boundary">
-          <h2>Something went wrong</h2>
-          <details>
-            <summary>Error Details</summary>
-            <pre>{this.state.error?.message}</pre>
-            {this.state.errorInfo && (
-              <pre>{this.state.errorInfo.componentStack}</pre>
-            )}
-          </details>
-          <button onClick={() => window.location.reload()}>
-            Reload Page
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// Usage with Result-aware components
-function UserProfile({ userId }: { userId: string }) {
-  const [result, setResult] = React.useState<Result<User, UserError>>();
-
-  React.useEffect(() => {
-    async function loadUser() {
-      const userService = createUserService();
-      const userResult = await userService.getUser(userId);
-      setResult(userResult);
-    }
-    loadUser();
-  }, [userId]);
-
-  if (!result) return <LoadingSpinner />;
-
-  if (isErr(result)) {
-    // Handle errors at component level - don't throw
-    return <UserError error={result.error} />;
-  }
-
-  return <UserDetails user={result.data} />;
-}
-```
-
-## Graceful Degradation Patterns
-
-Real-world applications need to handle failures gracefully. The flexibility of `tryAsync`'s catch function enables sophisticated error recovery strategies:
-
-### Media Processing Pipeline
-
-Process media with fallbacks at each stage:
-
-```typescript
-export function createMediaProcessor(
-  processors: {
-    highQuality: Processor;
-    standard: Processor;
-    basic: Processor;
-  }
-) {
-  return {
-    async processVideo(
-      file: File
-    ): Promise<Result<ProcessedMedia, MediaError>> {
-      // Try high quality first
-      const highQualityResult = await tryAsync({
-        try: () => processors.highQuality.process(file),
-        catch: (error) => {
-          console.warn('High quality processing failed, trying standard:', error);
-          return Ok(null); // Signal to try next option
-        }
-      });
-
-      if (highQualityResult.data) {
-        return Ok(highQualityResult.data);
-      }
-
-      // Fall back to standard quality
-      const standardResult = await tryAsync({
-        try: () => processors.standard.process(file),
-        catch: (error) => {
-          console.warn('Standard processing failed, using basic:', error);
-          return Ok(null); // Signal to try next option
-        }
-      });
-
-      if (standardResult.data) {
-        return Ok(standardResult.data);
-      }
-
-      // Last resort: basic processing
-      return tryAsync({
-        try: () => processors.basic.process(file),
-        catch: () => MediaErr({ fileName: file.name })
-      });
-    }
-  };
-}
-```
-
-### Distributed Cache Service
-
-Handle cache failures without breaking the application:
-
-```typescript
-export function createCacheService(
-  redis: RedisClient,
-  memcached: MemcachedClient,
-  localStorage: Storage
-) {
-  return {
-    async get<T>(key: string): Promise<Result<T | null, never>> {
-      // Try Redis first (fastest)
-      const redisResult = await tryAsync({
-        try: () => redis.get<T>(key),
-        catch: () => Ok(null) // Redis down? Try next cache
-      });
-
-      if (redisResult.data) return redisResult;
-
-      // Try Memcached
-      const memcachedResult = await tryAsync({
-        try: () => memcached.get<T>(key),
-        catch: () => Ok(null) // Memcached down? Try localStorage
-      });
-
-      if (memcachedResult.data) {
-        // Backfill to Redis for next time
-        tryAsync({
-          try: () => redis.set(key, memcachedResult.data),
-          catch: () => Ok(undefined) // Don't care if backfill fails
-        });
-        return memcachedResult;
-      }
-
-      // Last resort: localStorage
-      return tryAsync({
-        try: () => {
-          const stored = localStorage.getItem(key);
-          return stored ? JSON.parse(stored) as T : null;
-        },
-        catch: () => Ok(null) // Even localStorage failed? Return null
-      });
-    },
-
-    async set<T>(key: string, value: T): Promise<Ok<void>> {
-      // Try to set in all caches, but don't fail if some are down
-      await tryAsync({
-        try: () => redis.set(key, value),
-        catch: () => Ok(undefined)
-      });
-
-      await tryAsync({
-        try: () => memcached.set(key, value),
-        catch: () => Ok(undefined)
-      });
-
-      await tryAsync({
-        try: () => localStorage.setItem(key, JSON.stringify(value)),
-        catch: () => Ok(undefined)
-      });
-
-      return Ok(undefined); // Always succeeds
-    }
-  };
-}
-```
-
-### Notification Delivery System
-
-Ensure messages reach users through multiple channels:
-
-```typescript
-export function createNotificationService(
-  channels: {
-    push: PushService;
-    email: EmailService;
-    sms: SmsService;
-    inApp: InAppService;
-  }
-) {
-  return {
-    async notify(
-      userId: UserId,
-      message: NotificationMessage
-    ): Promise<Result<DeliveryReport, NotificationError>> {
-      const report: DeliveryReport = {
-        attempted: [],
-        delivered: [],
-        failed: []
-      };
-
-      // Try push notification (preferred)
-      const pushResult = await tryAsync({
-        try: async () => {
-          await channels.push.send(userId, message);
-          return 'push' as const;
-        },
-        catch: (error) => {
-          report.failed.push({ channel: 'push', error });
-          return Ok(null); // Continue to next channel
-        }
-      });
-
-      if (pushResult.data) {
-        report.delivered.push(pushResult.data);
-        return Ok(report); // Success - no need for other channels
-      }
-
-      // Try email as fallback
-      const emailResult = await tryAsync({
-        try: async () => {
-          await channels.email.send(userId, message);
-          return 'email' as const;
-        },
-        catch: (error) => {
-          report.failed.push({ channel: 'email', error });
-          return Ok(null); // Continue to next channel
-        }
-      });
-
-      if (emailResult.data) {
-        report.delivered.push(emailResult.data);
-        return Ok(report);
-      }
-
-      // Try SMS as another fallback
-      const smsResult = await tryAsync({
-        try: async () => {
-          await channels.sms.send(userId, message);
-          return 'sms' as const;
-        },
-        catch: (error) => {
-          report.failed.push({ channel: 'sms', error });
-          return Ok(null); // Continue to in-app
-        }
-      });
-
-      if (smsResult.data) {
-        report.delivered.push(smsResult.data);
-        return Ok(report);
-      }
-
-      // Last resort: in-app notification (always succeeds)
-      await tryAsync({
-        try: () => channels.inApp.send(userId, message),
-        catch: () => Ok(undefined) // Even if this fails, we tried
-      });
-
-      report.delivered.push('inApp');
-      return Ok(report);
-    }
-  };
-}
-```
-
-### Resource Cleanup Service
-
-Ensure cleanup always completes, even with partial failures:
-
-```typescript
-export function createCleanupService(
-  resources: {
-    database: Database;
-    storage: Storage;
-    cache: Cache;
-    queue: Queue;
-  }
-) {
-  return {
-    async cleanupUserData(userId: UserId): Promise<Ok<CleanupReport>> {
-      const report: CleanupReport = {
-        cleaned: [],
-        failed: []
-      };
-
-      // Clean database records
-      await tryAsync({
-        try: async () => {
-          await resources.database.deleteUser(userId);
-          report.cleaned.push('database');
-        },
-        catch: (error) => {
-          report.failed.push({ resource: 'database', error });
-          return Ok(undefined); // Continue cleanup
-        }
-      });
-
-      // Clean storage files
-      await tryAsync({
-        try: async () => {
-          await resources.storage.deleteUserFiles(userId);
-          report.cleaned.push('storage');
-        },
-        catch: (error) => {
-          report.failed.push({ resource: 'storage', error });
-          return Ok(undefined); // Continue cleanup
-        }
-      });
-
-      // Clear cache entries
-      await tryAsync({
-        try: async () => {
-          await resources.cache.evictUser(userId);
-          report.cleaned.push('cache');
-        },
-        catch: (error) => {
-          report.failed.push({ resource: 'cache', error });
-          return Ok(undefined); // Continue cleanup
-        }
-      });
-
-      // Cancel queued jobs
-      await tryAsync({
-        try: async () => {
-          await resources.queue.cancelUserJobs(userId);
-          report.cleaned.push('queue');
-        },
-        catch: (error) => {
-          report.failed.push({ resource: 'queue', error });
-          return Ok(undefined); // Continue cleanup
-        }
-      });
-
-      return Ok(report); // Always return the report
-    }
-  };
-}
-```
-
-### Key Patterns in Graceful Degradation
-
-1. **Progressive Fallback**: Try the best option first, then progressively degrade to simpler alternatives
-2. **Partial Success Reporting**: Track what succeeded and what failed for transparency
-3. **Silent Recovery**: Use `Ok(undefined)` for operations that shouldn't break the flow
-4. **Best Effort Delivery**: Attempt multiple channels/methods before giving up
-5. **Cleanup Guarantees**: Ensure cleanup operations always complete, even with failures
 
 ## Key Takeaways
 
-### 1. Type Safety Throughout
-Every example shows how wellcrafted makes errors visible in function signatures, eliminating surprise runtime failures.
-
-### 2. Systematic Error Handling
-Errors are transformed at appropriate boundaries - database errors become service errors, service errors become application errors.
-
-### 3. Production-Ready Patterns
-These patterns handle real-world concerns: authentication, validation, file uploads, error boundaries, and service composition.
-
-### 4. Framework Agnostic
-Whether you're using Next.js, React, Svelte, or Node.js, these patterns adapt to any TypeScript environment.
+1. **Errors in signatures** — every example makes failures visible in the return type, no surprise runtime exceptions.
+2. **Error transformation at boundaries** — database errors become service errors, service errors become HTTP responses.
+3. **Branded types prevent mixups** — `UserId` and `SessionToken` can never be accidentally swapped.
+4. **Framework agnostic** — these patterns work in Next.js, Svelte, plain Node, or anywhere TypeScript runs.
 
 <Note>
-Want to see larger-scale architecture? Check out the [Whispering case study](/case-studies/whispering-architecture) for a 22,000+ line production application, or explore [service layer patterns](/patterns/service-layer) for more architectural guidance.
+For larger-scale architecture, see the [Whispering case study](/case-studies/whispering-architecture) or the [service layer patterns](/patterns/service-layer).
 </Note>
-
-## Related Resources
-
-<CardGroup>
-  <Card title="Result Pattern Deep Dive" icon="code-branch" href="/core/result-pattern">
-    Master the discriminated union that powers these examples
-  </Card>
-  <Card title="Error System Design" icon="triangle-exclamation" href="/core/error-system">
-    Learn how TaggedErrors create structured, serializable errors
-  </Card>
-  <Card title="Brand Types" icon="fingerprint" href="/core/brand-types">
-    Prevent bugs with compile-time type distinctions
-  </Card>
-  <Card title="Framework Integrations" icon="plug" href="/integrations/svelte-tanstack">
-    See wellcrafted in action with popular frameworks
-  </Card>
-</CardGroup>
