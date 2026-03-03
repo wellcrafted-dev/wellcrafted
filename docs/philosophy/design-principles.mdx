@@ -143,9 +143,9 @@ Each primitive is simple, but they compose to handle complex scenarios:
 ```typescript
 // Compose with standard JavaScript patterns
 const results = await Promise.all([
-  tryAsync({ try: () => fetchUser(id1), mapErr: handleUserError }),
-  tryAsync({ try: () => fetchUser(id2), mapErr: handleUserError }),
-  tryAsync({ try: () => fetchUser(id3), mapErr: handleUserError }),
+  tryAsync({ try: () => fetchUser(id1), catch: handleUserError }),
+  tryAsync({ try: () => fetchUser(id2), catch: handleUserError }),
+  tryAsync({ try: () => fetchUser(id3), catch: handleUserError }),
 ]);
 
 const errors = results.filter(r => r.error !== null);

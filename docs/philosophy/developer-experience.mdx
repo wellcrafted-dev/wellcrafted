@@ -686,7 +686,7 @@ async function legacyGetUser(id: string): Promise<User> {
 async function getUser(id: string): Promise<Result<User, UserError>> {
   return tryAsync({
     try: () => legacyGetUser(id),
-    mapErr: (error): UserError => ({
+    catch: (error): UserError => ({
       name: "UserError",
       message: extractErrorMessage(error),
       userId: id,
