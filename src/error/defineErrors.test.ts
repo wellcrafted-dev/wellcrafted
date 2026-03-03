@@ -1,12 +1,8 @@
 import { describe, it, expect, expectTypeOf } from "bun:test";
 import { defineErrors } from "./defineErrors.js";
 import { extractErrorMessage } from "./extractErrorMessage.js";
-import type {
-	AnyTaggedError,
-	InferError,
-	InferErrors,
-	JsonObject,
-} from "./types.js";
+import type { AnyTaggedError, InferError, InferErrors } from "./types.js";
+import type { JsonObject } from "../json.js";
 
 // =============================================================================
 // Basic factories — message at call site equivalent
