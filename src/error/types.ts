@@ -34,9 +34,9 @@ export type AnyTaggedError = { name: string; message: string };
 export type ErrorBody = { message: string };
 
 /** The config: each key is an error name, each value is a constructor function. */
-// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
 export type ErrorsConfig = Record<
 	`${string}Error`,
+	// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
 	(...args: any[]) => ErrorBody
 >;
 
