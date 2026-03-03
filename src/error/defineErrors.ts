@@ -15,16 +15,16 @@ import type {
  * @example
  * ```ts
  * const HttpError = defineErrors({
- *   Connection: ({ cause }: { cause: string }) => ({
- *     message: `Failed to connect: ${cause}`,
+ *   Connection: ({ cause }: { cause: unknown }) => ({
+ *     message: `Failed to connect: ${extractErrorMessage(cause)}`,
  *     cause,
  *   }),
  *   Response: ({ status }: { status: number; bodyMessage?: string }) => ({
  *     message: `HTTP ${status}`,
  *     status,
  *   }),
- *   Parse: ({ cause }: { cause: string }) => ({
- *     message: `Failed to parse response body: ${cause}`,
+ *   Parse: ({ cause }: { cause: unknown }) => ({
+ *     message: `Failed to parse response body: ${extractErrorMessage(cause)}`,
  *     cause,
  *   }),
  * });
@@ -38,8 +38,8 @@ import type {
  * mapping is nearly 1:1:
  *
  * - `enum HttpError` → `const HttpError = defineErrors(...)`
- * - Variant `Connection { cause: String }` → key `Connection: ({ cause }) => (...)`
- * - `#[error("Failed: {cause}")]` → `` message: `Failed: ${cause}` ``
+ * - Variant `Connection { cause: String }` → key `Connection: ({ cause }: { cause: unknown }) => (...)`
+ * - `#[error("Failed: {cause}")]` → `` message: `Failed: ${extractErrorMessage(cause)}` ``
  * - `HttpError::Connection { ... }` → `HttpError.Connection({ ... })`
  * - `match error { Connection { .. } => }` → `switch (error.name) { case 'Connection': }`
  *

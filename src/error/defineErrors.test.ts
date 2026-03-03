@@ -1,5 +1,6 @@
 import { describe, it, expect, expectTypeOf } from "bun:test";
 import { defineErrors } from "./defineErrors.js";
+import { extractErrorMessage } from "./extractErrorMessage.js";
 import type {
 	AnyTaggedError,
 	InferError,
@@ -242,9 +243,9 @@ describe("defineErrors - mixed function shapes", () => {
 			cause,
 		}: {
 			operation: "check" | "enable" | "disable";
-			cause: string;
+			cause: unknown;
 		}) => ({
-			message: `Failed to ${operation}: ${cause}`,
+			message: `Failed to ${operation}: ${extractErrorMessage(cause)}`,
 			operation,
 			cause,
 		}),
@@ -311,8 +312,8 @@ describe("defineErrors - mixed function shapes", () => {
 
 describe("defineErrors - type extraction", () => {
 	const HttpError = defineErrors({
-		Connection: ({ cause }: { cause: string }) => ({
-			message: `Failed to connect: ${cause}`,
+		Connection: ({ cause }: { cause: unknown }) => ({
+			message: `Failed to connect: ${extractErrorMessage(cause)}`,
 			cause,
 		}),
 		Response: ({
@@ -328,8 +329,8 @@ describe("defineErrors - type extraction", () => {
 			status,
 			bodyMessage,
 		}),
-		Parse: ({ cause }: { cause: string }) => ({
-			message: `Failed to parse response body: ${cause}`,
+		Parse: ({ cause }: { cause: unknown }) => ({
+			message: `Failed to parse response body: ${extractErrorMessage(cause)}`,
 			cause,
 		}),
 	});
@@ -341,7 +342,7 @@ describe("defineErrors - type extraction", () => {
 			Readonly<{
 				name: "Connection";
 				message: string;
-				cause: string;
+				cause: unknown;
 			}>
 		>();
 	});
@@ -580,8 +581,8 @@ describe("defineErrors - edge cases", () => {
 
 	it("cause is just another field if you want it", () => {
 		const BackendError = defineErrors({
-			Failure: ({ backend, cause }: { backend: string; cause: string }) => ({
-				message: `${backend} failed`,
+			Failure: ({ backend, cause }: { backend: string; cause: unknown }) => ({
+				message: `${backend} failed: ${extractErrorMessage(cause)}`,
 				backend,
 				cause,
 			}),
@@ -592,6 +593,7 @@ describe("defineErrors - edge cases", () => {
 			cause: "timeout",
 		});
 		expect(result.error.backend).toBe("postgres");
+		expect(result.error.message).toBe("postgres failed: timeout");
 		expect(result.error.cause).toBe("timeout");
 	});
 });
@@ -612,9 +614,9 @@ describe("defineErrors - the console log test", () => {
 				cause,
 			}: {
 				operation: string;
-				cause: string;
+				cause: unknown;
 			}) => ({
-				message: `Failed to ${operation}: ${cause}`,
+				message: `Failed to ${operation}: ${extractErrorMessage(cause)}`,
 				operation,
 				cause,
 			}),
