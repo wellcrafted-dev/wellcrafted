@@ -5,7 +5,6 @@ export { ResultSchema, type Result } from "./result.js";
 export {
 	hasJsonSchema,
 	hasValidate,
-	type StandardFullSchemaV1,
 	type StandardJSONSchemaV1,
 	type StandardSchemaV1,
 	type StandardTypedV1,
