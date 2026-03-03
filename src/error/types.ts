@@ -1,23 +1,6 @@
 import type { Err } from "../result/result.js";
 
 /**
- * JSON-serializable value types for error context.
- * Ensures all error data can be safely serialized via JSON.stringify.
- */
-export type JsonValue =
-	| string
-	| number
-	| boolean
-	| null
-	| JsonValue[]
-	| { [key: string]: JsonValue };
-
-/**
- * JSON-serializable object type for error context.
- */
-export type JsonObject = Record<string, JsonValue>;
-
-/**
  * Base type for any tagged error, used as a minimum constraint.
  */
 export type AnyTaggedError = { name: string; message: string };

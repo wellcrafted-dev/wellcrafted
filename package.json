@@ -17,6 +17,10 @@
 			"types": "./dist/error/index.d.ts",
 			"import": "./dist/error/index.js"
 		},
+		"./json": {
+			"types": "./dist/json.d.ts",
+			"import": "./dist/json.js"
+		},
 		"./brand": {
 			"types": "./dist/brand.d.ts",
 			"import": "./dist/brand.js"
