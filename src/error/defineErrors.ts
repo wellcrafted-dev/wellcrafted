@@ -19,8 +19,12 @@ import type {
  *     message: `Failed to connect: ${cause}`,
  *     cause,
  *   }),
+ *   Response: ({ status }: { status: number; bodyMessage?: string }) => ({
+ *     message: `HTTP ${status}`,
+ *     status,
+ *   }),
  *   Parse: ({ cause }: { cause: string }) => ({
- *     message: `Failed to parse: ${cause}`,
+ *     message: `Failed to parse response body: ${cause}`,
  *     cause,
  *   }),
  * });
@@ -28,6 +32,30 @@ import type {
  * type HttpError = InferErrors<typeof HttpError>;
  *
  * const result = HttpError.Connection({ cause: 'timeout' }); // Err<...>
+ * ```
+ *
+ * Inspired by Rust's {@link https://docs.rs/thiserror | thiserror} crate. The
+ * mapping is nearly 1:1:
+ *
+ * - `enum HttpError` → `const HttpError = defineErrors(...)`
+ * - Variant `Connection { cause: String }` → key `Connection: ({ cause }) => (...)`
+ * - `#[error("Failed: {cause}")]` → `` message: `Failed: ${cause}` ``
+ * - `HttpError::Connection { ... }` → `HttpError.Connection({ ... })`
+ * - `match error { Connection { .. } => }` → `switch (error.name) { case 'Connection': }`
+ *
+ * The equivalent Rust `thiserror` enum:
+ * ```rust
+ * #[derive(Error, Debug)]
+ * enum HttpError {
+ *     #[error("Failed to connect: {cause}")]
+ *     Connection { cause: String },
+ *
+ *     #[error("HTTP {status}")]
+ *     Response { status: u16, body_message: Option<String> },
+ *
+ *     #[error("Failed to parse response body: {cause}")]
+ *     Parse { cause: String },
+ * }
  * ```
  */
 export function defineErrors<const TConfig extends ErrorsConfig>(
