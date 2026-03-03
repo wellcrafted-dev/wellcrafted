@@ -63,6 +63,7 @@
 						"group": "💭 Philosophy",
 						"pages": [
 							"philosophy/design-principles",
+							"philosophy/rust-inspiration",
 							"philosophy/developer-experience",
 							"philosophy/production-reliability",
 							"philosophy/brand-implementation"

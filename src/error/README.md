@@ -34,28 +34,27 @@ Tagged errors solve this by treating errors as plain data structures instead of 
 
 ## The `defineErrors` API
 
-`defineErrors` takes an object where each key is an error name (must end in `Error`) and each value is a constructor function. The constructor receives input and returns `{ message, ...data }`. `defineErrors` stamps `name` from the key and generates both a plain factory and an `Err`-wrapped factory.
+`defineErrors` takes an object where each key is a short variant name (the namespace provides context). Every factory returns `Err<...>` directly — ready for `trySync`/`tryAsync` catch handlers. The variant name is stamped as `name` on the error object.
 
 ```typescript
-import { defineErrors, type InferError, type InferErrorUnion } from 'wellcrafted/error';
+import { defineErrors, type InferError, type InferErrors } from 'wellcrafted/error';
 
-const errors = defineErrors({
-  NetworkError: () => ({
+const HttpError = defineErrors({
+  Network: () => ({
     message: 'Network request failed',
   }),
-  ResponseError: ({ status, reason }: { status: number; reason?: string }) => ({
+  Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
     status,
     reason,
   }),
 });
 
-const { NetworkError, NetworkErr, ResponseError, ResponseErr } = errors;
-```
+type HttpError = InferErrors<typeof HttpError>;
 
-Each entry produces two factories:
-- `NetworkError(...)`: Creates a plain tagged error object
-- `NetworkErr(...)`: Wraps it in `Err` for use with Result types
+const result = HttpError.Network();      // Err<{ name: 'Network'; message: string }>
+const result2 = HttpError.Response({ status: 404 }); // Err<{ name: 'Response'; ... }>
+```
 
 ## Tiers of Error Complexity
 
@@ -64,22 +63,20 @@ Each entry produces two factories:
 The constructor takes `message` as input and passes it through. The call site provides the message directly.
 
 ```typescript
-const errors = defineErrors({
-  SimpleError: ({ message }: { message: string }) => ({ message }),
+const AppError = defineErrors({
+  Simple: ({ message }: { message: string }) => ({ message }),
 
-  FsReadError: ({ message, path }: { message: string; path: string }) => ({
+  FsRead: ({ message, path }: { message: string; path: string }) => ({
     message,
     path,
   }),
 });
 
-const { SimpleError, SimpleErr, FsReadError, FsReadErr } = errors;
+AppError.Simple({ message: 'Something went wrong' });
+// → Err<{ name: 'Simple', message: 'Something went wrong' }>
 
-SimpleErr({ message: 'Something went wrong' });
-// → { name: 'SimpleError', message: 'Something went wrong' }
-
-FsReadErr({ message: 'Failed to read config', path: '/etc/config' });
-// → { name: 'FsReadError', message: 'Failed to read config', path: '/etc/config' }
+AppError.FsRead({ message: 'Failed to read config', path: '/etc/config' });
+// → Err<{ name: 'FsRead', message: 'Failed to read config', path: '/etc/config' }>
 ```
 
 ### Tier 1: Static Errors — no fields, no arguments
@@ -87,16 +84,14 @@ FsReadErr({ message: 'Failed to read config', path: '/etc/config' });
 Zero-arg constructor with a fixed message. Use when there's no dynamic content.
 
 ```typescript
-const errors = defineErrors({
-  RecorderBusyError: () => ({
+const RecorderError = defineErrors({
+  Busy: () => ({
     message: 'A recording is already in progress',
   }),
 });
 
-const { RecorderBusyError, RecorderBusyErr } = errors;
-
-RecorderBusyErr();
-// → { name: 'RecorderBusyError', message: 'A recording is already in progress' }
+RecorderError.Busy();
+// → Err<{ name: 'Busy', message: 'A recording is already in progress' }>
 ```
 
 ### Tier 2: Reason-Only — `reason` carries the dynamic context
@@ -104,17 +99,15 @@ RecorderBusyErr();
 Use when the only dynamic content is a stringified caught error.
 
 ```typescript
-const errors = defineErrors({
-  PlaySoundError: ({ reason }: { reason: string }) => ({
+const SoundError = defineErrors({
+  Play: ({ reason }: { reason: string }) => ({
     message: `Failed to play sound: ${reason}`,
     reason,
   }),
 });
 
-const { PlaySoundError, PlaySoundErr } = errors;
-
-PlaySoundErr({ reason: extractErrorMessage(error) });
-// → { name: 'PlaySoundError', message: 'Failed to play sound: device busy', reason: 'device busy' }
+SoundError.Play({ reason: extractErrorMessage(error) });
+// → Err<{ name: 'Play', message: 'Failed to play sound: device busy', reason: 'device busy' }>
 ```
 
 ### Tier 3: Structured Data — domain-specific fields
@@ -122,21 +115,19 @@ PlaySoundErr({ reason: extractErrorMessage(error) });
 Use when there's data worth preserving as named fields that callers branch on.
 
 ```typescript
-const errors = defineErrors({
-  ResponseError: ({ status, reason }: { status: number; reason?: string }) => ({
+const ApiError = defineErrors({
+  Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
     status,
     reason,
   }),
 });
 
-const { ResponseError, ResponseErr } = errors;
+ApiError.Response({ status: 404 });
+// → Err<{ name: 'Response', message: 'HTTP 404', status: 404 }>
 
-ResponseErr({ status: 404 });
-// → { name: 'ResponseError', message: 'HTTP 404', status: 404 }
-
-ResponseErr({ status: 500, reason: 'Internal error' });
-// → { name: 'ResponseError', message: 'HTTP 500: Internal error', status: 500, reason: 'Internal error' }
+ApiError.Response({ status: 500, reason: 'Internal error' });
+// → Err<{ name: 'Response', message: 'HTTP 500: Internal error', status: 500, reason: 'Internal error' }>
 ```
 
 ## Mixing Error Shapes
@@ -144,14 +135,14 @@ ResponseErr({ status: 500, reason: 'Internal error' });
 A single `defineErrors` call can contain any mix of tiers:
 
 ```typescript
-const errors = defineErrors({
+const AppError = defineErrors({
   // Tier 1: Static
-  RecorderBusyError: () => ({
+  RecorderBusy: () => ({
     message: 'A recording is already in progress',
   }),
 
   // Tier 3: Structured
-  ResponseError: ({ provider, status, model }: { provider: string; status: number; model: string }) => ({
+  Response: ({ provider, status, model }: { provider: string; status: number; model: string }) => ({
     message: `HTTP ${status}`,
     provider,
     status,
@@ -159,7 +150,7 @@ const errors = defineErrors({
   }),
 
   // Tier 0: Call-site message with fields
-  OperationError: ({ operation, message }: { operation: string; message: string }) => ({
+  Operation: ({ operation, message }: { operation: string; message: string }) => ({
     message,
     operation,
   }),
@@ -171,14 +162,12 @@ const errors = defineErrors({
 Fields are spread directly on the error object. Access them as top-level properties:
 
 ```typescript
-const error = ResponseError({ status: 401, provider: 'openai' });
-
-// Flat — just works
-const { status, message } = error;
+const err = ApiError.Response({ status: 401, reason: 'Unauthorized' });
+// err.error → { name: 'Response', status: 401, reason: 'Unauthorized', message: 'HTTP 401: Unauthorized' }
 
 // Rest spread extracts just the extra fields
-const { name, message, ...rest } = error;
-// rest = { status: 401, provider: 'openai' }
+const { name, message, ...rest } = err.error;
+// rest = { status: 401, reason: 'Unauthorized' }
 ```
 
 ## Reserved Keys
@@ -190,9 +179,9 @@ Only `name` is reserved — `defineErrors` stamps it automatically from the key.
 Fields must be JSON-serializable values (`JsonObject`). This ensures errors can round-trip through `JSON.stringify`/`JSON.parse` perfectly:
 
 ```typescript
-const error = ResponseError({ status: 401, provider: 'openai' });
-const parsed = JSON.parse(JSON.stringify(error));
-// parsed.status === 401, parsed.provider === 'openai'
+const result = ApiError.Response({ status: 401, reason: 'Unauthorized' });
+const parsed = JSON.parse(JSON.stringify(result.error));
+// parsed.status === 401, parsed.reason === 'Unauthorized'
 ```
 
 **Allowed:** strings, numbers, booleans, null, plain objects, arrays of the above.
@@ -204,52 +193,51 @@ const parsed = JSON.parse(JSON.stringify(error));
 There's no special `cause` machinery. If an error type needs to carry a cause, it's just another field:
 
 ```typescript
-const errors = defineErrors({
-  BackendError: ({ backend, cause }: { backend: string; cause: string }) => ({
+const DbError = defineErrors({
+  Backend: ({ backend, cause }: { backend: string; cause: string }) => ({
     message: `${backend} failed`,
     backend,
     cause,
   }),
 });
 
-const { BackendError } = errors;
-BackendError({ backend: 'postgres', cause: 'connection timeout' });
+DbError.Backend({ backend: 'postgres', cause: 'connection timeout' });
 ```
 
-## Type Annotations with `InferError` and `InferErrorUnion`
+## Type Annotations with `InferError` and `InferErrors`
 
-Use `InferError` to extract a single error type from a `defineErrors` return, and `InferErrorUnion` for the union of all errors:
+Use `InferError` to extract the error type from a single factory, and `InferErrors` for the union of all errors from a namespace:
 
 ```typescript
-import { defineErrors, type InferError, type InferErrorUnion } from 'wellcrafted/error';
+import { defineErrors, type InferError, type InferErrors } from 'wellcrafted/error';
 
-const errors = defineErrors({
-  NetworkError: () => ({
+const AppError = defineErrors({
+  Network: () => ({
     message: 'Network request failed',
   }),
-  FileError: ({ path }: { path: string }) => ({
+  File: ({ path }: { path: string }) => ({
     message: `File not found: ${path}`,
     path,
   }),
 });
 
-type NetworkError = InferError<typeof errors, 'NetworkError'>;
-// = Readonly<{ name: 'NetworkError'; message: string }>
+type NetworkError = InferError<typeof AppError.Network>;
+// = Readonly<{ name: 'Network'; message: string }>
 
-type FileError = InferError<typeof errors, 'FileError'>;
-// = Readonly<{ name: 'FileError'; message: string; path: string }>
+type FileError = InferError<typeof AppError.File>;
+// = Readonly<{ name: 'File'; message: string; path: string }>
 
-// Union of all errors defined in this group
-type AppError = InferErrorUnion<typeof errors>;
+// Union of all errors defined in this namespace
+type AppError = InferErrors<typeof AppError>;
 // = NetworkError | FileError
 
 // Use in discriminated union switches
 function handleErrors(error: AppError) {
   switch (error.name) {
-    case 'NetworkError':
+    case 'Network':
       console.log('Network failed:', error.message);
       break;
-    case 'FileError':
+    case 'File':
       console.log('File failed:', error.path);
       break;
   }
@@ -259,38 +247,30 @@ function handleErrors(error: AppError) {
 ## Quick Reference
 
 ```typescript
-import { defineErrors, type InferError, type InferErrorUnion, type AnyTaggedError, extractErrorMessage } from 'wellcrafted/error';
+import { defineErrors, type InferError, type InferErrors, type AnyTaggedError, extractErrorMessage } from 'wellcrafted/error';
 
-const errors = defineErrors({
+const AppError = defineErrors({
   // Call-site message
-  SimpleError: ({ message }: { message: string }) => ({ message }),
+  Simple: ({ message }: { message: string }) => ({ message }),
 
   // Static message
-  NetworkError: () => ({
+  Network: () => ({
     message: 'Network request failed',
   }),
 
   // Computed message from fields
-  ResponseError: ({ status, provider }: { status: number; provider: string }) => ({
+  Response: ({ status, provider }: { status: number; provider: string }) => ({
     message: `${provider}: HTTP ${status}`,
     status,
     provider,
   }),
 });
 
-const { SimpleError, SimpleErr } = errors;
-const { NetworkError, NetworkErr } = errors;
-const { ResponseError, ResponseErr } = errors;
-
-SimpleErr({ message: 'Something went wrong' });
-NetworkErr();  // message: 'Network request failed'
-ResponseErr({ status: 404, provider: 'openai' });  // message: "openai: HTTP 404"
+AppError.Simple({ message: 'Something went wrong' });
+AppError.Network();  // message: 'Network request failed'
+AppError.Response({ status: 404, provider: 'openai' });  // message: "openai: HTTP 404"
 
 // Type extraction
-type NetworkError = InferError<typeof errors, 'NetworkError'>;
-type AllErrors = InferErrorUnion<typeof errors>;
+type NetworkError = InferError<typeof AppError.Network>;
+type AppError = InferErrors<typeof AppError>;
 ```
-
-Each entry produces two factories:
-- `NetworkError`: Creates a plain tagged error object
-- `NetworkErr`: Wraps it in `Err` for use with Result types

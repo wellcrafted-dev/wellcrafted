@@ -131,23 +131,22 @@ wellcrafted works with any JavaScript framework or runtime:
 "use server";
 
 import { tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-const errors = defineErrors({
-  ServerError: ({ timestamp }: { timestamp: number }) => ({
+const ServerError = defineErrors({
+  CreateUser: ({ timestamp }: { timestamp: number }) => ({
     message: "Failed to create user",
     timestamp,
   }),
 });
-const { ServerErr } = errors;
-type ServerError = InferError<typeof errors, 'ServerError'>;
+type ServerError = InferErrors<typeof ServerError>;
 
 export async function createUser(data: FormData) {
   return tryAsync<User, ServerError>({
     try: async () => {
       // Your server action logic
     },
-    catch: () => ServerErr({ timestamp: Date.now() })
+    catch: () => ServerError.CreateUser({ timestamp: Date.now() })
   });
 }
 ```

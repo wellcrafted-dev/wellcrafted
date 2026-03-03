@@ -8,66 +8,71 @@ description: A cleaner way to extract types from factory functions
 I was building error factories in wellcrafted and kept running into this annoying pattern:
 
 ```typescript
-const errors = defineErrors({
-  ApiError: ({ message }: { message: string }) => ({ message }),
+const ApiError = defineErrors({
+  Network: ({ message }: { message: string }) => ({ message }),
 });
 
 // Later, when I need the type...
-type ApiError = ReturnType<typeof errors.ApiError>;
+type NetworkError = ReturnType<typeof ApiError.Network>;
 // Wait, that's verbose. There must be a better way...
 ```
 
-Every time I needed to extract the type from an error factory, I'd have to do this awkward dance with `ReturnType` and property access. It felt like I was fighting TypeScript instead of working with it.
+Every time I needed to extract the type from a specific error variant, I'd have to do this awkward dance with `ReturnType` and property access. It felt like I was fighting TypeScript instead of working with it.
 
 ## The Problem
 
 Here's what I had:
 
 ```typescript
-const errors = defineErrors({
-  ApiError: ({ message }: { message: string }) => ({ message }),
+const ApiError = defineErrors({
+  Network: ({ message }: { message: string }) => ({ message }),
+  Timeout: ({ ms }: { ms: number }) => ({ message: `Timed out after ${ms}ms`, ms }),
 });
 
-// Using it
-const { ApiError, ApiErr } = errors;
+// Using a variant
+ApiError.Network({ message: "Connection refused" });
 
-// But how do I get the ApiError type cleanly?
+// But how do I get the Network variant type cleanly?
 // This works but is verbose:
-type ApiError = ReturnType<typeof errors.ApiError>;
+type NetworkError = ReturnType<typeof ApiError.Network>;
 ```
 
 The type exists. TypeScript knows about it. But extracting it requires this verbose, indirect approach.
 
-## The Solution: InferError
+## The Solution: InferError and InferErrors
 
-So I added an `InferError` utility type:
+So I added two utility types:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferError, type InferErrors } from 'wellcrafted/error';
 
-const errors = defineErrors({
-  ApiError: ({ message }: { message: string }) => ({ message }),
+const ApiError = defineErrors({
+  Network: ({ message }: { message: string }) => ({ message }),
+  Timeout: ({ ms }: { ms: number }) => ({ message: `Timed out after ${ms}ms`, ms }),
 });
 
-type ApiError = InferError<typeof errors, 'ApiError'>;  // That's it!
+// Single variant type
+type NetworkError = InferError<typeof ApiError.Network>;
 
-// Still works with destructuring
-const { ApiError, ApiErr } = errors;
+// Union of all variants
+type AnyApiError = InferErrors<typeof ApiError>;
 ```
 
 ## How It Works
 
-`InferError` is a conditional type that extracts the return type from a specific factory in a `defineErrors` return:
+`InferError` extracts the return type from a single variant factory:
 
 ```typescript
-type InferError<T, K extends string> = K extends keyof T
-  ? T[K] extends (...args: any[]) => infer R
-    ? R
-    : never
-  : never;
+type InferError<T> = T extends (...args: any[]) => infer R ? R : never;
 ```
 
-It looks up the factory by name, then extracts its return type. Clean, readable, and type-safe.
+`InferErrors` creates a union of all variant types from a `defineErrors` result:
+
+```typescript
+type InferErrors<T> = T extends Record<string, (...args: any[]) => infer R> ? R : never;
+```
+
+Both are clean, readable, and type-safe.
 
 ## Other Places This Pattern Shows Up
 
@@ -96,6 +101,6 @@ These libraries all solved the same problem: How do you give developers a clean 
 
 ## The Lesson
 
-The `InferError` pattern is about making TypeScript ergonomic. Instead of requiring users to understand the internal structure of your factory returns and chain together `ReturnType<typeof ...>` expressions, you provide a clean utility type that does the heavy lifting.
+The `InferError` / `InferErrors` pattern is about making TypeScript ergonomic. Instead of requiring users to understand the internal structure of your factory returns and chain together `ReturnType<typeof ...>` expressions, you provide clean utility types that do the heavy lifting.
 
 It's just another tool for making TypeScript more ergonomic. And that's what good library design is about: making the right thing easy to do.

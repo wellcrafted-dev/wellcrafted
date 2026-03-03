@@ -81,21 +81,20 @@ async function saveUser(user: User): Promise<Result<void, ValidationError | Auth
 ## Quick Example
 
 ```typescript
-import { tryAsync, Err } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { tryAsync } from "wellcrafted/result";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-const errors = defineErrors({
-  ApiError: ({ endpoint }: { endpoint: string }) => ({
+const ApiError = defineErrors({
+  Fetch: ({ endpoint }: { endpoint: string }) => ({
     message: `Failed to fetch data from ${endpoint}`,
     endpoint,
   }),
 });
-const { ApiErr } = errors;
-type ApiError = InferError<typeof errors, 'ApiError'>;
+type ApiError = InferErrors<typeof ApiError>;
 
 const { data, error } = await tryAsync<User, ApiError>({
   try: () => fetch('/api/user').then(r => r.json()),
-  catch: () => ApiErr({ endpoint: '/api/user' })
+  catch: () => ApiError.Fetch({ endpoint: '/api/user' })
 });
 
 if (error) {
@@ -121,9 +120,9 @@ if (error) {
 
 ## Philosophy
 
-wellcrafted is built on the principle of making the implicit explicit. Instead of hidden exceptions that can crash your application, errors become data that you can work with using TypeScript's powerful type system.
+wellcrafted is built on the principle of making the implicit explicit. Instead of hidden exceptions that can crash your application, errors become data that you can work with using TypeScript's powerful type system. The `defineErrors` API is directly inspired by Rust's `thiserror` crate — bringing the same structural clarity of enum-based error handling to TypeScript.
 
-Learn more about our [design principles](/philosophy/design-principles), explore our [production reliability approach](/philosophy/production-reliability), and discover why we believe [developer experience](/philosophy/developer-experience) should be delightful.
+Learn more about our [design principles](/philosophy/design-principles), read about the [Rust inspiration](/philosophy/rust-inspiration) behind `defineErrors`, explore our [production reliability approach](/philosophy/production-reliability), and discover why we believe [developer experience](/philosophy/developer-experience) should be delightful.
 
 ## Related Resources
 

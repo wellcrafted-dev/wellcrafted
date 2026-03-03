@@ -6,7 +6,7 @@ icon: 'layer-group'
 
 # Service Layer Pattern
 
-This guide shows how to build robust, testable services using wellcrafted's Result types and error handling. We'll use the factory function pattern - no classes needed!
+Build robust, testable services using wellcrafted's Result types and error handling with the factory function pattern — no classes needed.
 
 ## Core Principles
 
@@ -14,43 +14,35 @@ This guide shows how to build robust, testable services using wellcrafted's Resu
 2. **Explicit Error Handling**: All errors visible in function signatures
 3. **Pure Business Logic**: Services contain only business logic, no UI concerns
 4. **Dependency Injection**: Pass dependencies as parameters
-5. **Testability**: Easy to test with mock dependencies
 
 ## Basic Service Pattern
 
-Here's the recommended pattern for creating services:
-
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // 1. Define service-specific errors with typed fields
-const userErrors = defineErrors({
-  UserServiceError: ({ userId, operation }: { userId?: string; operation: string }) => ({
+const UserServiceError = defineErrors({
+  Operation: ({ userId, operation }: { userId?: string; operation: string }) => ({
     message: `User ${operation} failed`,
     userId,
     operation,
   }),
 });
-const { UserServiceError, UserServiceErr } = userErrors;
-type UserServiceError = InferError<typeof userErrors, 'UserServiceError'>;
+type UserServiceError = InferErrors<typeof UserServiceError>;
 
 // 2. Create service with factory function
 export function createUserService(db: Database) {
-  // Private state in closure if needed
   const cache = new Map<string, User>();
 
-  // Return object with methods
   return {
     async getUser(id: string): Promise<Result<User, UserServiceError>> {
-      // Check cache first
       const cached = cache.get(id);
       if (cached) return Ok(cached);
 
-      // Fetch from database
       const result = await tryAsync({
         try: () => db.users.findById(id),
-        catch: () => UserServiceErr({
+        catch: () => UserServiceError.Operation({
           userId: id, operation: "getUser"
         })
       });
@@ -63,19 +55,13 @@ export function createUserService(db: Database) {
     },
 
     async createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
-      // Validation
       if (!input.email.includes('@')) {
-        return UserServiceErr({
-          operation: "createUser"
-        });
+        return UserServiceError.Operation({ operation: "createUser" });
       }
 
-      // Save to database
       return tryAsync({
         try: () => db.users.create(input),
-        catch: () => UserServiceErr({
-          operation: "createUser"
-        })
+        catch: () => UserServiceError.Operation({ operation: "createUser" })
       });
     },
 
@@ -94,24 +80,23 @@ export const UserServiceLive = createUserService(databaseInstance);
 
 ## Service with Multiple Dependencies
 
-Services often need multiple dependencies:
-
 ```typescript
-const orderErrors = defineErrors({
-  PaymentServiceError: ({ amount, paymentId }: { amount?: number; paymentId?: string }) => ({
+import { defineErrors, type InferError } from 'wellcrafted/error';
+
+const OrderError = defineErrors({
+  Payment: ({ amount, paymentId }: { amount?: number; paymentId?: string }) => ({
     message: 'Payment processing failed',
     amount,
     paymentId,
   }),
-  OrderServiceError: ({ input }: { input?: OrderInput }) => ({
+  Db: ({ input }: { input?: OrderInput }) => ({
     message: 'Order operation failed',
     input,
   }),
 });
-const { PaymentServiceError, PaymentServiceErr, OrderServiceError, OrderServiceErr } = orderErrors;
 
-type PaymentServiceError = InferError<typeof orderErrors, 'PaymentServiceError'>;
-type OrderServiceError = InferError<typeof orderErrors, 'OrderServiceError'>;
+type PaymentError = InferError<typeof OrderError.Payment>;
+type OrderDbError = InferError<typeof OrderError.Db>;
 
 export function createOrderService(
   db: Database,
@@ -119,7 +104,7 @@ export function createOrderService(
   emailService: EmailService
 ) {
   return {
-    async createOrder(input: OrderInput): Promise<Result<Order, OrderServiceError | PaymentServiceError>> {
+    async createOrder(input: OrderInput): Promise<Result<Order, OrderDbError | PaymentError>> {
       // 1. Validate inventory
       const inventoryCheck = await checkInventory(input.items);
       if (inventoryCheck.error) return inventoryCheck;
@@ -127,9 +112,7 @@ export function createOrderService(
       // 2. Process payment
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
-        catch: () => PaymentServiceErr({
-          amount: input.payment.amount
-        })
+        catch: () => OrderError.Payment({ amount: input.payment.amount })
       });
 
       if (paymentResult.error) return paymentResult;
@@ -140,9 +123,7 @@ export function createOrderService(
           ...input,
           paymentId: paymentResult.data.id
         }),
-        catch: () => OrderServiceErr({
-          input
-        })
+        catch: () => OrderError.Db({ input })
       });
 
       if (orderResult.error) {
@@ -151,12 +132,12 @@ export function createOrderService(
         return orderResult;
       }
 
-      // 4. Send confirmation email (don't fail order if email fails)
+      // 4. Send confirmation (don't fail order if email fails)
       await tryAsync({
         try: () => emailService.sendOrderConfirmation(orderResult.data),
         catch: () => {
           console.warn('Email notification failed, but order is complete');
-          return Ok(undefined); // Gracefully handle email failure
+          return Ok(undefined);
         }
       });
 
@@ -171,65 +152,55 @@ export function createOrderService(
 For services that need different implementations per platform:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
 // types.ts - Define the interface
 export type NotificationService = {
-  notify(message: string): Promise<Result<void, NotificationServiceError>>;
-  requestPermission(): Promise<Result<boolean, NotificationServiceError>>;
+  notify(message: string): Promise<Result<void, NotificationError>>;
+  requestPermission(): Promise<Result<boolean, NotificationError>>;
 };
 
-const notificationErrors = defineErrors({
-  NotificationServiceError: ({ action, platform }: { action: string; platform?: string }) => ({
+const NotificationError = defineErrors({
+  Operation: ({ action, platform }: { action: string; platform?: string }) => ({
     message: `Notification ${action} failed`,
     action,
     platform,
   }),
 });
-const { NotificationServiceError, NotificationServiceErr } = notificationErrors;
+type NotificationError = InferErrors<typeof NotificationError>;
 
-type NotificationServiceError = InferError<typeof notificationErrors, 'NotificationServiceError'>;
-
-// desktop.ts - Desktop implementation
+// desktop.ts
 export function createNotificationServiceDesktop(): NotificationService {
   return {
     async notify(message) {
       return tryAsync({
         try: () => {
-          // Use native desktop notification API
           new window.Notification("App Name", { body: message });
         },
-        catch: () => NotificationServiceErr({
-          action: "notify", platform: "desktop"
-        })
+        catch: () => NotificationError.Operation({ action: "notify", platform: "desktop" })
       });
     },
 
     async requestPermission() {
-      // Desktop apps don't need permission
-      return Ok(true);
+      return Ok(true); // Desktop apps don't need permission
     }
   };
 }
 
-// web.ts - Web implementation
+// web.ts
 export function createNotificationServiceWeb(): NotificationService {
   return {
     async notify(message) {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        return NotificationServiceErr({
-          action: "notify", platform: "web"
-        });
+        return NotificationError.Operation({ action: "notify", platform: "web" });
       }
 
       return tryAsync({
         try: () => {
           new Notification("App Name", { body: message });
         },
-        catch: () => NotificationServiceErr({
-          action: "notify", platform: "web"
-        })
+        catch: () => NotificationError.Operation({ action: "notify", platform: "web" })
       });
     },
 
@@ -248,17 +219,16 @@ export const NotificationServiceLive = typeof window !== 'undefined'
 
 ## The Flexible Catch Pattern
 
-One of the most powerful features of `tryAsync` and `trySync` is the flexibility of the `catch` function. You can return either `Ok` for graceful recovery or `Err` for error propagation:
+The `catch` function in `tryAsync`/`trySync` can return either `Ok` for graceful recovery or `Err` for error propagation.
 
-### Pattern 1: Graceful Degradation with Ok(undefined)
+### Graceful Degradation
 
-When an operation fails but doesn't affect the overall success:
+When an operation fails but shouldn't break the flow:
 
 ```typescript
 export function createAnalyticsService(endpoint: string) {
   return {
     async trackEvent(event: AnalyticsEvent): Promise<Ok<void>> {
-      // Analytics should never break the app
       return tryAsync({
         try: async () => {
           await fetch(endpoint, {
@@ -268,7 +238,7 @@ export function createAnalyticsService(endpoint: string) {
         },
         catch: (error) => {
           console.warn('Analytics failed:', error);
-          return Ok(undefined); // Always succeed - analytics is non-critical
+          return Ok(undefined); // Analytics is non-critical
         }
       });
     }
@@ -276,7 +246,7 @@ export function createAnalyticsService(endpoint: string) {
 }
 ```
 
-### Pattern 2: Fallback Values with Ok(fallback)
+### Fallback Values
 
 Return a default value when the primary operation fails:
 
@@ -288,11 +258,7 @@ export function createConfigService() {
         try: () => fetch('/api/config').then(r => r.json()),
         catch: (error) => {
           console.warn('Using default config:', error);
-          return Ok({
-            theme: 'light',
-            language: 'en',
-            features: ['basic']
-          }); // Return default config on failure
+          return Ok({ theme: 'light', language: 'en', features: ['basic'] });
         }
       });
     }
@@ -300,19 +266,18 @@ export function createConfigService() {
 }
 ```
 
-### Pattern 3: Conditional Error Handling
+### Conditional Error Handling
 
 Decide whether to recover or propagate based on the error:
 
 ```typescript
-const fileErrors = defineErrors({
-  FileServiceError: ({ path }: { path: string }) => ({
+const FileServiceError = defineErrors({
+  Operation: ({ path }: { path: string }) => ({
     message: `File operation failed: ${path}`,
     path,
   }),
 });
-const { FileServiceError, FileServiceErr } = fileErrors;
-type FileServiceError = InferError<typeof fileErrors, 'FileServiceError'>;
+type FileServiceError = InferErrors<typeof FileServiceError>;
 
 export function createFileService() {
   return {
@@ -320,18 +285,8 @@ export function createFileService() {
       return tryAsync({
         try: () => mkdir(path, { recursive: true }),
         catch: (error: any) => {
-          // Directory exists? That's success!
-          if (error.code === 'EEXIST') {
-            return Ok(undefined);
-          }
-
-          // Permission denied? That's a real error
-          if (error.code === 'EACCES') {
-            return FileServiceErr({ path });
-          }
-
-          // Unknown error - propagate
-          return FileServiceErr({ path });
+          if (error.code === 'EEXIST') return Ok(undefined);
+          return FileServiceError.Operation({ path });
         }
       });
     }
@@ -339,7 +294,7 @@ export function createFileService() {
 }
 ```
 
-### Pattern 4: Cleanup and Recovery
+### Cleanup and Recovery
 
 Perform cleanup operations that should always succeed:
 
@@ -347,20 +302,19 @@ Perform cleanup operations that should always succeed:
 export function createSessionService(db: Database) {
   return {
     async cleanup(sessionId: string): Promise<Ok<void>> {
-      // Multiple cleanup operations, all gracefully handled
       await tryAsync({
         try: () => db.sessions.delete(sessionId),
-        catch: () => Ok(undefined) // Session already deleted? Fine.
+        catch: () => Ok(undefined)
       });
 
       await tryAsync({
         try: () => db.tempFiles.deleteBySession(sessionId),
-        catch: () => Ok(undefined) // No temp files? Fine.
+        catch: () => Ok(undefined)
       });
 
       await tryAsync({
         try: () => db.logs.archiveBySession(sessionId),
-        catch: () => Ok(undefined) // Can't archive? Not critical.
+        catch: () => Ok(undefined)
       });
 
       return Ok(undefined);
@@ -369,59 +323,13 @@ export function createSessionService(db: Database) {
 }
 ```
 
-### Pattern 5: Retry Logic with Fallback
+### When to Use Each
 
-Implement retry with eventual graceful failure:
-
-```typescript
-export function createResilientService() {
-  return {
-    async fetchWithRetry<T>(
-      url: string,
-      retries = 3
-    ): Promise<Result<T | null, NetworkError>> {
-      for (let i = 0; i < retries; i++) {
-        const result = await tryAsync({
-          try: () => fetch(url).then(r => r.json() as Promise<T>),
-          catch: (error) => {
-            if (i < retries - 1) {
-              console.log(`Attempt ${i + 1} failed, retrying...`);
-              return Ok(null as T); // Continue loop
-            }
-            // Final attempt failed - now we can decide
-            return Ok(null); // Graceful degradation
-            // OR return NetworkErr(...) for propagation
-          }
-        });
-
-        if (result.data !== null) return result;
-      }
-
-      return Ok(null); // All retries exhausted
-    }
-  };
-}
-```
-
-### Best Practices for Catch Decisions
-
-**Use `Ok(undefined)` when:**
-- The operation is non-critical (analytics, telemetry)
-- The desired state is already achieved (deleting non-existent file)
-- You're doing cleanup or teardown
-- The operation is best-effort (notifications, emails)
-
-**Use `Ok(fallback)` when:**
-- You have a sensible default value
-- The operation is for enhancement, not core functionality
-- You're loading configuration or preferences
-- Cache misses should use primary data
-
-**Use `Err` when:**
-- The operation is critical to the business logic
-- The error needs to bubble up for user feedback
-- You need to preserve error context for debugging
-- The caller needs to make decisions based on the failure
+| Strategy | Use When |
+|---|---|
+| `Ok(undefined)` | Non-critical ops: analytics, cleanup, notifications |
+| `Ok(fallback)` | Sensible default exists: config, preferences, cache |
+| `Err(...)` | Critical to business logic, needs user feedback, caller must decide |
 
 ## Service Composition
 
@@ -435,11 +343,9 @@ export function createAppService(
 ) {
   return {
     async purchaseProduct(userId: string, productId: string): Promise<Result<Order, AppServiceError>> {
-      // Get user
       const userResult = await userService.getUser(userId);
       if (userResult.error) return userResult;
 
-      // Create order
       const orderResult = await orderService.createOrder({
         userId,
         productId,
@@ -448,10 +354,8 @@ export function createAppService(
 
       if (orderResult.error) return orderResult;
 
-      // Send notification (don't fail purchase if notification fails)
-      await notificationService.notify(
-        `Order ${orderResult.data.id} confirmed!`
-      );
+      // Don't fail purchase if notification fails
+      await notificationService.notify(`Order ${orderResult.data.id} confirmed!`);
 
       return Ok(orderResult.data);
     }
@@ -459,82 +363,15 @@ export function createAppService(
 }
 ```
 
-## Testing Services
-
-The factory pattern makes services easy to test:
-
-```typescript
-// user-service.test.ts
-import { describe, it, expect } from 'vitest';
-import { createUserService } from './user-service';
-import { Ok, Err } from 'wellcrafted/result';
-
-describe('UserService', () => {
-  it('should create user with valid input', async () => {
-    // Mock database
-    const mockDb = {
-      users: {
-        create: async (input) => ({ id: '123', ...input })
-      }
-    };
-
-    const service = createUserService(mockDb);
-    const result = await service.createUser({
-      email: 'test@example.com',
-      name: 'Test User'
-    });
-
-    expect(result).toEqual(Ok({
-      id: '123',
-      email: 'test@example.com',
-      name: 'Test User'
-    }));
-  });
-
-  it('should reject invalid email', async () => {
-    const mockDb = { users: { create: async () => {} } };
-    const service = createUserService(mockDb);
-
-    const result = await service.createUser({
-      email: 'invalid-email',
-      name: 'Test User'
-    });
-
-    expect(result.error).toBeDefined();
-    expect(result.error?.message).toBe('User createUser failed');
-  });
-});
-```
-
 ## Best Practices
 
-### 1. One Error Type Per Service
+### Include Fields in Errors
 
-Keep error types focused:
-
-```typescript
-// ✅ Good - specific error type
-const errors = defineErrors({
-  UserServiceError: () => ({
-    message: 'User service operation failed',
-  }),
-});
-
-// ❌ Bad - too generic
-const errors = defineErrors({
-  ServiceError: () => ({
-    message: 'Service operation failed',
-  }),
-});
-```
-
-### 2. Include Fields in Errors
-
-Always include relevant debugging information. Define your error constructor to require it:
+Always include relevant debugging information:
 
 ```typescript
-const errors = defineErrors({
-  UserServiceError: ({ userId, operation, timestamp }: {
+const UserServiceError = defineErrors({
+  Operation: ({ userId, operation }: {
     userId: string;
     operation: string;
     timestamp?: string;
@@ -542,79 +379,58 @@ const errors = defineErrors({
     message: `User ${operation} failed`,
     userId,
     operation,
-    timestamp,
   }),
 });
-const { UserServiceError, UserServiceErr } = errors;
 
-// Now fields are required with the exact shape
-return UserServiceErr({
+return UserServiceError.Operation({
   userId,
   operation: "updateUser",
-  timestamp: new Date().toISOString()
 });
 ```
 
-### 3. Handle Errors at the Right Level
+### Handle Errors at the Right Level
 
 Transform low-level errors into domain-specific ones at service boundaries:
 
 ```typescript
-// Define errors for each layer
-const dbErrors = defineErrors({
-  DatabaseError: ({ sql }: { sql: string }) => ({
+const DatabaseError = defineErrors({
+  Query: ({ sql }: { sql: string }) => ({
     message: `Database query failed: ${sql}`,
     sql,
   }),
 });
-const { DatabaseError, DatabaseErr } = dbErrors;
-type DatabaseError = InferError<typeof dbErrors, 'DatabaseError'>;
 
-const userErrors = defineErrors({
-  UserServiceError: ({ userId }: { userId: string }) => ({
+const UserServiceError = defineErrors({
+  Operation: ({ userId }: { userId: string }) => ({
     message: `User service operation failed for ${userId}`,
     userId,
   }),
 });
-const { UserServiceError, UserServiceErr } = userErrors;
 
 // Low-level database error
 const dbResult = await tryAsync({
   try: () => db.query(sql),
-  catch: () => DatabaseErr({ sql })
+  catch: () => DatabaseError.Query({ sql })
 });
 
 if (dbResult.error) {
   // Transform to service-level error
-  return UserServiceErr({ userId });
+  return UserServiceError.Operation({ userId });
 }
 ```
 
-### 4. Keep Services Pure
+### Keep Services Pure
 
 Services should only contain business logic:
 
 ```typescript
-// Define the error type with required fields
-const errors = defineErrors({
-  UserServiceError: ({ userId, operation }: { userId: string; operation: string }) => ({
-    message: `User ${operation} failed`,
-    userId,
-    operation,
-  }),
-});
-const { UserServiceError, UserServiceErr } = errors;
-type UserServiceError = InferError<typeof errors, 'UserServiceError'>;
-
 // ✅ Good - pure business logic
 export function createUserService(db: Database) {
   return {
     async getUser(id: string): Promise<Result<User, UserServiceError>> {
       return tryAsync({
         try: () => db.users.findById(id),
-        catch: () => UserServiceErr({
-          userId: id, operation: "getUser"
-        })
+        catch: () => UserServiceError.Operation({ userId: id, operation: "getUser" })
       });
     }
   };
@@ -634,9 +450,7 @@ export function createUserService(db: Database, toastNotifier: ToastNotifier) {
 }
 ```
 
-### 5. Use the Live Suffix Convention
-
-Follow the naming convention for singleton instances:
+### Use the Live Suffix Convention
 
 ```typescript
 // Service factory
@@ -661,5 +475,3 @@ The factory function pattern with wellcrafted provides:
 - **Simplicity**: No class boilerplate
 - **Flexibility**: Platform-specific implementations
 - **Composability**: Services can build on each other
-
-By following these patterns, you'll build services that are robust, maintainable, and a joy to work with!
