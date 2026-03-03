@@ -29,11 +29,13 @@ export function defineErrors<const TConfig extends ErrorsConfig>(
 ): DefineErrorsReturn<TConfig> {
 	const result: Record<string, unknown> = {};
 
-	for (const [name, constructor] of Object.entries(config)) {
+	for (const [name, ctor] of Object.entries(config)) {
 		const errName = name.replace(/Error$/, "Err");
 
 		const factory = (...args: unknown[]) => {
-			const body = (constructor as Function)(...args);
+			const body = (ctor as (...a: unknown[]) => Record<string, unknown>)(
+				...args,
+			);
 			return Object.freeze({ ...body, name });
 		};
 

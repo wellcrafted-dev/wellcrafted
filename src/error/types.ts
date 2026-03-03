@@ -34,6 +34,7 @@ export type AnyTaggedError = { name: string; message: string };
 export type ErrorBody = { message: string };
 
 /** The config: each key is an error name, each value is a constructor function. */
+// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
 export type ErrorsConfig = Record<
 	`${string}Error`,
 	(...args: any[]) => ErrorBody
@@ -46,6 +47,7 @@ type ReplaceErrorWithErr<T extends `${string}Error`> =
 /** Factory pair for a single error: plain factory + Err-wrapped factory. */
 type FactoryPair<
 	TName extends `${string}Error`,
+	// biome-ignore lint/suspicious/noExplicitAny: required for TypeScript's function type inference
 	TFn extends (...args: any[]) => ErrorBody,
 > = {
 	[K in TName]: (
@@ -57,10 +59,12 @@ type FactoryPair<
 	) => Err<Readonly<{ name: TName } & ReturnType<TFn>>>;
 };
 
-type UnionToIntersection<U> =
-	(U extends any ? (k: U) => void : never) extends (k: infer I) => void
-		? I
-		: never;
+// biome-ignore lint/suspicious/noExplicitAny: standard TypeScript pattern for UnionToIntersection
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+	k: infer I,
+) => void
+	? I
+	: never;
 
 /** Return type of `defineErrors`. Maps each config entry to its factory pair. */
 export type DefineErrorsReturn<TConfig extends ErrorsConfig> =
@@ -75,16 +79,16 @@ export type DefineErrorsReturn<TConfig extends ErrorsConfig> =
 
 /** Extract a single error type by name from a `defineErrors` return. */
 export type InferError<T, K extends string> = K extends keyof T
-	? T[K] extends (...args: any[]) => infer R
+	? // biome-ignore lint/suspicious/noExplicitAny: required for conditional type inference
+		T[K] extends (...args: any[]) => infer R
 		? R
 		: never
 	: never;
 
 /** Extract union of ALL error types from a `defineErrors` return. */
 export type InferErrorUnion<T> = {
-	[K in keyof T & `${string}Error`]: T[K] extends (
-		...args: any[]
-	) => infer R
+	// biome-ignore lint/suspicious/noExplicitAny: required for conditional type inference
+	[K in keyof T & `${string}Error`]: T[K] extends (...args: any[]) => infer R
 		? R
 		: never;
 }[keyof T & `${string}Error`];
