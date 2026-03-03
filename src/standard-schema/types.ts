@@ -192,18 +192,6 @@ export declare namespace StandardJSONSchemaV1 {
 		StandardTypedV1.InferOutput<Schema>;
 }
 
-// ###############################
-// ###   Utility Types         ###
-// ###############################
-
-/**
- * A schema that implements both StandardSchemaV1 and StandardJSONSchemaV1.
- */
-export type StandardFullSchemaV1<Input = unknown, Output = Input> = {
-	readonly "~standard": StandardSchemaV1.Props<Input, Output> &
-		StandardJSONSchemaV1.Props<Input, Output>;
-};
-
 /**
  * Checks if a schema has validation capability.
  */
