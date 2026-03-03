@@ -109,13 +109,17 @@ if (error) {
 ### Asynchronous Functions
 
 ```typescript
-import { tryAsync } from "wellcrafted/result";
+import { Result, Ok } from "wellcrafted/result";
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-// Define error with typed fields - endpoint is always useful for API errors
+// Define specific error variants for different failure modes
 const ApiError = defineErrors({
-  Request: ({ endpoint, statusCode }: { endpoint: string; statusCode?: number }) => ({
-    message: `API request failed: ${endpoint}`,
+  NetworkError: ({ endpoint }: { endpoint: string }) => ({
+    message: `Network request failed: ${endpoint}`,
+    endpoint,
+  }),
+  HttpError: ({ endpoint, statusCode }: { endpoint: string; statusCode: number }) => ({
+    message: `HTTP ${statusCode} from ${endpoint}`,
     endpoint,
     statusCode,
   }),
@@ -130,16 +134,20 @@ interface User {
 
 async function fetchUser(id: number): Promise<Result<User, ApiError>> {
   const endpoint = `/api/users/${id}`;
-  return tryAsync({
-    try: async () => {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    },
-    catch: () => ApiError.Request({ endpoint })  // TypeScript enforces this!
-  });
+
+  try {
+    const response = await fetch(endpoint);
+
+    if (!response.ok) {
+      // HTTP error — we have the status code
+      return ApiError.HttpError({ endpoint, statusCode: response.status });
+    }
+
+    return Ok(await response.json() as User);
+  } catch {
+    // fetch threw — network failure, no status code available
+    return ApiError.NetworkError({ endpoint });
+  }
 }
 
 // Usage
