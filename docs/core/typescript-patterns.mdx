@@ -82,91 +82,81 @@ const order = logResult(await getOrder("456"), "Get Order");
 
 ### Union Error Types
 
-Create flexible error unions for functions that can fail in multiple ways:
+Define separate error namespaces per domain concern. TypeScript unions compose them at function boundaries — no wrapper type needed:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-// Define specific error types
-const UserError = defineErrors({
-  Validation: ({ field }: { field: string }) => ({
+// Each namespace groups related errors
+const ValidationError = defineErrors({
+  InvalidField: ({ field }: { field: string }) => ({
     message: `Invalid value for ${field}`,
     field,
   }),
-  Network: ({ cause }: { cause: unknown }) => ({
+});
+type ValidationError = InferErrors<typeof ValidationError>;
+
+const NetworkError = defineErrors({
+  RequestFailed: ({ cause }: { cause: unknown }) => ({
     message: `Network request failed: ${extractErrorMessage(cause)}`,
     cause,
   }),
-  Auth: () => ({
+});
+type NetworkError = InferErrors<typeof NetworkError>;
+
+const AuthError = defineErrors({
+  NotAuthenticated: () => ({
     message: 'Not authenticated',
   }),
 });
+type AuthError = InferErrors<typeof AuthError>;
 
-type ValidationError = InferError<typeof UserError.Validation>;
-type NetworkError = InferError<typeof UserError.Network>;
-type AuthError = InferError<typeof UserError.Auth>;
-
-// Union type for operations that can fail in multiple ways
-type UserOperationError = ValidationError | NetworkError | AuthError;
-
+// The union happens in the function signature — this IS the composition
 export async function updateUserProfile(
   userId: string,
   updates: UserProfileUpdates
-): Promise<Result<UserProfile, UserOperationError>> {
-  // Validation
+): Promise<Result<UserProfile, ValidationError | NetworkError | AuthError>> {
   if (!updates.email?.includes('@')) {
-    return UserError.Validation({
-      field: 'email',
-    });
+    return ValidationError.InvalidField({ field: 'email' });
   }
 
-  // Authentication check
   if (!isAuthenticated()) {
-    return UserError.Auth();
+    return AuthError.NotAuthenticated();
   }
 
-  // Network operation
   return tryAsync({
     try: () => api.updateUser(userId, updates),
-    catch: (error) => UserError.Network({
-      cause: error,
-    })
+    catch: (error) => NetworkError.RequestFailed({ cause: error })
   });
 }
 ```
 
 ### Discriminated Error Handling
 
-Use TypeScript's discriminated unions for exhaustive error handling:
+Use destructuring and TypeScript's discriminated unions for exhaustive error handling:
 
 ```typescript
 async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
-  const result = await updateUserProfile(userId, updates);
+  const { data: profile, error } = await updateUserProfile(userId, updates);
 
-  if (result.error) {
-    // TypeScript knows result.error is UserOperationError
-    switch (result.error.name) {
-      case 'Validation':
-        // TypeScript knows this is the Validation variant
-        showFieldError(result.error.field, result.error.message);
+  if (error) {
+    switch (error.name) {
+      case 'InvalidField':
+        showFieldError(error.field, error.message);
         break;
-      case 'Network':
-        // TypeScript knows this is the Network variant
-        showNetworkError(result.error.message);
+      case 'RequestFailed':
+        showNetworkError(error.message);
         break;
-      case 'Auth':
-        // TypeScript knows this is the Auth variant
+      case 'NotAuthenticated':
         redirectToLogin();
         break;
       default:
-        // TypeScript ensures this is never reached
-        const _exhaustive: never = result.error;
+        const _exhaustive: never = error;
     }
     return;
   }
 
-  // result.data is UserProfile
-  showSuccessMessage(`Profile updated: ${result.data.email}`);
+  showSuccessMessage(`Profile updated: ${profile.email}`);
 }
 ```
 

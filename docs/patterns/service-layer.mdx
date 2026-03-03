@@ -82,21 +82,24 @@ export const UserServiceLive = createUserService(databaseInstance);
 ## Service with Multiple Dependencies
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-const OrderError = defineErrors({
+// Separate namespaces — payment and persistence are different concerns
+const PaymentError = defineErrors({
   PaymentFailed: ({ amount }: { amount: number }) => ({
     message: 'Payment processing failed',
     amount,
   }),
+});
+type PaymentError = InferErrors<typeof PaymentError>;
+
+const OrderDbError = defineErrors({
   CreateFailed: ({ input }: { input: OrderInput }) => ({
     message: 'Order creation failed',
     input,
   }),
 });
-
-type PaymentError = InferError<typeof OrderError.PaymentFailed>;
-type OrderDbError = InferError<typeof OrderError.CreateFailed>;
+type OrderDbError = InferErrors<typeof OrderDbError>;
 
 export function createOrderService(
   db: Database,
@@ -104,7 +107,7 @@ export function createOrderService(
   emailService: EmailService
 ) {
   return {
-    async createOrder(input: OrderInput): Promise<Result<Order, OrderDbError | PaymentError>> {
+    async createOrder(input: OrderInput): Promise<Result<Order, PaymentError | OrderDbError>> {
       // 1. Validate inventory
       const inventoryCheck = await checkInventory(input.items);
       if (inventoryCheck.error) return inventoryCheck;
@@ -112,7 +115,7 @@ export function createOrderService(
       // 2. Process payment
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
-        catch: () => OrderError.PaymentFailed({ amount: input.payment.amount })
+        catch: () => PaymentError.PaymentFailed({ amount: input.payment.amount })
       });
 
       if (paymentResult.error) return paymentResult;
@@ -123,7 +126,7 @@ export function createOrderService(
           ...input,
           paymentId: paymentResult.data.id
         }),
-        catch: () => OrderError.CreateFailed({ input })
+        catch: () => OrderDbError.CreateFailed({ input })
       });
 
       if (orderResult.error) {

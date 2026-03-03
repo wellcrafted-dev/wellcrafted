@@ -167,8 +167,9 @@ Here's a complete example showing how Results improve a common task:
 import { Result, Ok, tryAsync } from "wellcrafted/result";
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-// Separate error namespaces for validation vs submission
-// Each variant has exactly the fields it needs — no optional keys
+// Separate error namespaces for validation vs submission.
+// Each namespace groups related errors; TypeScript unions
+// compose them at function boundaries — no wrapper type needed.
 const ValidationError = defineErrors({
   InvalidType: ({ receivedType }: { receivedType: string }) => ({
     message: `Expected form data, received ${receivedType}`,
@@ -205,34 +206,30 @@ interface SignupForm {
   confirmPassword: string;
 }
 
-// Validation function
+// Validation function — only returns ValidationError
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
-  // Type check
   if (!data || typeof data !== 'object') {
     return ValidationError.InvalidType({ receivedType: typeof data });
   }
 
   const { email, password, confirmPassword } = data as any;
 
-  // Email validation
   if (!email || !email.includes('@')) {
     return ValidationError.InvalidEmail({ value: email ?? '' });
   }
 
-  // Password validation
   if (!password || password.length < 8) {
     return ValidationError.WeakPassword();
   }
 
-  // Password match validation
   if (password !== confirmPassword) {
-    return FormError.PasswordMismatch();
+    return ValidationError.PasswordMismatch();
   }
 
   return Ok({ email, password, confirmPassword });
 }
 
-// Submission function
+// Submission function — only returns SubmissionError
 async function submitSignup(
   form: SignupForm
 ): Promise<Result<{ userId: string }, SubmissionError>> {
@@ -251,35 +248,31 @@ async function submitSignup(
 
       return response.json();
     },
-    catch: () => FormError.Submission({ email: form.email })
+    catch: () => SubmissionError.Submission({ email: form.email })
   });
 }
 
-// Using it all together
+// Using it all together — the union happens naturally at the call site
 async function handleSignup(formData: unknown) {
-  // First, validate the form
-  const validationResult = validateSignupForm(formData);
+  const { data: validForm, error: validationError } = validateSignupForm(formData);
 
-  if (validationResult.error) {
-    console.error("Validation failed:", validationResult.error.message);
-    // Each variant with a field property knows exactly which field it targets
-    if ('field' in validationResult.error) {
-      highlightField(validationResult.error.field);
+  if (validationError) {
+    console.error("Validation failed:", validationError.message);
+    if ('field' in validationError) {
+      highlightField(validationError.field);
     }
     return;
   }
 
-  // Then submit if valid
-  const submissionResult = await submitSignup(validationResult.data);
+  const { data: signup, error: submitError } = await submitSignup(validForm);
 
-  if (submissionResult.error) {
-    console.error("Signup failed:", submissionResult.error.message);
+  if (submitError) {
+    console.error("Signup failed:", submitError.message);
     showToast("Unable to create account. Please try again.");
     return;
   }
 
-  // Success!
-  console.log("Account created:", submissionResult.data.userId);
+  console.log("Account created:", signup.userId);
   redirectToDashboard();
 }
 ```

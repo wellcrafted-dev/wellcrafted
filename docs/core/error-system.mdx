@@ -717,11 +717,12 @@ The problems are the same as string literal unions, just harder to spot:
 - **Hidden branching**: Consumers can't discriminate on `name` alone — they'd need to inspect `field` or `receivedType` to know which validation failed.
 - **Untypeable messages**: TypeScript can't narrow the message or fields based on which branch ran.
 
-Flatten into separate variants with honest, required fields:
+Flatten into separate variants with honest, required fields — and split into separate namespaces when errors serve different purposes:
 
 ```typescript
-// Prefer: each validation failure is its own variant with exactly the fields it needs
-const FormError = defineErrors({
+// Prefer: each validation failure is its own variant with exactly the fields it needs.
+// Validation and submission are separate concerns, so they get separate namespaces.
+const ValidationError = defineErrors({
   InvalidEmail: ({ value }: { value: string }) => ({
     message: "Please enter a valid email address",
     value,
@@ -737,11 +738,19 @@ const FormError = defineErrors({
     message: "Invalid form data",
     receivedType,
   }),
+});
+type ValidationError = InferErrors<typeof ValidationError>;
+
+const SubmissionError = defineErrors({
   SubmissionFailed: ({ email }: { email: string }) => ({
     message: `Failed to create account for ${email}`,
     email,
   }),
 });
+type SubmissionError = InferErrors<typeof SubmissionError>;
+
+// TypeScript unions compose them at the function boundary:
+function handleForm(data: unknown): Result<User, ValidationError | SubmissionError> { ... }
 ```
 
 **The rule of thumb**: if a constructor branches on its inputs to decide the message, each branch should be its own variant. The variant name *is* the discriminant — don't rebuild one inside the constructor body.
@@ -860,10 +869,10 @@ const FormError = defineErrors({
     value,
   }),
 });
-type ValidationError = InferError<typeof FormError.Validation>;
+type FormError = InferErrors<typeof FormError>;
 
-function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]> {
-  const validationErrors: ValidationError[] = [];
+function validateForm(input: FormInput): Result<ValidatedForm, FormError[]> {
+  const validationErrors: FormError[] = [];
 
   if (!input.email?.includes('@')) {
     validationErrors.push(FormError.Validation({ field: 'email', value: input.email }).error!);
@@ -894,13 +903,13 @@ const NetworkError = defineErrors({
     maxRetries,
   }),
 });
-type NetworkRequestError = InferError<typeof NetworkError.Request>;
+type NetworkError = InferErrors<typeof NetworkError>;
 
 async function fetchWithRetry<T>(
   url: string,
   maxRetries = 3
-): Promise<Result<T, NetworkRequestError>> {
-  let lastError: NetworkRequestError | null = null;
+): Promise<Result<T, NetworkError>> {
+  let lastError: NetworkError | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const result = await tryAsync<T, NetworkRequestError>({
