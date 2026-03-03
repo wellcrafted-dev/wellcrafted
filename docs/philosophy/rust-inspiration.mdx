@@ -1,0 +1,165 @@
+---
+title: "Rust's thiserror in TypeScript"
+description: "How Rust's enum-based error handling inspired wellcrafted's defineErrors API"
+icon: 'rust'
+---
+
+# Rust's thiserror Pattern in TypeScript
+
+wellcrafted's `defineErrors` is directly inspired by Rust's [`thiserror`](https://docs.rs/thiserror) crate. This page walks through the mapping so you can see exactly where the design comes from — and where it deliberately diverges.
+
+## The Rust Starting Point
+
+Here is an HTTP error type using `thiserror`:
+
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum HttpError {
+    #[error("Failed to connect: {cause}")]
+    Connection { cause: String },
+
+    #[error("HTTP {status}")]
+    Response { status: u16, body_message: Option<String> },
+
+    #[error("Failed to parse response body: {cause}")]
+    Parse { cause: String },
+}
+```
+
+A few things to notice:
+
+- **`HttpError` is the namespace.** The variants — `Connection`, `Response`, `Parse` — live under it. They are short, one-word names because the enum name already provides the context.
+- **Each variant is a struct with named fields.** `Connection` carries a `cause`. `Response` carries a `status` and an optional `body_message`. The fields are part of the type.
+- **`#[error("...")]` defines the display string** for each variant, interpolating fields by name.
+- **You construct** with `HttpError::Connection { cause: "timeout".into() }` and **discriminate** with `match`.
+
+A single type, short variant names under a descriptive namespace, typed fields per variant, and a display message co-located with the definition. That is the whole pattern.
+
+## The TypeScript Equivalent
+
+Here is the same type with `defineErrors`:
+
+```typescript
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
+
+const HttpError = defineErrors({
+  Connection: ({ cause }: { cause: string }) => ({
+    message: `Failed to connect: ${cause}`,
+    cause,
+  }),
+
+  Response: ({ status }: { status: number; bodyMessage?: string }) => ({
+    message: `HTTP ${status}`,
+    status,
+  }),
+
+  Parse: ({ cause }: { cause: string }) => ({
+    message: `Failed to parse response body: ${cause}`,
+    cause,
+  }),
+});
+
+type HttpError = InferErrors<typeof HttpError>;
+```
+
+Read it next to the Rust version. The structure is nearly identical. `HttpError` is the namespace. `Connection`, `Response`, `Parse` are short variant names. Each variant's fields are typed inline. The message sits right next to its definition.
+
+## What Maps 1:1
+
+| Rust concept | TypeScript equivalent |
+|---|---|
+| `enum HttpError` | `const HttpError = defineErrors(...)` |
+| `Connection { cause: String }` | `Connection: ({ cause }: { cause: string }) => (...)` |
+| `#[error("Failed: {cause}")]` | `` message: `Failed: ${cause}` `` |
+| `HttpError::Connection { cause: "timeout".into() }` | `HttpError.Connection({ cause: "timeout" })` |
+| `match error { Connection { cause } => ... }` | `switch (error.name) { case 'Connection': ... }` |
+| `fn handle(err: HttpError)` | `function handle(err: HttpError)` |
+
+### Construction
+
+```
+Rust: HttpError::Connection { cause: "timeout".into() }
+TS:   HttpError.Connection({ cause: "timeout" })
+```
+
+### Discrimination
+
+<CodeGroup>
+```rust Rust
+match error {
+    HttpError::Connection { cause } => println!("Connection failed: {cause}"),
+    HttpError::Response { status, .. } => println!("HTTP {status}"),
+    HttpError::Parse { cause } => println!("Parse failed: {cause}"),
+}
+```
+
+```typescript TypeScript
+switch (error.name) {
+  case 'Connection': console.log(`Connection failed: ${error.cause}`); break;
+  case 'Response':   console.log(`HTTP ${error.status}`); break;
+  case 'Parse':      console.log(`Parse failed: ${error.cause}`); break;
+}
+```
+</CodeGroup>
+
+The `name` field on each error object is the discriminant. It is stamped automatically from the key you provide — `'Connection'`, `'Response'`, `'Parse'`. You never write it by hand; `defineErrors` handles it. That is directly analogous to how Rust stamps the variant identity into the enum value at construction time.
+
+## What Diverges and Why
+
+TypeScript is a different language with different constraints. Here is where the two diverge and why.
+
+### Factory Functions Instead of Struct Literals
+
+In Rust, `HttpError::Connection { cause: "timeout".into() }` is a struct literal — you are directly constructing a value. TypeScript has no equivalent syntax. So `defineErrors` gives you factory functions: `HttpError.Connection({ cause: "timeout" })`. The call site looks nearly identical; the only difference is the parentheses.
+
+### Template Literals Instead of Proc Macros
+
+Rust's `#[error("Failed to connect: {cause}")]` is a compile-time format string powered by a procedural macro. TypeScript has no proc macros. Template literals — `` `Failed to connect: ${cause}` `` — are the natural equivalent. They run at construction time rather than compile time, but the result is the same: a human-readable message derived from the variant's fields.
+
+### `Err<...>` Wrapping Instead of Direct Returns
+
+In Rust, a function returning `Result<T, HttpError>` returns the error variant directly. Rust's `?` operator and return type tell the compiler which side of the Result you are on. TypeScript does not have that. `defineErrors` factories always return `Err<...>` — an object shaped `{ data: null, error: ... }` — so that `trySync` and `tryAsync` can tell errors apart from successful values without ambiguity.
+
+### `Object.freeze` Instead of Ownership
+
+Rust's ownership model prevents mutation after construction. TypeScript has no ownership system. `defineErrors` freezes every error object at runtime and marks it `Readonly<...>` at the type level. Different mechanisms, same goal: errors are values, not mutable state.
+
+### Discriminated Unions Instead of `match`
+
+Rust's `match` is exhaustive by default — the compiler forces you to handle every variant. TypeScript has no native pattern matching yet, but discriminated unions on `error.name` get you most of the way there. A `switch` on a string literal union narrows the type in each branch, and you can use `never` checks for exhaustiveness if you want it.
+
+| Difference | Rust | TypeScript | Why |
+|---|---|---|---|
+| Construction | Struct literal | Factory call | TS has no struct literals |
+| Message format | Compile-time proc macro | Runtime template literal | TS has no proc macros |
+| Return type | Returns enum variant directly | Returns `Err<...>` wrapper | No `?` operator in TS |
+| Immutability | Ownership model | `Object.freeze` + `Readonly` | No ownership in TS |
+| Exhaustiveness | `match` is exhaustive by default | `switch` + discriminated unions | No pattern matching in TS (yet) |
+
+## The Core Insight
+
+The thing that unlocked the `defineErrors` design comes straight from Rust: **the enum name is the namespace, the variant name is the discriminant.**
+
+In Rust, you would never name a variant `ConnectionError` inside an enum called `HttpError`. That would be `HttpError::ConnectionError` — redundant. You name it `Connection`. The enum already tells you it is an `HttpError`. The variant tells you which kind.
+
+The same logic applies in TypeScript:
+
+```typescript
+const HttpError = defineErrors({
+  Connection: ...,
+  Response:   ...,
+  Parse:      ...,
+});
+```
+
+`HttpError` is the context. `Connection` is the discriminant. The `name` on the error object will be `'Connection'`, not `'HttpConnectionError'` or `'HttpError.Connection'`. Short, unambiguous, and exactly what you `switch` on.
+
+This is the pattern that was missing from TypeScript error handling. Not just a way to make errors with `name` fields — but a way to define a family of errors under a shared namespace with the same structural clarity that Rust's enum system provides.
+
+**The enum name is the namespace. The variant name is the discriminant. Everything else follows from there.**
+
+---
+
+**Next**: See the full [Error System reference](/core/error-system) for API details, or read about the broader [Design Principles](/philosophy/design-principles) that guide wellcrafted.

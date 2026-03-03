@@ -8,6 +8,10 @@ icon: 'triangle-exclamation'
 
 wellcrafted's error system is built on a simple yet powerful principle: **errors should be data, not control flow**. This page explains the design philosophy, implementation details, and best practices for creating robust error handling in your applications.
 
+<Tip>
+**Why this API?** The `defineErrors` design is directly inspired by Rust's [`thiserror`](https://docs.rs/thiserror) crate — short variant names under a namespace, typed fields per variant, and a display message co-located with the definition. See [Rust's thiserror in TypeScript](/philosophy/rust-inspiration) for the full story.
+</Tip>
+
 ## The TaggedError Pattern
 
 At the heart of wellcrafted's error system is the `TaggedError` type - a structured, serializable error representation that works seamlessly with TypeScript's type system.
@@ -860,8 +864,8 @@ By treating errors as data rather than control flow, you gain predictability, te
   <Card title="Service Layer Pattern" icon="layer-group" href="/patterns/service-layer">
     Learn error transformation patterns in service architecture
   </Card>
-  <Card title="Framework Integrations" icon="plug" href="/integrations/svelte-tanstack">
-    Use TaggedErrors with TanStack Query and other frameworks
+  <Card title="Rust's thiserror Inspiration" icon="rust" href="/philosophy/rust-inspiration">
+    How Rust's enum-based error handling inspired the defineErrors API
   </Card>
 </CardGroup>
 
