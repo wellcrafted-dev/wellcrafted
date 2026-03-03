@@ -34,7 +34,7 @@ export function defineErrors<const TConfig extends ErrorsConfig>(
 
 		const factory = (...args: unknown[]) => {
 			const body = (constructor as Function)(...args);
-			return Object.freeze({ name, ...body });
+			return Object.freeze({ ...body, name });
 		};
 
 		result[name] = factory;

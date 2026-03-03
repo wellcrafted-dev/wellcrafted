@@ -336,15 +336,17 @@ The repetition is the price of full control over the output shape. The old `with
 ### Step 2: Add type machinery to `src/error/types.ts` ✅
 `ErrorBody`, `ErrorsConfig`, `FactoryPair`, `DefineErrorsReturn`, `InferError`, `InferErrorUnion`. Done. Removed old `TaggedError` type (replaced by `InferError`).
 
-### Step 3: Port tests → `src/error/defineErrors.test.ts`
-Port all existing tests. Add new tests for:
+### Step 3: Port tests → `src/error/defineErrors.test.ts` ✅
+Port all existing tests (36 tests pass). Added new tests for:
 - Mixed function shapes in one `defineErrors` call
-- `InferErrorUnion` type assertion
+- `InferError` and `InferErrorUnion` type extraction
 - Zero-arg factories
-- Functions with block bodies and complex logic
+- Functions with block bodies and complex logic (switch-based, spread)
+- `AnyTaggedError` assignability
+- Frozen/immutable error objects
 
-### Step 4: Update `src/error/index.ts`
-Export `defineErrors`, `InferError`, `InferErrorUnion`. Remove `createTaggedError`.
+### Step 4: Update `src/error/index.ts` ✅
+Export `defineErrors`, `InferError`, `InferErrorUnion` alongside existing exports. Old exports remain until Wave 3 cleanup.
 
 ### Step 5: Move `extractErrorMessage` out of `utils.ts`
 Keep in its own file (e.g., `src/error/extractErrorMessage.ts`).

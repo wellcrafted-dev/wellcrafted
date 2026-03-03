@@ -26,8 +26,12 @@ export type AnyTaggedError = { name: string; message: string };
 // defineErrors type machinery
 // =============================================================================
 
-/** Constructor return must include message and be JSON-serializable. `name` is reserved. */
-export type ErrorBody = { message: string; name?: never } & JsonObject;
+/**
+ * Constructor return must include `message: string`.
+ * JSON serializability is a convention, not enforced at the type level
+ * (optional fields produce `T | undefined` which breaks `JsonObject`).
+ */
+export type ErrorBody = { message: string };
 
 /** The config: each key is an error name, each value is a constructor function. */
 export type ErrorsConfig = Record<
