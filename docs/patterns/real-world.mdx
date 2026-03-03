@@ -292,7 +292,7 @@ export async function GET(
 
   if (isErr(userResult)) {
     switch (userResult.error.name) {
-      case 'UserNotFoundError':
+      case 'UserNotFound':
         return errorResponse('User not found', 404, { userId });
       default:
         return errorResponse('Failed to fetch user', 500);
