@@ -1,5 +1,13 @@
 # wellcrafted
 
+## 0.34.0
+
+### Minor Changes
+
+- 7e1da94: Move `JsonValue` and `JsonObject` types to `wellcrafted/json` export path.
+
+  **BREAKING:** `JsonValue` and `JsonObject` are no longer exported from `wellcrafted/error`. Import them from `wellcrafted/json` instead.
+
 ## 0.33.0
 
 ### Minor Changes
