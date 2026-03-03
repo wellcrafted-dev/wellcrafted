@@ -22,7 +22,7 @@ import { Err, Ok, type Result, resolve } from "../result/index.js";
  * @template TData - The type of data returned by the query (after select transform)
  * @template TQueryKey - The type of the query key
  */
-export type DefineQueryInput<
+type DefineQueryInput<
 	TQueryFnData = unknown,
 	TError = DefaultError,
 	TData = TQueryFnData,
@@ -69,7 +69,7 @@ export type DefineQueryInput<
  * const query = useQuery(userQuery.options); // React
  * ```
  */
-export type DefineQueryOutput<
+type DefineQueryOutput<
 	TQueryFnData = unknown,
 	TError = DefaultError,
 	TData = TQueryFnData,
@@ -99,7 +99,7 @@ export type DefineQueryOutput<
  * @template TVariables - The type of variables passed to the mutation
  * @template TContext - The type of context data for optimistic updates
  */
-export type DefineMutationInput<
+type DefineMutationInput<
 	TData,
 	TError,
 	TVariables = void,
@@ -140,7 +140,7 @@ export type DefineMutationInput<
  * const mutation = useMutation(createUser.options); // React
  * ```
  */
-export type DefineMutationOutput<
+type DefineMutationOutput<
 	TData,
 	TError,
 	TVariables = void,
