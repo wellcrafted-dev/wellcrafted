@@ -109,13 +109,17 @@ if (error) {
 ### Asynchronous Functions
 
 ```typescript
-import { tryAsync } from "wellcrafted/result";
+import { Result, Ok } from "wellcrafted/result";
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-// Define error with typed fields - endpoint is always useful for API errors
+// Define specific error variants for different failure modes
 const ApiError = defineErrors({
-  Request: ({ endpoint, statusCode }: { endpoint: string; statusCode?: number }) => ({
-    message: `API request failed: ${endpoint}`,
+  NetworkError: ({ endpoint }: { endpoint: string }) => ({
+    message: `Network request failed: ${endpoint}`,
+    endpoint,
+  }),
+  HttpError: ({ endpoint, statusCode }: { endpoint: string; statusCode: number }) => ({
+    message: `HTTP ${statusCode} from ${endpoint}`,
     endpoint,
     statusCode,
   }),
@@ -130,16 +134,20 @@ interface User {
 
 async function fetchUser(id: number): Promise<Result<User, ApiError>> {
   const endpoint = `/api/users/${id}`;
-  return tryAsync({
-    try: async () => {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    },
-    catch: () => ApiError.Request({ endpoint })  // TypeScript enforces this!
-  });
+
+  try {
+    const response = await fetch(endpoint);
+
+    if (!response.ok) {
+      // HTTP error — we have the status code
+      return ApiError.HttpError({ endpoint, statusCode: response.status });
+    }
+
+    return Ok(await response.json() as User);
+  } catch {
+    // fetch threw — network failure, no status code available
+    return ApiError.NetworkError({ endpoint });
+  }
 }
 
 // Usage
@@ -157,30 +165,39 @@ Here's a complete example showing how Results improve a common task:
 
 ```typescript
 import { Result, Ok, tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferError, type InferErrors } from "wellcrafted/error";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
 
-// Define our error types with defineErrors
-// One namespace groups all related variants
-const FormError = defineErrors({
-  Validation: ({ field, value, receivedType }: { field?: string; value?: string; receivedType?: string }) => ({
-    message: (() => {
-      if (receivedType) return "Invalid form data";
-      if (field === 'email') return "Please enter a valid email address";
-      if (field === 'password') return "Password must be at least 8 characters";
-      if (field === 'confirmPassword') return "Passwords do not match";
-      return "Validation failed";
-    })(),
-    field,
-    value,
+// Separate error namespaces for validation vs submission.
+// Each namespace groups related errors; TypeScript unions
+// compose them at function boundaries — no wrapper type needed.
+const ValidationError = defineErrors({
+  InvalidType: ({ receivedType }: { receivedType: string }) => ({
+    message: `Expected form data, received ${receivedType}`,
     receivedType,
   }),
+  InvalidEmail: ({ value }: { value: string }) => ({
+    message: "Please enter a valid email address",
+    field: "email" as const,
+    value,
+  }),
+  WeakPassword: () => ({
+    message: "Password must be at least 8 characters",
+    field: "password" as const,
+  }),
+  PasswordMismatch: () => ({
+    message: "Passwords do not match",
+    field: "confirmPassword" as const,
+  }),
+});
+type ValidationError = InferErrors<typeof ValidationError>;
+
+const SubmissionError = defineErrors({
   Submission: ({ email }: { email: string }) => ({
     message: `Failed to create account for ${email}`,
     email,
   }),
 });
-type ValidationError = InferError<typeof FormError.Validation>;
-type SubmissionError = InferError<typeof FormError.Submission>;
+type SubmissionError = InferErrors<typeof SubmissionError>;
 
 // Form data interface
 interface SignupForm {
@@ -189,34 +206,30 @@ interface SignupForm {
   confirmPassword: string;
 }
 
-// Validation function
+// Validation function — only returns ValidationError
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
-  // Type check
   if (!data || typeof data !== 'object') {
-    return FormError.Validation({ receivedType: typeof data });
+    return ValidationError.InvalidType({ receivedType: typeof data });
   }
 
   const { email, password, confirmPassword } = data as any;
 
-  // Email validation
   if (!email || !email.includes('@')) {
-    return FormError.Validation({ field: 'email', value: email });
+    return ValidationError.InvalidEmail({ value: email ?? '' });
   }
 
-  // Password validation
   if (!password || password.length < 8) {
-    return FormError.Validation({ field: 'password' });
+    return ValidationError.WeakPassword();
   }
 
-  // Password match validation
   if (password !== confirmPassword) {
-    return FormError.Validation({ field: 'confirmPassword' });
+    return ValidationError.PasswordMismatch();
   }
 
   return Ok({ email, password, confirmPassword });
 }
 
-// Submission function
+// Submission function — only returns SubmissionError
 async function submitSignup(
   form: SignupForm
 ): Promise<Result<{ userId: string }, SubmissionError>> {
@@ -235,32 +248,31 @@ async function submitSignup(
 
       return response.json();
     },
-    catch: () => FormError.Submission({ email: form.email })
+    catch: () => SubmissionError.Submission({ email: form.email })
   });
 }
 
-// Using it all together
+// Using it all together — the union happens naturally at the call site
 async function handleSignup(formData: unknown) {
-  // First, validate the form
-  const validationResult = validateSignupForm(formData);
+  const { data: validForm, error: validationError } = validateSignupForm(formData);
 
-  if (validationResult.error) {
-    console.error("Validation failed:", validationResult.error.message);
-    highlightField(validationResult.error.field);
+  if (validationError) {
+    console.error("Validation failed:", validationError.message);
+    if ('field' in validationError) {
+      highlightField(validationError.field);
+    }
     return;
   }
 
-  // Then submit if valid
-  const submissionResult = await submitSignup(validationResult.data);
+  const { data: signup, error: submitError } = await submitSignup(validForm);
 
-  if (submissionResult.error) {
-    console.error("Signup failed:", submissionResult.error.message);
+  if (submitError) {
+    console.error("Signup failed:", submitError.message);
     showToast("Unable to create account. Please try again.");
     return;
   }
 
-  // Success!
-  console.log("Account created:", submissionResult.data.userId);
+  console.log("Account created:", signup.userId);
   redirectToDashboard();
 }
 ```

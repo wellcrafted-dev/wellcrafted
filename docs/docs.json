@@ -43,6 +43,7 @@
 						"group": "🛠️ Patterns",
 						"pages": [
 							"patterns/real-world",
+							"patterns/optional-keys",
 							"patterns/service-layer",
 							"case-studies/whispering-architecture"
 						]

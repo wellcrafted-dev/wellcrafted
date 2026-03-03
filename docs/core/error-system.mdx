@@ -152,21 +152,25 @@ RecordingError.RecorderBusy();
 // → Err({ name: 'RecorderBusy', message: 'A recording is already in progress' })
 ```
 
-### Tier 2: Reason-Only Error
+### Tier 2: Cause-Wrapping Error
 
-For errors that just need a human-readable reason string:
+For errors that wrap a caught error. Accept `cause: unknown` and call `extractErrorMessage` inside the message template — not at the call site:
 
 ```typescript
 const AudioError = defineErrors({
-  PlaySound: ({ reason }: { reason: string }) => ({
-    message: `Failed to play sound: ${reason}`,
-    reason,
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 });
 
-AudioError.PlaySound({ reason: 'Audio context not initialized' });
-// → Err({ name: 'PlaySound', message: 'Failed to play sound: Audio context not initialized', reason: 'Audio context not initialized' })
+AudioError.PlaySound({ cause: error });
+// → Err({ name: 'PlaySound', message: 'Failed to play sound: Audio context not initialized', cause: <original error> })
 ```
+
+<Tip>
+This keeps call sites clean (`{ cause: error }`) and centralizes message extraction where the message is composed. Avoid **string literal unions** like `reason: 'timeout' | 'refused' | 'dns_error'` acting as sub-discriminants inside a variant. If consumers would need to narrow on that field, each value should be its own variant. See [Avoid String Literal Unions as Sub-Discriminants](#avoid-string-literal-unions-as-sub-discriminants) below.
+</Tip>
 
 ### Tier 3: Structured Data Error
 
@@ -174,6 +178,8 @@ For errors that carry rich, typed debugging information:
 
 ```typescript
 const HttpError = defineErrors({
+  // reason is genuinely optional enrichment — HTTP/2 dropped reason phrases,
+  // so many responses won't have one.
   Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
     status,
@@ -187,6 +193,62 @@ HttpError.Response({ status: 404 });
 HttpError.Response({ status: 500, reason: 'Internal server error' });
 // → Err({ name: 'Response', message: 'HTTP 500: Internal server error', status: 500, reason: 'Internal server error' })
 ```
+
+## Wrapping Caught Errors with extractErrorMessage
+
+When a `catch` block hands you `unknown`, the constructor should own the conversion — not the call site.
+
+### Preferred: Transform Inside the Constructor
+
+Accept `cause: unknown`, call `extractErrorMessage(cause)` in the message template, and store the raw `cause` for programmatic access:
+
+```typescript
+import { defineErrors, extractErrorMessage } from '@wellcrafted/result/error';
+
+const AudioError = defineErrors({
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+// Call site stays clean — just pass the raw error
+try {
+  await audioContext.play(soundFile);
+} catch (error) {
+  return AudioError.PlaySound({ cause: error });
+}
+```
+
+The resulting error carries both a human-readable `message` and the original `cause`:
+
+```json
+{
+  "name": "PlaySound",
+  "message": "Failed to play sound: The AudioContext was not allowed to start",
+  "cause": { /* original error object */ }
+}
+```
+
+### Anti-Pattern: Transform at the Call Site
+
+```typescript
+// Don't do this — every call site must remember to call extractErrorMessage
+try {
+  await audioContext.play(soundFile);
+} catch (error) {
+  return AudioError.PlaySound({ reason: extractErrorMessage(error) });
+}
+```
+
+This scatters presentation logic across every `catch` block instead of centralizing it in the one place that defines the message format.
+
+### Why
+
+- **Constructor owns the template.** It already decides the message format — it should also decide how raw inputs become strings.
+- **Call sites pass raw data.** Callers hand over what they have; the constructor does the rest.
+- **`cause` stays available.** Storing `cause: unknown` means consumers can inspect the original error programmatically, not just read a stringified version.
+- **Same principle as Rust's `#[from]`.** In `thiserror`, the `#[from]` attribute tells the variant to handle conversion automatically. The call site just wraps; the definition owns the transform.
 
 ## Error Chaining
 
@@ -207,9 +269,8 @@ const NetworkError = defineErrors({
 type NetworkError = InferErrors<typeof NetworkError>;
 
 const DbError = defineErrors({
-  Connection: ({ operation, retries, cause }: { operation: string; retries: number; cause: NetworkError }) => ({
+  Connection: ({ retries, cause }: { retries: number; cause: NetworkError }) => ({
     message: 'Failed to connect to database',
-    operation,
     retries,
     cause,
   }),
@@ -217,10 +278,9 @@ const DbError = defineErrors({
 type DbError = InferErrors<typeof DbError>;
 
 const UserServiceError = defineErrors({
-  FetchProfile: ({ userId, method, cause }: { userId: string; method: string; cause: DbError }) => ({
+  FetchProfile: ({ userId, cause }: { userId: string; cause: DbError }) => ({
     message: 'Could not fetch user profile',
     userId,
-    method,
     cause,
   }),
 });
@@ -242,12 +302,12 @@ const networkError = NetworkError.SocketTimeout({
 
 // Wrapped by database layer
 const dbError = DbError.Connection({
-  operation: "connect", retries: 3, cause: networkError.error
+  retries: 3, cause: networkError.error
 });
 
 // Wrapped by service layer
 const serviceError = UserServiceError.FetchProfile({
-  userId: "123", method: "getUserById", cause: dbError.error
+  userId: "123", cause: dbError.error
 });
 
 // Wrapped by API handler
@@ -271,11 +331,9 @@ console.log(JSON.stringify(apiError, null, 2));
     "name": "FetchProfile",
     "message": "Could not fetch user profile",
     "userId": "123",
-    "method": "getUserById",
     "cause": {
       "name": "Connection",
       "message": "Failed to connect to database",
-      "operation": "connect",
       "retries": 3,
       "cause": {
         "name": "SocketTimeout",
@@ -341,20 +399,19 @@ const AppError = defineErrors({
   }),
 
   // Structured error — typed input, computed message
-  File: ({ path, operation }: { path: string; operation: string }) => ({
-    message: `${operation} failed for ${path}`,
+  FileNotFound: ({ path }: { path: string }) => ({
+    message: `File not found: ${path}`,
     path,
-    operation,
   }),
 });
 
 // Each variant is accessed via the namespace
 // AppError.Network() — returns Err<{ name: 'Network'; message: string }>
-// AppError.File({ path, operation }) — returns Err<{ name: 'File'; message: string; path: string; operation: string }>
+// AppError.FileNotFound({ path }) — returns Err<{ name: 'FileNotFound'; message: string; path: string }>
 
 // Extract types
 type AppError = InferErrors<typeof AppError>;
-type FileError = InferError<typeof AppError.File>;
+type FileNotFoundError = InferError<typeof AppError.FileNotFound>;
 ```
 
 ### Constructor Functions — Define Message and Fields Together
@@ -364,15 +421,14 @@ Each constructor function receives the input fields and returns an object with `
 ```typescript
 const FileError = defineErrors({
   // Constructor computes message and returns fields
-  Write: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
-    message: `${operation} failed for ${path}`,
+  Write: ({ path }: { path: string }) => ({
+    message: `Write failed for ${path}`,
     path,
-    operation,
   }),
 });
 
-FileError.Write({ path: '/etc/passwd', operation: 'write' });
-// → Err({ name: 'Write', message: 'write failed for /etc/passwd', path: '/etc/passwd', operation: 'write' })
+FileError.Write({ path: '/etc/passwd' });
+// → Err({ name: 'Write', message: 'Write failed for /etc/passwd', path: '/etc/passwd' })
 
 // For errors where the caller provides the message directly:
 const GenericError = defineErrors({
@@ -395,35 +451,36 @@ When you know what information is **always** needed:
 
 ```typescript
 const FileError = defineErrors({
-  Write: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
-    message: `${operation} failed for ${path}`,
+  Write: ({ path }: { path: string }) => ({
+    message: `Write failed for ${path}`,
     path,
-    operation,
   }),
 });
 
 // Fields are REQUIRED — TypeScript enforces it
-FileError.Write({ path: '/etc/passwd', operation: 'write' });
+FileError.Write({ path: '/etc/passwd' });
 // FileError.Write();  // Type error! fields are required
 ```
 
-### Optional Fields
+### Optional Fields (Enrichment)
 
-Use optional properties when fields are not always available:
+Use optional properties only for genuine enrichment — data that may not be available at the call site:
 
 ```typescript
 const ParseError = defineErrors({
-  Log: ({ file, line }: { file?: string; line?: number } = {}) => ({
-    message: 'Log parse failed',
+  // line is genuinely optional enrichment — parsing may fail before
+  // a line number is identified (e.g., binary format mismatch)
+  Log: ({ file, line }: { file: string; line?: number }) => ({
+    message: `Log parse failed: ${file}${line != null ? `:${line}` : ''}`,
     file,
     line,
   }),
 });
 
-// No fields needed
-ParseError.Log();
+// file is always required — you always know what you're parsing
+ParseError.Log({ file: 'app.ts' });
 
-// When provided, they're fully typed
+// line is optional enrichment — provide it when available
 ParseError.Log({ file: 'app.ts', line: 42 });
 // ParseError.Log({ wrong: true });  // Type error! wrong shape
 ```
@@ -434,7 +491,7 @@ Fields must be JSON-serializable primitives, arrays, or nested objects. This ens
 
 ```typescript
 // Valid JSON-serializable fields
-FileError.Write({ path: '/etc/passwd', operation: 'read' });
+FileError.Write({ path: '/etc/passwd' });
 
 // Not allowed — Date, functions, class instances are not JSON-serializable
 // FileError.Write({ createdAt: new Date(), handler: () => {} });  // Type error!
@@ -474,22 +531,22 @@ const AppError = defineErrors({
     message: 'Network request failed',
   }),
 
-  // Tier 2: Reason-only
-  Parse: ({ reason }: { reason: string }) => ({
-    message: `Parse failed: ${reason}`,
-    reason,
+  // Tier 2: Cause-wrapping
+  Parse: ({ cause }: { cause: unknown }) => ({
+    message: `Parse failed: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 
   // Tier 3: Structured data
-  File: ({ path, operation }: { path: string; operation: string }) => ({
-    message: `File ${operation} failed: ${path}`,
+  FileNotFound: ({ path }: { path: string }) => ({
+    message: `File not found: ${path}`,
     path,
-    operation,
   }),
 
-  // Structured with optional fields
-  Log: ({ file, line }: { file?: string; line?: number } = {}) => ({
-    message: 'Log parse failed',
+  // Structured with optional enrichment — line number may not be available
+  // when parsing fails before a line is identified
+  Log: ({ file, line }: { file: string; line?: number }) => ({
+    message: `Log parse failed: ${file}${line != null ? `:${line}` : ''}`,
     file,
     line,
   }),
@@ -497,13 +554,13 @@ const AppError = defineErrors({
 
 // Access variants via the namespace — each returns Err<...> directly
 // AppError.Network()
-// AppError.Parse({ reason: '...' })
-// AppError.File({ path: '...', operation: '...' })
+// AppError.Parse({ cause: error })
+// AppError.FileNotFound({ path: '...' })
 // AppError.Log({ file: '...', line: 42 })
 
 // Extract types
 type AppError = InferErrors<typeof AppError>;
-type FileError = InferError<typeof AppError.File>;
+type FileNotFoundError = InferError<typeof AppError.FileNotFound>;
 ```
 
 ### Using in tryAsync/trySync
@@ -599,7 +656,106 @@ Readonly<{ name: "InvalidCredentials"; message: string; username: string }>
 Readonly<{ name: "SessionExpired"; message: string; sessionId: string }>
 ```
 
-### 3. Use Union Types for Function Signatures
+### 3. Avoid String Literal Unions as Sub-Discriminants
+
+If you find yourself adding a field like `reason: 'timeout' | 'refused' | 'dns'` inside a single variant, that field is acting as a second discriminant — duplicating what variant names already do. Split into separate variants instead.
+
+This is a common mistake, especially if you are coming from a codebase where errors were loosely typed strings. The instinct to group related failures under one name is natural, but it forces consumers into double narrowing (`switch` on `name`, then `if` on `reason`) and often leads to dishonest optional fields.
+
+```typescript
+// Avoid: sub-discriminant inside a variant
+const NetworkError = defineErrors({
+  Request: ({ reason }: { reason: 'timeout' | 'refused' | 'dns' }) => ({
+    message: `Request failed: ${reason}`,
+    reason,
+  }),
+});
+
+// Prefer: each failure is its own variant
+const NetworkError = defineErrors({
+  Timeout: ({ duration }: { duration: number }) => ({
+    message: `Request timed out after ${duration}ms`,
+    duration,
+  }),
+  ConnectionRefused: ({ host }: { host: string }) => ({
+    message: `Connection refused by ${host}`,
+    host,
+  }),
+  DnsFailure: ({ hostname }: { hostname: string }) => ({
+    message: `DNS lookup failed for ${hostname}`,
+    hostname,
+  }),
+});
+```
+
+Freeform `string` fields for metadata are fine — the anti-pattern is specifically **string literal unions** that consumers would switch on. For wrapping caught errors, prefer `cause: unknown` with `extractErrorMessage(cause)` inside the message template.
+
+### 3b. Avoid Conditional Logic on Factory Inputs
+
+A related smell: if your constructor uses `if`/`switch` on its own inputs to decide what message to produce, the variant is doing double duty. Each branch is really a separate error — flatten the keys.
+
+```typescript
+// Avoid: if/switch inside the constructor signals multiple errors hiding in one variant
+const FormError = defineErrors({
+  Validation: ({ field, value, receivedType }: { field?: string; value?: string; receivedType?: string }) => ({
+    message: (() => {
+      if (receivedType) return "Invalid form data";
+      if (field === 'email') return "Please enter a valid email address";
+      if (field === 'password') return "Password must be at least 8 characters";
+      if (field === 'confirmPassword') return "Passwords do not match";
+      return "Validation failed";
+    })(),
+    field,
+    value,
+    receivedType,
+  }),
+});
+```
+
+The problems are the same as string literal unions, just harder to spot:
+- **Dishonest optionals**: `field`, `value`, and `receivedType` are all optional because no single call site needs all of them. That's a sign they belong on different variants.
+- **Hidden branching**: Consumers can't discriminate on `name` alone — they'd need to inspect `field` or `receivedType` to know which validation failed.
+- **Untypeable messages**: TypeScript can't narrow the message or fields based on which branch ran.
+
+Flatten into separate variants with honest, required fields — and split into separate namespaces when errors serve different purposes:
+
+```typescript
+// Prefer: each validation failure is its own variant with exactly the fields it needs.
+// Validation and submission are separate concerns, so they get separate namespaces.
+const ValidationError = defineErrors({
+  InvalidEmail: ({ value }: { value: string }) => ({
+    message: "Please enter a valid email address",
+    value,
+  }),
+  WeakPassword: ({ value }: { value: string }) => ({
+    message: "Password must be at least 8 characters",
+    value,
+  }),
+  PasswordMismatch: () => ({
+    message: "Passwords do not match",
+  }),
+  InvalidFormData: ({ receivedType }: { receivedType: string }) => ({
+    message: "Invalid form data",
+    receivedType,
+  }),
+});
+type ValidationError = InferErrors<typeof ValidationError>;
+
+const SubmissionError = defineErrors({
+  SubmissionFailed: ({ email }: { email: string }) => ({
+    message: `Failed to create account for ${email}`,
+    email,
+  }),
+});
+type SubmissionError = InferErrors<typeof SubmissionError>;
+
+// TypeScript unions compose them at the function boundary:
+function handleForm(data: unknown): Result<User, ValidationError | SubmissionError> { ... }
+```
+
+**The rule of thumb**: if a constructor branches on its inputs to decide the message, each branch should be its own variant. The variant name *is* the discriminant — don't rebuild one inside the constructor body.
+
+### 4. Use Union Types for Function Signatures
 
 Make all possible errors visible:
 
@@ -613,16 +769,15 @@ function authenticateUser(
 }
 ```
 
-### 4. Handle Errors at the Right Level
+### 5. Handle Errors at the Right Level
 
 Transform errors where you can add context:
 
 ```typescript
 const UserServiceError = defineErrors({
-  Operation: ({ userId, operation, cause }: { userId: string; operation: string; cause: DbError }) => ({
-    message: `Failed to ${operation}`,
+  FetchProfile: ({ userId, cause }: { userId: string; cause: DbError }) => ({
+    message: 'Failed to fetch user profile',
     userId,
-    operation,
     cause,
   }),
 });
@@ -631,9 +786,8 @@ async function getUserProfile(userId: string): Result<Profile, InferErrors<typeo
   const dbResult = await queryDatabase(`SELECT * FROM users WHERE id = ?`, [userId]);
 
   if (dbResult.error) {
-    return UserServiceError.Operation({
+    return UserServiceError.FetchProfile({
       userId,
-      operation: 'getUserProfile',
       cause: dbResult.error
     });
   }
@@ -642,7 +796,7 @@ async function getUserProfile(userId: string): Result<Profile, InferErrors<typeo
 }
 ```
 
-### 5. Design for Debugging
+### 6. Design for Debugging
 
 Structure your errors to answer these questions:
 - **What went wrong?** (message)
@@ -707,16 +861,18 @@ When you need to collect multiple errors:
 
 ```typescript
 const FormError = defineErrors({
+  // value is genuinely optional enrichment — sensitive fields like
+  // passwords should not include the value in error output
   Validation: ({ field, value }: { field: string; value?: string }) => ({
     message: `Validation failed for field "${field}"`,
     field,
     value,
   }),
 });
-type ValidationError = InferError<typeof FormError.Validation>;
+type FormError = InferErrors<typeof FormError>;
 
-function validateForm(input: FormInput): Result<ValidatedForm, ValidationError[]> {
-  const validationErrors: ValidationError[] = [];
+function validateForm(input: FormInput): Result<ValidatedForm, FormError[]> {
+  const validationErrors: FormError[] = [];
 
   if (!input.email?.includes('@')) {
     validationErrors.push(FormError.Validation({ field: 'email', value: input.email }).error!);
@@ -747,13 +903,13 @@ const NetworkError = defineErrors({
     maxRetries,
   }),
 });
-type NetworkRequestError = InferError<typeof NetworkError.Request>;
+type NetworkError = InferErrors<typeof NetworkError>;
 
 async function fetchWithRetry<T>(
   url: string,
   maxRetries = 3
-): Promise<Result<T, NetworkRequestError>> {
-  let lastError: NetworkRequestError | null = null;
+): Promise<Result<T, NetworkError>> {
+  let lastError: NetworkError | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const result = await tryAsync<T, NetworkRequestError>({
@@ -786,10 +942,9 @@ import { Result, Ok, Err, tryAsync } from "wellcrafted/result";
 import { defineErrors, type InferError, type InferErrors } from "wellcrafted/error";
 
 const UserError = defineErrors({
-  DatabaseFailure: ({ userId, operation }: { userId: string; operation: string }) => ({
-    message: `Database ${operation} failed`,
+  DatabaseFailure: ({ userId }: { userId: string }) => ({
+    message: `Database lookup failed for user ${userId}`,
     userId,
-    operation,
   }),
   NotFound: ({ userId }: { userId: string }) => ({
     message: `User with ID ${userId} not found`,
@@ -801,7 +956,7 @@ type UserError = InferErrors<typeof UserError>;
 async function getUser(id: string): Promise<Result<User, UserError>> {
   const result = await tryAsync<User, InferError<typeof UserError.DatabaseFailure>>({
     try: () => database.users.findById(id),
-    catch: () => UserError.DatabaseFailure({ userId: id, operation: 'findById' })
+    catch: () => UserError.DatabaseFailure({ userId: id })
   });
 
   if (result.error) return result;

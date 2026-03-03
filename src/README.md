@@ -74,16 +74,16 @@ if (isOk(result)) {
 ```typescript
 // Define an error type with defineErrors
 const { ValidationError, ValidationErr } = defineErrors({
-  ValidationError: ({ reason }: { reason: string }) => ({
-    message: `JSON parsing failed: ${reason}`,
-    reason,
+  ValidationError: ({ cause }: { cause: unknown }) => ({
+    message: `JSON parsing failed: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 });
 
 // Wrapping a potentially throwing operation
 const result = trySync({
   try: () => JSON.parse(jsonString),
-  catch: (error) => ValidationErr({ reason: extractErrorMessage(error) }),
+  catch: (error) => ValidationErr({ cause: error }),
 });
 
 if (isErr(result)) {

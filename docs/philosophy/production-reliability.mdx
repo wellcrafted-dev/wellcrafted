@@ -373,7 +373,7 @@ Whispering is a production desktop/web application built with wellcrafted patter
 ```typescript
 // Real example from Whispering's transcription service
 if (error.name === "Auth") {
-  return WhisperingError.Operation({
+  return WhisperingError.ApiKeyMissing({
     title: "🔑 API Key Required",
     description: "Please enter your OpenAI API key in settings to use Whisper transcription.",
     action: {

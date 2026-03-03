@@ -115,5 +115,6 @@ if (isErr(result)) {
 3. **Be specific**: `Authentication` vs generic `Service`
 4. **Group by domain**: `UserError.Validation`, `HttpError.Timeout`, `DbError.Connection`
 5. **Namespace as the "Error" suffix**: The variable name carries the "Error" suffix (`UserError`), individual variants do not
+6. **No string literal unions as sub-discriminants**: If a variant input has a field like `reason: 'a' | 'b' | 'c'`, each literal should be its own variant instead. The variant name is the discriminant — fields should carry data, not act as a second tag to switch on
 
 This convention provides clear semantics and helps developers understand the distinction between the error data itself and the data structures that contain it.

@@ -23,10 +23,13 @@ import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // 1. Define service-specific errors with typed fields
 const UserServiceError = defineErrors({
-  Operation: ({ userId, operation }: { userId?: string; operation: string }) => ({
-    message: `User ${operation} failed`,
+  GetFailed: ({ userId }: { userId: string }) => ({
+    message: `Failed to get user ${userId}`,
     userId,
-    operation,
+  }),
+  CreateFailed: ({ email }: { email: string }) => ({
+    message: `Failed to create user with email ${email}`,
+    email,
   }),
 });
 type UserServiceError = InferErrors<typeof UserServiceError>;
@@ -42,9 +45,7 @@ export function createUserService(db: Database) {
 
       const result = await tryAsync({
         try: () => db.users.findById(id),
-        catch: () => UserServiceError.Operation({
-          userId: id, operation: "getUser"
-        })
+        catch: () => UserServiceError.GetFailed({ userId: id })
       });
 
       if (result.data) {
@@ -56,12 +57,12 @@ export function createUserService(db: Database) {
 
     async createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
       if (!input.email.includes('@')) {
-        return UserServiceError.Operation({ operation: "createUser" });
+        return UserServiceError.CreateFailed({ email: input.email });
       }
 
       return tryAsync({
         try: () => db.users.create(input),
-        catch: () => UserServiceError.Operation({ operation: "createUser" })
+        catch: () => UserServiceError.CreateFailed({ email: input.email })
       });
     },
 
@@ -81,22 +82,24 @@ export const UserServiceLive = createUserService(databaseInstance);
 ## Service with Multiple Dependencies
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-const OrderError = defineErrors({
-  Payment: ({ amount, paymentId }: { amount?: number; paymentId?: string }) => ({
+// Separate namespaces — payment and persistence are different concerns
+const PaymentError = defineErrors({
+  PaymentFailed: ({ amount }: { amount: number }) => ({
     message: 'Payment processing failed',
     amount,
-    paymentId,
   }),
-  Db: ({ input }: { input?: OrderInput }) => ({
-    message: 'Order operation failed',
+});
+type PaymentError = InferErrors<typeof PaymentError>;
+
+const OrderDbError = defineErrors({
+  CreateFailed: ({ input }: { input: OrderInput }) => ({
+    message: 'Order creation failed',
     input,
   }),
 });
-
-type PaymentError = InferError<typeof OrderError.Payment>;
-type OrderDbError = InferError<typeof OrderError.Db>;
+type OrderDbError = InferErrors<typeof OrderDbError>;
 
 export function createOrderService(
   db: Database,
@@ -104,7 +107,7 @@ export function createOrderService(
   emailService: EmailService
 ) {
   return {
-    async createOrder(input: OrderInput): Promise<Result<Order, OrderDbError | PaymentError>> {
+    async createOrder(input: OrderInput): Promise<Result<Order, PaymentError | OrderDbError>> {
       // 1. Validate inventory
       const inventoryCheck = await checkInventory(input.items);
       if (inventoryCheck.error) return inventoryCheck;
@@ -112,7 +115,7 @@ export function createOrderService(
       // 2. Process payment
       const paymentResult = await tryAsync({
         try: () => paymentGateway.charge(input.payment),
-        catch: () => OrderError.Payment({ amount: input.payment.amount })
+        catch: () => PaymentError.PaymentFailed({ amount: input.payment.amount })
       });
 
       if (paymentResult.error) return paymentResult;
@@ -123,7 +126,7 @@ export function createOrderService(
           ...input,
           paymentId: paymentResult.data.id
         }),
-        catch: () => OrderError.Db({ input })
+        catch: () => OrderDbError.CreateFailed({ input })
       });
 
       if (orderResult.error) {
@@ -161,9 +164,8 @@ export type NotificationService = {
 };
 
 const NotificationError = defineErrors({
-  Operation: ({ action, platform }: { action: string; platform?: string }) => ({
-    message: `Notification ${action} failed`,
-    action,
+  SendFailed: ({ platform }: { platform: string }) => ({
+    message: `Failed to send notification on ${platform}`,
     platform,
   }),
 });
@@ -177,7 +179,7 @@ export function createNotificationServiceDesktop(): NotificationService {
         try: () => {
           new window.Notification("App Name", { body: message });
         },
-        catch: () => NotificationError.Operation({ action: "notify", platform: "desktop" })
+        catch: () => NotificationError.SendFailed({ platform: "desktop" })
       });
     },
 
@@ -193,14 +195,14 @@ export function createNotificationServiceWeb(): NotificationService {
     async notify(message) {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        return NotificationError.Operation({ action: "notify", platform: "web" });
+        return NotificationError.SendFailed({ platform: "web" });
       }
 
       return tryAsync({
         try: () => {
           new Notification("App Name", { body: message });
         },
-        catch: () => NotificationError.Operation({ action: "notify", platform: "web" })
+        catch: () => NotificationError.SendFailed({ platform: "web" })
       });
     },
 
@@ -371,21 +373,13 @@ Always include relevant debugging information:
 
 ```typescript
 const UserServiceError = defineErrors({
-  Operation: ({ userId, operation }: {
-    userId: string;
-    operation: string;
-    timestamp?: string;
-  }) => ({
-    message: `User ${operation} failed`,
+  UpdateFailed: ({ userId }: { userId: string }) => ({
+    message: `Failed to update user ${userId}`,
     userId,
-    operation,
   }),
 });
 
-return UserServiceError.Operation({
-  userId,
-  operation: "updateUser",
-});
+return UserServiceError.UpdateFailed({ userId });
 ```
 
 ### Handle Errors at the Right Level
@@ -401,8 +395,8 @@ const DatabaseError = defineErrors({
 });
 
 const UserServiceError = defineErrors({
-  Operation: ({ userId }: { userId: string }) => ({
-    message: `User service operation failed for ${userId}`,
+  GetFailed: ({ userId }: { userId: string }) => ({
+    message: `Failed to get user ${userId}`,
     userId,
   }),
 });
@@ -415,7 +409,7 @@ const dbResult = await tryAsync({
 
 if (dbResult.error) {
   // Transform to service-level error
-  return UserServiceError.Operation({ userId });
+  return UserServiceError.GetFailed({ userId });
 }
 ```
 
@@ -430,7 +424,7 @@ export function createUserService(db: Database) {
     async getUser(id: string): Promise<Result<User, UserServiceError>> {
       return tryAsync({
         try: () => db.users.findById(id),
-        catch: () => UserServiceError.Operation({ userId: id, operation: "getUser" })
+        catch: () => UserServiceError.GetFailed({ userId: id })
       });
     }
   };

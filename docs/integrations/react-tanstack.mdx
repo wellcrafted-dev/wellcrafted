@@ -243,10 +243,15 @@ import { tryAsync, type Result } from 'wellcrafted/result';
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
 const UserServiceError = defineErrors({
-  Operation: ({ operation, userId }: { operation: string; userId?: string }) => ({
-    message: `User ${operation} failed`,
-    operation,
+  Fetch: ({ userId }: { userId: string }) => ({
+    message: `Failed to fetch user ${userId}`,
     userId,
+  }),
+  Create: () => ({
+    message: 'Failed to create user',
+  }),
+  InvalidEmail: () => ({
+    message: 'Invalid email address',
   }),
 });
 type UserServiceError = InferErrors<typeof UserServiceError>;
@@ -261,13 +266,13 @@ export async function getUser(id: string): Promise<Result<User, UserServiceError
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     },
-    catch: () => UserServiceError.Operation({ operation: 'getUser', userId: id }),
+    catch: () => UserServiceError.Fetch({ userId: id }),
   });
 }
 
 export async function createUser(input: CreateUserInput): Promise<Result<User, UserServiceError>> {
   if (!input.email.includes('@')) {
-    return UserServiceError.Operation({ operation: 'createUser' });
+    return UserServiceError.InvalidEmail();
   }
 
   return tryAsync({
@@ -280,7 +285,7 @@ export async function createUser(input: CreateUserInput): Promise<Result<User, U
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     },
-    catch: () => UserServiceError.Operation({ operation: 'createUser' }),
+    catch: () => UserServiceError.Create(),
   });
 }
 ```

@@ -30,7 +30,7 @@ import { defineErrors, type InferErrors } from 'wellcrafted/error';
 import { tryAsync, type Result } from 'wellcrafted/result';
 
 const RecorderError = defineErrors({
-  Start: ({ permissions, errorCode }: { permissions?: string; errorCode?: string }) => ({
+  Start: ({ permissions, errorCode }: { permissions: string; errorCode: string }) => ({
     message: 'Failed to start recorder',
     permissions,
     errorCode,
@@ -115,9 +115,12 @@ startRecordingMutation.mutate(undefined, {
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
 const DbError = defineErrors({
-  Query: ({ operation, table }: { operation: string; table?: string }) => ({
-    message: `DB ${operation} failed`,
-    operation,
+  FindMany: ({ table }: { table: string }) => ({
+    message: `Failed to query ${table}`,
+    table,
+  }),
+  Create: ({ table }: { table: string }) => ({
+    message: `Failed to insert into ${table}`,
     table,
   }),
 });
@@ -126,14 +129,14 @@ type DbError = InferErrors<typeof DbError>;
 export async function getAllRecordings(): Promise<Result<Recording[], DbError>> {
   return tryAsync({
     try: () => database.recordings.findMany({ orderBy: { createdAt: 'desc' } }),
-    catch: () => DbError.Query({ operation: 'getAllRecordings', table: 'recordings' }),
+    catch: () => DbError.FindMany({ table: 'recordings' }),
   });
 }
 
 export async function createRecording(recording: Recording): Promise<Result<Recording, DbError>> {
   return tryAsync({
     try: () => database.recordings.create({ data: recording }),
-    catch: () => DbError.Query({ operation: 'createRecording', table: 'recordings' }),
+    catch: () => DbError.Create({ table: 'recordings' }),
   });
 }
 ```

@@ -21,11 +21,20 @@ type UserId = string & Brand<"UserId">;
 type SessionToken = string & Brand<"SessionToken">;
 
 const AuthServiceError = defineErrors({
-  Operation: ({ operation, email, userId }: {
-    operation: string; email?: string; userId?: string;
-  }) => ({
-    message: `Auth ${operation} failed`,
-    operation, email, userId,
+  LoginFailed: ({ email }: { email: string }) => ({
+    message: `Login failed for ${email}`,
+    email,
+  }),
+  SessionExpired: () => ({
+    message: 'Session has expired',
+  }),
+  TokenGenerationFailed: ({ userId }: { userId: string }) => ({
+    message: `Failed to generate token for user ${userId}`,
+    userId,
+  }),
+  SessionValidationFailed: ({ userId }: { userId: string }) => ({
+    message: `Session validation failed for user ${userId}`,
+    userId,
   }),
 });
 type AuthServiceError = InferErrors<typeof AuthServiceError>;
@@ -51,21 +60,21 @@ export function createAuthService(
 
       const userResult = await tryAsync({
         try: () => db.users.findByEmail(email),
-        catch: () => AuthServiceError.Operation({ operation: "login", email: maskedEmail })
+        catch: () => AuthServiceError.LoginFailed({ email: maskedEmail })
       });
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceError.Operation({ operation: "login", email: maskedEmail });
+        return AuthServiceError.LoginFailed({ email: maskedEmail });
       }
 
       const isValid = await hashService.verify(password, userResult.data.passwordHash);
       if (!isValid) {
-        return AuthServiceError.Operation({ operation: "login", email: maskedEmail });
+        return AuthServiceError.LoginFailed({ email: maskedEmail });
       }
 
       const tokenResult = await tryAsync({
         try: () => tokenService.generate(userResult.data.id),
-        catch: () => AuthServiceError.Operation({ operation: "login", userId: userResult.data.id })
+        catch: () => AuthServiceError.TokenGenerationFailed({ userId: userResult.data.id })
       });
       if (tokenResult.error) return tokenResult;
 
@@ -85,20 +94,20 @@ export function createAuthService(
     ): Promise<Result<AuthenticatedUser, AuthServiceError>> {
       const validationResult = await tryAsync({
         try: () => tokenService.validate(token),
-        catch: () => AuthServiceError.Operation({ operation: "validateSession" })
+        catch: () => AuthServiceError.SessionExpired()
       });
       if (validationResult.error) return validationResult;
       if (!validationResult.data.isValid) {
-        return AuthServiceError.Operation({ operation: "validateSession" });
+        return AuthServiceError.SessionExpired();
       }
 
       const userResult = await tryAsync({
         try: () => db.users.findById(validationResult.data.userId),
-        catch: () => AuthServiceError.Operation({ operation: "validateSession", userId: validationResult.data.userId })
+        catch: () => AuthServiceError.SessionValidationFailed({ userId: validationResult.data.userId })
       });
       if (userResult.error) return userResult;
       if (!userResult.data) {
-        return AuthServiceError.Operation({ operation: "validateSession", userId: validationResult.data.userId });
+        return AuthServiceError.SessionValidationFailed({ userId: validationResult.data.userId });
       }
 
       return Ok({
@@ -125,15 +134,25 @@ type FileId = string & Brand<"FileId">;
 type UserId = string & Brand<"UserId">;
 
 const FileServiceError = defineErrors({
-  Operation: ({ operation, fileName, fileSize, maxSize, fileType }: {
-    operation: string;
-    fileName?: string;
-    fileSize?: number;
-    maxSize?: number;
-    fileType?: string;
+  FileTooLarge: ({ fileName, fileSize, maxSize }: {
+    fileName: string; fileSize: number; maxSize: number;
   }) => ({
-    message: `File ${operation} failed`,
-    operation, fileName, fileSize, maxSize, fileType,
+    message: `File "${fileName}" is ${fileSize} bytes, exceeding the ${maxSize} byte limit`,
+    fileName, fileSize, maxSize,
+  }),
+  UnsupportedType: ({ fileName, fileType }: {
+    fileName: string; fileType: string;
+  }) => ({
+    message: `File type "${fileType}" is not supported`,
+    fileName, fileType,
+  }),
+  UploadFailed: ({ fileName }: { fileName: string }) => ({
+    message: `Failed to upload "${fileName}"`,
+    fileName,
+  }),
+  MetadataSaveFailed: ({ fileName }: { fileName: string }) => ({
+    message: `Failed to save metadata for "${fileName}"`,
+    fileName,
   }),
 });
 type FileServiceError = InferErrors<typeof FileServiceError>;
@@ -149,13 +168,13 @@ export function createFileService(storage: StorageService, db: Database) {
       onProgress?: (percent: number) => void
     ): Promise<Result<{ id: FileId; url: string }, FileServiceError>> {
       if (file.size > MAX_FILE_SIZE) {
-        return FileServiceError.Operation({
-          operation: "upload", fileName: file.name, fileSize: file.size, maxSize: MAX_FILE_SIZE
+        return FileServiceError.FileTooLarge({
+          fileName: file.name, fileSize: file.size, maxSize: MAX_FILE_SIZE
         });
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
-        return FileServiceError.Operation({
-          operation: "upload", fileName: file.name, fileType: file.type
+        return FileServiceError.UnsupportedType({
+          fileName: file.name, fileType: file.type
         });
       }
 
@@ -164,7 +183,7 @@ export function createFileService(storage: StorageService, db: Database) {
 
       const uploadResult = await tryAsync({
         try: () => storage.upload(fileKey, file, { onProgress }),
-        catch: () => FileServiceError.Operation({ operation: "upload", fileName: file.name })
+        catch: () => FileServiceError.UploadFailed({ fileName: file.name })
       });
       if (uploadResult.error) return uploadResult;
 
@@ -174,7 +193,7 @@ export function createFileService(storage: StorageService, db: Database) {
           size: file.size, mimeType: file.type,
           storageKey: fileKey, url: uploadResult.data.url
         }),
-        catch: () => FileServiceError.Operation({ operation: "upload", fileName: file.name })
+        catch: () => FileServiceError.MetadataSaveFailed({ fileName: file.name })
       });
 
       if (metadataResult.error) {
@@ -198,12 +217,15 @@ import { Result, Ok, trySync } from "wellcrafted/result";
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 const ValidationError = defineErrors({
-  Form: ({ field, allErrors }: {
-    field?: string;
-    allErrors?: Array<{ path: string; message: string }>;
+  InvalidFields: ({ field, allErrors }: {
+    field: string;
+    allErrors: Array<{ path: string; message: string }>;
   }) => ({
-    message: field ? `Validation failed on ${field}` : 'Validation failed',
+    message: `Validation failed on ${field}`,
     field, allErrors,
+  }),
+  Unexpected: () => ({
+    message: 'Validation failed unexpectedly',
   }),
 });
 type ValidationError = InferErrors<typeof ValidationError>;
@@ -223,7 +245,7 @@ export function validateCreateUserForm(
     catch: (error) => {
       if (error instanceof z.ZodError) {
         const firstIssue = error.issues[0];
-        return ValidationError.Form({
+        return ValidationError.InvalidFields({
           field: firstIssue.path.join('.'),
           allErrors: error.issues.map(issue => ({
             path: issue.path.join('.'),
@@ -231,7 +253,7 @@ export function validateCreateUserForm(
           }))
         });
       }
-      return ValidationError.Form({});
+      return ValidationError.Unexpected();
     }
   });
 }
@@ -241,7 +263,11 @@ async function handleSubmit(formData: unknown) {
   const result = validateCreateUserForm(formData);
 
   if (result.error) {
-    showFieldError(result.error.field as string, result.error.message);
+    if (result.error.name === 'InvalidFields') {
+      showFieldError(result.error.field, result.error.message);
+    } else {
+      showToast(result.error.message);
+    }
     return;
   }
 
@@ -351,6 +377,10 @@ export function createApplicationService(
 2. **Error transformation at boundaries** — database errors become service errors, service errors become HTTP responses.
 3. **Branded types prevent mixups** — `UserId` and `SessionToken` can never be accidentally swapped.
 4. **Framework agnostic** — these patterns work in Next.js, Svelte, plain Node, or anywhere TypeScript runs.
+
+<Note>
+**Why split variants?** The examples above use specific variants like `LoginFailed`, `FileTooLarge`, and `InvalidFields` rather than a single catch-all `Operation` variant. This is the recommended pattern — each variant carries exactly the context it needs as required fields, and consumers can `switch` on `error.name` to handle each case distinctly. A single catch-all variant is only acceptable when *all* failures are handled identically by every consumer. For guidance on when optional keys are appropriate, see [Optional Keys in Error Definitions](/patterns/optional-keys).
+</Note>
 
 <Note>
 For larger-scale architecture, see the [Whispering case study](/case-studies/whispering-architecture) or the [service layer patterns](/patterns/service-layer).

@@ -187,9 +187,12 @@ import { Ok, tryAsync } from 'wellcrafted/result';
 import { defineErrors } from 'wellcrafted/error';
 
 const RecordingServiceError = defineErrors({
-  Operation: ({ operation }: { operation: string }) => ({
-    message: `Recording ${operation} failed`,
-    operation,
+  List: () => ({
+    message: 'Failed to list recordings',
+  }),
+  Delete: ({ recordingId }: { recordingId: string }) => ({
+    message: `Failed to delete recording ${recordingId}`,
+    recordingId,
   }),
 });
 
@@ -198,13 +201,13 @@ export function createRecordingService(deps: { db: DbClient }) {
     getAllRecordings: () =>
       tryAsync({
         try: () => deps.db.select().from(recordings).orderBy(desc(recordings.createdAt)),
-        catch: () => RecordingServiceError.Operation({ operation: 'list' }),
+        catch: () => RecordingServiceError.List(),
       }),
 
     deleteRecording: (id: string) =>
       tryAsync({
         try: () => deps.db.delete(recordings).where(eq(recordings.id, id)),
-        catch: () => RecordingServiceError.Operation({ operation: 'delete' }),
+        catch: () => RecordingServiceError.Delete({ recordingId: id }),
       }),
   };
 }

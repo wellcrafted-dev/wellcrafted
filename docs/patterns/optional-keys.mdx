@@ -1,0 +1,262 @@
+---
+title: 'Optional Keys in Error Definitions'
+description: 'When to use optional fields in defineErrors variants, and when to split into separate variants instead'
+icon: 'key'
+---
+
+# Optional Keys in Error Definitions
+
+Optional keys (`?:`) in `defineErrors` constructors are almost always a design smell. The default stance: **no optional keys**. Each variant should carry exactly the fields it needs, all required.
+
+But optionality isn't the only smell. A constructor parameter can also have the **wrong type** (accepting a pre-formatted string when it should accept raw data) or the **wrong granularity** (accepting decomposed fields when it should accept a whole object). These are orthogonal problems — a field can have one, two, or all three smells stacked on top of each other.
+
+## The Six Categories
+
+When you spot a suspicious key in a `defineErrors` variant, it falls into one of six buckets:
+
+### 1. "Always Passed" Optionals
+
+The key is marked `?` but every call site passes it.
+
+```typescript
+// Anti-pattern: optional but always provided
+const UserError = defineErrors({
+  NotFound: ({ userId }: { userId?: string }) => ({
+    message: userId ? `User ${userId} not found` : 'User not found',
+    userId,
+  }),
+});
+
+// Every call site:
+UserError.NotFound({ userId: id });    // always passed
+UserError.NotFound({ userId: other }); // always passed
+```
+
+**Fix: make it required.**
+
+```typescript
+const UserError = defineErrors({
+  NotFound: ({ userId }: { userId: string }) => ({
+    message: `User ${userId} not found`,
+    userId,
+  }),
+});
+```
+
+### 2. Boolean Sub-Discriminant
+
+A boolean or string that changes the error message or behavior. This means you really have multiple error types sharing a trenchcoat.
+
+```typescript
+// Anti-pattern: boolean changes the meaning
+const PaymentError = defineErrors({
+  Failed: ({ isRetryable, transactionId }: {
+    isRetryable?: boolean; transactionId: string;
+  }) => ({
+    message: isRetryable
+      ? `Payment ${transactionId} failed (retryable)`
+      : `Payment ${transactionId} failed permanently`,
+    isRetryable, transactionId,
+  }),
+});
+```
+
+**Fix: split into separate variants.**
+
+```typescript
+const PaymentError = defineErrors({
+  Retryable: ({ transactionId }: { transactionId: string }) => ({
+    message: `Payment ${transactionId} failed, please retry`,
+    transactionId,
+  }),
+  Permanent: ({ transactionId }: { transactionId: string }) => ({
+    message: `Payment ${transactionId} failed permanently`,
+    transactionId,
+  }),
+});
+```
+
+Now consumers can handle them distinctly without inspecting a boolean:
+
+```typescript
+switch (error.name) {
+  case 'Retryable': return scheduleRetry(error.transactionId);
+  case 'Permanent': return refundUser(error.transactionId);
+}
+```
+
+### 3. "Grab Bag" All-Optional
+
+A single variant tries to cover many failure modes with all-optional context. Different call sites pass different subsets of the fields.
+
+```typescript
+// Anti-pattern: one variant, many failure modes
+const FileError = defineErrors({
+  Operation: ({ operation, fileName, fileSize, maxSize, fileType }: {
+    operation: string;
+    fileName?: string;
+    fileSize?: number;
+    maxSize?: number;
+    fileType?: string;
+  }) => ({
+    message: `File ${operation} failed`,
+    operation, fileName, fileSize, maxSize, fileType,
+  }),
+});
+
+// Call sites pass different subsets:
+FileError.Operation({ operation: 'upload', fileName: f.name, fileSize: f.size, maxSize: limit });
+FileError.Operation({ operation: 'upload', fileName: f.name, fileType: f.type });
+FileError.Operation({ operation: 'upload', fileName: f.name });
+```
+
+**Fix: split into specific variants with required fields.**
+
+```typescript
+const FileError = defineErrors({
+  FileTooLarge: ({ fileName, fileSize, maxSize }: {
+    fileName: string; fileSize: number; maxSize: number;
+  }) => ({
+    message: `File "${fileName}" is ${fileSize} bytes, exceeding the ${maxSize} byte limit`,
+    fileName, fileSize, maxSize,
+  }),
+  UnsupportedType: ({ fileName, fileType }: {
+    fileName: string; fileType: string;
+  }) => ({
+    message: `File type "${fileType}" is not supported`,
+    fileName, fileType,
+  }),
+  UploadFailed: ({ fileName }: { fileName: string }) => ({
+    message: `Failed to upload "${fileName}"`,
+    fileName,
+  }),
+});
+```
+
+Each variant has exactly the fields that matter for that failure mode, all required.
+
+### 4. Pre-Formatted Input (Let the Constructor Own Formatting)
+
+The field's type is `string`, but the call site is calling `extractErrorMessage()` or `String()` to produce it. The constructor should accept the raw data and own the conversion.
+
+```typescript
+// Anti-pattern: call site does the formatting
+const HttpError = defineErrors({
+  Response: ({ status, bodyMessage }: { status: number; bodyMessage: string }) => ({
+    message: `HTTP ${status}: ${bodyMessage}`,
+    status, bodyMessage,
+  }),
+});
+
+// Call site extracts the message:
+HttpError.Response({
+  status: response.status,
+  bodyMessage: extractErrorMessage(await response.json()),
+});
+```
+
+The `bodyMessage: string` type is a lie — the real data is `unknown` (an unparsed response body), and the call site is doing work the constructor should own.
+
+**Fix: accept raw data, format in the constructor.**
+
+```typescript
+const HttpError = defineErrors({
+  Response: ({ response, body }: { response: { status: number }; body: unknown }) => ({
+    message: `HTTP ${response.status}: ${extractErrorMessage(body)}`,
+    status: response.status, body,
+  }),
+});
+
+// Call site passes raw objects:
+HttpError.Response({ response, body: await response.json() });
+```
+
+**The principle:** Transform raw data in the constructor, not the call site. If a field's type is `string` but the call site is calling `extractErrorMessage()` or `String()` to produce it, the type should be `unknown` and the constructor should own that conversion.
+
+### 5. Decomposed Object (Pass the Whole Thing)
+
+The call site is extracting fields from an object and passing them individually. The constructor should accept the object and decompose it itself.
+
+```typescript
+// Anti-pattern: call site decomposes the response
+const HttpError = defineErrors({
+  Response: ({ status, body }: { status: number; body: unknown }) => ({
+    message: `HTTP ${status}: ${extractErrorMessage(body)}`,
+    status, body,
+  }),
+});
+
+// Call site pulls .status out of the response:
+HttpError.Response({ status: response.status, body: await response.json() });
+```
+
+**Fix: pass the object, let the constructor extract what it needs.**
+
+```typescript
+const HttpError = defineErrors({
+  Response: ({ response, body }: { response: { status: number }; body: unknown }) => ({
+    message: `HTTP ${response.status}: ${extractErrorMessage(body)}`,
+    status: response.status, body,
+  }),
+});
+
+// Call site passes the raw response:
+HttpError.Response({ response, body: await response.json() });
+```
+
+<Note>
+**Why `body` is separate from `response`:** The `.json()` parse stays at the call site because it's `async` and constructors are sync — the parsed body must be passed as its own parameter. The `response` parameter uses structural typing (`{ status: number }`) rather than a platform-specific `Response` type, so browser `Response`, Tauri responses, and test doubles all satisfy the constraint.
+</Note>
+
+### 6. Genuine Enrichment (The Exception)
+
+Extra context that truly may not be available at the call site. This is the **only** case where optional keys are acceptable.
+
+```typescript
+const ApiError = defineErrors({
+  /** @param requestId - The server-assigned request ID from the
+   *  `X-Request-Id` response header, if present. Not all servers
+   *  return this header. */
+  RequestFailed: ({ status, url, requestId }: {
+    status: number;
+    url: string;
+    requestId?: string;
+  }) => ({
+    message: requestId
+      ? `API request to ${url} failed (${status}) [${requestId}]`
+      : `API request to ${url} failed (${status})`,
+    status, url, requestId,
+  }),
+});
+```
+
+**When this is OK:**
+
+- The data source genuinely may not provide the value (a response header that not all servers return, an external trace ID, a stack trace)
+- The error is the same variant regardless — the optional field adds debugging context, not a different meaning
+- A JSDoc comment explains **why** the field is optional
+
+## Orthogonal Problems
+
+These six categories are independent checks. A single field can have multiple smells stacked on top of each other. For example, a `bodyMessage?: string` parameter might have **three** problems at once:
+
+1. **Wrong type** (category 4) — `string` instead of `unknown`, with the call site calling `extractErrorMessage()`
+2. **Wrong decomposition** (category 5) — extracting `.status` from a response instead of passing the response
+3. **Wrong optionality** (category 1) — marked `?` but always passed
+
+Fix each independently: change the type to `unknown`, pass the whole response object, and make it required. The categories in this doc are orthogonal — apply each check separately.
+
+## The Rule
+
+> If removing the optional key would force you to split the variant — **split the variant**. If the call site is doing work the constructor could own — **move it into the constructor**. Optional keys in `defineErrors` should be the exception, not the default. When they must exist, document why with JSDoc.
+
+## Quick Checklist
+
+| Question | If yes... |
+|----------|-----------|
+| Is the field always passed at every call site? | Make it required |
+| Does the field change the error message or recovery path? | Split into separate variants |
+| Do different call sites pass different subsets of fields? | You have N variants sharing a trenchcoat — split them |
+| Is the field a pre-formatted string derived from raw data? | Accept raw data (`unknown`), format in constructor |
+| Is the call site decomposing an object to extract the field? | Pass the object, let constructor extract |
+| Is the field truly unavailable in some scenarios? | Keep optional, add JSDoc explaining why |

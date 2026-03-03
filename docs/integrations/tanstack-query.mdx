@@ -320,10 +320,18 @@ A critical responsibility of the query layer is transforming service-specific er
 ```typescript
 // Service layer returns domain-specific errors with typed fields
 const RecorderError = defineErrors({
-  Operation: ({ action, deviceId }: { action: string; deviceId?: string }) => ({
-    message: `Recorder ${action} failed`,
-    action,
+  StartFailed: ({ deviceId }: { deviceId: string }) => ({
+    message: `Failed to start recording on device ${deviceId}`,
     deviceId,
+  }),
+  StopFailed: ({ recordingId }: { recordingId: string }) => ({
+    message: `Failed to stop recording ${recordingId}`,
+    recordingId,
+  }),
+  DeviceUnavailable: ({ deviceId, reason }: { deviceId: string; reason: string }) => ({
+    message: `Recording device ${deviceId} unavailable: ${reason}`,
+    deviceId,
+    reason,
   }),
 });
 

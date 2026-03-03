@@ -76,17 +76,42 @@ const { RecorderBusyError, RecorderBusyErr } = defineErrors({
 RecorderBusyErr() // no args
 ```
 
-**Reason-only (single descriptive field):**
+**Cause-wrapping (carries the raw caught error):**
 ```typescript
 const { PlaySoundError, PlaySoundErr } = defineErrors({
-  PlaySoundError: ({ reason }: { reason: string }) => ({
-    message: `Failed to play sound: ${reason}`,
-    reason,
+  PlaySoundError: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 });
 
-PlaySoundErr({ reason: extractErrorMessage(error) })
+PlaySoundErr({ cause: error })
 ```
+
+Accept `cause: unknown` (the raw caught error) and call `extractErrorMessage` inside the factory's message template — not at the call site. This keeps call sites clean (`{ cause: error }`) and centralizes message extraction where the message is composed. The anti-pattern to avoid is **string literal unions** (`'a' | 'b' | 'c'`) acting as sub-discriminants. See [Anti-Pattern: Discriminated Union Inputs in Error Factories](#anti-pattern-discriminated-union-inputs-in-error-factories) below.
+
+#### Why `extractErrorMessage` belongs inside the constructor
+
+**Anti-pattern — transforming at the call site:**
+```typescript
+// Every call site must remember to call extractErrorMessage
+try { playAudio(); } catch (error) {
+  return PlaySoundErr({ reason: extractErrorMessage(error) });
+}
+```
+
+**Preferred — constructor accepts raw `cause`:**
+```typescript
+// Call site just passes the raw error
+try { playAudio(); } catch (error) {
+  return PlaySoundErr({ cause: error });
+}
+```
+
+- **The constructor owns the message template — it should also own the transformation.** `extractErrorMessage` is a message-formatting concern; it belongs where the message string is assembled, not scattered across every call site.
+- **Raw `cause: unknown` preserves the original error for programmatic access.** Downstream code can inspect, log, or re-wrap the actual error object — not just a lossy string summary.
+- **Call sites stay minimal:** `{ cause: error }` instead of `{ reason: extractErrorMessage(error) }`.
+- **Mirrors Rust's `#[from]`**, where the enum variant handles the conversion from the source error type — callers just use `?`.
 
 **Structured (multiple fields):**
 ```typescript
@@ -107,7 +132,7 @@ ResponseErr({ status: 404 })
 - `name` + `message` are the only built-in fields
 - Additional fields spread **flat** on the error object (no nested `context` bag)
 - `message` is always returned from the factory function — it is part of the return value, not a separate input
-- `cause` is not special — if needed, it's just another field
+- `cause: unknown` is the recommended way to wrap caught errors — call `extractErrorMessage(cause)` inside the message template, not at the call site
 - Only `name` is a reserved key — prevented by `NoReservedKeys` at compile time
 - Multiple errors can be grouped in a single `defineErrors` call, or defined individually
 
@@ -154,6 +179,70 @@ export function createClipboardServiceExtension(): ClipboardService {
       }),
   };
 }
+
+## Anti-Pattern: Discriminated Union Inputs in Error Factories
+
+When a `defineErrors` variant's input contains a string literal union field — such as `reason: 'a' | 'b' | 'c'` or `operation: 'read' | 'write'` — that field is acting as a **sub-discriminant**, duplicating the role that variant names already serve. This is a code smell. Split into separate variants instead.
+
+### Problems
+
+**1. Double narrowing.** Consumers must first narrow on `error.name`, then narrow again on the sub-discriminant field. This defeats the purpose of the tagged union pattern, where a single `switch` on `name` should give you everything you need:
+
+```typescript
+// Consumers are forced into two levels of narrowing
+if (error.name === 'InvalidAccelerator') {
+  if (error.reason === 'invalid_format') {
+    // now we finally know what happened
+  }
+}
+```
+
+**2. Dishonest types.** Fields start becoming optional because "some reasons don't use that field". The type says `accelerator?: string`, but the real contract is "required when reason is `'invalid_format'`, meaningless otherwise." TypeScript cannot express this conditional relationship within a single variant, so the type lies about the shape of the data.
+
+**3. Message lookup tables.** A `const messages = { ... }` object inside the factory function is a strong signal that the variant is doing too much. Each lookup entry is really its own error with its own message template — it should be its own variant.
+
+### Example
+
+Before — a single variant with a string literal union acting as a sub-discriminant:
+
+```typescript
+const ShortcutError = defineErrors({
+  InvalidAccelerator: (input: {
+    reason: 'invalid_format' | 'no_key_code' | 'multiple_key_codes';
+    accelerator?: string;
+  }) => {
+    const messages = {
+      invalid_format: `Invalid format: '${input.accelerator}'`,
+      no_key_code: 'No valid key code found',
+      multiple_key_codes: 'Multiple key codes not allowed',
+    };
+    return { message: messages[input.reason], ...input };
+  },
+});
+```
+
+After — each case becomes its own variant with honest, minimal types:
+
+```typescript
+const ShortcutError = defineErrors({
+  InvalidFormat: ({ accelerator }: { accelerator: string }) => ({
+    message: `Invalid accelerator format: '${accelerator}'`,
+    accelerator,
+  }),
+  NoKeyCode: () => ({
+    message: 'No valid key code found in pressed keys',
+  }),
+  MultipleKeyCodes: () => ({
+    message: 'Multiple key codes not allowed in accelerator',
+  }),
+});
+```
+
+Consumers now get full type information from a single `switch` on `error.name`, with no optional fields and no second level of narrowing.
+
+### Exception
+
+If the string literal field is genuinely metadata for logging or telemetry — and no consumer ever switches on it — keeping it as a field is fine. The test is straightforward: **does any consumer narrow on this field?** If yes, it should be a variant name. If no consumer ever branches on it, it is metadata, not a discriminant, and a field is the right place for it.
 
 ## Error Classification Framework
 

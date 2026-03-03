@@ -82,85 +82,81 @@ const order = logResult(await getOrder("456"), "Get Order");
 
 ### Union Error Types
 
-Create flexible error unions for functions that can fail in multiple ways:
+Define separate error namespaces per domain concern. TypeScript unions compose them at function boundaries — no wrapper type needed:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-// Define specific error types
-const UserError = defineErrors({
-  Validation: ({ message }: { message: string }) => ({ message }),
-  Network: ({ message }: { message: string }) => ({ message }),
-  Auth: ({ message }: { message: string }) => ({ message }),
+// Each namespace groups related errors
+const ValidationError = defineErrors({
+  InvalidField: ({ field }: { field: string }) => ({
+    message: `Invalid value for ${field}`,
+    field,
+  }),
 });
+type ValidationError = InferErrors<typeof ValidationError>;
 
-type ValidationError = InferError<typeof UserError.Validation>;
-type NetworkError = InferError<typeof UserError.Network>;
-type AuthError = InferError<typeof UserError.Auth>;
+const NetworkError = defineErrors({
+  RequestFailed: ({ cause }: { cause: unknown }) => ({
+    message: `Network request failed: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+type NetworkError = InferErrors<typeof NetworkError>;
 
-// Union type for operations that can fail in multiple ways
-type UserOperationError = ValidationError | NetworkError | AuthError;
+const AuthError = defineErrors({
+  NotAuthenticated: () => ({
+    message: 'Not authenticated',
+  }),
+});
+type AuthError = InferErrors<typeof AuthError>;
 
+// The union happens in the function signature — this IS the composition
 export async function updateUserProfile(
   userId: string,
   updates: UserProfileUpdates
-): Promise<Result<UserProfile, UserOperationError>> {
-  // Validation
+): Promise<Result<UserProfile, ValidationError | NetworkError | AuthError>> {
   if (!updates.email?.includes('@')) {
-    return UserError.Validation({
-      message: 'Invalid email address',
-    });
+    return ValidationError.InvalidField({ field: 'email' });
   }
 
-  // Authentication check
   if (!isAuthenticated()) {
-    return UserError.Auth({
-      message: 'Not authenticated',
-    });
+    return AuthError.NotAuthenticated();
   }
 
-  // Network operation
   return tryAsync({
     try: () => api.updateUser(userId, updates),
-    catch: (error) => UserError.Network({
-      message: 'Network request failed',
-    })
+    catch: (error) => NetworkError.RequestFailed({ cause: error })
   });
 }
 ```
 
 ### Discriminated Error Handling
 
-Use TypeScript's discriminated unions for exhaustive error handling:
+Use destructuring and TypeScript's discriminated unions for exhaustive error handling:
 
 ```typescript
 async function handleUserUpdate(userId: string, updates: UserProfileUpdates) {
-  const result = await updateUserProfile(userId, updates);
+  const { data: profile, error } = await updateUserProfile(userId, updates);
 
-  if (result.error) {
-    // TypeScript knows result.error is UserOperationError
-    switch (result.error.name) {
-      case 'Validation':
-        // TypeScript knows this is the Validation variant
-        showFieldError(result.error.field, result.error.message);
+  if (error) {
+    switch (error.name) {
+      case 'InvalidField':
+        showFieldError(error.field, error.message);
         break;
-      case 'Network':
-        // TypeScript knows this is the Network variant
-        showNetworkError(result.error.message);
+      case 'RequestFailed':
+        showNetworkError(error.message);
         break;
-      case 'Auth':
-        // TypeScript knows this is the Auth variant
+      case 'NotAuthenticated':
         redirectToLogin();
         break;
       default:
-        // TypeScript ensures this is never reached
-        const _exhaustive: never = result.error;
+        const _exhaustive: never = error;
     }
     return;
   }
 
-  // result.data is UserProfile
-  showSuccessMessage(`Profile updated: ${result.data.email}`);
+  showSuccessMessage(`Profile updated: ${profile.email}`);
 }
 ```
 
@@ -229,8 +225,8 @@ export function createOpenAITranscriptionService(apiKey: string): TranscriptionS
           model: options.model,
           language: options.language,
         }),
-        catch: (error) => TranscriptionError.Operation({
-          provider: 'openai', model: options.model,
+        catch: (error) => TranscriptionError.OpenAI({
+          model: options.model, cause: error,
         })
       });
     },
@@ -396,7 +392,7 @@ const transcribeBlob = defineMutation({
       default: {
         // TypeScript ensures exhaustive checking
         const _exhaustive: never = provider;
-        return TranscriptionError.Operation({
+        return TranscriptionError.UnsupportedProvider({
           provider,
         });
       }
@@ -431,8 +427,8 @@ export function createRecordingService(): CRUDService<
     async create(input) {
       return tryAsync({
         try: () => database.recordings.create(input),
-        catch: (error) => DatabaseError.Operation({
-          operation: 'create', input,
+        catch: (error) => DatabaseError.Create({
+          cause: error,
         })
       });
     },
@@ -440,8 +436,8 @@ export function createRecordingService(): CRUDService<
     async getById(id) {
       return tryAsync({
         try: () => database.recordings.findById(id),
-        catch: (error) => DatabaseError.Operation({
-          operation: 'getById', id,
+        catch: (error) => DatabaseError.Lookup({
+          id, cause: error,
         })
       });
     },
@@ -569,6 +565,79 @@ const ApiError = defineErrors({
 });
 // Use fields for specifics
 ```
+
+### ❌ String Literal Unions as Sub-Discriminants
+
+```typescript
+// DON'T: string literal union inside a variant forces double narrowing
+const FileError = defineErrors({
+  Operation: ({ kind }: { kind: 'not_found' | 'permission_denied' | 'disk_full' }) => ({
+    message: `File operation failed: ${kind}`,
+    kind,
+  }),
+});
+
+// Consumers must narrow twice:
+if (error.name === 'Operation' && error.kind === 'not_found') { /* ... */ }
+
+// DO: each failure case is its own variant
+const FileError = defineErrors({
+  NotFound: ({ path }: { path: string }) => ({
+    message: `File not found: ${path}`,
+    path,
+  }),
+  PermissionDenied: ({ path, user }: { path: string; user: string }) => ({
+    message: `Permission denied for "${path}"`,
+    path,
+    user,
+  }),
+  DiskFull: ({ volumeName }: { volumeName: string }) => ({
+    message: `Disk full on volume "${volumeName}"`,
+    volumeName,
+  }),
+});
+
+// Consumers narrow once:
+switch (error.name) {
+  case 'NotFound': console.log(error.path); break;
+  case 'PermissionDenied': console.log(error.user); break;
+  case 'DiskFull': console.log(error.volumeName); break;
+}
+```
+
+When each failure case is its own variant, TypeScript gives you the right fields automatically after a single `switch` — no second level of narrowing, no optional fields that "some cases don't use." If you are coming from Rust, this is the same instinct as making each case its own enum variant rather than nesting enums.
+
+### ❌ Transforming Cause at the Call Site
+
+```typescript
+// DON'T: every call site must remember to transform
+const AudioError = defineErrors({
+  PlaySound: ({ reason }: { reason: string }) => ({
+    message: `Failed to play sound: ${reason}`,
+    reason,
+  }),
+});
+
+try { /* ... */ } catch (error) {
+  return AudioError.PlaySound({ reason: extractErrorMessage(error) });
+}
+```
+
+```typescript
+// DO: constructor accepts raw cause, transforms internally
+const AudioError = defineErrors({
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+try { /* ... */ } catch (error) {
+  return AudioError.PlaySound({ cause: error });
+}
+```
+
+The constructor owns the message template, so it should own the cause transformation too. Accepting `cause: unknown` keeps the raw error available for programmatic inspection while producing a clean message. This mirrors Rust's `#[from]` pattern where the enum variant handles conversion.
 
 ### ❌ Missing Result Annotations
 
