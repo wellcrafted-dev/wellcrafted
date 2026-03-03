@@ -570,6 +570,79 @@ const ApiError = defineErrors({
 // Use fields for specifics
 ```
 
+### ❌ String Literal Unions as Sub-Discriminants
+
+```typescript
+// DON'T: string literal union inside a variant forces double narrowing
+const FileError = defineErrors({
+  Operation: ({ kind }: { kind: 'not_found' | 'permission_denied' | 'disk_full' }) => ({
+    message: `File operation failed: ${kind}`,
+    kind,
+  }),
+});
+
+// Consumers must narrow twice:
+if (error.name === 'Operation' && error.kind === 'not_found') { /* ... */ }
+
+// DO: each failure case is its own variant
+const FileError = defineErrors({
+  NotFound: ({ path }: { path: string }) => ({
+    message: `File not found: ${path}`,
+    path,
+  }),
+  PermissionDenied: ({ path, user }: { path: string; user: string }) => ({
+    message: `Permission denied for "${path}"`,
+    path,
+    user,
+  }),
+  DiskFull: ({ volumeName }: { volumeName: string }) => ({
+    message: `Disk full on volume "${volumeName}"`,
+    volumeName,
+  }),
+});
+
+// Consumers narrow once:
+switch (error.name) {
+  case 'NotFound': console.log(error.path); break;
+  case 'PermissionDenied': console.log(error.user); break;
+  case 'DiskFull': console.log(error.volumeName); break;
+}
+```
+
+When each failure case is its own variant, TypeScript gives you the right fields automatically after a single `switch` — no second level of narrowing, no optional fields that "some cases don't use." If you are coming from Rust, this is the same instinct as making each case its own enum variant rather than nesting enums.
+
+### ❌ Transforming Cause at the Call Site
+
+```typescript
+// DON'T: every call site must remember to transform
+const AudioError = defineErrors({
+  PlaySound: ({ reason }: { reason: string }) => ({
+    message: `Failed to play sound: ${reason}`,
+    reason,
+  }),
+});
+
+try { /* ... */ } catch (error) {
+  return AudioError.PlaySound({ reason: extractErrorMessage(error) });
+}
+```
+
+```typescript
+// DO: constructor accepts raw cause, transforms internally
+const AudioError = defineErrors({
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+try { /* ... */ } catch (error) {
+  return AudioError.PlaySound({ cause: error });
+}
+```
+
+The constructor owns the message template, so it should own the cause transformation too. Accepting `cause: unknown` keeps the raw error available for programmatic inspection while producing a clean message. This mirrors Rust's `#[from]` pattern where the enum variant handles conversion.
+
 ### ❌ Missing Result Annotations
 
 ```typescript

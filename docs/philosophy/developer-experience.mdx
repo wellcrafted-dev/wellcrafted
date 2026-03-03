@@ -530,22 +530,26 @@ if (errors.length > 0) {
 
 ## Wrapping Legacy Code
 
-You don't need to rewrite your entire codebase. Use `tryAsync` to wrap exception-throwing functions:
+You don't need to rewrite your entire codebase. Use `tryAsync` with `defineErrors` to wrap exception-throwing functions:
 
 ```typescript
-async function getUser(id: string): Promise<Result<User, UserError>> {
+const UserError = defineErrors({
+  Fetch: ({ userId, cause }: { userId: string; cause: unknown }) => ({
+    message: `Failed to fetch user ${userId}: ${extractErrorMessage(cause)}`,
+    userId,
+    cause,
+  }),
+});
+
+async function getUser(id: string) {
   return tryAsync({
     try: () => legacyGetUser(id),
-    catch: (error): UserError => ({
-      name: "UserError",
-      message: extractErrorMessage(error),
-      userId: id,
-    })
+    catch: (error) => UserError.Fetch({ userId: id, cause: error }),
   });
 }
 ```
 
-This lets you adopt Result types incrementally — new code uses Results directly, legacy code gets wrapped at the boundary.
+This lets you adopt Result types incrementally — new code uses Results directly, legacy code gets wrapped at the boundary. The factory owns the message template and the `extractErrorMessage` call, so call sites stay clean.
 
 ### Framework Integration
 

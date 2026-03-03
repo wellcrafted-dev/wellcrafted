@@ -94,20 +94,20 @@ RecorderError.Busy();
 // → Err<{ name: 'Busy', message: 'A recording is already in progress' }>
 ```
 
-### Tier 2: Reason-Only — `reason` carries the dynamic context
+### Tier 2: Cause-Wrapping — `cause` carries the raw caught error
 
-Use when the only dynamic content is a stringified caught error.
+Use when wrapping a caught error. Accept `cause: unknown` and call `extractErrorMessage` inside the message template — not at the call site.
 
 ```typescript
 const SoundError = defineErrors({
-  Play: ({ reason }: { reason: string }) => ({
-    message: `Failed to play sound: ${reason}`,
-    reason,
+  Play: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 });
 
-SoundError.Play({ reason: extractErrorMessage(error) });
-// → Err<{ name: 'Play', message: 'Failed to play sound: device busy', reason: 'device busy' }>
+SoundError.Play({ cause: error });
+// → Err<{ name: 'Play', message: 'Failed to play sound: device busy', cause: <original error> }>
 ```
 
 ### Tier 3: Structured Data — domain-specific fields
@@ -188,21 +188,65 @@ const parsed = JSON.parse(JSON.stringify(result.error));
 
 **Not allowed:** `Date` instances, `Error` instances, class instances, functions, `undefined` values, symbols.
 
-## Cause Is Just Another Field
+## Wrapping Caught Errors with `cause: unknown`
 
-There's no special `cause` machinery. If an error type needs to carry a cause, it's just another field:
+When an error type needs to wrap a caught error, accept `cause: unknown` and extract the message inside the factory:
 
 ```typescript
 const DbError = defineErrors({
-  Backend: ({ backend, cause }: { backend: string; cause: string }) => ({
-    message: `${backend} failed`,
+  Backend: ({ backend, cause }: { backend: string; cause: unknown }) => ({
+    message: `${backend} failed: ${extractErrorMessage(cause)}`,
     backend,
     cause,
   }),
 });
 
-DbError.Backend({ backend: 'postgres', cause: 'connection timeout' });
+DbError.Backend({ backend: 'postgres', cause: error });
 ```
+
+Call sites stay clean — pass the raw caught error, no transformation needed:
+
+```typescript
+try {
+  await db.query(sql);
+} catch (error) {
+  return DbError.Backend({ backend: 'postgres', cause: error });
+}
+```
+
+The constructor owns the message template, so it should also own the cause-to-string transformation. This keeps call sites minimal and preserves the raw `cause` for programmatic access.
+
+## Avoid String Literal Unions in Variant Inputs
+
+When a variant's input includes a string literal union like `reason: 'timeout' | 'refused' | 'dns'`, that field is acting as a sub-discriminant — duplicating what variant names already provide. Split into separate variants instead:
+
+```typescript
+// Avoid: consumers must narrow on name AND reason
+const NetworkError = defineErrors({
+  Request: ({ reason }: { reason: 'timeout' | 'refused' | 'dns' }) => ({
+    message: `Request failed: ${reason}`,
+    reason,
+  }),
+});
+
+// Prefer: each failure is its own variant with honest types
+const NetworkError = defineErrors({
+  Timeout: ({ duration }: { duration: number }) => ({
+    message: `Request timed out after ${duration}ms`,
+    duration,
+  }),
+  Refused: ({ host }: { host: string }) => ({
+    message: `Connection refused by ${host}`,
+    host,
+  }),
+  DnsFailure: ({ hostname }: { hostname: string }) => ({
+    message: `DNS lookup failed for ${hostname}`,
+    hostname,
+  }),
+});
+```
+
+Freeform `string` fields (like `reason: string` for a human-readable description) are fine. The anti-pattern is specifically **literal unions** that consumers would need to narrow on. If no consumer ever switches on a string literal field (it is purely metadata for logging), keeping it as a field is acceptable.
 
 ## Type Annotations with `InferError` and `InferErrors`
 

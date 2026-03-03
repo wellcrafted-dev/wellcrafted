@@ -152,21 +152,25 @@ RecordingError.RecorderBusy();
 // → Err({ name: 'RecorderBusy', message: 'A recording is already in progress' })
 ```
 
-### Tier 2: Reason-Only Error
+### Tier 2: Cause-Wrapping Error
 
-For errors that just need a human-readable reason string:
+For errors that wrap a caught error. Accept `cause: unknown` and call `extractErrorMessage` inside the message template — not at the call site:
 
 ```typescript
 const AudioError = defineErrors({
-  PlaySound: ({ reason }: { reason: string }) => ({
-    message: `Failed to play sound: ${reason}`,
-    reason,
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 });
 
-AudioError.PlaySound({ reason: 'Audio context not initialized' });
-// → Err({ name: 'PlaySound', message: 'Failed to play sound: Audio context not initialized', reason: 'Audio context not initialized' })
+AudioError.PlaySound({ cause: error });
+// → Err({ name: 'PlaySound', message: 'Failed to play sound: Audio context not initialized', cause: <original error> })
 ```
+
+<Tip>
+This keeps call sites clean (`{ cause: error }`) and centralizes message extraction where the message is composed. Avoid **string literal unions** like `reason: 'timeout' | 'refused' | 'dns_error'` acting as sub-discriminants inside a variant. If consumers would need to narrow on that field, each value should be its own variant. See [Avoid String Literal Unions as Sub-Discriminants](#avoid-string-literal-unions-as-sub-discriminants) below.
+</Tip>
 
 ### Tier 3: Structured Data Error
 
@@ -187,6 +191,62 @@ HttpError.Response({ status: 404 });
 HttpError.Response({ status: 500, reason: 'Internal server error' });
 // → Err({ name: 'Response', message: 'HTTP 500: Internal server error', status: 500, reason: 'Internal server error' })
 ```
+
+## Wrapping Caught Errors with extractErrorMessage
+
+When a `catch` block hands you `unknown`, the constructor should own the conversion — not the call site.
+
+### Preferred: Transform Inside the Constructor
+
+Accept `cause: unknown`, call `extractErrorMessage(cause)` in the message template, and store the raw `cause` for programmatic access:
+
+```typescript
+import { defineErrors, extractErrorMessage } from '@wellcrafted/result/error';
+
+const AudioError = defineErrors({
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+// Call site stays clean — just pass the raw error
+try {
+  await audioContext.play(soundFile);
+} catch (error) {
+  return AudioError.PlaySound({ cause: error });
+}
+```
+
+The resulting error carries both a human-readable `message` and the original `cause`:
+
+```json
+{
+  "name": "PlaySound",
+  "message": "Failed to play sound: The AudioContext was not allowed to start",
+  "cause": { /* original error object */ }
+}
+```
+
+### Anti-Pattern: Transform at the Call Site
+
+```typescript
+// Don't do this — every call site must remember to call extractErrorMessage
+try {
+  await audioContext.play(soundFile);
+} catch (error) {
+  return AudioError.PlaySound({ reason: extractErrorMessage(error) });
+}
+```
+
+This scatters presentation logic across every `catch` block instead of centralizing it in the one place that defines the message format.
+
+### Why
+
+- **Constructor owns the template.** It already decides the message format — it should also decide how raw inputs become strings.
+- **Call sites pass raw data.** Callers hand over what they have; the constructor does the rest.
+- **`cause` stays available.** Storing `cause: unknown` means consumers can inspect the original error programmatically, not just read a stringified version.
+- **Same principle as Rust's `#[from]`.** In `thiserror`, the `#[from]` attribute tells the variant to handle conversion automatically. The call site just wraps; the definition owns the transform.
 
 ## Error Chaining
 
@@ -364,7 +424,7 @@ Each constructor function receives the input fields and returns an object with `
 ```typescript
 const FileError = defineErrors({
   // Constructor computes message and returns fields
-  Write: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
+  Write: ({ path, operation }: { path: string; operation: string }) => ({
     message: `${operation} failed for ${path}`,
     path,
     operation,
@@ -395,7 +455,7 @@ When you know what information is **always** needed:
 
 ```typescript
 const FileError = defineErrors({
-  Write: ({ path, operation }: { path: string; operation: 'read' | 'write' | 'delete' }) => ({
+  Write: ({ path, operation }: { path: string; operation: string }) => ({
     message: `${operation} failed for ${path}`,
     path,
     operation,
@@ -474,10 +534,10 @@ const AppError = defineErrors({
     message: 'Network request failed',
   }),
 
-  // Tier 2: Reason-only
-  Parse: ({ reason }: { reason: string }) => ({
-    message: `Parse failed: ${reason}`,
-    reason,
+  // Tier 2: Cause-wrapping
+  Parse: ({ cause }: { cause: unknown }) => ({
+    message: `Parse failed: ${extractErrorMessage(cause)}`,
+    cause,
   }),
 
   // Tier 3: Structured data
@@ -497,7 +557,7 @@ const AppError = defineErrors({
 
 // Access variants via the namespace — each returns Err<...> directly
 // AppError.Network()
-// AppError.Parse({ reason: '...' })
+// AppError.Parse({ cause: error })
 // AppError.File({ path: '...', operation: '...' })
 // AppError.Log({ file: '...', line: 42 })
 
@@ -599,7 +659,41 @@ Readonly<{ name: "InvalidCredentials"; message: string; username: string }>
 Readonly<{ name: "SessionExpired"; message: string; sessionId: string }>
 ```
 
-### 3. Use Union Types for Function Signatures
+### 3. Avoid String Literal Unions as Sub-Discriminants
+
+If you find yourself adding a field like `reason: 'timeout' | 'refused' | 'dns'` inside a single variant, that field is acting as a second discriminant — duplicating what variant names already do. Split into separate variants instead.
+
+This is a common mistake, especially if you are coming from a codebase where errors were loosely typed strings. The instinct to group related failures under one name is natural, but it forces consumers into double narrowing (`switch` on `name`, then `if` on `reason`) and often leads to dishonest optional fields.
+
+```typescript
+// Avoid: sub-discriminant inside a variant
+const NetworkError = defineErrors({
+  Request: ({ reason }: { reason: 'timeout' | 'refused' | 'dns' }) => ({
+    message: `Request failed: ${reason}`,
+    reason,
+  }),
+});
+
+// Prefer: each failure is its own variant
+const NetworkError = defineErrors({
+  Timeout: ({ duration }: { duration: number }) => ({
+    message: `Request timed out after ${duration}ms`,
+    duration,
+  }),
+  ConnectionRefused: ({ host }: { host: string }) => ({
+    message: `Connection refused by ${host}`,
+    host,
+  }),
+  DnsFailure: ({ hostname }: { hostname: string }) => ({
+    message: `DNS lookup failed for ${hostname}`,
+    hostname,
+  }),
+});
+```
+
+Freeform `string` fields for metadata are fine — the anti-pattern is specifically **string literal unions** that consumers would switch on. For wrapping caught errors, prefer `cause: unknown` with `extractErrorMessage(cause)` inside the message template.
+
+### 4. Use Union Types for Function Signatures
 
 Make all possible errors visible:
 
@@ -613,7 +707,7 @@ function authenticateUser(
 }
 ```
 
-### 4. Handle Errors at the Right Level
+### 5. Handle Errors at the Right Level
 
 Transform errors where you can add context:
 
@@ -642,7 +736,7 @@ async function getUserProfile(userId: string): Result<Profile, InferErrors<typeo
 }
 ```
 
-### 5. Design for Debugging
+### 6. Design for Debugging
 
 Structure your errors to answer these questions:
 - **What went wrong?** (message)

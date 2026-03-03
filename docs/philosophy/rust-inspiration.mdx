@@ -42,11 +42,11 @@ A single type, short variant names under a descriptive namespace, typed fields p
 Here is the same type with `defineErrors`:
 
 ```typescript
-import { defineErrors, type InferErrors } from 'wellcrafted/error';
+import { defineErrors, extractErrorMessage, type InferErrors } from 'wellcrafted/error';
 
 const HttpError = defineErrors({
-  Connection: ({ cause }: { cause: string }) => ({
-    message: `Failed to connect: ${cause}`,
+  Connection: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to connect: ${extractErrorMessage(cause)}`,
     cause,
   }),
 
@@ -55,8 +55,8 @@ const HttpError = defineErrors({
     status,
   }),
 
-  Parse: ({ cause }: { cause: string }) => ({
-    message: `Failed to parse response body: ${cause}`,
+  Parse: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to parse response body: ${extractErrorMessage(cause)}`,
     cause,
   }),
 });
@@ -71,9 +71,9 @@ Read it next to the Rust version. The structure is nearly identical. `HttpError`
 | Rust concept | TypeScript equivalent |
 |---|---|
 | `enum HttpError` | `const HttpError = defineErrors(...)` |
-| `Connection { cause: String }` | `Connection: ({ cause }: { cause: string }) => (...)` |
-| `#[error("Failed: {cause}")]` | `` message: `Failed: ${cause}` `` |
-| `HttpError::Connection { cause: "timeout".into() }` | `HttpError.Connection({ cause: "timeout" })` |
+| `Connection { cause: String }` | `Connection: ({ cause }: { cause: unknown }) => (...)` |
+| `#[error("Failed: {cause}")]` | `` message: `Failed: ${extractErrorMessage(cause)}` `` |
+| `HttpError::Connection { cause: "timeout".into() }` | `HttpError.Connection({ cause: error })` |
 | `match error { Connection { cause } => ... }` | `switch (error.name) { case 'Connection': ... }` |
 | `fn handle(err: HttpError)` | `function handle(err: HttpError)` |
 
@@ -81,7 +81,7 @@ Read it next to the Rust version. The structure is nearly identical. `HttpError`
 
 ```
 Rust: HttpError::Connection { cause: "timeout".into() }
-TS:   HttpError.Connection({ cause: "timeout" })
+TS:   HttpError.Connection({ cause: error })
 ```
 
 ### Discrimination
@@ -112,11 +112,11 @@ TypeScript is a different language with different constraints. Here is where the
 
 ### Factory Functions Instead of Struct Literals
 
-In Rust, `HttpError::Connection { cause: "timeout".into() }` is a struct literal — you are directly constructing a value. TypeScript has no equivalent syntax. So `defineErrors` gives you factory functions: `HttpError.Connection({ cause: "timeout" })`. The call site looks nearly identical; the only difference is the parentheses.
+In Rust, `HttpError::Connection { cause: "timeout".into() }` is a struct literal — you are directly constructing a value. TypeScript has no equivalent syntax. So `defineErrors` gives you factory functions: `HttpError.Connection({ cause: error })`. The call site looks nearly identical; the only difference is the parentheses.
 
 ### Template Literals Instead of Proc Macros
 
-Rust's `#[error("Failed to connect: {cause}")]` is a compile-time format string powered by a procedural macro. TypeScript has no proc macros. Template literals — `` `Failed to connect: ${cause}` `` — are the natural equivalent. They run at construction time rather than compile time, but the result is the same: a human-readable message derived from the variant's fields.
+Rust's `#[error("Failed to connect: {cause}")]` is a compile-time format string powered by a procedural macro. TypeScript has no proc macros. Template literals — `` `Failed to connect: ${extractErrorMessage(cause)}` `` — are the natural equivalent. When `cause` is `unknown` (a raw caught error), `extractErrorMessage` extracts the human-readable string inside the template. They run at construction time rather than compile time, but the result is the same: a human-readable message derived from the variant's fields.
 
 ### `Err<...>` Wrapping Instead of Direct Returns
 
@@ -159,6 +159,115 @@ const HttpError = defineErrors({
 This is the pattern that was missing from TypeScript error handling. Not just a way to make errors with `name` fields — but a way to define a family of errors under a shared namespace with the same structural clarity that Rust's enum system provides.
 
 **The enum name is the namespace. The variant name is the discriminant. Everything else follows from there.**
+
+## Variant Names Replace Sub-Discriminants
+
+In Rust, you would never write this:
+
+```rust
+enum NetworkError {
+    Request { reason: RequestReason },
+}
+
+enum RequestReason {
+    Timeout,
+    Refused,
+    DnsFailure,
+}
+```
+
+That nesting is pointless. You would write:
+
+```rust
+enum NetworkError {
+    Timeout { duration: Duration },
+    Refused { host: String },
+    DnsFailure { hostname: String },
+}
+```
+
+Each failure case gets its own variant. The enum's discriminant does the work. There is no inner enum to match on separately.
+
+The same principle applies in TypeScript. When a `defineErrors` variant has a string literal union field like `reason: 'timeout' | 'refused' | 'dns'`, that field is an inner enum in disguise. Consumers have to narrow twice — once on `error.name`, once on `error.reason` — which defeats the purpose of having a discriminated union in the first place.
+
+```typescript
+// The Rust instinct is correct here: make each case a variant
+const NetworkError = defineErrors({
+  Timeout: ({ duration }: { duration: number }) => ({
+    message: `Request timed out after ${duration}ms`,
+    duration,
+  }),
+  Refused: ({ host }: { host: string }) => ({
+    message: `Connection refused by ${host}`,
+    host,
+  }),
+  DnsFailure: ({ hostname }: { hostname: string }) => ({
+    message: `DNS lookup failed for ${hostname}`,
+    hostname,
+  }),
+});
+```
+
+If you are coming from Rust, trust your instincts on this. The pattern that feels right in Rust — one variant per failure case, fields specific to that case — is exactly right here too.
+
+## Constructor Owns the Conversion (Rust's `#[from]`)
+
+In Rust, `thiserror` has a `#[from]` attribute that tells a variant to own the conversion from another error type:
+
+```rust
+#[derive(Error, Debug)]
+enum AudioError {
+    #[error("Failed to play sound: {0}")]
+    PlaySound(#[from] IoError),
+}
+```
+
+The call site never converts anything. You pass the raw `IoError` and the variant handles it:
+
+```rust
+// The variant owns the conversion — not the call site
+let raw: IoError = ...;
+let err: AudioError = raw.into(); // From impl does the work
+```
+
+This is a deliberate design choice. The error definition knows how to present itself. The call site just hands over the raw material.
+
+The same principle applies with `defineErrors`. The constructor function is where conversion logic lives — not the call site:
+
+```typescript
+import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
+
+const AudioError = defineErrors({
+  PlaySound: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to play sound: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+// Call site — just pass the raw error, like Rust's From impl
+try {
+  playSound(file);
+} catch (error) {
+  return AudioError.PlaySound({ cause: error });
+}
+```
+
+The `extractErrorMessage` call lives inside the constructor, not at the call site. The variant knows how to turn an `unknown` cause into a human-readable message. The caller just passes `{ cause: error }` and moves on.
+
+The anti-pattern is doing the conversion at the call site:
+
+```typescript
+// Don't do this — no Rust equivalent because Rust wouldn't let you
+try {
+  playSound(file);
+} catch (error) {
+  return AudioError.PlaySound({ reason: extractErrorMessage(error) });
+}
+```
+
+This scatters formatting logic across every `catch` block. If you later change how `PlaySound` presents its message, you have to find every call site. With `#[from]` in Rust, there is exactly one place where the conversion is defined. With `extractErrorMessage` inside the constructor, there is exactly one place in TypeScript too.
+
+The rule: **the constructor owns the conversion**. Call sites pass raw inputs. The variant decides how to present them.
 
 ---
 
