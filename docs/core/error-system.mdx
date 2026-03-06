@@ -48,7 +48,7 @@ type AnyTaggedError = { name: string; message: string };
 
 ### `name` — The Discriminant
 
-This is your error's unique identifier and the key to pattern matching. Use it in `if` statements and `switch` statements to handle different error types:
+This is your error's unique identifier and the key to pattern matching — the same `.name` property every JavaScript `Error` already has. See [Why `name` and `message`](/philosophy/why-name-and-message) for why we follow this convention. Use it in `if` statements and `switch` statements to handle different error types:
 
 ```typescript
 const AppError = defineErrors({

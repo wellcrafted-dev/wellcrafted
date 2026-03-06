@@ -64,7 +64,9 @@
 						"group": "💭 Philosophy",
 						"pages": [
 							"philosophy/design-principles",
+							"philosophy/why-name-and-message",
 							"philosophy/rust-inspiration",
+							"philosophy/error-api-evolution",
 							"philosophy/developer-experience",
 							"philosophy/production-reliability",
 							"philosophy/brand-implementation"
