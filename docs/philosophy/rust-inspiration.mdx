@@ -1,12 +1,12 @@
 ---
-title: "Rust's thiserror in TypeScript"
-description: "How Rust's enum-based error handling inspired wellcrafted's defineErrors API"
+title: "defineErrors Is thiserror Without Macros"
+description: "How wellcrafted emulates Rust's thiserror in TypeScript using plain functions and type inference"
 icon: 'rust'
 ---
 
-# Rust's thiserror Pattern in TypeScript
+# `defineErrors` Is `thiserror` Without Macros
 
-wellcrafted's `defineErrors` is directly inspired by Rust's [`thiserror`](https://docs.rs/thiserror) crate. This page walks through the mapping so you can see exactly where the design comes from — and where it deliberately diverges.
+wellcrafted's `defineErrors` is directly modeled on Rust's [`thiserror`](https://docs.rs/thiserror) crate. The definition site looks almost identical. The construction syntax is nearly the same. The discrimination logic maps 1:1. The difference is that Rust uses compile-time procedural macros to generate code, and TypeScript doesn't have those. `defineErrors` gets the same result with plain functions and type inference.
 
 ## The Rust Starting Point
 
@@ -64,9 +64,9 @@ const HttpError = defineErrors({
 type HttpError = InferErrors<typeof HttpError>;
 ```
 
-Read it next to the Rust version. The structure is nearly identical. `HttpError` is the namespace. `Connection`, `Response`, `Parse` are short variant names. Each variant's fields are typed inline. The message sits right next to its definition.
+Read it next to the Rust version. The structure is nearly identical. `HttpError` is the namespace. `Connection`, `Response`, `Parse` are short variant names. Each variant's fields are typed inline. The message sits right next to its definition. No compile-time code generation produced this; it's just a config object with constructor functions. TypeScript infers the full type from `const` generics, so `InferErrors<typeof HttpError>` extracts the union of all variants without you writing a single type by hand.
 
-## What Maps 1:1
+## The Definition Site Is Nearly Identical
 
 | Rust concept | TypeScript equivalent |
 |---|---|
@@ -106,17 +106,35 @@ switch (error.name) {
 
 The `name` field on each error object is the discriminant. It is stamped automatically from the key you provide — `'Connection'`, `'Response'`, `'Parse'`. You never write it by hand; `defineErrors` handles it. That is directly analogous to how Rust stamps the variant identity into the enum value at construction time.
 
-## What Diverges and Why
+## Five Places Where the Languages Diverge
 
-TypeScript is a different language with different constraints. Here is where the two diverge and why.
+TypeScript doesn't have proc macros, ownership, struct literals, `match`, or the `?` operator. Each of these gaps has a JavaScript-native solution that preserves the ergonomics.
 
 ### Factory Functions Instead of Struct Literals
 
-In Rust, `HttpError::Connection { cause: "timeout".into() }` is a struct literal — you are directly constructing a value. TypeScript has no equivalent syntax. So `defineErrors` gives you factory functions: `HttpError.Connection({ cause: error })`. The call site looks nearly identical; the only difference is the parentheses.
+In Rust, `HttpError::Connection { cause: "timeout".into() }` is a struct literal. TypeScript has no struct syntax, so `defineErrors` gives you factory functions: `HttpError.Connection({ cause: error })`. The call site looks nearly identical; the only difference is the parentheses.
 
 ### Template Literals Instead of Proc Macros
 
-Rust's `#[error("Failed to connect: {cause}")]` is a compile-time format string powered by a procedural macro. TypeScript has no proc macros. Template literals — `` `Failed to connect: ${extractErrorMessage(cause)}` `` — are the natural equivalent. When `cause` is `unknown` (a raw caught error), `extractErrorMessage` extracts the human-readable string inside the template. They run at construction time rather than compile time, but the result is the same: a human-readable message derived from the variant's fields.
+This is the biggest adaptation. Rust's `#[error("Failed to connect: {cause}")]` is a compile-time format string powered by a procedural macro. The macro generates a `Display` impl at compile time with zero runtime cost. TypeScript has no compile-time code generation at all.
+
+Template literals are the pragmatic substitute. They run at construction time rather than compile time, but the definition-site experience is almost identical:
+
+```rust
+// Rust: proc macro generates Display impl
+#[error("Failed to connect: {cause}")]
+Connection { cause: String },
+```
+
+```typescript
+// TypeScript: template literal runs at construction time
+Connection: ({ cause }: { cause: unknown }) => ({
+  message: `Failed to connect: ${extractErrorMessage(cause)}`,
+  cause,
+}),
+```
+
+Both co-locate the message template with the variant definition. Both interpolate fields by name. The TypeScript version has one advantage Rust doesn't: `extractErrorMessage` can handle `unknown` caught errors at the definition site, so call sites never do string conversion. In Rust, `cause` must already be a `String`. In TypeScript, the constructor accepts the raw `unknown` and handles the conversion internally.
 
 ### `Err<...>` Wrapping Instead of Direct Returns
 
@@ -268,6 +286,33 @@ try {
 This scatters formatting logic across every `catch` block. If you later change how `PlaySound` presents its message, you have to find every call site. With `#[from]` in Rust, there is exactly one place where the conversion is defined. With `extractErrorMessage` inside the constructor, there is exactly one place in TypeScript too.
 
 The rule: **the constructor owns the conversion**. Call sites pass raw inputs. The variant decides how to present them.
+
+## TypeScript's Type System Does What Macros Would
+
+The pragmatic bet behind `defineErrors` is that TypeScript's type inference can replace Rust's compile-time code generation for this specific use case. Rust's `thiserror` uses proc macros to generate `Display`, `Error`, and `From` implementations. `defineErrors` uses `const` generic inference and mapped types to achieve the same outcomes:
+
+```typescript
+// TypeScript infers every variant's type from the config object
+const HttpError = defineErrors({
+  Connection: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to connect: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+  Response: ({ status }: { status: number }) => ({
+    message: `HTTP ${status}`,
+    status,
+  }),
+});
+
+// InferErrors extracts the discriminated union — no manual type definitions
+type HttpError = InferErrors<typeof HttpError>;
+// = Readonly<{ name: 'Connection'; message: string; cause: unknown }>
+// | Readonly<{ name: 'Response'; message: string; status: number }>
+```
+
+In Rust, the proc macro reads your enum definition and generates code. In TypeScript, `const` generic inference reads your config object and infers types. Both produce the same result: a namespace of constructors and a union type of all variants, derived from a single source of truth. The definition is the type. No duplication, no drift.
+
+The ten lines of `defineErrors` runtime do what `thiserror`'s proc macro does: iterate the variants, stamp each one with its name, and produce ready-to-use constructors. The type system does the rest. That's the whole trick: plain functions for runtime, type inference for compile time, and the definition site looks like `thiserror` because it *is* `thiserror`—just without the macro.
 
 ---
 
