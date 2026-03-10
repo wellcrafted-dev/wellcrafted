@@ -1,0 +1,107 @@
+---
+title: "wellcrafted Is for the Pragmatic Almost-Functional Programmer"
+description: "You like Rust's error handling. You respect Effect. You just want something that works with TypeScript instead of against it."
+icon: 'user-check'
+---
+
+# wellcrafted Is for the Pragmatic Almost-Functional Programmer
+
+You've read about Result types. You've seen Rust's `thiserror` and thought "I want that in TypeScript." You may have tried Effect, neverthrow, or fp-ts. You understood the ideas. You liked the ideas. But somewhere between the method chains and the generators, you went back to `try-catch` and moved on with your life.
+
+You're not alone, and you're not wrong. wellcrafted was built for exactly this gap.
+
+---
+
+## The Profile
+
+You probably recognize yourself in a few of these:
+
+You think `Promise<User>` is lying. A function that hits a database can fail, and the return type should say so. You've been bitten by unhandled promise rejections that crashed production at 2 AM because nothing in the type signature warned you.
+
+You've looked at Rust's error handling with genuine envy. `thiserror` defining error variants in five lines, the `?` operator propagating errors without ceremony, `match` expressions that the compiler checks exhaustively. You want that, but in TypeScript.
+
+You tried an FP error handling library and it felt like writing in a foreign language. The types were right, the code compiled, but every function became a wrapper around a wrapper. Your team's PRs slowed down. New contributors couldn't read the error handling code without a tutorial.
+
+You went back to `try-catch` not because you think it's better, but because the alternative was worse in practice. The cognitive tax wasn't paying off for your team.
+
+If that's you, here's the deal: you don't have to choose between "untyped try-catch" and "full functional runtime." There's a middle ground that gives you the one thing you actually wanted—typed, named errors—without the parts that didn't work.
+
+---
+
+## What You Wanted vs. What You Got
+
+The core appeal of FP error handling has always been three things: errors in the type signature, exhaustive handling, and named variants you can branch on. Everything else—the method chains, the generators, the effect system—is machinery to support those three things in languages that have the features for it.
+
+TypeScript doesn't have those features. So the machinery becomes the product, and the original goals get buried under it.
+
+wellcrafted strips back to the goals:
+
+```typescript
+const UserError = defineErrors({
+  AlreadyExists: ({ email }: { email: string }) => ({
+    message: `User ${email} already exists`,
+    email,
+  }),
+  CreateFailed: ({ email, cause }: { email: string; cause: unknown }) => ({
+    message: `Failed to create user ${email}: ${extractErrorMessage(cause)}`,
+    email,
+    cause,
+  }),
+});
+type UserError = InferErrors<typeof UserError>;
+```
+
+Errors in the type signature. Named variants. Exhaustive handling via `switch`. That's the whole pitch.
+
+```typescript
+async function createUser(email: string): Promise<Result<User, UserError>> {
+  const existing = await db.findByEmail(email);
+  if (existing) return UserError.AlreadyExists({ email });
+
+  return tryAsync({
+    try: () => db.users.create({ email }),
+    catch: (error) => UserError.CreateFailed({ email, cause: error }),
+  });
+}
+```
+
+No generators. No `.andThen()`. Just async/await with early returns, the same control flow you'd write anyway, except now the errors are typed.
+
+---
+
+## The Compromises, Stated Plainly
+
+wellcrafted makes specific, deliberate trade-offs. You should know what they are.
+
+**No method chains.** There's no `.map()` or `.andThen()` on the Result type. Composition is `if (error) return error` and early returns. This is verbose compared to Rust's `?` operator. It's also immediately readable to anyone who knows TypeScript.
+
+**No dependency injection.** Effect's service system is genuinely elegant. wellcrafted has nothing like it. Pass your dependencies as function arguments. It works. It's not as composable.
+
+**No runtime.** No fibers, no structured concurrency, no resource management. If you need those, Effect has them and wellcrafted doesn't.
+
+**Plain objects, not classes.** Errors are frozen plain objects. `instanceof` doesn't work. This is intentional: class instances don't survive `JSON.stringify`, and in any app that crosses a serialization boundary (Web Workers, IPC, message channels), that matters more than prototype chains.
+
+These are real things you give up. They're also things that most TypeScript applications don't need. The question isn't "which library has more features." It's "which features are you actually using, and what are you paying for the ones you're not."
+
+---
+
+## Where This Fits in the Ecosystem
+
+| If you want... | Use |
+|---|---|
+| A full effect system with DI, fibers, and concurrency | Effect |
+| Method chains on Result types | neverthrow |
+| The full FP toolkit (Option, Either, pipe) | fp-ts |
+| Typed errors that work with async/await and serialize cleanly | wellcrafted |
+
+wellcrafted is the smallest circle on that Venn diagram. It does one thing: gives you typed, named, serializable error variants that compose with the TypeScript you already write. If that's all you wanted from FP error handling—and for most teams, it is—this is the library that stops there instead of continuing into territory TypeScript can't support well.
+
+---
+
+## The Bet
+
+wellcrafted makes a bet: most TypeScript teams don't need a functional programming framework. They need a way to define errors that the type system can see. Everything else—async/await, early returns, switch statements, destructuring—TypeScript already does well enough.
+
+If you tried typed errors and walked away, you weren't wrong about the goal. You were right that TypeScript's errors should be typed. The libraries you tried were right about the theory. The gap was in the execution: they needed language features that TypeScript doesn't have, and the workarounds cost more than they saved.
+
+wellcrafted is what's left when you remove the workarounds.
