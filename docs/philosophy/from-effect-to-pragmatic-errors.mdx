@@ -1,0 +1,175 @@
+---
+title: "You Tried Typed Errors and Gave Up. The Problem Wasn't You."
+description: "TypeScript lacks the features that make FP error handling ergonomic. Here's what works instead."
+icon: 'rotate-left'
+---
+
+# You Tried Typed Errors and Gave Up. The Problem Wasn't You.
+
+There's a silent majority in the TypeScript world: developers who tried Effect, or neverthrow, or fp-ts, found it didn't stick, and quietly went back to try-catch. They don't write blog posts about it. They don't file issues. They just stop using the library and move on, vaguely feeling like they failed to "get it."
+
+They didn't fail. TypeScript failed them.
+
+---
+
+## The Pattern That Doesn't Translate
+
+Every FP error handling library in TypeScript borrows the same idea from Rust and Haskell: wrap your values in a Result type, then chain operations with `.map()`, `.mapError()`, `.andThen()`, `.orElse()`.
+
+```typescript
+// neverthrow
+const result = await getUserById(id)
+  .andThen((user) => validateEmail(user.email))
+  .mapErr((e) => new ValidationError(e.message));
+```
+
+In Rust, this pattern is ergonomic because the language meets you halfway. Rust has the `?` operator that auto-propagates errors. It has `match` expressions that exhaustively check variants. It has derive macros like `thiserror` that generate error implementations at compile time. The method chains work because they're backed by real language features.
+
+```rust
+// Rust: the ? operator does the unwrapping for you
+let user = get_user_by_id(id)?;
+let validated = validate_email(&user.email)?;
+```
+
+TypeScript has none of this. No `?` operator. No compile-time macros. No real pattern matching. No algebraic data types as language primitives. No trait system. When you port `.map().andThen()` chains to TypeScript, you're porting the surface syntax without the underlying machinery that makes it feel natural.
+
+The result is code that's technically type-safe but reads like a translation from another language. And that's exactly what it is.
+
+---
+
+## What TypeScript Actually Has
+
+TypeScript is good at a few things that functional languages don't prioritize: destructuring, discriminated unions via literal types, and `switch` narrowing. These aren't glamorous features. They don't get conference talks. But they compose into something surprisingly effective.
+
+```typescript
+// Destructuring: TypeScript's native "unwrap"
+const { data, error } = await createUser(email);
+
+// Discriminated unions: TypeScript's native "pattern matching"
+if (error) {
+  switch (error.name) {
+    case "AlreadyExists":
+      showToast(`${error.email} already has an account`);
+      break;
+    case "CreateFailed":
+      logError(error);
+      break;
+  }
+}
+```
+
+This is not a step backward from `.map().andThen()`. It's what TypeScript is actually built to do. The type narrowing is automatic. The control flow is visible. A junior developer reads this and knows what it does.
+
+Compare that to the chain version:
+
+```typescript
+const result = await createUser(email)
+  .map((user) => user)
+  .mapErr((e) => {
+    if (e instanceof AlreadyExistsError) showToast(e.message);
+    else logError(e);
+    return e;
+  });
+```
+
+The chain obscures control flow behind method calls. You're doing the same branching, just hidden inside lambdas. In Rust, the compiler enforces exhaustiveness on `match` arms. In TypeScript, `.mapErr()` is just a callback. You get no exhaustiveness checking, no narrowing, no compiler help. You gave up `switch` for nothing.
+
+---
+
+## The Features TypeScript Is Missing
+
+This isn't a matter of opinion. TypeScript literally lacks the language features that make FP error handling ergonomic in other languages:
+
+**1. No `?` operator or auto-propagation**
+
+Rust's `?` turns multi-line error handling into a single character. TypeScript has no equivalent. Every FP library compensates with generators (`yield*`), method chains, or wrapper functions. All of them are strictly worse than a language-level operator.
+
+**2. No compile-time macros**
+
+Rust's `thiserror` generates `Display`, `Error`, and `From` implementations at compile time from a single `#[derive]` annotation. TypeScript can't generate code at compile time. Libraries have to choose between verbose manual definitions or runtime overhead.
+
+**3. No real pattern matching**
+
+Rust's `match` is exhaustive by default and destructures in the same expression. TypeScript's `switch` on a discriminant field gets you close, but it's not the same. You can't destructure and match in one step. You can't match nested structures.
+
+**4. No algebraic data types as primitives**
+
+Rust enums are sum types with associated data, checked exhaustively by the compiler. TypeScript achieves something similar with discriminated unions, but they're a convention enforced by the type checker, not a language primitive. The ergonomics gap is real.
+
+**5. No trait system**
+
+Rust's `From` trait lets you define automatic error conversions: `impl From<IoError> for AppError`. TypeScript has no equivalent. Every error transformation is manual.
+
+These aren't features TypeScript chose not to include. They're features that require a compiled language with a sophisticated type system. TypeScript compiles to JavaScript, which has none of this infrastructure. Porting patterns that depend on these features produces code that fights the host language.
+
+---
+
+## The Compromise That Actually Works
+
+The insight behind wellcrafted: take the one idea from FP error handling that TypeScript can express well—typed, named error variants—and implement it using patterns the language is built for.
+
+```typescript
+import { defineErrors, extractErrorMessage, type InferErrors } from "wellcrafted/error";
+import { tryAsync, type Result } from "wellcrafted/result";
+
+const UserError = defineErrors({
+  AlreadyExists: ({ email }: { email: string }) => ({
+    message: `User ${email} already exists`,
+    email,
+  }),
+  CreateFailed: ({ email, cause }: { email: string; cause: unknown }) => ({
+    message: `Failed to create user ${email}: ${extractErrorMessage(cause)}`,
+    email,
+    cause,
+  }),
+});
+type UserError = InferErrors<typeof UserError>;
+```
+
+`defineErrors` is Rust's `thiserror` without macros. You define your error vocabulary once. Each variant is a factory that returns a plain frozen object with a `name` discriminant. No classes, no `instanceof`, no prototype chains.
+
+```typescript
+async function createUser(email: string): Promise<Result<User, UserError>> {
+  const existing = await db.findByEmail(email);
+  if (existing) return UserError.AlreadyExists({ email });
+
+  return tryAsync({
+    try: () => db.users.create({ email }),
+    catch: (error) => UserError.CreateFailed({ email, cause: error }),
+  });
+}
+```
+
+This is `async/await` with early returns. No generators. No method chains. No new programming model. The error handling is the same control flow you'd write in any TypeScript function; the only difference is that errors are typed and named.
+
+On the consuming side, `switch (error.name)` gives you exhaustive narrowing:
+
+```typescript
+const { data, error } = await createUser("alice@example.com");
+if (error) {
+  switch (error.name) {
+    case "AlreadyExists":
+      // TypeScript knows: error.email exists
+      showToast(`${error.email} already has an account`);
+      break;
+    case "CreateFailed":
+      // TypeScript knows: error.email and error.cause exist
+      logError(error);
+      break;
+  }
+}
+```
+
+The `{ data, error }` shape is already everywhere. Supabase returns it. SvelteKit load functions return it. TanStack Query has `data` and `error` on every query. There's no new mental model to learn. Your team already knows how to destructure this.
+
+---
+
+## What This Doesn't Try to Be
+
+wellcrafted is not a functional programming library. It doesn't have `.map()` or `.andThen()` or `.orElse()`. It doesn't have dependency injection, fiber-based concurrency, or a runtime. It doesn't try to make TypeScript into something it's not.
+
+If your team has bought into Effect and it's working, keep using it. If you need structured concurrency or runtime dependency injection, wellcrafted doesn't have it. Those are real capabilities for teams that need them.
+
+But if you tried FP error handling, found it awkward, and went back to untyped `try-catch`—you don't have to stay there. The gap between "raw try-catch" and "full functional runtime" is wide, and there's a practical spot in the middle: typed errors, plain objects, patterns your team already knows.
+
+The problem was never that you couldn't learn generators or method chains. The problem was that TypeScript doesn't have the features that make those patterns worth the cost.
