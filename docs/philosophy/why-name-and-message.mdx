@@ -1,0 +1,173 @@
+---
+title: "We Didn't Invent name and message—JavaScript Did"
+description: "Why wellcrafted errors follow JavaScript's Error convention instead of inventing new terminology"
+icon: 'js'
+---
+
+# We Didn't Invent `name` and `message`—JavaScript Did
+
+Every JavaScript `Error` has two properties: `.name` and `.message`. WellCrafted errors have the same two properties, for the same reasons, because we're not inventing a new error system. We're fixing the one JavaScript already has.
+
+```typescript
+// JavaScript's Error class:
+const err = new TypeError('Expected a string');
+err.name;    // 'TypeError'
+err.message; // 'Expected a string'
+
+// WellCrafted's defineErrors:
+const HttpError = defineErrors({
+  Connection: ({ cause }: { cause: unknown }) => ({
+    message: `Failed to connect: ${extractErrorMessage(cause)}`,
+    cause,
+  }),
+});
+
+const { error } = HttpError.Connection({ cause: 'timeout' });
+error.name;    // 'Connection'
+error.message; // 'Failed to connect: timeout'
+```
+
+Same shape. Same semantics. `name` identifies what kind of error it is; `message` explains what happened in plain English. The difference is that WellCrafted errors are plain objects that actually serialize, carry typed fields, and work with TypeScript's discriminated unions.
+
+## JavaScript's Error Gets Two Things Right and One Thing Wrong
+
+The `Error` class got `name` and `message` right. `name` tells you the category: `TypeError`, `RangeError`, `SyntaxError`. `message` tells you the specifics: "Cannot read properties of undefined." Every JavaScript developer already knows this mental model.
+
+What `Error` gets wrong is everything else. `JSON.stringify(new Error('oops'))` returns `'{}'`. Class instances lose their prototype across iframes, workers, and serialization boundaries. `instanceof` checks fail in ways that are invisible until production. Stack traces are expensive to capture and useless to serialize.
+
+```typescript
+// JavaScript's Error: name and message are right, serialization is broken
+const error = new TypeError('Expected a string');
+JSON.stringify(error);  // '{}' — name and message are gone
+
+// WellCrafted: same name and message, serialization works
+const { error: wcError } = ValidationError.Type({ expected: 'string', received: 'number' });
+JSON.stringify(wcError);
+// '{"name":"Type","message":"Expected string, got number","expected":"string","received":"number"}'
+```
+
+WellCrafted keeps what works (`name` and `message`) and replaces what doesn't (classes, prototypes, non-serializable state) with plain frozen objects.
+
+## JavaScript Already Named These Fields
+
+We could have called the discriminant `tag` and the human-readable field `description`. Some error handling libraries do exactly that. We didn't because every JavaScript developer already knows what `name` and `message` mean on an error. When you see `.name`, you know it identifies the error type. When you see `.message`, you know it's the human-readable explanation. That convention comes from JavaScript itself, not from us.
+
+```typescript
+// This reads naturally because it follows what JS developers already know
+switch (error.name) {
+  case 'Connection': console.log(error.message); break;
+  case 'Timeout':    console.log(error.message); break;
+  case 'Parse':      console.log(error.message); break;
+}
+```
+
+Inventing new field names would buy us nothing and cost us familiarity. A developer reading WellCrafted code for the first time already knows what `error.name` and `error.message` are.
+
+## Rust's Patterns Map to JavaScript Without New Abstractions
+
+WellCrafted's `defineErrors` is directly inspired by Rust's `thiserror` crate: the namespace pattern, the variant naming, the co-located message templates. But Rust and JavaScript have different constraints, and pretending otherwise leads to APIs that fight the platform.
+
+Rust has compile-time procedural macros; JavaScript doesn't. Template literals are the natural equivalent:
+
+```rust
+// Rust: compile-time format string via proc macro
+#[error("Failed to connect: {cause}")]
+Connection { cause: String },
+```
+
+```typescript
+// TypeScript: runtime template literal — same result, different mechanism
+Connection: ({ cause }: { cause: unknown }) => ({
+  message: `Failed to connect: ${extractErrorMessage(cause)}`,
+  cause,
+}),
+```
+
+Both produce a human-readable message from structured fields. The Rust version runs at compile time; the TypeScript version runs at construction time. The developer experience is nearly identical. The implementation uses what each language actually provides.
+
+The same principle applies across every divergence:
+
+| Rust has | JavaScript doesn't | WellCrafted uses instead |
+|---|---|---|
+| Procedural macros | No compile-time codegen | Template literals |
+| Ownership model | No ownership | `Object.freeze` + `Readonly<T>` |
+| `match` exhaustiveness | No pattern matching | `switch` on discriminated unions |
+| Struct literals | No struct syntax | Factory functions with object args |
+| `?` operator | No Result operator | Early return with `if (result.error)` |
+
+None of these are compromises. They're the JavaScript-native way to express the same ideas. A `switch` on `error.name` narrows types just as precisely as `match`. The patterns map; only the syntax differs.
+
+## JSON Serializability Is the Whole Point
+
+JavaScript errors cross boundaries that Rust errors never touch. A Rust error lives in one process, in one binary, on one machine. A JavaScript error might start in a browser tab, serialize to JSON, cross a network boundary to a server, get logged to a monitoring service, and end up in a Slack notification.
+
+```json
+{
+  "name": "Connection",
+  "message": "Failed to connect: timeout",
+  "cause": "timeout"
+}
+```
+
+This is a valid JSON object, a valid WellCrafted error, and a valid thing to log, send over HTTP, store in a database, or display in a UI. No special serialization logic, no custom `toJSON` methods, no lossy transforms. The error is the JSON.
+
+That's why WellCrafted enforces that all fields are `JsonValue` types. If it can't survive a `JSON.stringify`/`JSON.parse` round-trip, it can't be a field on a WellCrafted error.
+
+```typescript
+// Fields must be JSON-serializable — TypeScript enforces this
+const FileError = defineErrors({
+  Write: ({ path, bytesWritten }: { path: string; bytesWritten: number }) => ({
+    message: `Write failed at byte ${bytesWritten}`,
+    path,
+    bytesWritten,
+  }),
+});
+
+// This is a type error — Date is not JSON-serializable
+// Write: ({ path, timestamp }: { path: string; timestamp: Date }) => ...
+```
+
+Error chains serialize too. When `cause` is another WellCrafted error, `JSON.stringify` produces a nested structure that preserves the full chain. No stack trace parsing, no custom serializers. This only works because the errors are plain objects, which brings us to the other half of the design.
+
+## Plain Objects Over Classes Is a JavaScript Decision
+
+Choosing plain objects over `class extends Error` isn't an abstract design preference. It solves a specific JavaScript problem: class instances don't survive serialization boundaries.
+
+```typescript
+// Class-based error: breaks across boundaries
+class ConnectionError extends Error {
+  constructor(public host: string) {
+    super(`Connection to ${host} failed`);
+    this.name = 'ConnectionError';
+  }
+}
+
+const err = new ConnectionError('api.example.com');
+const serialized = JSON.parse(JSON.stringify(err));
+serialized instanceof ConnectionError;  // false — prototype is gone
+serialized.name;     // undefined — non-enumerable
+serialized.message;  // undefined — non-enumerable
+serialized.host;     // 'api.example.com' — only enumerable props survive
+```
+
+`Error` properties `name` and `message` are non-enumerable by default. They vanish on serialization. Custom subclasses lose their prototype chain. `instanceof` checks fail across iframes, Web Workers, and server/client boundaries.
+
+WellCrafted errors don't have this problem because there's no prototype to lose. They're frozen plain objects where every property is enumerable. They work the same whether you're in a browser tab, a Web Worker, a Node.js server, or reading them back from a database.
+
+## The Shape Is the Contract
+
+WellCrafted errors make a simple bet: the shape of the object is the contract, not its class identity. If an object has `{ name: 'Connection', message: string, cause: unknown }`, it's a `Connection` error. You don't need `instanceof` to check. You don't need the original class definition in scope. You just read the `name` field.
+
+This is how discriminated unions work in TypeScript, and it's how data-oriented programming works in general. Identity lives in the data, not in the prototype chain.
+
+```typescript
+// The shape IS the type — TypeScript narrows on name, not instanceof
+function handle(error: HttpError) {
+  if (error.name === 'Connection') {
+    // TypeScript knows: error has cause field
+    retry(error.cause);
+  }
+}
+```
+
+That's the whole philosophy. Use `name` because JavaScript errors use `name`. Use `message` because JavaScript errors use `message`. Make them plain objects because JavaScript classes don't serialize. Take Rust's patterns where they map; use JavaScript's idioms where they don't. Nobody has to learn a new vocabulary to read the code.

@@ -123,7 +123,7 @@ if (result.error) {
 
 **No Method Chaining**: Rust's `.map()` and `.and_then()` are elegant in Rust, but feel foreign in JavaScript. We use standard JavaScript control flow instead.
 
-**No Classes**: Error objects are plain data structures, not class instances that lose their prototype when serialized.
+**No Classes**: Error objects are plain data structures, not class instances that lose their prototype when serialized. They use `name` and `message` because that's what JavaScript's `Error` class already uses — see [Why `name` and `message`](/philosophy/why-name-and-message) for the full reasoning.
 
 **No Complex Abstractions**: The entire Result core is ~50 lines of code you can read and understand in 5 minutes.
 
