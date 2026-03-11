@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "skills": {
+    "control-flow": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "84eef70ffe87b484f05aff50fbcf6dcc2b57bf139a52c1d9dbc28d3cbec396d8"
+    },
+    "define-errors": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "a1fbe2a13b3d984dc4d1ace7dbde7e6bd1cf1853f050e6d50218c47c6d34f261"
+    },
+    "documentation": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "ef13dc06e07373b649f523ac6f101a882410d95078439ecc1ffba8df6b7e23f7"
+    },
+    "error-handling": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "9573172994a1877b5d599a93256559dd6e6f742596c02cefd1b6410af06ea193"
+    },
+    "factory-function-composition": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "c688003c35ced55eed158aa28ddb897e138084b9d2f05ef0a18874bc5f310810"
+    },
+    "git": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "6de2120d1a50c401bd7adcf265dc91abf4780ca8efb485d3ef397b15ff2339d6"
+    },
+    "honesty": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "4df5c59eb8a48525275a4fccadd2b65ba7eea414f35660ac5b5025f64a2d271b"
+    },
+    "incremental-commits": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "317ed5aa14b2ef0ee70078434ec8ad2e7457eeab7d4ec8496180902fdc2637e6"
+    },
+    "method-shorthand-jsdoc": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "3d5e57247ba5a8d884b253f8b754609b6c65de18dc1f5846ade3ccc8089ebcc0"
+    },
+    "progress-summary": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "fedbc60aaf10f9e1a255b9e62c99fcf19dc8186215acd261b0dc504faf8b0c45"
+    },
+    "query-layer": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "5bf873615791f2b6fbacf1033ad19b83348100befe296d9c3ac433b882f0072d"
+    },
+    "services-layer": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "f92460c2634c8c1781d63f58c25baa2d7aaf5424f09ccfdf0933a11eb91df530"
+    },
+    "single-or-array-pattern": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "727ef422a45fb941aba24cf1ce1595fde9d2917659001c0d6151df7b49aa4b37"
+    },
+    "spec-execution": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "b970f8b3055afdeacf1307a63020f08b1736b605e816694b3a1eeadfd3379837"
+    },
+    "specification-writing": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "bb77523e654fa285a1a9b6c0c16bea3fbedebec7cf9d7688b07886c6964c3ddf"
+    },
+    "technical-articles": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "9da35308b3dbaa6eef32283ba5812e837e0f900a0b72519f3341cfdeedd061c2"
+    },
+    "testing": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "1a07baa86c5fac4f946232ad34313eb43576d463913047747fc7914cbdc0230b"
+    },
+    "typescript": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "33c2ba5b14d29b198f5c8bc0759ba4c16fe125b042fb76ec98d7cb4f0c5ccf71"
+    },
+    "workflow": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "d224576c520c4f7c14a7d59689baba292c6fe9ed2e70e1a18be2a08ef8cc4b91"
+    },
+    "writing-voice": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "computedHash": "55d11a2595d6bd025221b4e86ed3acdef25ed2279717c6e0f3cd3b6cf4b8d502"
+    }
+  }
+}
