@@ -285,6 +285,23 @@ The same principle applies throughout: async/await instead of generators, `switc
 - **`Result<T, E>`** — union of `Ok<T> | Err<E>`
 - **`Brand<T, B>`** — branded type wrapper for distinct primitives
 
+## Development Setup
+
+### AI Agent Skills
+
+AI agent skills are managed via [`npx skills`](https://www.npmjs.com/package/skills), sourced from [Epicenter](https://github.com/EpicenterHQ/epicenter). Only skills relevant to wellcrafted's domain are installed.
+
+```bash
+# Install skills (already committed, but can be refreshed)
+npx skills add EpicenterHQ/epicenter --skill error-handling --skill define-errors -a claude-code -y
+
+# Update all installed skills
+npx skills update
+
+# List installed skills
+npx skills list
+```
+
 ## License
 
 MIT
