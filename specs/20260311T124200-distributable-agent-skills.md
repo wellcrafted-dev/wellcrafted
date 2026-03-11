@@ -1,7 +1,7 @@
 # Distributable Agent Skills
 
 **Date**: 2026-03-11
-**Status**: Approved
+**Status**: Implemented
 **Author**: AI-assisted
 
 ## Overview
@@ -258,9 +258,9 @@ Each skill follows these principles (from writing-voice):
 
 ### Phase 3: Documentation and testing
 
-- [ ] **3.1** Update README.md with skills installation section
-- [ ] **3.2** Test installation: `npx skills add . --list` shows all 5 skills
-- [ ] **3.3** Test installation: `npx skills add . --skill define-errors -a claude-code -y` works
+- [x] **3.1** Update README.md with skills installation section
+- [x] **3.2** Test installation: `npx skills add . --list` shows all 5 skills
+- [x] **3.3** Test installation: `npx skills add . --skill define-errors -a claude-code -y` works
 
 ## Open Questions
 
@@ -297,3 +297,31 @@ Each skill follows these principles (from writing-voice):
 - `.claude/skills/single-or-array-pattern/SKILL.md` — primary source for patterns skill (single-or-array section)
 - `README.md` — current API documentation and examples
 - `npx skills --help` — CLI documentation
+
+## Review
+
+**Completed**: 2026-03-11
+**Branch**: main
+
+### Summary
+
+Shipped 5 distributable agent skills in `skills/` alongside the wellcrafted npm package. Each skill is adapted from internal `.claude/skills/` with all project-specific references (Whispering, RecorderError, DeviceStreamError, FfmpegError, Tauri, Elysia) replaced by generic domains (HttpError, DbError, UserError, FileError, JsonError). README updated with `npx skills add wellcrafted-dev/wellcrafted` installation instructions.
+
+### Skills Created
+
+| Skill | Lines | Source |
+| --- | --- | --- |
+| `define-errors` | 272 | Adapted from `.claude/skills/define-errors/` |
+| `result-types` | 264 | Adapted from `.claude/skills/error-handling/` + new content |
+| `query-factories` | 197 | Adapted from `.claude/skills/query-layer/` |
+| `branded-types` | 131 | Extracted from `.claude/skills/typescript/` branded types section |
+| `patterns` | 361 | Merged from control-flow, factory-function-composition, services-layer, single-or-array-pattern |
+
+### Deviations from Spec
+
+- None. All 5 skills written as specified, all using generic domains, all discovered by `npx skills add . --list`.
+
+### Follow-up Work
+
+- Consider adding a `testing` skill for wellcrafted's test patterns once the library has more test utilities
+- Monitor `npx skills update` behavior when skills are updated on main branch

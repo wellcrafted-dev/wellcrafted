@@ -285,6 +285,27 @@ The same principle applies throughout: async/await instead of generators, `switc
 - **`Result<T, E>`** — union of `Ok<T> | Err<E>`
 - **`Brand<T, B>`** — branded type wrapper for distinct primitives
 
+## AI Agent Skills
+
+If you use an AI coding agent (Claude Code, Cursor, etc.), teach it how to use wellcrafted correctly:
+
+```bash
+npx skills add wellcrafted-dev/wellcrafted
+```
+
+This installs 5 skills that teach your agent the patterns, anti-patterns, and API conventions:
+
+| Skill | What it teaches |
+| --- | --- |
+| `define-errors` | `defineErrors` variants, `extractErrorMessage`, `InferErrors`/`InferError` type extraction |
+| `result-types` | `Ok`, `Err`, `trySync`/`tryAsync`, the `{ data, error }` destructuring pattern |
+| `query-factories` | `createQueryFactories`, `defineQuery`/`defineMutation`, dual interface (reactive + imperative) |
+| `branded-types` | `Brand<T>`, brand constructor pattern, when to add runtime validation |
+| `patterns` | Architectural style guide: control flow, factory composition, service layers, error composition |
+
+Skills work with any agent that supports [`npx skills`](https://www.npmjs.com/package/skills). Install once, update with `npx skills update`.
+
+
 ## Development Setup
 
 ### AI Agent Skills
