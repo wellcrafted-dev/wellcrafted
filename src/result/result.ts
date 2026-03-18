@@ -241,17 +241,18 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  * - If the `try` operation throws an exception, the caught exception (of type `unknown`) is passed to
  *   the `catch` function, which transforms it into either an `Ok<T>` (recovery) or `Err<E>` (propagation).
  *
- * The return type is automatically narrowed based on what your catch function returns:
- * - If catch always returns `Ok<T>`, the function returns `Ok<T>` (guaranteed success)
- * - If catch always returns `Err<E>`, the function returns `Result<T, E>` (may succeed or fail)
- * - If catch can return either `Ok<T>` or `Err<E>`, the function returns `Result<T, E>` (conditional recovery)
+ * The return type is automatically determined by what your catch function returns:
+ * - If catch always returns `Ok<T>`, the return type collapses to `Ok<T>` (guaranteed success)
+ * - If catch always returns `Err<E>`, the return type is `Ok<T> | Err<E>` (may succeed or fail)
+ * - If catch returns a union like `Err<A> | Err<B>`, the return type is `Ok<T> | Err<A> | Err<B>` (union propagation)
+ * - If catch can return either `Ok<T>` or `Err<E>`, the return type is `Ok<T> | Err<E>` (conditional recovery)
  *
  * @template T - The success value type
- * @template E - The error value type (when catch can return errors)
+ * @template R - The return type of the catch handler (`Ok<T>` for recovery, `Err<E>` for propagation, or a union)
  * @param options - Configuration object
  * @param options.try - The operation to execute
  * @param options.catch - Error handler that transforms caught exceptions into either `Ok<T>` (recovery) or `Err<E>` (propagation)
- * @returns `Ok<T>` if catch always returns Ok (recovery), otherwise `Result<T, E>` (propagation or conditional recovery)
+ * @returns `Ok<T> | R` — the union of the success path and whatever the catch handler returns
  *
  * @example
  * ```ts
@@ -277,28 +278,14 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  * });
  * ```
  */
-export function trySync<T>(options: {
-	try: () => T;
-	catch: (error: unknown) => Ok<T>;
-}): Ok<T>;
-
-export function trySync<T, E>(options: {
-	try: () => T;
-	catch: (error: unknown) => Err<E>;
-}): Result<T, E>;
-
-export function trySync<T, E>(options: {
-	try: () => T;
-	catch: (error: unknown) => Ok<T> | Err<E>;
-}): Result<T, E>;
-
-export function trySync<T, E>({
+// biome-ignore lint/suspicious/noExplicitAny: required for union type inference in catch handlers
+export function trySync<T, R extends Ok<T> | Err<any>>({
 	try: operation,
 	catch: catchFn,
 }: {
 	try: () => T;
-	catch: (error: unknown) => Ok<T> | Err<E>;
-}): Ok<T> | Result<T, E> {
+	catch: (error: unknown) => R;
+}): Ok<T> | R {
 	try {
 		const data = operation();
 		return Ok(data);
@@ -315,17 +302,18 @@ export function trySync<T, E>({
  * - If the `try` operation rejects or throws an exception, the caught error (of type `unknown`) is passed to
  *   the `catch` function, which transforms it into either an `Ok<T>` (recovery) or `Err<E>` (propagation).
  *
- * The return type is automatically narrowed based on what your catch function returns:
- * - If catch always returns `Ok<T>`, the function returns `Promise<Ok<T>>` (guaranteed success)
- * - If catch always returns `Err<E>`, the function returns `Promise<Result<T, E>>` (may succeed or fail)
- * - If catch can return either `Ok<T>` or `Err<E>`, the function returns `Promise<Result<T, E>>` (conditional recovery)
+ * The return type is automatically determined by what your catch function returns:
+ * - If catch always returns `Ok<T>`, the return type collapses to `Promise<Ok<T>>` (guaranteed success)
+ * - If catch always returns `Err<E>`, the return type is `Promise<Ok<T> | Err<E>>` (may succeed or fail)
+ * - If catch returns a union like `Err<A> | Err<B>`, the return type is `Promise<Ok<T> | Err<A> | Err<B>>` (union propagation)
+ * - If catch can return either `Ok<T>` or `Err<E>`, the return type is `Promise<Ok<T> | Err<E>>` (conditional recovery)
  *
  * @template T - The success value type
- * @template E - The error value type (when catch can return errors)
+ * @template R - The return type of the catch handler (`Ok<T>` for recovery, `Err<E>` for propagation, or a union)
  * @param options - Configuration object
  * @param options.try - The async operation to execute
  * @param options.catch - Error handler that transforms caught exceptions/rejections into either `Ok<T>` (recovery) or `Err<E>` (propagation)
- * @returns `Promise<Ok<T>>` if catch always returns Ok (recovery), otherwise `Promise<Result<T, E>>` (propagation or conditional recovery)
+ * @returns `Promise<Ok<T> | R>` — the union of the success path and whatever the catch handler returns
  *
  * @example
  * ```ts
@@ -355,28 +343,14 @@ export function trySync<T, E>({
  * });
  * ```
  */
-export async function tryAsync<T>(options: {
-	try: () => Promise<T>;
-	catch: (error: unknown) => Ok<T>;
-}): Promise<Ok<T>>;
-
-export async function tryAsync<T, E>(options: {
-	try: () => Promise<T>;
-	catch: (error: unknown) => Err<E>;
-}): Promise<Result<T, E>>;
-
-export async function tryAsync<T, E>(options: {
-	try: () => Promise<T>;
-	catch: (error: unknown) => Ok<T> | Err<E>;
-}): Promise<Result<T, E>>;
-
-export async function tryAsync<T, E>({
+// biome-ignore lint/suspicious/noExplicitAny: required for union type inference in catch handlers
+export async function tryAsync<T, R extends Ok<T> | Err<any>>({
 	try: operation,
 	catch: catchFn,
 }: {
 	try: () => Promise<T>;
-	catch: (error: unknown) => Ok<T> | Err<E>;
-}): Promise<Ok<T> | Result<T, E>> {
+	catch: (error: unknown) => R;
+}): Promise<Ok<T> | R> {
 	try {
 		const data = await operation();
 		return Ok(data);
