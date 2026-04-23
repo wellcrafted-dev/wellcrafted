@@ -2,25 +2,7 @@ import type { AnyTaggedError } from "../error/types.js";
 import { consoleSink } from "./console-sink.js";
 import type { LoggableError, LogLevel, Logger, LogSink } from "./types.js";
 
-/**
- * Narrow `LoggableError` to the raw tagged object.
- *
- * Discriminator: `"name" in err`.
- * - `AnyTaggedError` always has `name` at the top level (required by
- *   `defineErrors`, stamped from the factory key — the one guaranteed
- *   invariant of every tagged error).
- * - `Err<AnyTaggedError>` has exactly `{ error, data }` at the top level.
- *   No top-level `name` — that lives on `err.error.name` instead.
- *
- * Purely structural. No null-checks. Works without the `data` reservation
- * in `defineErrors` (though that reservation is still good policy for
- * other code that wants to discriminate Err-wrapped vs raw tagged).
- *
- * Intentionally avoids `err.data === null` — that would *also* be true for
- * `Ok(T | null)` when T = null (see wellcrafted's `Ok(null)`/`Err(null)`
- * structural collision edge), making it a misleading pattern outside this
- * specific context.
- */
+/** Narrow `LoggableError` to the raw tagged object. See `LoggableError` in `types.ts` for the discriminator rationale. */
 function unwrapLoggable(err: LoggableError): AnyTaggedError {
 	return "name" in err ? err : err.error;
 }
