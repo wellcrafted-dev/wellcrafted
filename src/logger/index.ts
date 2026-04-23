@@ -21,4 +21,4 @@ export { consoleSink } from "./console-sink.js";
 export { createLogger } from "./create-logger.js";
 export { memorySink } from "./memory-sink.js";
 export { composeSinks } from "./compose-sinks.js";
-export { tapErr } from "./tap-err.js";
+export { tapErr } from "../result/tap-err.js";

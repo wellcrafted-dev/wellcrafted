@@ -1,6 +1,6 @@
 import type { AnyTaggedError } from "../error/types.js";
-import { isErr } from "../result/result.js";
-import type { Result } from "../result/result.js";
+import { isErr } from "./result.js";
+import type { Result } from "./result.js";
 
 /**
  * Result-flow combinator. Logs on the `Err` branch and returns the `Result`

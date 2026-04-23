@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { defineErrors, extractErrorMessage } from "../error/index.js";
-import { tryAsync } from "../result/index.js";
-import { createLogger } from "./create-logger.js";
-import { memorySink } from "./memory-sink.js";
+import { createLogger } from "../logger/create-logger.js";
+import { memorySink } from "../logger/memory-sink.js";
+import { tryAsync } from "./index.js";
 import { tapErr } from "./tap-err.js";
 
 const TestError = defineErrors({
