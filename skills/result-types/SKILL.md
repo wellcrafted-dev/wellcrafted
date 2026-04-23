@@ -11,7 +11,7 @@ import { Ok, Err, trySync, tryAsync, type Result } from 'wellcrafted/result';
 
 ## The Shape
 
-Results are plain objects with two properties — `data` and `error`. One is always `null`.
+Results are plain objects with two properties — `data` and `error`. Successful results carry a `T` in `data` with `error: null`; failed results carry an `E` in `error` with `data: null`.
 
 ```typescript
 type Ok<T>  = { data: T; error: null };
@@ -19,7 +19,7 @@ type Err<E> = { error: E; data: null };
 type Result<T, E> = Ok<T> | Err<E>;
 ```
 
-This is the same destructuring shape used by Supabase and SvelteKit load functions. Check `error` first, and TypeScript narrows `data` automatically:
+This is the same destructuring shape used by Supabase and SvelteKit load functions. **Always discriminate by the error side — `isErr(result)` or `result.error !== null`:**
 
 ```typescript
 const { data, error } = await someOperation();
@@ -27,8 +27,25 @@ if (error) {
   // error is E, data is null
   return;
 }
-// data is T, error is null
+// data is T here
 ```
+
+### Never discriminate by `data`
+
+`Ok(null)` is a legitimate value (`T` can be `null` — common for "not found is not an error"), so `data === null` is ambiguous: it could be `Ok<null>` or `Err<E>`. The only reliable discriminator is the error side.
+
+```typescript
+// Wrong — Ok(null) is legal; this treats success as failure
+if (result.data === null) { /* handle "error" */ }
+
+// Right — non-null on the error side means Err, by convention
+if (result.error !== null) { /* handle error */ }
+
+// Right — named guard, same check, clearer intent
+if (isErr(result)) { /* handle error */ }
+```
+
+The convention `Err.error` is always non-null is implicit — the type system allows `Err(null)` but it's meaningless (a failure with no reason). Don't construct one; don't rely on anything that would classify it either way.
 
 ## Constructors
 
