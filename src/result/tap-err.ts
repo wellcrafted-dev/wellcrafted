@@ -1,4 +1,3 @@
-import type { AnyTaggedError } from "../error/types.js";
 import { isErr } from "./result.js";
 import type { Result } from "./result.js";
 
@@ -26,7 +25,7 @@ import type { Result } from "./result.js";
  * await tryAttempt().then(tapErr(log.warn));  // inside retry
  * await tryFinal().then(tapErr(log.error));   // last try, giving up
  */
-export function tapErr<T, E extends AnyTaggedError>(
+export function tapErr<T, E>(
 	logFn: (err: E) => void,
 ): (result: Result<T, E>) => Result<T, E> {
 	return (result) => {
