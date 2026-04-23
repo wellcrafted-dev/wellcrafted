@@ -75,4 +75,17 @@ describe("createLogger", () => {
 		const log = createLogger("default-sink-test");
 		expect(() => log.info("visible in console")).not.toThrow();
 	});
+
+	test("methods are callable when detached from the logger (no `this`)", () => {
+		// Pins the contract that `tapErr(log.warn)` relies on: methods close
+		// over sink/source, never reference `this`.
+		const { sink, events } = memorySink();
+		const log = createLogger("s", sink);
+		const { info, warn } = log;
+		info("hello");
+		warn(TestError.Bad({ path: "/p" }));
+		expect(events).toHaveLength(2);
+		expect(events[0]!.message).toBe("hello");
+		expect(events[1]!.level).toBe("warn");
+	});
 });
