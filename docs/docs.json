@@ -22,7 +22,7 @@
 				"tab": "Documentation",
 				"groups": [
 					{
-						"group": "🚀 Getting Started",
+						"group": "\ud83d\ude80 Getting Started",
 						"pages": [
 							"index",
 							"getting-started/installation",
@@ -31,7 +31,7 @@
 						]
 					},
 					{
-						"group": "⚡ Core",
+						"group": "\u26a1 Core",
 						"pages": [
 							"core/result-pattern",
 							"core/error-system",
@@ -40,7 +40,7 @@
 						]
 					},
 					{
-						"group": "🛠️ Patterns",
+						"group": "\ud83d\udee0\ufe0f Patterns",
 						"pages": [
 							"patterns/real-world",
 							"patterns/optional-keys",
@@ -49,7 +49,7 @@
 						]
 					},
 					{
-						"group": "🔌 Integrations",
+						"group": "\ud83d\udd0c Integrations",
 						"pages": [
 							"integrations/validation-libraries",
 							"integrations/svelte-tanstack",
@@ -61,10 +61,11 @@
 						]
 					},
 					{
-						"group": "💭 Philosophy",
+						"group": "\ud83d\udcad Philosophy",
 						"pages": [
 							"philosophy/design-principles",
 							"philosophy/why-name-and-message",
+							"philosophy/err-null-is-ok-null",
 							"philosophy/rust-inspiration",
 							"philosophy/error-api-evolution",
 							"philosophy/developer-experience",
@@ -73,8 +74,10 @@
 						]
 					},
 					{
-						"group": "🔄 Migration",
-						"pages": ["migration/from-try-catch"]
+						"group": "\ud83d\udd04 Migration",
+						"pages": [
+							"migration/from-try-catch"
+						]
 					}
 				]
 			}

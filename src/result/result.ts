@@ -81,11 +81,27 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
 /**
  * Constructs an `Err<E>` variant, representing a failure outcome.
  *
- * This factory function creates the error variant of a `Result`.
- * It wraps the provided `error` (the error value) and ensures the `data` property is `null`.
+ * Wraps the provided `error` (the failure value) and sets `data` to `null`.
+ *
+ * **Don't call `Err(null)`.** It produces `{ data: null, error: null }` —
+ * structurally identical to `Ok(null)`. The built-in `isErr` check
+ * (`result.error !== null`) reads it as Ok, silently misclassifying your
+ * failure as success. `Err(undefined)` is also discouraged: the discriminator
+ * technically works (`undefined !== null`), but `undefined` is falsy, so
+ * downstream `if (error)` checks trip and the error carries no information
+ * anyway. Pass a meaningful error value (a string, a tagged error from
+ * `defineErrors`, an `Error` instance), or use `Ok(null)`/`Ok(undefined)` if
+ * what you meant was success-with-no-payload.
+ *
+ * At `catch (error: unknown)` boundaries, wrap the caught value in a tagged
+ * error rather than passing it through — `TaggedError.X({ cause: error })`
+ * is always non-null by construction, so the discriminator works regardless
+ * of what was thrown.
+ *
+ * See `docs/philosophy/err-null-is-ok-null.md` for the full rationale.
  *
  * @template E - The type of the error value.
- * @param error - The error value to be wrapped in the `Err` variant. This value represents the specific error that occurred.
+ * @param error - The error value to wrap. Don't pass `null` or `undefined`.
  * @returns An `Err<E>` object with the provided error and `data` set to `null`.
  * @example
  * ```ts
