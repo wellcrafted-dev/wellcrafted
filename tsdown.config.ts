@@ -4,6 +4,7 @@ export default defineConfig({
 	entry: [
 		"src/result/index.ts",
 		"src/error/index.ts",
+		"src/logger/index.ts",
 		"src/json.ts",
 		"src/brand.ts",
 		"src/query/index.ts",

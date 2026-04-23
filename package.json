@@ -17,6 +17,10 @@
 			"types": "./dist/error/index.d.ts",
 			"import": "./dist/error/index.js"
 		},
+		"./logger": {
+			"types": "./dist/logger/index.d.ts",
+			"import": "./dist/logger/index.js"
+		},
 		"./json": {
 			"types": "./dist/json.d.ts",
 			"import": "./dist/json.js"
