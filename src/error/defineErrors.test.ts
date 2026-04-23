@@ -700,3 +700,28 @@ describe("defineErrors - the console log test", () => {
 		expect(r2.error.path).toBe("/etc/config");
 	});
 });
+
+// =============================================================================
+// Reserved field names — `name`
+// =============================================================================
+
+describe("defineErrors - reserved keys", () => {
+	it("forbids `name` in the variant body (stamped by factory)", () => {
+		defineErrors({
+			// @ts-expect-error — 'name' is reserved; factory stamps it from the key
+			Bad: () => ({ message: "x", name: "overwritten" as const }),
+		});
+	});
+
+	it("normal fields are unaffected", () => {
+		const Ok = defineErrors({
+			Good: ({ path, cause }: { path: string; cause: unknown }) => ({
+				message: `failed at ${path}`,
+				path,
+				cause,
+			}),
+		});
+		const r = Ok.Good({ path: "/tmp", cause: new Error("x") });
+		expect(r.error.path).toBe("/tmp");
+	});
+});

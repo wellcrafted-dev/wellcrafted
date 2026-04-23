@@ -18,7 +18,9 @@ export type ErrorBody = { message: string };
 
 /**
  * Per-key validation: tells the user exactly what `name` will be stamped as.
- * If a user provides `name` in the return object, they see a descriptive error.
+ *
+ * `name` is stamped by the factory itself (`{ name: K } & ReturnType<fn>`);
+ * a user-provided `name` would be silently overwritten, so we error loudly.
  */
 type ValidateErrorBody<K extends string> = {
 	message: string;
