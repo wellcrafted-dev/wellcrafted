@@ -17,21 +17,14 @@ export type AnyTaggedError = { name: string; message: string };
 export type ErrorBody = { message: string };
 
 /**
- * Per-key validation: tells the user exactly what `name` will be stamped as,
- * and reserves `data` so it can't collide with the `Err<E>` discriminator.
+ * Per-key validation: tells the user exactly what `name` will be stamped as.
  *
- * - `name` is stamped by the factory itself (`{ name: K } & ReturnType<fn>`);
- *   a user-provided `name` would be silently overwritten, so we error loudly.
- * - `data` is `null` on every `Err<E>` (it's what distinguishes `Err` from
- *   `Ok<E>`). A variant with a `data` field would break presence-based
- *   narrowing (`"data" in err` / `err.data === null`) that downstream
- *   consumers — notably `wellcrafted/logger`'s `LoggableError` — rely on to
- *   discriminate `Err<E>` from the raw tagged error.
+ * `name` is stamped by the factory itself (`{ name: K } & ReturnType<fn>`);
+ * a user-provided `name` would be silently overwritten, so we error loudly.
  */
 type ValidateErrorBody<K extends string> = {
 	message: string;
 	name?: `The 'name' key is reserved as '${K}'. Remove it.`;
-	data?: `The 'data' key is reserved by Err<E>. Remove it — pick a different field name.`;
 };
 
 /** The config: each key is a variant name, each value is a constructor function. */

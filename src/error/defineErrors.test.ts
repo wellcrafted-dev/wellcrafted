@@ -702,7 +702,7 @@ describe("defineErrors - the console log test", () => {
 });
 
 // =============================================================================
-// Reserved field names — `name` and `data`
+// Reserved field names — `name`
 // =============================================================================
 
 describe("defineErrors - reserved keys", () => {
@@ -710,13 +710,6 @@ describe("defineErrors - reserved keys", () => {
 		defineErrors({
 			// @ts-expect-error — 'name' is reserved; factory stamps it from the key
 			Bad: () => ({ message: "x", name: "overwritten" as const }),
-		});
-	});
-
-	it("forbids `data` in the variant body (collides with Err discriminator)", () => {
-		defineErrors({
-			// @ts-expect-error — 'data' is reserved; Err<E> uses it as null discriminator
-			Bad: () => ({ message: "x", data: 123 }),
 		});
 	});
 
