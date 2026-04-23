@@ -1,19 +1,4 @@
-import type { LogLevel, LogSink } from "./types.js";
-
-/**
- * Level-to-method map for the default sink.
- *
- * A record lookup (rather than a switch) gives us exhaustive checking via
- * `satisfies Record<LogLevel, ...>` — if `LogLevel` gains a case, TS errors
- * here until the map covers it. A switch would fall through silently.
- */
-const CONSOLE_FN = {
-	error: console.error,
-	warn: console.warn,
-	info: console.info,
-	debug: console.debug,
-	trace: console.trace,
-} satisfies Record<LogLevel, (...args: unknown[]) => void>;
+import type { LogSink } from "./types.js";
 
 /**
  * Default sink. Writes to `console.*` with a `[source]` prefix.
@@ -22,21 +7,23 @@ const CONSOLE_FN = {
  * adding `createConsoleSink({ format })` would be ceremony for a pattern
  * the user can trivially replace by writing their own sink.
  *
- * The level-to-method mapping matches the legacy `console.*` call shape so
- * migrating from `console.warn('[src] ...', err)` to `log.warn(err)` is a
- * visible no-op in dev tools.
+ * `console[event.level]` routes directly without a detached lookup table.
+ * `LogLevel` is a subset of the Console method keys, so TS errors at this
+ * access if a future level drifts (e.g. adding `fatal`). Calling the method
+ * through `console[...]` preserves the `this` binding — avoids "Illegal
+ * invocation" in runtimes that require it.
  *
  * `satisfies LogSink` (not `: LogSink`) keeps the inferred callable type
- * precise — `LogSink` is a union with optional dispose, and the annotation
- * form would widen an unnecessary Partial into the inferred value type.
+ * precise — `LogSink` is an intersection with optional dispose, and the
+ * annotation form would widen an unnecessary Partial into the value type.
  *
  * No dispose handler — `console` is not a resource.
  */
 export const consoleSink = ((event) => {
 	const prefix = `[${event.source}]`;
-	const args =
-		event.data === undefined
-			? [prefix, event.message]
-			: [prefix, event.message, event.data];
-	CONSOLE_FN[event.level](...args);
+	if (event.data === undefined) {
+		console[event.level](prefix, event.message);
+	} else {
+		console[event.level](prefix, event.message, event.data);
+	}
 }) satisfies LogSink;
