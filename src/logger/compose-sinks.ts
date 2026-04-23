@@ -9,6 +9,11 @@ import type { LogEvent, LogSink } from "./types.js";
  * network) flush and close. Mix pure and stateful sinks freely — no
  * wrapping required.
  *
+ * Fan-out is sequential and unguarded. If a member sink throws on emit,
+ * later members do not receive the event — by design, since swallowing
+ * sink errors hides real bugs. Wrap individual sinks yourself for
+ * best-effort delivery.
+ *
  * Dispose is sequential and awaits each member. If one throws, later
  * members don't get their chance; callers who want best-effort cleanup
  * should wrap the composed dispose themselves.

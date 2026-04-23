@@ -14,6 +14,28 @@ describe("composeSinks", () => {
 		expect(b.events).toHaveLength(1);
 	});
 
+	test("zero sinks is a no-op", () => {
+		const sink = composeSinks();
+		expect(() =>
+			sink({ ts: 0, level: "info", source: "s", message: "m" }),
+		).not.toThrow();
+	});
+
+	test("fans out in declared order", () => {
+		const order: string[] = [];
+		const a: LogSink = () => {
+			order.push("a");
+		};
+		const b: LogSink = () => {
+			order.push("b");
+		};
+		const c: LogSink = () => {
+			order.push("c");
+		};
+		composeSinks(a, b, c)({ ts: 0, level: "info", source: "s", message: "m" });
+		expect(order).toEqual(["a", "b", "c"]);
+	});
+
 	test("forwards disposal to members that implement it", async () => {
 		let disposed = 0;
 		const owning: LogSink = Object.assign(((_e: LogEvent) => {}) as LogSink, {
