@@ -83,33 +83,33 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
  *
  * Wraps the provided `error` (the failure value) and sets `data` to `null`.
  *
- * **Constraint**: `E` is `NonNullable<unknown>` — you cannot construct
- * `Err(null)` or `Err(undefined)`. A failure without a reason is meaningless,
- * and more concretely: `Err(null)` is structurally identical to `Ok(null)`
- * (both are `{ data: null, error: null }`), which silently breaks the
- * `isErr`/`isOk` discriminator. Pass a meaningful error value (a string,
- * a tagged error from `defineErrors`, an `Error` instance, etc.) or use
- * `Ok(undefined)` if what you meant was "completed with no payload."
+ * **Don't call `Err(null)`.** It produces `{ data: null, error: null }` —
+ * structurally identical to `Ok(null)`. The built-in `isErr` check
+ * (`result.error !== null`) reads it as Ok, silently misclassifying your
+ * failure as success. `Err(undefined)` is also discouraged: the discriminator
+ * technically works (`undefined !== null`), but `undefined` is falsy, so
+ * downstream `if (error)` checks trip and the error carries no information
+ * anyway. Pass a meaningful error value (a string, a tagged error from
+ * `defineErrors`, an `Error` instance), or use `Ok(null)`/`Ok(undefined)` if
+ * what you meant was success-with-no-payload.
  *
- * The `Err<E>` *type* is unchanged — you can still type arguments as
- * `Err<E>` with any `E`. The constraint only applies at construction time.
+ * At `catch (error: unknown)` boundaries, wrap the caught value in a tagged
+ * error rather than passing it through — `TaggedError.X({ cause: error })`
+ * is always non-null by construction, so the discriminator works regardless
+ * of what was thrown.
  *
- * @template E - The type of the error value (must be non-nullable).
- * @param error - The error value to wrap. Must not be `null` or `undefined`.
+ * See `docs/philosophy/err-null-is-ok-null.md` for the full rationale.
+ *
+ * @template E - The type of the error value.
+ * @param error - The error value to wrap. Don't pass `null` or `undefined`.
  * @returns An `Err<E>` object with the provided error and `data` set to `null`.
  * @example
  * ```ts
  * const failedResult = Err(new TypeError("Invalid input"));
  * // failedResult is { error: TypeError("Invalid input"), data: null }
- *
- * // @ts-expect-error — Err(null) is forbidden at the type level
- * const brokenResult = Err(null);
  * ```
  */
-export const Err = <E extends NonNullable<unknown>>(error: E): Err<E> => ({
-	error,
-	data: null,
-});
+export const Err = <E>(error: E): Err<E> => ({ error, data: null });
 
 /**
  * Utility type to extract the success value's type `T` from a `Result<T, E>` type.

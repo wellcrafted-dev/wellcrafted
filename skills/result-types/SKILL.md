@@ -45,7 +45,13 @@ if (result.error !== null) { /* handle error */ }
 if (isErr(result)) { /* handle error */ }
 ```
 
-The `Err` constructor is typed `<E extends NonNullable<unknown>>`, so `Err(null)` and `Err(undefined)` are compile errors — you cannot construct a null-error at a call site. (The `Err<E>` *type* is unchanged, so generic code that accepts `Err<E>` for any `E` keeps working.) This makes `Err.error !== null` a safe runtime discriminator under the normal convention.
+**Don't call `Err(null)`.** It produces `{ data: null, error: null }` — structurally identical to `Ok(null)`. Under the shape, `isErr`/`isOk` read it as Ok, so `Err(null)` silently becomes success. `Err(undefined)` is also discouraged — the discriminator technically works (`undefined !== null` is true), but the value is meaningless and trips `if (error)` falsy checks downstream. Either:
+
+- Use `Ok(null)`/`Ok(undefined)` (if what you meant was success-with-no-payload).
+- Define a tagged error via `defineErrors` with a real name.
+- Wrap a caught exception as `TaggedError.Unexpected({ cause: error })` — see below.
+
+At every `catch (error: unknown)` boundary, don't pass the raw `unknown` to `Err`. Wrap it in a tagged error via `defineErrors`. The tagged error is non-null by construction, so the shape's invariant holds regardless of what was thrown (including `throw null`). See `docs/philosophy/err-null-is-ok-null.md` for why this is a documentation rule rather than a type-level constraint.
 
 ## Constructors
 

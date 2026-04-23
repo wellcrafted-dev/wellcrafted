@@ -1,7 +1,27 @@
 # Constrain `Err<E>` so `Err(null)` is a compile error
 
 **Date**: 2026-04-23
-**Status**: Implemented in this PR — constraint applied, tests locking it in, consumer survey confirmed zero hits
+**Status**: **REVERTED** in the same PR before merge. Kept for history.
+
+## What we learned (why this was reverted)
+
+We shipped the `Err<E extends NonNullable<unknown>>` constraint, reviewed it against real consumer code, and pulled it back. The reversal is documented as an article: `docs/philosophy/err-null-is-ok-null.md`. Short version:
+
+1. **The enforcement is shallow.** The constraint catches `Err(null)` at a literal call site but is bypassed by `as any`, `as NonNullable<T>`, direct object construction, and any variable whose runtime value happens to be null despite a non-null compile-time type. The PR's own migration in `src/query/utils.ts` used `as NonNullable<TError>` casts — silencing TS without enforcing the runtime invariant.
+
+2. **The cost is wide.** Every `catch (error: unknown)` boundary (TC39/TS consensus) friction-collides with `NonNullable<unknown>`. Downstream consumers had to either cast (wrong answer) or refactor to tagged errors (right answer, but the type error doesn't say that).
+
+3. **The teaching value is replaceable.** The intended lesson ("use tagged errors") is better delivered by documentation and idiom than by a type error whose natural fix is a cast. A consumer hitting `Err(error: unknown)` → type error → StackOverflow finds `as NonNullable<T>` and moves on, learning the wrong thing.
+
+4. **The underlying issue is a shape limit, not a constructor bug.** Shape-based Result libraries (wellcrafted, Supabase-style) have a structural limit: they can't distinguish "success with null payload" from "failure with null reason." The constraint pretended the types could patch a shape-level collision. They can't.
+
+The shipped fix: revert the constraint, strengthen the skill and JSDoc with an explicit rule, document the shape limit in `docs/philosophy/err-null-is-ok-null.md`, and let the tagged-errors idiom carry enforcement.
+
+The original design notes follow for history.
+
+---
+
+**Original Status (historical)**: Implemented — constraint applied, tests locking it in, consumer survey confirmed zero hits
 **Author**: Review surfaced during `wellcrafted/logger` integration
 
 ## The problem
