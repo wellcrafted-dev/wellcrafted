@@ -32,8 +32,7 @@ function unwrapLoggable(err: LoggableError): AnyTaggedError {
  * }
  *
  * @example App wiring (share one sink, multiple loggers)
- * await using file = jsonlFileSink('/var/log/app.jsonl');
- * const sink = composeSinks(consoleSink, file);
+ * const sink = composeSinks(consoleSink, myCustomSink);
  * attachThing(ydoc, { log: createLogger('thing', sink) });
  * attachOther(ydoc, { log: createLogger('other', sink) });
  */

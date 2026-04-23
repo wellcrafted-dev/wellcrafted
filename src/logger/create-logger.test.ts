@@ -76,6 +76,17 @@ describe("createLogger", () => {
 		expect(() => log.info("visible in console")).not.toThrow();
 	});
 
+	test("warn/error accept a native Error instance", () => {
+		// Plain Error satisfies AnyTaggedError structurally (name + message),
+		// so migration from `console.warn(err)` works without a tagged wrapper.
+		const { sink, events } = memorySink();
+		const log = createLogger("s", sink);
+		const native = new Error("boom");
+		log.warn(native);
+		expect(events[0]!.message).toBe("boom");
+		expect(events[0]!.data).toBe(native);
+	});
+
 	test("methods are callable when detached from the logger (no `this`)", () => {
 		// Pins the contract that `tapErr(log.warn)` relies on: methods close
 		// over sink/source, never reference `this`.

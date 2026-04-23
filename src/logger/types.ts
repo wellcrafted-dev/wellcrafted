@@ -69,11 +69,19 @@ export type LogSink = ((event: LogEvent) => void) & Partial<AsyncDisposable>;
  * `docs/articles/ok-null-is-fine-err-null-is-a-lie.md`). Always discriminate
  * by an invariant non-null property (`name` here), never by null-presence.
  *
+ * Native `Error` instances also satisfy `AnyTaggedError` structurally
+ * (`name` and `message` are both present), so `log.warn(new Error("x"))`
+ * works out of the box — useful when migrating from `console.warn(err)`
+ * call sites that caught a plain `Error`.
+ *
  * @example Err-wrapped (direct mint)
  * log.warn(MyError.Thing({ cause }));
  *
  * @example Raw tagged (from result.error, after narrowing)
  * if (isErr(result)) log.warn(result.error);
+ *
+ * @example Plain Error (migration from console.warn)
+ * try { risky(); } catch (e) { log.warn(e as Error); }
  */
 export type LoggableError = AnyTaggedError | Err<AnyTaggedError>;
 
