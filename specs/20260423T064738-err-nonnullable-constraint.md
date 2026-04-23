@@ -1,7 +1,7 @@
 # Constrain `Err<E>` so `Err(null)` is a compile error
 
 **Date**: 2026-04-23
-**Status**: Design proposal — not implementing yet, soliciting feedback
+**Status**: Implemented in this PR — constraint applied, tests locking it in, consumer survey confirmed zero hits
 **Author**: Review surfaced during `wellcrafted/logger` integration
 
 ## The problem
@@ -49,11 +49,12 @@ Doesn't fix: constructing an `Err<null>` through other paths (e.g., `as Err<null
 
 Alternate approach considered: tag-based discrimination (`{ _tag: "Ok" | "Err", ... }`). Biggest safety, biggest disruption, bigger runtime payload. Not recommended.
 
-## Proposed path
+## What shipped
 
-1. Survey — grep the canonical wellcrafted consumers (epicenter monorepo at minimum) for `Err(null)` / `Err(undefined)` usage. Predict: zero hits.
-2. If zero: ship the constraint as a minor bump.
-3. If nonzero: file separate issues per caller, decide whether to refactor them or bump to a major instead.
+1. **Survey** — grepped `~/Code/wellcrafted/src`, `packages/`, `apps/` in the epicenter monorepo for `Err(null)` / `Err(undefined)`. Zero real hits. Two hits were in JSDoc comments discussing the edge itself, not real construction.
+2. **Constraint applied** to the `Err` constructor: `export const Err = <E extends NonNullable<unknown>>(error: E): Err<E> => ({ error, data: null })`. The `Err<E>` type itself is unchanged — only the constructor narrows.
+3. **Tests added** in `src/result/result.test.ts` — `@ts-expect-error` directives lock in that `Err(null)` and `Err(undefined)` fail at compile time, plus positive cases for strings, Error instances, tagged errors, `0`, `false` (non-nullable falsy values still work).
+4. **Changeset** — shipped as a minor bump (would be a `major` in strict SemVer, but wellcrafted is pre-1.0 where breaking type-level changes are acceptable in minor per its existing policy — same rule followed by the logger PR).
 
 ## What this does not replace
 

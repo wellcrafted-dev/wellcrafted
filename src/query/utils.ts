@@ -324,7 +324,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 					}),
 				);
 			} catch (error) {
-				return Err(error as TError);
+				return Err(error as NonNullable<TError>);
 			}
 		}
 
@@ -375,7 +375,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 					}),
 				);
 			} catch (error) {
-				return Err(error as TError);
+				return Err(error as NonNullable<TError>);
 			}
 		}
 
@@ -503,7 +503,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 			try {
 				return Ok(await runMutation(queryClient, newOptions, variables));
 			} catch (error) {
-				return Err(error as TError);
+				return Err(error as NonNullable<TError>);
 			}
 		}
 

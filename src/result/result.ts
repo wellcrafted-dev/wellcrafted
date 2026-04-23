@@ -81,19 +81,35 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
 /**
  * Constructs an `Err<E>` variant, representing a failure outcome.
  *
- * This factory function creates the error variant of a `Result`.
- * It wraps the provided `error` (the error value) and ensures the `data` property is `null`.
+ * Wraps the provided `error` (the failure value) and sets `data` to `null`.
  *
- * @template E - The type of the error value.
- * @param error - The error value to be wrapped in the `Err` variant. This value represents the specific error that occurred.
+ * **Constraint**: `E` is `NonNullable<unknown>` — you cannot construct
+ * `Err(null)` or `Err(undefined)`. A failure without a reason is meaningless,
+ * and more concretely: `Err(null)` is structurally identical to `Ok(null)`
+ * (both are `{ data: null, error: null }`), which silently breaks the
+ * `isErr`/`isOk` discriminator. Pass a meaningful error value (a string,
+ * a tagged error from `defineErrors`, an `Error` instance, etc.) or use
+ * `Ok(undefined)` if what you meant was "completed with no payload."
+ *
+ * The `Err<E>` *type* is unchanged — you can still type arguments as
+ * `Err<E>` with any `E`. The constraint only applies at construction time.
+ *
+ * @template E - The type of the error value (must be non-nullable).
+ * @param error - The error value to wrap. Must not be `null` or `undefined`.
  * @returns An `Err<E>` object with the provided error and `data` set to `null`.
  * @example
  * ```ts
  * const failedResult = Err(new TypeError("Invalid input"));
  * // failedResult is { error: TypeError("Invalid input"), data: null }
+ *
+ * // @ts-expect-error — Err(null) is forbidden at the type level
+ * const brokenResult = Err(null);
  * ```
  */
-export const Err = <E>(error: E): Err<E> => ({ error, data: null });
+export const Err = <E extends NonNullable<unknown>>(error: E): Err<E> => ({
+	error,
+	data: null,
+});
 
 /**
  * Utility type to extract the success value's type `T` from a `Result<T, E>` type.

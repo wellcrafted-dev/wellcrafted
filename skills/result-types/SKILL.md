@@ -45,7 +45,7 @@ if (result.error !== null) { /* handle error */ }
 if (isErr(result)) { /* handle error */ }
 ```
 
-The convention `Err.error` is always non-null is implicit — the type system allows `Err(null)` but it's meaningless (a failure with no reason). Don't construct one; don't rely on anything that would classify it either way.
+The `Err` constructor is typed `<E extends NonNullable<unknown>>`, so `Err(null)` and `Err(undefined)` are compile errors — you cannot construct a null-error at a call site. (The `Err<E>` *type* is unchanged, so generic code that accepts `Err<E>` for any `E` keeps working.) This makes `Err.error !== null` a safe runtime discriminator under the normal convention.
 
 ## Constructors
 
