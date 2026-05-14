@@ -25,21 +25,21 @@ type Ok<T> = { data: T; error: null };
 type Err<E> = { error: E; data: null };
 ```
 
-The key insight: **Both `data` and `error` can act as discriminants** — they're symmetric in most cases. TypeScript narrows types when you check either one:
+The key insight: **`error` is the reliable discriminant**. TypeScript narrows types when you check the error side:
 
 - `error === null` → **Ok**: TypeScript knows `data` is `T`
 - `error !== null` → **Err**: TypeScript knows `error` is `E`
-- `data !== null` → **Ok**: TypeScript knows you have success data
-- `data === null` → Usually **Err**, but not always...
+
+The `data` side is convenient to read after narrowing, but it is not a safe discriminator in every case because `Ok(null)` is valid.
 
 ### Pro Tip: Prefer Checking `error`
 
 In practice, we recommend checking `error` first. Here's why:
 
 ```typescript
-// Both work in most cases:
-if (result.error) { /* handle error */ }
-if (!result.data) { /* handle error */ }  // Also works... usually
+// Prefer the exact null check:
+if (result.error !== null) { /* handle error */ }
+if (result.data === null) { /* handle error */ }  // Wrong for Ok<null>
 
 // But what about Ok<null>?
 const result: Result<null, string> = Ok(null);
@@ -50,7 +50,7 @@ if (!result.data) {
   // But it's actually a successful Ok<null>
 }
 
-if (result.error) {
+if (result.error !== null) {
   // ✅ This correctly identifies it as Ok
   // error is null, so we skip this branch
 }
@@ -135,7 +135,7 @@ Our design has several advantages:
 ```typescript
 // Our approach
 const { data, error } = result;
-if (error) handleError(error);
+if (error !== null) handleError(error);
 else useData(data);
 
 // Boolean approach
@@ -318,7 +318,7 @@ async function queryDatabase(sql: string): Result<Row[], DatabaseError> {
 async function getUser(id: string): Result<User, UserServiceError> {
   const result = await queryDatabase(`SELECT * FROM users WHERE id = ${id}`);
   
-  if (result.error) {
+  if (result.error !== null) {
     return Err({
       name: "UserServiceError",
       message: "Failed to fetch user",

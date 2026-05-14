@@ -62,7 +62,7 @@ async function getUser(
 
 // Callers handle errors as data
 const { data: user, error } = await getUser("123");
-if (error) {
+if (error !== null) {
   // TypeScript knows exactly what errors are possible
   switch (error.name) {
     case "UserNotFoundError":
@@ -86,7 +86,7 @@ type Err<E> = { data: null; error: E }
 
 ### Why This Design?
 
-1. **Discriminated Union**: Both `data` and `error` work as discriminants — they're symmetric, so TypeScript narrows types when you check either one. We recommend checking `error` by default since it handles all cases, including `Ok<null>` (e.g., a cache lookup that succeeds but finds nothing)
+1. **Error-side Discriminated Union**: `error` is the reliable discriminant. `error === null` means Ok, and `error !== null` means Err. This handles every success payload, including `Ok<null>` (e.g., a cache lookup that succeeds but finds nothing). Error values themselves should be non-null; their presence is represented by `error !== null`.
 2. **Destructuring-Friendly**: The ability to destructure `const { data, error } = ...` is a clean, direct, and pragmatic pattern that is already familiar to developers using popular libraries like Supabase and Astro Actions
 3. **Serialization-Safe**: Plain objects survive any serialization boundary
 4. **Zero Magic**: No classes, no prototypes, just objects
@@ -191,7 +191,7 @@ When something goes wrong, you want to know immediately and handle it gracefully
 
 ```typescript
 const result = await fetchUser(id);
-if (result.error) {
+if (result.error !== null) {
   // Handle error immediately, with full type information
   return handleError(result.error);
 }
@@ -289,7 +289,7 @@ async function fulfillOrder(
 
 // Usage is clear and type-safe
 const result = await fulfillOrder(userId, orderId);
-if (result.error) {
+if (result.error !== null) {
   switch (result.error.name) {
     case "OrderNotFoundError":
       show404();

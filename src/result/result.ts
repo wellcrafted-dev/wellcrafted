@@ -163,9 +163,13 @@ export type UnwrapErr<R extends Result<unknown, unknown>> = R extends Err<
  * A value is considered a valid `Result` if:
  * 1. It is a non-null object.
  * 2. It has both `data` and `error` properties.
- * 3. At least one of the `data` or `error` channels is `null`. Both being `null` represents `Ok(null)`.
  *
- * This function does not validate the types of `data` or `error` beyond `null` checks.
+ * The `error` property is the runtime discriminant:
+ * - `error === null` represents `Ok<T>`, even when `data` is also `null` (`Ok(null)`).
+ * - `error !== null` represents `Err<E>`, even if external data also includes a non-null `data` value.
+ *
+ * This function checks only the Result shape. It does not validate the
+ * success or error payload types.
  *
  * @template T - The expected type of the success value if the value is an `Ok` variant (defaults to `unknown`).
  * @template E - The expected type of the error value if the value is an `Err` variant (defaults to `unknown`).
@@ -228,7 +232,8 @@ export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
  * Type guard to runtime check if a `Result<T, E>` is an `Err<E>` variant.
  *
  * This function narrows the type of a `Result` to `Err<E>` if it represents a failure outcome.
- * An `Err<E>` variant is identified by its `error` property being non-`null` (and thus `data` being `null`).
+ * An `Err<E>` variant is identified by its `error` property being non-`null`.
+ * The error side is the reliable discriminator because `Ok(null)` is valid.
  *
  * @template T - The success value type.
  * @template E - The error value type.
@@ -246,7 +251,7 @@ export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
  * ```
  */
 export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
-	return result.error !== null; // Equivalent to result.data === null
+	return result.error !== null;
 }
 
 /**

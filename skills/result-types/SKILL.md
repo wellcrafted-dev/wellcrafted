@@ -23,7 +23,7 @@ This is the same destructuring shape used by Supabase and SvelteKit load functio
 
 ```typescript
 const { data, error } = await someOperation();
-if (error) {
+if (error !== null) {
   // error is E, data is null
   return;
 }
@@ -135,7 +135,7 @@ const { data: response, error } = await tryAsync({
   try: () => fetch(`/api/users/${userId}`),
   catch: (cause) => UserError.FetchFailed({ userId, cause }),
 });
-if (error) return Err(error);
+if (error !== null) return Err(error);
 
 // Continue with non-throwing operations
 const user = await response.json();
@@ -209,11 +209,11 @@ When you destructure `{ data, error }`, the `error` variable is the raw error va
 ```typescript
 // WRONG — error is the raw value, not a Result
 const { data, error } = await tryAsync({ ... });
-if (error) return error; // Type error: returns raw error, not Result
+if (error !== null) return error; // Type error: returns raw error, not Result
 
 // CORRECT — wrap with Err() to return a proper Result
 const { data, error } = await tryAsync({ ... });
-if (error) return Err(error);
+if (error !== null) return Err(error);
 ```
 
 This is different from returning the entire result object:
@@ -221,7 +221,7 @@ This is different from returning the entire result object:
 ```typescript
 // Also correct — result is already a Result type
 const result = await tryAsync({ ... });
-if (result.error) return result; // Returns the full Result
+if (result.error !== null) return result; // Returns the full Result
 ```
 
 ## Utility Functions

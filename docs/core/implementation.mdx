@@ -37,12 +37,12 @@ The magic lies in how TypeScript's type system interprets this structure:
 - **`Err<E>`** always has `error: E` and `data: null`  
 - **`Result<T, E>`** is simply `Ok<T> | Err<E>`
 
-This creates a **discriminated union** where both `data` and `error` can act as discriminants — they work symmetrically in most cases:
+This creates a **discriminated union** where `error` is the reliable discriminator:
 
 - `error === null` → **Ok** (data is `T`)
 - `error !== null` → **Err** (error is `E`)
 
-**Pro tip**: We recommend checking `error` by default. While checking `data` works great when your success type is non-nullable, `error` handles all cases — including `Ok<null>` where the success value itself is `null`.
+**Pro tip**: Check `error` with an exact null comparison. `error === null` means success; `error !== null` means failure. Checking `data` works only when your success type is non-nullable, but `error` handles all cases, including `Ok<null>` where the success value itself is `null`.
 
 ### How TypeScript Narrows Types
 
@@ -108,7 +108,7 @@ The design enables the elegant destructuring pattern:
 ```typescript
 const { data, error } = await someOperation();
 
-if (error) {
+if (error !== null) {
   // Handle error
 } else {
   // Use data
