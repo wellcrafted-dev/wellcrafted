@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "bun:test";
 import { type JsonValue, parseJson } from "./json.js";
+import { expectErr, expectOk } from "./testing.js";
 
 describe("parseJson", () => {
 	// =============================================================================
@@ -7,22 +8,26 @@ describe("parseJson", () => {
 	// =============================================================================
 
 	it("parses an object", () => {
-		const { data, error } = parseJson('{"count":1,"ok":true}');
-		expect(error).toBeNull();
-		expect(data).toEqual({ count: 1, ok: true });
+		expect(expectOk(parseJson('{"count":1,"ok":true}'))).toEqual({
+			count: 1,
+			ok: true,
+		});
 	});
 
 	it("parses an array", () => {
-		const { data, error } = parseJson('[1,"two",false,null]');
-		expect(error).toBeNull();
-		expect(data).toEqual([1, "two", false, null]);
+		expect(expectOk(parseJson('[1,"two",false,null]'))).toEqual([
+			1,
+			"two",
+			false,
+			null,
+		]);
 	});
 
 	it("parses primitives", () => {
-		expect(parseJson('"hello"').data).toBe("hello");
-		expect(parseJson("42").data).toBe(42);
-		expect(parseJson("true").data).toBe(true);
-		expect(parseJson("null").data).toBeNull();
+		expect(expectOk(parseJson('"hello"'))).toBe("hello");
+		expect(expectOk(parseJson("42"))).toBe(42);
+		expect(expectOk(parseJson("true"))).toBe(true);
+		expect(expectOk(parseJson("null"))).toBeNull();
 	});
 
 	// =============================================================================
@@ -30,20 +35,17 @@ describe("parseJson", () => {
 	// =============================================================================
 
 	it("returns Err for malformed input", () => {
-		const { data, error } = parseJson("{ not json");
-		expect(data).toBeNull();
-		expect(error).not.toBeNull();
-		expect(error?.name).toBe("JsonParseError");
-		expect(error?.message).toStartWith("Failed to parse JSON: ");
+		const error = expectErr(parseJson("{ not json"));
+		expect(error.name).toBe("JsonParseError");
+		expect(error.message).toStartWith("Failed to parse JSON: ");
 	});
 
 	it("returns Err for an empty string", () => {
-		expect(parseJson("").error?.name).toBe("JsonParseError");
+		expect(expectErr(parseJson("")).name).toBe("JsonParseError");
 	});
 
 	it("preserves the underlying SyntaxError as cause", () => {
-		const { error } = parseJson("{");
-		expect(error?.cause).toBeInstanceOf(SyntaxError);
+		expect(expectErr(parseJson("{")).cause).toBeInstanceOf(SyntaxError);
 	});
 
 	// =============================================================================
@@ -51,9 +53,6 @@ describe("parseJson", () => {
 	// =============================================================================
 
 	it("types the success value as JsonValue", () => {
-		const { data, error } = parseJson("{}");
-		if (!error) {
-			expectTypeOf(data).toEqualTypeOf<JsonValue>();
-		}
+		expectTypeOf(expectOk(parseJson("{}"))).toEqualTypeOf<JsonValue>();
 	});
 });
