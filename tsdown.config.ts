@@ -9,6 +9,7 @@ export default defineConfig({
 		"src/brand.ts",
 		"src/query/index.ts",
 		"src/standard-schema/index.ts",
+		"src/testing.ts",
 	],
 	format: ["esm"],
 	target: "esnext",
