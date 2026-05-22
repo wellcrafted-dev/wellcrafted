@@ -1,5 +1,40 @@
 # wellcrafted
 
+## 0.36.0
+
+### Minor Changes
+
+- b9b0dce: Add `parseJson` and `JsonParseError` to `wellcrafted/json`.
+
+  `parseJson(text)` parses a JSON string into a `Result<JsonValue, JsonParseError>` instead of throwing. It is the Result-returning counterpart to `JSON.parse`:
+
+  - the success value is typed as `JsonValue` rather than `any`, so you must narrow or validate it before treating it as a known shape
+  - malformed input is reported as a tagged `JsonParseError` (built with `defineErrors`) carrying the underlying `SyntaxError` as `cause`, instead of throwing
+
+  ```ts
+  import { parseJson } from "wellcrafted/json";
+
+  const { data, error } = parseJson(raw);
+  if (error) return Err(error); // JsonParseError
+  data; // JsonValue
+  ```
+
+  No reviver argument is accepted: a reviver can return arbitrary values, which would make the `JsonValue` success type unsound.
+
+- 5c4dab6: Add the `wellcrafted/testing` entry point with `expectOk` and `expectErr`.
+
+  These are test-only assertion helpers for `Result` values. Each unwraps the expected branch and returns it narrowed, throwing if the `Result` is the other variant:
+
+  ```ts
+  import { expectOk, expectErr } from "wellcrafted/testing";
+
+  const value = expectOk(parseConfig(raw)); // success value, narrowed
+  const error = expectErr(parseConfig("x")); // error value, narrowed
+  expect(error.name).toBe("ConfigParseError");
+  ```
+
+  They intentionally throw: a failed expectation should abort the test, which every runner reports as a failure. Throwing is fenced into this separate `wellcrafted/testing` entry point so `wellcrafted/result` stays throw-free. The helpers throw a plain `Error`, so they work under bun, vitest, jest, or `node:test` without depending on a test framework.
+
 ## 0.35.0
 
 ### Minor Changes
