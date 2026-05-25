@@ -1,8 +1,13 @@
 ---
-"wellcrafted": major
+"wellcrafted": minor
 ---
 
 Remove `defineHttpErrors` and its type companions.
+
+> Bumped as `minor` (pre-1.0 convention: minor is breaking in 0.x) rather
+> than `major`. `wellcrafted@1.0.0` was published and unpublished on
+> 2025-07-17 and npm permanently blocks reusing that version number, so a
+> major bump from 0.37.0 -> 1.0.0 cannot publish.
 
 `defineHttpErrors` coupled error definition to one specific transport (HTTP). The right primitive is `defineErrors`, with HTTP status (or any other per-variant metadata) carried in a sibling map keyed by variant name. This deletion shrinks the public surface and keeps `wellcrafted/error` transport-agnostic, so the same errors can flow through HTTP, queues, RPC, CLIs, or anywhere else without per-transport variants of the primitive.
 
