@@ -25,16 +25,38 @@ function unwrapLoggable(err: LoggableError): AnyTaggedError {
  *   plus the level string); spelling them out beats an `emitErr("warn")`
  *   riddle.
  *
+ * ### Source convention
+ *
+ * `source` is a free-form string, but downstream filtering and tail-log
+ * grep become much easier when call sites converge on a shape. Recommended:
+ *
+ *     '<package>/<module>'    e.g. 'workspace/sync-supervisor'
+ *     '<app>/<feature>'       e.g. 'fuji/daemon-route'
+ *     '<package>/<area>'      e.g. 'auth/oauth-app'
+ *
+ * Keep it lowercase-kebab. Avoid bare factory names like
+ * `'attachSqliteMaterializer'`: they don't carry package context.
+ *
+ * ### Module-scope vs injected
+ *
+ * `const log = createLogger('source')` at module scope is fine for
+ * process-singleton modules (CLI commands, app bootstrap, leaf utilities
+ * the host does not customize per instance). For anything that can be
+ * instantiated more than once per process with different routing needs
+ * (per-document attach primitives, per-account auth state, per-workspace
+ * services), accept `log?: Logger` at the factory boundary and default
+ * to `createLogger('source')` for development ergonomics.
+ *
  * @example Library code (caller wires the sink)
  * function attachThing(ydoc: Doc, opts: { log?: Logger }) {
- *   const log = opts.log ?? createLogger('thing');
+ *   const log = opts.log ?? createLogger('workspace/thing');
  *   // ...
  * }
  *
  * @example App wiring (share one sink, multiple loggers)
  * const sink = composeSinks(consoleSink, myCustomSink);
- * attachThing(ydoc, { log: createLogger('thing', sink) });
- * attachOther(ydoc, { log: createLogger('other', sink) });
+ * attachThing(ydoc, { log: createLogger('workspace/thing', sink) });
+ * attachOther(ydoc, { log: createLogger('workspace/other', sink) });
  */
 export function createLogger(
 	source: string,
