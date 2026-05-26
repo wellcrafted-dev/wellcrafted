@@ -262,7 +262,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 		TError = DefaultError,
 		TData = TQueryFnData,
 		TQueryData = TQueryFnData,
-		TQueryKey extends QueryKey = QueryKey,
+		const TQueryKey extends QueryKey = QueryKey,
 	>(
 		options: DefineQueryInput<
 			TQueryFnData,
