@@ -11,6 +11,32 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
 
+      # Guard against `"wellcrafted": major` changesets while still in 0.x.
+      # wellcrafted@1.0.0 was published and unpublished on 2025-07-17; npm
+      # permanently blocks reusing that version, so a 0.x -> 1.0.0 publish
+      # always fails. Use minor for breaking changes until a deliberate 1.x
+      # milestone, at which point this guard is a no-op.
+      - name: Guard against pre-1.0 major changesets
+        run: |
+          version=$(awk -F '"' '/"version":/ { print $4; exit }' package.json)
+          if [[ ! "$version" =~ ^0\. ]]; then
+            echo "Version $version is past 0.x; major changesets are allowed."
+            exit 0
+          fi
+          offenders=$(grep -lE '^"wellcrafted":[[:space:]]+major[[:space:]]*$' .changeset/*.md 2>/dev/null || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::Pre-1.0 major changeset detected (current version $version):"
+            echo "$offenders" | sed 's/^/  - /'
+            echo ""
+            echo "wellcrafted@1.0.0 was published and unpublished on 2025-07-17;"
+            echo "npm permanently blocks reusing that version, so 0.x -> 1.0.0"
+            echo "will always fail at the publish step. Demote to 'minor' for"
+            echo "the breaking-change signal (pre-1.0 convention), or wait for"
+            echo "a deliberate 1.x milestone and skip straight to 1.0.1."
+            exit 1
+          fi
+          echo "No pre-1.0 major changesets found."
+
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
