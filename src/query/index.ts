@@ -1,1 +1,1 @@
-export { createQueryFactories } from "./utils.js";
+export { createQueryFactories, defineKeys } from "./utils.js";
