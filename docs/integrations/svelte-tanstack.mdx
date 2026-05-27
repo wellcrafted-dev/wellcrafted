@@ -6,7 +6,7 @@ icon: 'svelte'
 
 # Svelte + TanStack Query Integration
 
-This guide covers **Svelte-specific** patterns for using wellcrafted with TanStack Query. For core concepts — service layers, query factories, the dual interface pattern, error transformation, and best practices — see the [TanStack Query Integration](/integrations/tanstack-query) guide, which applies to both React and Svelte.
+This guide covers **Svelte-specific** patterns for using wellcrafted with TanStack Query. For core concepts like service layers, query factories, reactive options, imperative helpers, error transformation, and best practices, see the [TanStack Query Integration](/integrations/tanstack-query) guide, which applies to both React and Svelte.
 
 <Note>
 These patterns are battle-tested in [Whispering](https://github.com/braden-w/whispering), a production desktop/web app with 22,824 lines of TypeScript, 97% code sharing between platforms, and zero runtime crashes.
@@ -83,7 +83,7 @@ When you need loading states in the template, use `createMutation`:
 
 ### Imperative Actions in Event Handlers
 
-For event handlers that don't need reactive UI state, use `.execute()` directly — no need to create a reactive mutation:
+For event handlers that don't need reactive UI state, call the mutation directly. No reactive mutation needed:
 
 ```svelte
 <script lang="ts">
@@ -95,7 +95,7 @@ For event handlers that don't need reactive UI state, use `.execute()` directly 
   async function handleDelete() {
     if (!confirm('Are you sure?')) return;
 
-    const { error } = await rpc.recordings.deleteRecording.execute(recording.id);
+    const { error } = await rpc.recordings.deleteRecording(recording.id);
     if (error) {
       toast.error('Failed to delete recording', { description: error.message });
       return;
@@ -104,7 +104,7 @@ For event handlers that don't need reactive UI state, use `.execute()` directly 
   }
 
   async function handleShare() {
-    const { data, error } = await rpc.recordings.generateShareLink.execute(recording.id);
+    const { data, error } = await rpc.recordings.generateShareLink(recording.id);
     if (error) {
       toast.error('Failed to generate share link', { description: error.message });
       return;
@@ -245,7 +245,7 @@ export const recordings = { getAllRecordings, deleteRecording };
   const recordings = createQuery(() => rpc.recordings.getAllRecordings.options);
 
   async function handleDelete(id: string) {
-    const { error } = await rpc.recordings.deleteRecording.execute(id);
+    const { error } = await rpc.recordings.deleteRecording(id);
     if (error) {
       toast.error('Failed to delete', { description: error.message });
       return;
@@ -272,7 +272,7 @@ export const recordings = { getAllRecordings, deleteRecording };
 
 <CardGroup>
   <Card title="TanStack Query Integration" icon="database" href="/integrations/tanstack-query">
-    Core concepts: query factories, dual interface, error transformation, best practices
+    Core concepts: query factories, reactive options, imperative helpers, error transformation, best practices
   </Card>
   <Card title="Result Pattern" icon="code-branch" href="/core/result-pattern">
     Learn the fundamentals of Result types and error handling

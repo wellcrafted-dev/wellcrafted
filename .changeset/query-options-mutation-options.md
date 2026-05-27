@@ -31,6 +31,6 @@ const save = createMutation(() =>
 
 `defineQuery` and `defineMutation` now compose through these helpers, so there is exactly one canonical conversion path from `Result<TData, TError>` to TanStack's throwing contract. The `.options` produced by `defineQuery` and `defineMutation` is the same shape returned by `queryOptions` and `mutationOptions`.
 
-Use `queryOptions` / `mutationOptions` when options are local to a hook call site. Use `defineQuery` / `defineMutation` when you also want imperative helpers (`.fetch`, `.ensure`, `.execute`, callable form) bound to a specific `QueryClient`.
+Use `queryOptions` / `mutationOptions` when options are local to a hook call site. Use `defineQuery` / `defineMutation` when you also want imperative helpers (`.fetch`, `.ensure`, and callable mutations) bound to a specific `QueryClient`.
 
 The new helpers share names with TanStack Query's framework-adapter identity helpers (`@tanstack/react-query`, `@tanstack/svelte-query`). This is intentional: Wellcrafted's versions are the Result-aware equivalents. If you need both in one file, alias one on import.

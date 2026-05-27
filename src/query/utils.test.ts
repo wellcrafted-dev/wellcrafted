@@ -160,7 +160,7 @@ describe("defineQuery", () => {
 		expectTypeOf(userQuery.options).toEqualTypeOf(standalone);
 	});
 
-	it("returns Ok from .ensure and callable form", async () => {
+	it("returns Ok from .ensure", async () => {
 		const userQuery = defineQuery({
 			queryKey: ["users", "ensure"],
 			queryFn: () => Ok({ id: "ensure" }),
@@ -168,9 +168,21 @@ describe("defineQuery", () => {
 
 		const ensured = await userQuery.ensure();
 		expect(ensured.data).toEqual({ id: "ensure" });
+	});
 
-		const called = await userQuery();
-		expect(called.data).toEqual({ id: "ensure" });
+	it("is not callable so imperative read policy stays explicit", () => {
+		const userQuery = defineQuery({
+			queryKey: ["users", "explicit"],
+			queryFn: () => Ok({ id: "explicit" }),
+		});
+
+		expect(typeof userQuery).toBe("object");
+
+		const assertNotCallable = () => {
+			// @ts-expect-error query definitions require .fetch() or .ensure()
+			userQuery();
+		};
+		expectTypeOf(assertNotCallable).toBeFunction();
 	});
 
 	it("returns Err from .fetch when queryFn errors", async () => {
@@ -182,6 +194,29 @@ describe("defineQuery", () => {
 		const { data, error } = await userQuery.fetch();
 		expect(data).toBeNull();
 		expect(error).toBe("not-found");
+	});
+
+	it("uses query options for imperative .fetch", async () => {
+		const localQueryClient = new QueryClient();
+		const { defineQuery: defineLocalQuery } =
+			createQueryFactories(localQueryClient);
+		let calls = 0;
+
+		const userQuery = defineLocalQuery({
+			queryKey: ["users", "fresh-cache"],
+			staleTime: Infinity,
+			queryFn: () => {
+				calls += 1;
+				return Ok(calls);
+			},
+		});
+
+		const first = await userQuery.fetch();
+		const second = await userQuery.fetch();
+
+		expect(first.data).toBe(1);
+		expect(second.data).toBe(1);
+		expect(calls).toBe(1);
 	});
 });
 
@@ -195,27 +230,39 @@ describe("defineMutation", () => {
 		expectTypeOf(createUser).toBeFunction();
 	});
 
-	it("returns Ok from .execute and callable form", async () => {
+	it("returns Ok from callable form", async () => {
 		const create = defineMutation({
 			mutationKey: ["m", "create"],
 			mutationFn: async (input: { name: string }) =>
 				Ok({ id: "u1", name: input.name }),
 		});
 
-		const executed = await create.execute({ name: "ada" });
-		expect(executed.data).toEqual({ id: "u1", name: "ada" });
-
 		const called = await create({ name: "ada" });
 		expect(called.data).toEqual({ id: "u1", name: "ada" });
 	});
 
-	it("returns Err from .execute when mutationFn errors", async () => {
+	it("does not expose duplicate .execute helper", () => {
+		const create = defineMutation({
+			mutationKey: ["m", "no-execute"],
+			mutationFn: async () => Ok({ id: "u1" }),
+		});
+
+		expect("execute" in create).toBe(false);
+
+		const assertNoExecute = () => {
+			// @ts-expect-error mutation definitions are callable instead
+			create.execute();
+		};
+		expectTypeOf(assertNoExecute).toBeFunction();
+	});
+
+	it("returns Err from callable form when mutationFn errors", async () => {
 		const create = defineMutation({
 			mutationKey: ["m", "fail"],
 			mutationFn: async () => Err("conflict" as const),
 		});
 
-		const { data, error } = await create.execute();
+		const { data, error } = await create();
 		expect(data).toBeNull();
 		expect(error).toBe("conflict");
 	});

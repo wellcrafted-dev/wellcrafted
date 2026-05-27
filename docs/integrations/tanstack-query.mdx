@@ -93,7 +93,7 @@ return (
 - Cache synchronization across components
 - Background refetching and stale-while-revalidate
 
-### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
+### 2. Imperative Interface
 **Perfect for event handlers, utilities, and performance-critical code**
 
 ```typescript
@@ -112,24 +112,22 @@ async function processWorkflow() {
   const { data: user, error: userError } = await userQuery.ensure();
   if (userError) return handleError(userError);
 
-  const { data: result, error: processError } = await processUserMutation.execute(user);
+  const { data: result, error: processError } = await processUserMutation(user);
   if (processError) return handleError(processError);
 
   // Success!
 }
 ```
 
-**Shorthand:** Queries and mutations are also directly callable as a shorthand:
-- `await userQuery()` is equivalent to `await userQuery.ensure()` (prefers cached data)
-- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+Queries are not directly callable. Use `.fetch()` when you want TanStack's freshness policy, or `.ensure()` when you want cache-first data and only want to fetch if data is missing.
+
+Mutations are directly callable because there is only one imperative action:
 
 ```typescript
-// These are equivalent:
-const result = await userQuery.ensure();
-const result = await userQuery(); // Shorthand
+const ensured = await userQuery.ensure();
+const fetched = await userQuery.fetch();
 
-const result = await createUser.execute(userData);
-const result = await createUser(userData); // Shorthand
+const result = await createUser(userData);
 ```
 
 **Benefits:**
@@ -153,8 +151,7 @@ mutation.mutate(recordingId, {
 });
 
 // ✅ Direct execution - much faster (works in any framework)
-const { error } = await rpc.recordings.deleteRecording.execute(recordingId);
-// Or use shorthand: await rpc.recordings.deleteRecording(recordingId)
+const { error } = await rpc.recordings.deleteRecording(recordingId);
 if (error) {
   showToast(error.message);
 } else {
@@ -283,7 +280,7 @@ const transcribeRecording = defineMutation({
   mutationKey: ['recordings', 'transcribe'],
   mutationFn: async (recordingId: string) => {
     // Step 1: Update status to 'transcribing'
-    const { error: updateError } = await recordings.updateRecording.execute({
+    const { error: updateError } = await recordings.updateRecording({
       id: recordingId,
       transcriptionStatus: 'TRANSCRIBING',
     });
@@ -293,7 +290,7 @@ const transcribeRecording = defineMutation({
     const { data: transcription, error: transcribeError } = await services.ai.transcribe(recordingId);
     if (transcribeError) {
       // Revert status on failure
-      await recordings.updateRecording.execute({
+      await recordings.updateRecording({
         id: recordingId,
         transcriptionStatus: 'FAILED',
       });
@@ -301,7 +298,7 @@ const transcribeRecording = defineMutation({
     }
 
     // Step 3: Save transcription results
-    const { error: saveError } = await recordings.updateRecording.execute({
+    const { error: saveError } = await recordings.updateRecording({
       id: recordingId,
       transcribedText: transcription,
       transcriptionStatus: 'COMPLETED',
@@ -485,8 +482,7 @@ const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
 const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.options);
 
 // Imperative (any framework):
-await rpc.transcription.transcribeBlob.execute(blob);
-// Or shorthand: await rpc.transcription.transcribeBlob(blob)
+await rpc.transcription.transcribeBlob(blob);
 ```
 
 ### Component Usage Patterns
@@ -499,8 +495,7 @@ const recordingsQuery = useQuery(rpc.recordings.getAllRecordings.options);
 
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
-  const { error } = await rpc.recordings.deleteRecording.execute(recording);
-  // Or shorthand: await rpc.recordings.deleteRecording(recording)
+  const { error } = await rpc.recordings.deleteRecording(recording);
   if (error) {
     showErrorToast(error.message);
   } else {
@@ -517,8 +512,7 @@ const recordingsQuery = createQuery(() => rpc.recordings.getAllRecordings.option
 
 // Imperative pattern for actions
 async function handleDelete(recording: Recording) {
-  const { error } = await rpc.recordings.deleteRecording.execute(recording);
-  // Or shorthand: await rpc.recordings.deleteRecording(recording)
+  const { error } = await rpc.recordings.deleteRecording(recording);
   if (error) {
     showErrorToast(error.message);
   } else {
@@ -537,13 +531,13 @@ async function handleDelete(recording: Recording) {
 - You want automatic error boundaries
 - Background refetching is beneficial
 
-**Use `.execute()` / `.fetch()` / `.ensure()` when:**
+**Use callable mutations, `.fetch()`, or `.ensure()` when:**
 - Event handlers that just need the result
 - Sequential operations in workflows
 - Performance is critical
 - Working outside component context
 
-**Shorthand:** Queries and mutations are also directly callable. `await userQuery()` is shorthand for `await userQuery.ensure()`, and `await mutation(data)` is shorthand for `await mutation.execute(data)`.
+Mutations are directly callable. Queries are intentionally explicit because `.fetch()` and `.ensure()` choose different cache policies.
 
 ### 2. Transform Errors at the Right Layer
 
@@ -591,8 +585,8 @@ Unlike SSR applications, static sites can access the QueryClient directly:
 const cachedUser = queryClient.getQueryData(['users', userId]);
 const isUserCached = queryClient.getQueryState(['users', userId])?.status === 'success';
 
-// Execute mutations directly without hooks
-const result = await executeMutation(queryClient, mutationOptions, variables);
+// Run mutations directly without hooks
+const result = await rpc.users.updateUser(variables);
 ```
 
 ## Migration from Other Patterns
@@ -659,7 +653,6 @@ function UserProfile({ userId }) {
 // Imperative usage in event handlers
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
-  // Or use shorthand: await userQuery() (same as .ensure())
 }
 ```
 
@@ -678,7 +671,6 @@ const query = createQuery(() => userQuery.options);
 // Imperative usage in actions
 async function refreshUser() {
   const { data, error } = await userQuery.fetch();
-  // Or use shorthand: await userQuery() (same as .ensure())
 }
 ```
 
