@@ -104,8 +104,9 @@ type DefineMutationInput<
 	TError,
 	TVariables = void,
 	TContext = unknown,
+	TMutationKey extends MutationKey = MutationKey,
 > = Omit<MutationOptions<TData, TError, TVariables, TContext>, "mutationFn"> & {
-	mutationKey: MutationKey;
+	mutationKey: TMutationKey;
 	mutationFn: MutationFunction<Result<TData, TError>, TVariables>;
 };
 
@@ -460,8 +461,20 @@ export function createQueryFactories(queryClient: QueryClient) {
 	 * - Sequential operations that depend on each other
 	 * - Non-component code that needs to trigger mutations
 	 */
-	const defineMutation = <TData, TError, TVariables = void, TContext = unknown>(
-		options: DefineMutationInput<TData, TError, TVariables, TContext>,
+	const defineMutation = <
+		TData,
+		TError,
+		TVariables = void,
+		TContext = unknown,
+		const TMutationKey extends MutationKey = MutationKey,
+	>(
+		options: DefineMutationInput<
+			TData,
+			TError,
+			TVariables,
+			TContext,
+			TMutationKey
+		>,
 	): DefineMutationOutput<TData, TError, TVariables, TContext> => {
 		const newOptions = {
 			...options,
@@ -545,4 +558,42 @@ function runMutation<TData, TError, TVariables, TContext>(
 ) {
 	const mutation = queryClient.getMutationCache().build(queryClient, options);
 	return mutation.execute(variables);
+}
+
+/**
+ * Identity helper for declaring a TanStack Query key map while preserving
+ * tuple types.
+ *
+ * - **Static entries** like `['users', 'active']` are narrowed to readonly
+ *   tuples with full literal precision (e.g. `readonly ['users', 'active']`)
+ *   via the `const` type parameter modifier. No per-line `as const` needed.
+ *
+ * - **Factory entries** like `(id: string) => ['users', id]` are narrowed to
+ *   tuple SHAPE (e.g. `[string, string]` with correct arity), not widened to
+ *   `string[]`. This happens because the strict tuple constraint provides
+ *   contextual typing into the function body. Literal positions still widen
+ *   without `as const` (TS does not propagate literal narrowing through
+ *   contextual typing). Add `as const` to the body when you need the literal:
+ *   `(id) => ['users', id] as const` → `readonly ['users', string]`.
+ *
+ * Empty arrays and non-key values are rejected at the type level.
+ *
+ * @example
+ * ```ts
+ * const userKeys = defineKeys({
+ *   all: ['users'],                          // readonly ['users']
+ *   active: ['users', 'active'],             // readonly ['users', 'active']
+ *   detail: (id: string) => ['users', id],   // [string, string] (tuple shape kept)
+ *   page: (n: number) => ['users', n] as const, // readonly ['users', number]
+ * });
+ * ```
+ */
+export function defineKeys<
+	const TKeys extends Record<
+		string,
+		| readonly [unknown, ...unknown[]]
+		| ((...args: never[]) => readonly [unknown, ...unknown[]])
+	>,
+>(keys: TKeys): TKeys {
+	return keys;
 }
