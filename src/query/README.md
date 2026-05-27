@@ -8,16 +8,58 @@ The query utilities solve a common integration challenge: your service functions
 
 ## Quick Start
 
+`wellcrafted/query` exposes two layers built on the same conversion path:
+
+1. **`queryOptions` / `mutationOptions`**: platform-agnostic adapters that turn a Result-returning `queryFn` or `mutationFn` into normal TanStack Query options. No `QueryClient` needed. Compose them directly with any framework hook (`createQuery`, `useQuery`, `createMutation`, `useMutation`).
+
+2. **`createQueryFactories(queryClient)` -> `defineQuery` / `defineMutation`**: bind the same options to a specific `QueryClient` and attach imperative helpers (`.fetch`, `.ensure`, `.execute`, and a callable form). `defineQuery` and `defineMutation` compose through `queryOptions` and `mutationOptions`, so there is exactly one place that unwraps `Result` into TanStack's throwing contract.
+
 ```typescript
 import { QueryClient } from '@tanstack/query-core';
-import { createQueryFactories } from 'wellcrafted/query';
+import {
+  createQueryFactories,
+  queryOptions,
+  mutationOptions,
+} from 'wellcrafted/query';
 
-// Create your query client
+// Local options used directly inside a hook
+const user = createQuery(() =>
+  queryOptions({
+    queryKey: ['user', userId],
+    queryFn: () => services.getUser(userId),
+  }),
+);
+
+const save = createMutation(() =>
+  mutationOptions({
+    mutationKey: ['saveUser'],
+    mutationFn: (input: SaveUserInput) => services.saveUser(input),
+  }),
+);
+
+// Reusable definitions bound to a QueryClient
 const queryClient = new QueryClient();
-
-// Create factory functions
 const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 ```
+
+### `queryOptions(input)`
+
+- Accepts a `queryKey` plus a `queryFn` that returns `Result<TData, TError>` (sync or async).
+- Returns standard `QueryObserverOptions` whose `queryFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
+- Preserves literal `queryKey` tuples (no `as const` needed) and Result data/error inference.
+
+### `mutationOptions(input)`
+
+- Accepts a `mutationKey` plus a `mutationFn` that returns `Result<TData, TError>` (sync or async).
+- Returns standard `MutationOptions` whose `mutationFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
+- Infers variables from the `mutationFn` parameter.
+
+### When to use which
+
+- Reach for `queryOptions` / `mutationOptions` when the options are local to a hook call site and you do not need imperative execution outside reactivity.
+- Reach for `defineQuery` / `defineMutation` when you want a reusable definition with `.options` for hooks **and** `.fetch` / `.ensure` / `.execute` / callable form for imperative code (preloaders, event handlers, workflows).
+
+> Note on naming: TanStack Query's framework adapters export their own `queryOptions` and `mutationOptions` identity helpers. Wellcrafted's versions occupy the same name on purpose; this package is the Result-aware equivalent. If you ever need both in one file, alias one on import.
 
 ## Architecture Pattern: The RPC-like Approach
 
