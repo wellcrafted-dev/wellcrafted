@@ -1,6 +1,6 @@
 {
 	"name": "wellcrafted",
-	"version": "0.41.0",
+	"version": "0.42.0",
 	"description": "Delightful TypeScript patterns for elegant, type-safe applications",
 	"type": "module",
 	"files": [
