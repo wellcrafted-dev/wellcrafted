@@ -1,6 +1,7 @@
 import type {
 	DefaultError,
 	MutationKey,
+	MutationObserverOptions,
 	MutationOptions,
 	QueryClient,
 	QueryFunction,
@@ -22,7 +23,7 @@ import { Err, Ok, type Result, resolve } from "../result/index.js";
  * @template TQueryData - The type stored in the cache (usually `TQueryFnData`)
  * @template TQueryKey - The literal query key tuple
  */
-export type QueryOptionsInput<
+type QueryOptionsInput<
 	TQueryFnData = unknown,
 	TError = DefaultError,
 	TData = TQueryFnData,
@@ -39,8 +40,8 @@ export type QueryOptionsInput<
 /**
  * Input for `mutationOptions` and `defineMutation`.
  *
- * Mirrors TanStack Query's `MutationOptions` but expects `mutationFn` to
- * return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
+ * Mirrors TanStack Query's `MutationObserverOptions` but expects `mutationFn`
+ * to return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
  * throwing data/error contract by `mutationOptions`.
  *
  * @template TData - The success type produced by `mutationFn`
@@ -49,13 +50,16 @@ export type QueryOptionsInput<
  * @template TContext - The context type for optimistic updates
  * @template TMutationKey - The literal mutation key tuple
  */
-export type MutationOptionsInput<
+type MutationOptionsInput<
 	TData,
 	TError,
 	TVariables = void,
 	TContext = unknown,
 	TMutationKey extends MutationKey = MutationKey,
-> = Omit<MutationOptions<TData, TError, TVariables, TContext>, "mutationFn"> & {
+> = Omit<
+	MutationObserverOptions<TData, TError, TVariables, TContext>,
+	"mutationFn"
+> & {
 	mutationKey: TMutationKey;
 	mutationFn: (
 		variables: TVariables,
@@ -128,8 +132,8 @@ export function queryOptions<
  * returns is the same shape `mutationOptions` produces.
  *
  * @param input - Result-aware mutation configuration
- * @returns TanStack Query `MutationOptions` with `mutationFn` rewired to
- *   resolve `Ok` and throw `Err`
+ * @returns TanStack Query `MutationObserverOptions` with `mutationFn` rewired
+ *   to resolve `Ok` and throw `Err`
  */
 export function mutationOptions<
 	TData,
@@ -145,12 +149,12 @@ export function mutationOptions<
 		TContext,
 		TMutationKey
 	>,
-): MutationOptions<TData, TError, TVariables, TContext> {
+): MutationObserverOptions<TData, TError, TVariables, TContext> {
 	return {
 		...input,
 		mutationFn: async (variables: TVariables) =>
 			resolve(await input.mutationFn(variables)),
-	} satisfies MutationOptions<TData, TError, TVariables, TContext>;
+	} satisfies MutationObserverOptions<TData, TError, TVariables, TContext>;
 }
 
 /**
@@ -194,7 +198,7 @@ type DefineMutationOutput<
 	TVariables = void,
 	TContext = unknown,
 > = ((variables: TVariables) => Promise<Result<TData, TError>>) & {
-	options: MutationOptions<TData, TError, TVariables, TContext>;
+	options: MutationObserverOptions<TData, TError, TVariables, TContext>;
 };
 
 /**
