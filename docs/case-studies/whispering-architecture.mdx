@@ -154,7 +154,7 @@ export const recorder = {
       };
 
       return recorderService().startRecording(params, {
-        sendStatus: (options) => notify.loading.execute({ id: toastId, ...options }),
+        sendStatus: (options) => notify.loading({ id: toastId, ...options }),
       });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['recorder', 'currentRecordingId'] }),
@@ -197,20 +197,20 @@ Every operation provides both reactive and imperative interfaces:
 ```typescript
 // Event handlers - lightweight and fast
 async function handleDelete(recordingId: string) {
-  const { data, error } = await rpc.recordings.deleteRecording.execute(recordingId);
+  const { data, error } = await rpc.recordings.deleteRecording(recordingId);
   if (error) {
-    notify.error.execute({ title: 'Failed to delete recording', description: error.message });
+    notify.error({ title: 'Failed to delete recording', description: error.message });
     return;
   }
 }
 
 // Sequential operations without reactive overhead
 async function stopAndTranscribe() {
-  const { data: blob, error } = await rpc.recorder.stopRecording.execute({ toastId });
+  const { data: blob, error } = await rpc.recorder.stopRecording({ toastId });
   if (error) return;
 
-  const { data: recording } = await rpc.recordings.createRecording.execute({ blob, timestamp: new Date() });
-  await rpc.transcription.transcribeRecording.execute(recording);
+  const { data: recording } = await rpc.recordings.createRecording({ blob, timestamp: new Date() });
+  await rpc.transcription.transcribeRecording(recording);
 }
 ```
 
@@ -243,7 +243,7 @@ async function startRecording(): Promise<Result<Blob, RecorderError>> {
 }
 
 // UI layer: display user-friendly errors
-const { data, error } = await rpc.recorder.startRecording.execute({ toastId });
+const { data, error } = await rpc.recorder.startRecording({ toastId });
 if (error) {
   toast.error({ title: 'Failed to start recording', description: error.message });
 }
@@ -294,17 +294,17 @@ export const commands = {
   stopRecordingAndTranscribe: defineMutation({
     mutationFn: async () => {
       // Step 1: Stop recording
-      const { data: blob, error: stopError } = await rpc.recorder.stopRecording.execute({ toastId });
+      const { data: blob, error: stopError } = await rpc.recorder.stopRecording({ toastId });
       if (stopError) {
-        await notify.error.execute({ title: 'Failed to stop recording', description: stopError.message });
+        await notify.error({ title: 'Failed to stop recording', description: stopError.message });
         return Err(stopError);
       }
 
       // Step 2: Play sound feedback
-      rpc.sound.playSoundIfEnabled.execute('manual-stop');
+      rpc.sound.playSoundIfEnabled('manual-stop');
 
       // Step 3: Save to database
-      const { data: recording, error: createError } = await rpc.recordings.createRecording.execute({
+      const { data: recording, error: createError } = await rpc.recordings.createRecording({
         blob,
         timestamp: new Date(),
         transcriptionStatus: 'PENDING',
@@ -312,9 +312,9 @@ export const commands = {
       if (createError) return Err(createError);
 
       // Step 4: Transcribe
-      const { error: transcribeError } = await rpc.transcription.transcribeRecording.execute(recording);
+      const { error: transcribeError } = await rpc.transcription.transcribeRecording(recording);
       if (transcribeError) {
-        await notify.error.execute({
+        await notify.error({
           title: 'Recording saved, but transcription failed',
           description: transcribeError.message,
         });
@@ -425,7 +425,7 @@ export const users = {
 
   // Imperative for actions
   async function deleteUser() {
-    const { error } = await rpc.users.deleteUser.execute(userId);
+    const { error } = await rpc.users.deleteUser(userId);
     if (error) toast.error(error.message);
   }
 </script>

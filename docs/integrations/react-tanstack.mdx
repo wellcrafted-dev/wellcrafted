@@ -6,7 +6,7 @@ icon: 'react'
 
 # React + TanStack Query Integration
 
-React-specific patterns for using wellcrafted with TanStack Query. For core concepts (dual interface, query/mutation definitions, RPC namespace), see the [TanStack Query Integration](/integrations/tanstack-query) guide.
+React-specific patterns for using wellcrafted with TanStack Query. For core concepts (reactive options, imperative helpers, query/mutation definitions, RPC namespace), see the [TanStack Query Integration](/integrations/tanstack-query) guide.
 
 ## Using Query Results in JSX
 
@@ -89,7 +89,7 @@ export function useUserManagement(userId?: string) {
     async updateUserField(field: keyof User, value: string) {
       if (!userQuery.data) return;
 
-      const { error } = await rpc.users.updateUser.execute({
+      const { error } = await rpc.users.updateUser({
         ...userQuery.data,
         [field]: value,
       });
@@ -411,7 +411,7 @@ function UserManagementPage() {
   // Imperative for one-off actions
   async function handleBulkDelete(userIds: string[]) {
     for (const id of userIds) {
-      const { error } = await rpc.users.deleteUser.execute(id);
+      const { error } = await rpc.users.deleteUser(id);
       if (error) {
         toast.error(`Failed to delete user ${id}: ${error.message}`);
         break;

@@ -12,7 +12,7 @@ The query utilities solve a common integration challenge: your service functions
 
 1. **`queryOptions` / `mutationOptions`**: platform-agnostic adapters that turn a Result-returning `queryFn` or `mutationFn` into normal TanStack Query options. No `QueryClient` needed. Compose them directly with any framework hook (`createQuery`, `useQuery`, `createMutation`, `useMutation`).
 
-2. **`createQueryFactories(queryClient)` -> `defineQuery` / `defineMutation`**: bind the same options to a specific `QueryClient` and attach imperative helpers (`.fetch`, `.ensure`, `.execute`, and a callable form). `defineQuery` and `defineMutation` compose through `queryOptions` and `mutationOptions`, so there is exactly one place that unwraps `Result` into TanStack's throwing contract.
+2. **`createQueryFactories(queryClient)` -> `defineQuery` / `defineMutation`**: bind the same options to a specific `QueryClient` and attach imperative helpers. Queries expose explicit `.fetch()` and `.ensure()` methods because those choose different cache policies. Mutations are callable because there is one imperative action: run the mutation.
 
 ```typescript
 import { QueryClient } from '@tanstack/query-core';
@@ -57,7 +57,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 ### When to use which
 
 - Reach for `queryOptions` / `mutationOptions` when the options are local to a hook call site and you do not need imperative execution outside reactivity.
-- Reach for `defineQuery` / `defineMutation` when you want a reusable definition with `.options` for hooks **and** `.fetch` / `.ensure` / `.execute` / callable form for imperative code (preloaders, event handlers, workflows).
+- Reach for `defineQuery` / `defineMutation` when you want a reusable definition with `.options` for hooks plus imperative helpers (`.fetch`, `.ensure`, and callable mutations) for preloaders, event handlers, and workflows.
 
 > Note on naming: TanStack Query's framework adapters export their own `queryOptions` and `mutationOptions` identity helpers. Wellcrafted's versions occupy the same name on purpose; this package is the Result-aware equivalent. If you ever need both in one file, alias one on import.
 
@@ -90,7 +90,7 @@ The query utilities enable a powerful architectural pattern inspired by RPC (Rem
    - Manages cache updates
 
 3. **UI Layer**: Consumes queries reactively or imperatively
-   - Uses the dual interface pattern
+   - Uses reactive options and imperative helpers
    - Handles loading states
    - Displays errors
 
@@ -259,11 +259,10 @@ export const rpc = {
 
   // Or use imperatively in event handlers
   async function handleQuickUpdate(updates: Partial<User>) {
-    const { data, error } = await rpc.users.updateUser.execute({
+    const { data, error } = await rpc.users.updateUser({
       ...userQuery.data,
       ...updates
     });
-    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -305,11 +304,10 @@ export function UserProfile({ userId }: UserProfileProps) {
 
   // Or use imperatively in event handlers
   async function handleQuickUpdate(updates: Partial<User>) {
-    const { data, error } = await rpc.users.updateUser.execute({
+    const { data, error } = await rpc.users.updateUser({
       ...userQuery.data,
       ...updates
     });
-    // Or shorthand: await rpc.users.updateUser({ ... })
 
     if (error) {
       toast.error(error.message);
@@ -368,13 +366,13 @@ const query = useQuery(rpc.users.getUser('static-id').options);
 - **Svelte 5**: Wrap in accessor function `() => ...options`. For reactive parameters inside, also use accessor functions `() => param`.
 - **React**: Pass `.options` directly (it's a property, not a function). Pass reactive parameters directly (no accessor function needed).
 
-### 2. Imperative Interface (`.execute()` / `.fetch()` / `.ensure()`)
+### 2. Imperative Interface
 
 Best for event handlers and workflows:
 
 ```typescript
 // Direct execution without subscriptions
-const { data, error } = await rpc.users.updateUser.execute(user);
+const { data, error } = await rpc.users.updateUser(user);
 // No reactive overhead, just the result
 
 // For queries, .ensure() prefers cached data
@@ -384,17 +382,15 @@ const { data, error } = await rpc.users.getUser('123').ensure();
 const { data, error } = await rpc.users.getUser('123').fetch();
 ```
 
-**Shorthand:** Queries and mutations are also directly callable:
-- `await userQuery()` is equivalent to `await userQuery.ensure()`
-- `await mutation(data)` is equivalent to `await mutation.execute(data)`
+Queries are not directly callable. Choose `.fetch()` when you want TanStack's freshness policy, or `.ensure()` when you want cache-first data and only want to fetch if data is missing.
+
+Mutations are directly callable because there is only one imperative action:
 
 ```typescript
-// These are equivalent:
-const result = await rpc.users.getUser('123').ensure();
-const result = await rpc.users.getUser('123')(); // Shorthand
+const ensured = await rpc.users.getUser('123').ensure();
+const fetched = await rpc.users.getUser('123').fetch();
 
-const result = await rpc.users.updateUser.execute(user);
-const result = await rpc.users.updateUser(user); // Shorthand
+const updated = await rpc.users.updateUser(user);
 ```
 
 ## Common Mistakes with `.options`
@@ -647,7 +643,6 @@ export const orders = {
     mutationFn: async (orderData: OrderInput) => {
       // Step 1: Validate inventory
       const inventory = await rpc.inventory.checkAvailability.ensure();
-      // Or shorthand: await rpc.inventory.checkAvailability()
       if (!hasStock(orderData.items, inventory.data)) {
         return Err({ code: 'OUT_OF_STOCK', message: 'Some items are out of stock' });
       }
@@ -703,7 +698,6 @@ describe('User Queries', () => {
     });
 
     const result = await userQuery.fetch();
-    // Or shorthand: await userQuery()
     expect(result.data).toEqual(mockUser);
   });
 });

@@ -156,10 +156,8 @@ export function mutationOptions<
 /**
  * Output of `defineQuery`.
  *
- * The returned object is directly callable and defaults to `ensure()` behavior,
- * which is recommended for most imperative use cases like preloaders.
+ * Query imperative reads require an explicit cache policy.
  *
- * - `()` (callable): Same as `ensure()`. Returns cached data if available.
  * - `options`: Options shape produced by `queryOptions`, ready for hooks.
  * - `fetch()`: Always evaluates freshness; refetches if stale.
  * - `ensure()`: Prefers cached data; fetches only when missing.
@@ -170,7 +168,7 @@ type DefineQueryOutput<
 	TData = TQueryFnData,
 	TQueryData = TQueryFnData,
 	TQueryKey extends QueryKey = QueryKey,
-> = (() => Promise<Result<TQueryData, TError>>) & {
+> = {
 	options: QueryObserverOptions<
 		TQueryFnData,
 		TError,
@@ -185,12 +183,10 @@ type DefineQueryOutput<
 /**
  * Output of `defineMutation`.
  *
- * The returned object is directly callable and executes the mutation,
- * equivalent to calling `.execute()`.
+ * The returned function directly executes the mutation.
  *
- * - `(variables)` (callable): Same as `execute(variables)`.
+ * - `(variables)` (callable): Imperatively runs the mutation, returning a Result.
  * - `options`: Options shape produced by `mutationOptions`, ready for hooks.
- * - `execute(variables)`: Imperatively runs the mutation, returning a Result.
  */
 type DefineMutationOutput<
 	TData,
@@ -199,15 +195,14 @@ type DefineMutationOutput<
 	TContext = unknown,
 > = ((variables: TVariables) => Promise<Result<TData, TError>>) & {
 	options: MutationOptions<TData, TError, TVariables, TContext>;
-	execute: (variables: TVariables) => Promise<Result<TData, TError>>;
 };
 
 /**
  * Creates `defineQuery` and `defineMutation` bound to a specific `QueryClient`.
  *
  * Use this when you want a reusable query/mutation definition that carries
- * its own imperative helpers (`.fetch`, `.ensure`, `.execute`, callable form)
- * powered by a specific client. For local one-shot options that only need
+ * its own imperative query helpers (`.fetch`, `.ensure`) and callable mutation
+ * execution powered by a specific client. For local one-shot options that only need
  * to flow into a framework hook, prefer `queryOptions` / `mutationOptions`
  * directly: those are platform-agnostic and do not require a `QueryClient`.
  *
@@ -260,10 +255,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 						TError,
 						TQueryData,
 						TQueryKey
-					>({
-						queryKey: options.queryKey,
-						queryFn: options.queryFn,
-					}),
+					>(options),
 				);
 			} catch (error) {
 				return Err(error as TError);
@@ -278,21 +270,18 @@ export function createQueryFactories(queryClient: QueryClient) {
 						TError,
 						TQueryData,
 						TQueryKey
-					>({
-						queryKey: options.queryKey,
-						queryFn: options.queryFn,
-					}),
+					>(options),
 				);
 			} catch (error) {
 				return Err(error as TError);
 			}
 		}
 
-		return Object.assign(ensure, {
+		return {
 			options,
 			fetch,
 			ensure,
-		});
+		};
 	};
 
 	const defineMutation = <
@@ -312,7 +301,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 	): DefineMutationOutput<TData, TError, TVariables, TContext> => {
 		const options = mutationOptions(input);
 
-		async function execute(variables: TVariables) {
+		async function run(variables: TVariables) {
 			try {
 				return Ok(await runMutation(queryClient, options, variables));
 			} catch (error) {
@@ -320,9 +309,8 @@ export function createQueryFactories(queryClient: QueryClient) {
 			}
 		}
 
-		return Object.assign(execute, {
+		return Object.assign(run, {
 			options,
-			execute,
 		});
 	};
 
@@ -334,8 +322,8 @@ export function createQueryFactories(queryClient: QueryClient) {
 
 /**
  * Internal helper that executes a mutation directly using the query client's
- * mutation cache. Powers the callable behavior and `.execute()` method on
- * mutations returned from `defineMutation`.
+ * mutation cache. Powers the callable behavior on mutations returned from
+ * `defineMutation`.
  *
  * @internal
  */

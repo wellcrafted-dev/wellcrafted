@@ -210,7 +210,7 @@ getUser(orderId);  // type error
 
 ### Query Integration
 
-TanStack Query factories with a dual interface: `.options` for reactive components, callable for imperative use in event handlers.
+TanStack Query factories with `.options` for reactive components and explicit imperative helpers for event handlers.
 
 ```typescript
 import { createQueryFactories } from "wellcrafted/query";
@@ -222,10 +222,10 @@ const userQuery = defineQuery({
   queryFn: () => getUser(userId), // returns Result<User, UserError>
 });
 
-// Reactive — pass to useQuery (React) or createQuery (Svelte)
+// Reactive: pass to useQuery (React) or createQuery (Svelte)
 const query = createQuery(() => userQuery.options);
 
-// Imperative — direct execution for event handlers
+// Imperative: choose the query read policy explicitly
 const { data, error } = await userQuery.fetch();
 ```
 
@@ -273,8 +273,8 @@ The same principle applies throughout: async/await instead of generators, `switc
 ### Query functions
 
 - **`createQueryFactories(client)`** — create query/mutation factories for TanStack Query
-- **`defineQuery(options)`** — define a query with dual interface (`.options` for reactive, callable for imperative)
-- **`defineMutation(options)`** — define a mutation with dual interface
+- **`defineQuery(options)`**: define a query with `.options`, `.fetch()`, and `.ensure()`
+- **`defineMutation(options)`**: define a callable mutation with `.options` for hooks
 
 ### Standard Schema
 
@@ -299,7 +299,7 @@ This installs 5 skills that teach your agent the patterns, anti-patterns, and AP
 | --- | --- |
 | `define-errors` | `defineErrors` variants, `extractErrorMessage`, `InferErrors`/`InferError` type extraction |
 | `result-types` | `Ok`, `Err`, `trySync`/`tryAsync`, the `{ data, error }` destructuring pattern |
-| `query-factories` | `createQueryFactories`, `defineQuery`/`defineMutation`, dual interface (reactive + imperative) |
+| `query-factories` | `createQueryFactories`, `defineQuery`/`defineMutation`, reactive options, and imperative helpers |
 | `branded-types` | `Brand<T>`, brand constructor pattern, when to add runtime validation |
 | `patterns` | Architectural style guide: control flow, factory composition, service layers, error composition |
 

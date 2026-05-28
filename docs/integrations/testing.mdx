@@ -283,7 +283,7 @@ describe('User Queries', () => {
       },
     });
 
-    const result = await createUserMutation.execute({
+    const result = await createUserMutation({
       name: 'Bob',
       email: 'bob@example.com',
       password: 'password123',
@@ -323,7 +323,7 @@ describe('User Queries', () => {
       },
     });
 
-    const result = await createUserMutation.execute({
+    const result = await createUserMutation({
       name: 'John',
       email: 'existing@example.com',
       password: 'password123',

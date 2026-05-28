@@ -1,6 +1,6 @@
 ---
 name: query-factories
-description: TanStack Query integration with wellcrafted's createQueryFactories, defineQuery, and defineMutation. Use when setting up queries/mutations that return Result types or using the dual interface pattern.
+description: TanStack Query integration with wellcrafted's createQueryFactories, defineQuery, and defineMutation. Use when setting up queries/mutations that return Result types or using reactive options and imperative helpers.
 ---
 
 # Query Factories
@@ -62,9 +62,9 @@ const createPost = defineMutation({
 });
 ```
 
-## Dual Interface
+## Reactive Options and Imperative Helpers
 
-Every query and mutation provides two ways to use it — reactive and imperative.
+Every query and mutation provides reactive options plus imperative helpers.
 
 ### Reactive: `.options`
 
@@ -86,16 +86,19 @@ const query = createQuery(() => userQuery.options);
 const mutation = createMutation(() => createPost.options);
 ```
 
-### Imperative: `.fetch()` / `.execute()`
+### Imperative: `.fetch()`, `.ensure()`, and callable mutations
 
 Use in event handlers and workflows without reactive overhead:
 
 ```typescript
-// Queries use .fetch()
-const { data, error } = await userQuery.fetch();
+// Queries use .fetch() for TanStack freshness policy
+const fetched = await userQuery.fetch();
 
-// Mutations use .execute()
-const { data, error } = await createPost.execute({
+// Queries use .ensure() for cache-first reads
+const ensured = await userQuery.ensure();
+
+// Mutations are callable
+const created = await createPost({
   title: 'Hello',
   body: 'World',
 });
@@ -103,7 +106,7 @@ const { data, error } = await createPost.execute({
 
 ### When to use each
 
-| `.options` (reactive) | `.fetch()` / `.execute()` (imperative) |
+| `.options` (reactive) | `.fetch()`, `.ensure()`, callable mutation (imperative) |
 | --- | --- |
 | Component data display | Event handlers |
 | Loading/error states | Sequential workflows |
