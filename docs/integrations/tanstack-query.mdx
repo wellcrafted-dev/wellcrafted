@@ -544,6 +544,7 @@ Mutations are directly callable. Queries are intentionally explicit because `.fe
 ```typescript
 // ✅ Good: Transform at query layer
 const getUser = defineQuery({
+  queryKey: ['users', id],
   queryFn: async () => {
     const { data, error } = await services.db.getUser(id);
     if (error) {

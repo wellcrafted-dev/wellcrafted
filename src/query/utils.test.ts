@@ -1,4 +1,8 @@
 import { QueryClient } from "@tanstack/query-core";
+import type {
+	MutationObserverOptions,
+	QueryObserverOptions,
+} from "@tanstack/query-core";
 import { describe, expect, expectTypeOf, it } from "bun:test";
 import { Err, Ok } from "../result/index.js";
 import {
@@ -37,6 +41,15 @@ describe("queryOptions", () => {
 		});
 
 		expectTypeOf(options.queryKey).toEqualTypeOf<readonly ["session"]>();
+		expectTypeOf(options).toEqualTypeOf<
+			QueryObserverOptions<
+				{ userId: string },
+				AuthError,
+				{ userId: string },
+				{ userId: string },
+				readonly ["session"]
+			>
+		>();
 	});
 
 	it("resolves Ok values into the TanStack data channel", async () => {
@@ -88,10 +101,16 @@ describe("queryOptions", () => {
 describe("mutationOptions", () => {
 	it("infers variables and data from mutationFn", async () => {
 		type Input = { name: string };
+		type SaveError = { code: "CONFLICT"; message: string };
 
 		const options = mutationOptions({
 			mutationKey: ["users", "create"],
-			mutationFn: async (input: Input) => Ok({ id: "u1", name: input.name }),
+			mutationFn: (
+				input: Input,
+			):
+				| ReturnType<typeof Ok<{ id: string; name: string }>>
+				| ReturnType<typeof Err<SaveError>> =>
+				Ok({ id: "u1", name: input.name }),
 		});
 
 		// Variables type flows through: calling with the right shape produces
@@ -99,6 +118,31 @@ describe("mutationOptions", () => {
 		const data = await options.mutationFn?.({ name: "ada" });
 		expectTypeOf(data).toEqualTypeOf<
 			{ id: string; name: string } | undefined
+		>();
+		expectTypeOf(options).toEqualTypeOf<
+			MutationObserverOptions<
+				{ id: string; name: string },
+				SaveError,
+				Input,
+				unknown
+			>
+		>();
+	});
+
+	it("accepts observer-only hook options", () => {
+		type SaveError = { code: "CONFLICT"; message: string };
+
+		const options = mutationOptions({
+			mutationKey: ["users", "create"],
+			mutationFn: (input: { name: string }) =>
+				input.name.length > 0
+					? Ok({ id: "u1", name: input.name })
+					: Err<SaveError>({ code: "CONFLICT", message: "Name is required." }),
+			throwOnError: (error) => error.code === "CONFLICT",
+		});
+
+		expectTypeOf(options.throwOnError).toEqualTypeOf<
+			boolean | ((error: SaveError) => boolean) | undefined
 		>();
 	});
 
@@ -221,7 +265,7 @@ describe("defineQuery", () => {
 });
 
 describe("defineMutation", () => {
-	it("infers literal mutationKey tuple without `as const`", () => {
+	it("accepts literal mutationKey tuple without `as const`", () => {
 		const createUser = defineMutation({
 			mutationKey: ["users", "create"],
 			mutationFn: async () => Ok({ id: "u1" }),

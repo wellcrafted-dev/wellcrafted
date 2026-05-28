@@ -292,7 +292,10 @@ function handleUIError(error: UIError) {
 
 ```typescript
 // Bad
-const getUser = defineQuery({ queryFn: () => services.getUser(id) });
+const getUser = defineQuery({
+  queryKey: ['users', id],
+  queryFn: () => services.getUser(id),
+});
 ```
 
 **Don't transform errors in components** -- do it once in the query layer:

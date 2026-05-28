@@ -51,7 +51,7 @@ const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 ### `mutationOptions(input)`
 
 - Accepts a `mutationKey` plus a `mutationFn` that returns `Result<TData, TError>` (sync or async).
-- Returns standard `MutationOptions` whose `mutationFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
+- Returns standard mutation observer options whose `mutationFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
 - Infers variables from the `mutationFn` parameter.
 
 ### When to use which
@@ -174,7 +174,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 });
