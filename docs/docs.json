@@ -26,8 +26,7 @@
 						"pages": [
 							"index",
 							"getting-started/installation",
-							"getting-started/quick-start",
-							"getting-started/core-concepts"
+							"getting-started/quick-start"
 						]
 					},
 					{
@@ -35,8 +34,7 @@
 						"pages": [
 							"core/result-pattern",
 							"core/error-system",
-							"core/brand-types",
-							"core/implementation"
+							"core/brand-types"
 						]
 					},
 					{
