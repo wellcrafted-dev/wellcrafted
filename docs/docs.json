@@ -44,16 +44,14 @@
 						"pages": [
 							"patterns/real-world",
 							"patterns/optional-keys",
-							"patterns/service-layer",
-							"case-studies/whispering-architecture"
+							"patterns/service-layer"
 						]
 					},
 					{
 						"group": "\ud83d\udd0c Integrations",
 						"pages": [
 							"integrations/validation-libraries",
-							"integrations/svelte-tanstack",
-							"integrations/react-tanstack",
+							"integrations/tanstack-query",
 							"integrations/hono-serialization",
 							"integrations/testing"
 						]
