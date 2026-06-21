@@ -228,7 +228,7 @@ In exchange, the whole API is `{ data, error }`, `async/await`, and `switch`: no
 
 ## Also in the box
 
-Each lives behind its own subpath import, so you pay for only what you use. The [docs](https://wellcrafted.dev) cover each in depth.
+Each lives behind its own subpath import, so you pay for only what you use.
 
 - `wellcrafted/brand`: `Brand<T>` makes distinct types from primitives (`type UserId = string & Brand<"UserId">`) so the compiler catches mix-ups. Zero runtime.
 - `wellcrafted/logger`: a small DI-based structured logger keyed on log level, built to take your `defineErrors` types directly. No global singleton.
