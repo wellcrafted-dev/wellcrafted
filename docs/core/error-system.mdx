@@ -14,7 +14,7 @@ wellcrafted's error system is built on a simple principle: **errors should be da
 
 ## The TaggedError Pattern
 
-At the heart of wellcrafted's error system is the `TaggedError` type: a structured, serializable error representation that works with TypeScript's type system.
+At the heart of wellcrafted's error system is the tagged error: a structured, serializable error representation that works with TypeScript's type system.
 
 ### Why TaggedError?
 
@@ -912,8 +912,8 @@ async function fetchWithRetry<T>(
   let lastError: NetworkError | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const result = await tryAsync<T, NetworkError>({
-      try: () => fetch(url).then(r => r.json()),
+    const result = await tryAsync({
+      try: (): Promise<T> => fetch(url).then(r => r.json()),
       catch: () => NetworkError.Request({ url, attempt, maxRetries })
     });
 
@@ -954,7 +954,7 @@ const UserError = defineErrors({
 type UserError = InferErrors<typeof UserError>;
 
 async function getUser(id: string): Promise<Result<User, UserError>> {
-  const result = await tryAsync<User, InferError<typeof UserError.DatabaseFailure>>({
+  const result = await tryAsync({
     try: () => database.users.findById(id),
     catch: () => UserError.DatabaseFailure({ userId: id })
   });

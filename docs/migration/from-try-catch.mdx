@@ -84,7 +84,7 @@ async function fetchUserOld(id: string): Promise<User> {
 type ApiError = Readonly<{ name: "ApiError"; message: string }>;
 
 async function fetchUser(id: string): Promise<Result<User, ApiError>> {
-  return tryAsync<User, ApiError>({
+  return tryAsync({
     try: () => fetchUserOld(id),
     catch: (error) => Err({
       name: "ApiError",
@@ -181,7 +181,7 @@ function parseConfig(json: string): Config {
 
 // After
 function parseConfig(json: string): Result<Config, ConfigError> {
-  return trySync<Config, ConfigError>({
+  return trySync({
     try: () => {
       const parsed = JSON.parse(json);
       return validateConfig(parsed);
@@ -426,7 +426,7 @@ class UserService {
     if (existsResult.error) return existsResult;
     
     // Step 4: Hash password with error handling
-    const hashResult = await tryAsync<string, DatabaseError>({
+    const hashResult = await tryAsync({
       try: () => bcrypt.hash(input.password, 10),
       catch: (error) => Err({
         name: "DatabaseError",
@@ -479,7 +479,7 @@ class UserService {
   private async checkUserExists(
     email: string
   ): Result<void, UserExistsError | DatabaseError> {
-    const result = await tryAsync<User | null, DatabaseError>({
+    const result = await tryAsync({
       try: () => this.db.findByEmail(email),
       catch: (error) => Err({
         name: "DatabaseError",
