@@ -1,142 +1,94 @@
 ---
-title: Welcome to wellcrafted
-description: 'Delightful TypeScript utilities for elegant, type-safe applications'
+title: wellcrafted
+description: 'Tagged errors and Result types as plain objects. Under 2KB, zero dependencies.'
 ---
 
 import { Card, CardGroup } from '@mintlify/components'
 
-# Welcome to wellcrafted
+# wellcrafted
 
-**Make errors impossible to ignore.** A lightweight TypeScript library that transforms unpredictable exceptions into type-safe, serializable results.
+Tagged errors and Result types as plain objects. Under 2KB, zero dependencies.
 
-## What is wellcrafted?
+wellcrafted gives you a Rust-inspired `Result` type and a `defineErrors` helper that puts the errors a function can return into its signature, instead of hiding them behind `throw`. The errors are plain frozen objects, so they survive `JSON.stringify`, a Web Worker, or an IPC boundary intact.
 
-wellcrafted is a collection of simple, powerful TypeScript primitives that make your code more predictable, type-safe, and delightful to work with. At its core, it provides a Rust-inspired `Result` type that makes error handling explicit and visible in your function signatures.
+If you just want the fast tour, the [README](https://github.com/wellcrafted-dev/wellcrafted) covers what, why, and how in one screen. These pages go deeper.
 
 <CardGroup>
   <Card title="Quick Start" icon="rocket" href="/getting-started/quick-start">
-    Get up and running in 30 seconds
+    The essential patterns, in five minutes
   </Card>
   <Card title="Core Concepts" icon="lightbulb" href="/getting-started/core-concepts">
-    Understand the fundamental ideas
+    The ideas behind Result and defineErrors
   </Card>
   <Card title="Result Pattern" icon="code-branch" href="/core/result-pattern">
-    Deep dive into the Result type
+    A deep dive into the Result type
   </Card>
   <Card title="Examples" icon="code" href="/patterns/real-world">
-    See real-world implementations
+    Real-world implementations
   </Card>
 </CardGroup>
 
-## Why wellcrafted?
+## The problem it solves
 
-### The Problem
+Nothing in this signature tells you what can go wrong:
 
 ```typescript
-// Which errors can this throw? 🤷
+// Which of these throws, and with what?
 async function saveUser(user: User): Promise<void> {
-  await validate(user);      // Throws ValidationError? 
-  await checkPermissions();  // Throws AuthError?
-  await database.save(user); // Throws DatabaseError?
+  await validate(user);
+  await checkPermissions();
+  await database.save(user);
 }
 ```
 
-### The Solution
+With a `Result` return type, every failure is in the type, and the caller has to deal with it:
 
 ```typescript
-// Every error is visible and typed ✨
-async function saveUser(user: User): Promise<Result<void, ValidationError | AuthError | DatabaseError>> {
+async function saveUser(
+  user: User,
+): Promise<Result<void, ValidationError | AuthError | DatabaseError>> {
   const validation = await validate(user);
   if (validation.error) return validation;
-  
+
   const auth = await checkPermissions();
   if (auth.error) return auth;
-  
-  return await database.save(user);
+
+  return database.save(user);
 }
 ```
 
-## Core Primitives
+The core is about fifty lines of code you can read in one sitting. There is no runtime, no generators, and no pipe operators: just `{ data, error }`, `async/await`, and `switch`.
+
+## The primitives
 
 <CardGroup>
-  <Card title="Result Type" icon="shield-check">
-    Type-safe error handling with explicit success and failure states
+  <Card title="Result Type" icon="shield-check" href="/core/result-pattern">
+    Explicit success and failure states you check with `{ data, error }`
   </Card>
-  <Card title="Tagged Errors" icon="tags">
-    Structured, serializable errors that work everywhere
-  </Card>
-  <Card title="Brand Types" icon="fingerprint">
-    Create distinct types from primitives for compile-time safety
-  </Card>
-</CardGroup>
-
-## Key Benefits
-
-- **🎯 Explicit Error Handling**: All potential failures are visible in function signatures
-- **📦 Serialization-Safe**: Errors are plain objects that work across all boundaries
-- **✨ Elegant API**: Clean, intuitive patterns that feel natural in TypeScript
-- **🔍 Zero Magic**: The entire core is ~50 lines of code you can understand
-- **🚀 Lightweight**: Zero dependencies, tree-shakeable, less than 2KB minified
-
-## Quick Example
-
-```typescript
-import { tryAsync } from "wellcrafted/result";
-import { defineErrors, type InferErrors } from "wellcrafted/error";
-
-const ApiError = defineErrors({
-  Fetch: ({ endpoint }: { endpoint: string }) => ({
-    message: `Failed to fetch data from ${endpoint}`,
-    endpoint,
-  }),
-});
-type ApiError = InferErrors<typeof ApiError>;
-
-const { data, error } = await tryAsync<User, ApiError>({
-  try: () => fetch('/api/user').then(r => r.json()),
-  catch: () => ApiError.Fetch({ endpoint: '/api/user' })
-});
-
-if (error) {
-  console.error(`${error.name}: ${error.message}`);
-} else {
-  console.log("User:", data);
-}
-```
-
-## Next Steps
-
-<CardGroup>
-  <Card title="Installation" icon="download" href="/getting-started/installation">
-    Install wellcrafted in your project
-  </Card>
-  <Card title="Tutorial" icon="graduation-cap" href="/getting-started/quick-start">
-    Follow our step-by-step guide
-  </Card>
-  <Card title="Migration Guide" icon="arrows-rotate" href="/migration/from-try-catch">
-    Migrate from traditional error handling
-  </Card>
-</CardGroup>
-
-## Philosophy
-
-wellcrafted is built on the principle of making the implicit explicit. Instead of hidden exceptions that can crash your application, errors become data that you can work with using TypeScript's powerful type system. The `defineErrors` API is directly inspired by Rust's `thiserror` crate — bringing the same structural clarity of enum-based error handling to TypeScript.
-
-Learn more about our [design principles](/philosophy/design-principles), read about the [Rust inspiration](/philosophy/rust-inspiration) behind `defineErrors`, explore our [production reliability approach](/philosophy/production-reliability), and discover why we believe [developer experience](/philosophy/developer-experience) should be delightful.
-
-## Related Resources
-
-<CardGroup>
-  <Card title="Error System Design" icon="triangle-exclamation" href="/core/error-system">
-    Deep dive into TaggedErrors and structured error handling
+  <Card title="Tagged Errors" icon="tags" href="/core/error-system">
+    `defineErrors` variants: structured, serializable, switchable on `name`
   </Card>
   <Card title="Brand Types" icon="fingerprint" href="/core/brand-types">
-    Prevent bugs with compile-time type distinctions
+    Distinct types from primitives, caught at compile time
   </Card>
+</CardGroup>
+
+## Why it works this way
+
+`defineErrors` is modeled on Rust's [thiserror](https://docs.rs/thiserror): name the handful of things that can go wrong in a domain, up front, as data. The rest of the design follows from picking shapes you already know (`{ data, error }` from Supabase and SvelteKit) over inventing new ones.
+
+Read more on the [design principles](/philosophy/design-principles), the [Rust inspiration](/philosophy/rust-inspiration) behind `defineErrors`, and why we lean on [developer experience](/philosophy/developer-experience) over machinery.
+
+## Going further
+
+<CardGroup>
   <Card title="Service Architecture" icon="layer-group" href="/patterns/service-layer">
-    Production patterns for building robust services
+    Layered services that each own their error vocabulary
   </Card>
   <Card title="Framework Integrations" icon="plug" href="/integrations/svelte-tanstack">
-    Use wellcrafted with your favorite frameworks
+    wellcrafted with TanStack Query, Svelte, and more
+  </Card>
+  <Card title="Migrating from try/catch" icon="arrows-rotate" href="/migration/from-try-catch">
+    Adopt it one function at a time
   </Card>
 </CardGroup>
