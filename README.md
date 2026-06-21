@@ -109,7 +109,9 @@ Three things are doing the work here, and the rest of this README is just those 
 
 You can put any value in `Ok` and `Err`. So why `defineErrors`?
 
-Because errors aren't random. Every service has a handful of things that can go wrong, and you want to name them up front. A user service has `AlreadyExists`, `CreateFailed`, `InvalidEmail`. An HTTP client has `Connection`, `Timeout`, `Response`. Rust codified this with [thiserror](https://docs.rs/thiserror); `defineErrors` brings the same pattern to TypeScript, but outputs plain objects instead of classes.
+Because errors aren't random. A function fails in a handful of known ways, and a namespace is where you enumerate them up front: the closed set of what can go wrong. A user service fails with `AlreadyExists`, `CreateFailed`, or `InvalidEmail`, and nothing else. That set is exactly a Rust error enum: the namespace is the enum, each key is a variant, and `switch (error.name)` is the `match`. `defineErrors` brings the [thiserror](https://docs.rs/thiserror) pattern to TypeScript as plain objects instead of classes.
+
+Enumerating the set up front is what makes the rest pay off. The union flows into your `Result<T, E>` signature, so a caller sees every way the call can fail right in the type, and a `switch` with a [`never` guard](#exhaustiveness) turns a forgotten variant into a compile error.
 
 Each key becomes a variant. Your constructor returns `{ message, ...fields }`; `defineErrors` stamps the key on as `name` and hands back a factory that returns `Err<...>` directly. `InferErrors` extracts the union of every variant for your `Result<T, E>` signatures.
 
