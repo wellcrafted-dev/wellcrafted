@@ -49,7 +49,7 @@ if (isErr(result)) { /* handle error */ }
 
 - Use `Ok(null)`/`Ok(undefined)` (if what you meant was success-with-no-payload).
 - Define a tagged error via `defineErrors` with a real name.
-- Wrap a caught exception as `TaggedError.Unexpected({ cause: error })` — see below.
+- Wrap a caught exception in one of your `defineErrors` variants, e.g. `MyError.Unexpected({ cause: error })` (see below). There is no `TaggedError` factory to import; you create the namespace yourself with `defineErrors`.
 
 At every `catch (error: unknown)` boundary, don't pass the raw `unknown` to `Err`. Wrap it in a tagged error via `defineErrors`. The tagged error is non-null by construction, so the shape's invariant holds regardless of what was thrown (including `throw null`). See `docs/philosophy/err-null-is-ok-null.md` for why this is a documentation rule rather than a type-level constraint.
 
@@ -269,10 +269,12 @@ const result = resolve(maybeResult);
 import { partitionResults } from 'wellcrafted/result';
 
 const results = await Promise.all(userIds.map(getUser));
-const { ok, err } = partitionResults(results);
-// ok:  User[]        — just the successful values
-// err: UserError[]   — just the errors
+const { oks, errs } = partitionResults(results);
+// oks:  Ok<User>[]        the successful Results (access .data on each)
+// errs: Err<UserError>[]  the failed Results (access .error on each)
 ```
+
+The arrays hold the Result objects themselves, not the unwrapped values. Read `.data` off each `Ok` and `.error` off each `Err`.
 
 ## Wrapping Summary
 
