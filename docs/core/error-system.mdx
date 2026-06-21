@@ -203,7 +203,7 @@ When a `catch` block hands you `unknown`, the constructor should own the convers
 Accept `cause: unknown`, call `extractErrorMessage(cause)` in the message template, and store the raw `cause` for programmatic access:
 
 ```typescript
-import { defineErrors, extractErrorMessage } from '@wellcrafted/result/error';
+import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
 
 const AudioError = defineErrors({
   PlaySound: ({ cause }: { cause: unknown }) => ({
