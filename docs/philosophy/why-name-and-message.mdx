@@ -111,10 +111,9 @@ JavaScript errors cross boundaries that Rust errors never touch. A Rust error li
 
 This is a valid JSON object, a valid WellCrafted error, and a valid thing to log, send over HTTP, store in a database, or display in a UI. No special serialization logic, no custom `toJSON` methods, no lossy transforms. The error is the JSON.
 
-That's why WellCrafted enforces that all fields are `JsonValue` types. If it can't survive a `JSON.stringify`/`JSON.parse` round-trip, it can't be a field on a WellCrafted error.
+That works as long as you keep every field a plain `JsonValue`: a string, number, boolean, or nested object or array. This is a convention the library leans on, not a constraint it enforces at the type level (the only required field is `message: string`). Nothing stops you from putting a `Date` or a class instance on an error, but it will not round-trip cleanly, so reach for a string or number instead.
 
 ```typescript
-// Fields must be JSON-serializable — TypeScript enforces this
 const FileError = defineErrors({
   Write: ({ path, bytesWritten }: { path: string; bytesWritten: number }) => ({
     message: `Write failed at byte ${bytesWritten}`,
@@ -123,7 +122,7 @@ const FileError = defineErrors({
   }),
 });
 
-// This is a type error — Date is not JSON-serializable
+// Compiles, but a Date does not survive JSON.stringify; store a number instead:
 // Write: ({ path, timestamp }: { path: string; timestamp: Date }) => ...
 ```
 

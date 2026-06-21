@@ -260,17 +260,22 @@ type ApiError = NetworkError | AuthError | RateLimitError;
 TypeScript immediately shows you every place that needs updating:
 
 ```typescript
-// Compilation error: switch statement is no longer exhaustive
 function handleApiError(error: ApiError) {
   switch (error.name) {
     case "NetworkError":
       return handleNetworkError(error);
     case "AuthError":
       return handleAuthError(error);
-    // TypeScript error: missing case for "RateLimitError"
+    default: {
+      // RateLimitError now reaches here, so `error` is not `never`:
+      const _exhaustive: never = error; // compile error until you add the case
+      return _exhaustive;
+    }
   }
 }
 ```
+
+The `never` assignment in `default` is what makes this a compile error; a plain `switch` would let the new variant fall through silently.
 
 **Refactoring safety**:
 - **No missed error cases**: TypeScript finds every location that needs updating

@@ -452,12 +452,17 @@ function handleApiError(error: ApiError) {
       return redirectToLogin();
     case "NetworkError":
       return showNetworkErrorDialog();
-    // TypeScript error if you miss a case!
+    default: {
+      // every variant is handled, so `error` is `never` here;
+      // add a variant without a case and this line stops compiling
+      const _exhaustive: never = error;
+      return _exhaustive;
+    }
   }
 }
 ```
 
-**Team impact**: Code reviews can mechanically verify that all error cases are handled. No more "did we handle the timeout case?" discussions—TypeScript enforces completeness.
+**Team impact**: Code reviews can mechanically verify that all error cases are handled. No more "did we handle the timeout case?" discussions: the `never` check in `default` enforces completeness.
 
 ## The Debugging Advantage
 
