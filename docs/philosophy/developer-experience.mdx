@@ -137,7 +137,11 @@ async function handleApiCall<T>(result: ApiResult<T>) {
       case "ValidationError":
         return highlightValidationErrors(result.error.fields);
 
-      // TypeScript ensures you handle all cases
+      default: {
+        // add a variant without a case and this assignment stops compiling
+        const _exhaustive: never = result.error;
+        return _exhaustive;
+      }
     }
   } else {
     return processSuccessfulResult(result.data);
