@@ -182,12 +182,12 @@ function processUser(result: Result<User, ApiError>) {
 
 ### Exhaustive Pattern Matching
 
-With discriminated unions, TypeScript can ensure you handle all cases:
+With discriminated unions, a `never` check in `default` turns a missing case into a compile error:
 
 ```typescript
 type AuthError = Readonly<{ name: "AuthError"; message: string }>;
 type NetworkError = Readonly<{ name: "NetworkError"; message: string }>;
-type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string; field: string }>;
 
 type AppError = AuthError | NetworkError | ValidationError;
 
@@ -199,10 +199,16 @@ function handleError(error: AppError): string {
       return "Check your internet connection";
     case "ValidationError":
       return `Invalid ${error.field}`;
-    // TypeScript ensures all cases are handled!
+    default: {
+      // add a variant without a case and this line stops compiling
+      const _exhaustive: never = error;
+      return _exhaustive;
+    }
   }
 }
 ```
+
+A plain `switch` does not enforce this on its own; the `never` assignment in `default` is what opts you in.
 
 ## Working with Results
 

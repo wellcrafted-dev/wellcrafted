@@ -255,7 +255,7 @@ This scatters presentation logic across every `catch` block instead of centraliz
 There is no dedicated cause step. If you need to chain errors, model `cause` as just another field:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
 // Define errors for each layer
 const NetworkError = defineErrors({
