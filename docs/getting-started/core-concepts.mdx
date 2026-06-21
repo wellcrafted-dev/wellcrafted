@@ -6,7 +6,7 @@ icon: 'lightbulb'
 
 # Core Concepts
 
-wellcrafted is built on a few simple but powerful ideas. Understanding these concepts will help you get the most out of the library and write more reliable TypeScript applications.
+wellcrafted is built on a few simple ideas. Understanding these concepts will help you get the most out of the library and write more reliable TypeScript applications.
 
 ## Errors as Values, Not Control Flow
 
@@ -89,7 +89,7 @@ type Err<E> = { data: null; error: E }
 1. **Error-side Discriminated Union**: `error` is the reliable discriminant. `error === null` means Ok, and `error !== null` means Err. This handles every success payload, including `Ok<null>` (e.g., a cache lookup that succeeds but finds nothing). Error values themselves should be non-null; their presence is represented by `error !== null`.
 2. **Destructuring-Friendly**: The ability to destructure `const { data, error } = ...` is a clean, direct, and pragmatic pattern that is already familiar to developers using popular libraries like Supabase and Astro Actions
 3. **Serialization-Safe**: Plain objects survive any serialization boundary
-4. **Zero Magic**: No classes, no prototypes, just objects
+4. **No Hidden Behavior**: No classes, no prototypes, just objects
 
 ### Mental Model
 
@@ -231,7 +231,7 @@ wellcrafted embraces JavaScript's strengths instead of fighting them:
 
 > We only introduce new abstractions where JavaScript has a clear and significant weakness.
 
-The beauty is in the transparency - you can see exactly how it works under the hood, yet it provides powerful type safety and ergonomics.
+The beauty is in the transparency - you can see exactly how it works under the hood, yet it provides strong type safety and ergonomics.
 
 ## Putting It All Together
 

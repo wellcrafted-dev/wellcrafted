@@ -10,7 +10,7 @@ wellcrafted's Result shape has a blind spot. If you pass `null` to the `Err` con
 
 ## The shape
 
-Wellcrafted's headline feature is that a Result looks like what you already know — the same `{ data, error }` shape Supabase and SvelteKit load functions use:
+wellcrafted's headline feature is that a Result looks like what you already know: the same `{ data, error }` shape Supabase and SvelteKit load functions use:
 
 ```typescript
 type Ok<T>  = { data: T;    error: null };
@@ -41,8 +41,8 @@ Same runtime object. Property order doesn't matter in JavaScript. `isErr` checks
 
 ```typescript
 const result = Err(null);
-isOk(result);   // true  — wrong
-isErr(result);  // false — wrong
+isOk(result);   // true, wrong
+isErr(result);  // false, wrong
 ```
 
 Your failure became a success. The type system said the variable was `Err<null>`; the runtime said it was `Ok<null>`. The discriminator lied.
@@ -54,7 +54,7 @@ This isn't a bug we can patch. It's the shape telling you what it can and can't 
 A tagged-union Result can:
 
 ```rust
-// Rust — two variants with a discriminant byte
+// Rust: two variants with a discriminant byte
 enum Result<T, E> { Ok(T), Err(E) }
 
 let success: Result<(), ()> = Ok(());
@@ -64,7 +64,7 @@ matches!(failure, Err(_))  // true
 
 `Ok(())` and `Err(())` are runtime-distinguishable even when `T` and `E` are both the unit type. The discriminant byte holds the tag. `match` reads the byte, not the payload.
 
-Wellcrafted can't do this without giving up the destructuring shape. No discriminant byte lives in `{ data, error }`. The shape *is* the discriminator, and when both slots are `null`, the shape has nothing to say.
+wellcrafted can't do this without giving up the destructuring shape. No discriminant byte lives in `{ data, error }`. The shape *is* the discriminator, and when both slots are `null`, the shape has nothing to say.
 
 This isn't a universal property of Results. It's a consequence of the shape we chose. Rust disagrees with wellcrafted because Rust chose differently.
 
@@ -87,10 +87,10 @@ We shipped it. Reviewed it. Reverted it. Here's why.
 The ban catches the literal case: `Err(null)` as written. Everything else slips through.
 
 ```typescript
-Err(value as any)                          // bypassed — any cast defeats the constraint
-Err(value as NonNullable<typeof value>)    // bypassed — the cast is a lie if value is actually null
+Err(value as any)                          // bypassed: any cast defeats the constraint
+Err(value as NonNullable<typeof value>)    // bypassed: the cast is a lie if value is actually null
 Err(value)                                 // bypassed if typeof value permits null via a bad upstream type
-({ error: null, data: null }) as Err<null> // bypassed — direct object construction
+({ error: null, data: null }) as Err<null> // bypassed: direct object construction
 ```
 
 Most damning: the migration for the ban itself used this pattern:
@@ -102,7 +102,7 @@ catch (error) {
 }
 ```
 
-The `as NonNullable<TError>` cast silences TypeScript without preventing the runtime case. If `TError` includes null-thrown values (and `catch (e: unknown)` always does — `throw null` is legal JavaScript), this cast *is* the bug it claims to fix. The ban's own migration produced unsafe casts.
+The `as NonNullable<TError>` cast silences TypeScript without preventing the runtime case. If `TError` includes null-thrown values (and `catch (e: unknown)` always does, since `throw null` is legal JavaScript), this cast *is* the bug it claims to fix. The ban's own migration produced unsafe casts.
 
 ### The cost is wide
 
@@ -118,13 +118,13 @@ Multiply that by every `tryAsync`/`trySync` catch in every service file in every
 
 ### The teaching value is replaceable
 
-What the ban *wanted* to teach: "don't pass raw `unknown` to `Err` — wrap it in a tagged error instead."
+What the ban *wanted* to teach: "don't pass raw `unknown` to `Err`; wrap it in a tagged error instead."
 
 What the ban *actually* taught, most of the time: "add `as NonNullable<T>` to make the type error go away."
 
 The fix at hand is a cast. The cast is wrong. The type error doesn't explain the right fix. So the ban teaches the wrong lesson more often than the right one.
 
-The correct lesson — **use `defineErrors` and pass `{ cause: error }`** — is better taught by documentation than by a compile error. The tagged error is non-null by construction, so the shape's invariant holds even if the cause was `null`. Documentation + idiom enforces the rule more reliably than the constraint does.
+The correct lesson (**use `defineErrors` and pass `{ cause: error }`**) is better taught by documentation than by a compile error. The tagged error is non-null by construction, so the shape's invariant holds even if the cause was `null`. Documentation + idiom enforces the rule more reliably than the constraint does.
 
 ## What we shipped instead
 
@@ -132,7 +132,7 @@ Errs can still be constructed with any value. `Err<E>` has no `NonNullable` cons
 
 The documented rule:
 
-> `Err(null)` produces `{ data: null, error: null }` — structurally identical to `Ok(null)`. Under our shape, `isErr`/`isOk` read it as Ok, so `Err(null)` silently becomes success. `Err(undefined)` is also discouraged — the discriminator technically works (the error field is `undefined`, not `null`), but `undefined` is falsy so `if (error)` checks trip downstream, and the error carries no information. **Don't call `Err` with `null` or `undefined`.** Either:
+> `Err(null)` produces `{ data: null, error: null }`, structurally identical to `Ok(null)`. Under our shape, `isErr`/`isOk` read it as Ok, so `Err(null)` silently becomes success. `Err(undefined)` is also discouraged: the discriminator technically works (the error field is `undefined`, not `null`), but `undefined` is falsy so `if (error)` checks trip downstream, and the error carries no information. **Don't call `Err` with `null` or `undefined`.** Either:
 >
 > - Use `Ok(null)`/`Ok(undefined)` (if what you meant was success-with-no-payload).
 > - Define a tagged error via `defineErrors` with a real name.
@@ -157,11 +157,11 @@ const result = await tryAsync({
 });
 ```
 
-The tagged error `{ name: 'Unexpected', message, cause, ... }` is always non-null — it's a constructed object. `Err(taggedError)` produces `{ error: taggedError, data: null }`, which has a non-null error side. `isErr` reads it correctly. The shape's invariant is preserved, and the author didn't have to know the invariant existed.
+The tagged error `{ name: 'Unexpected', message, cause, ... }` is always non-null; it's a constructed object. `Err(taggedError)` produces `{ error: taggedError, data: null }`, which has a non-null error side. `isErr` reads it correctly. The shape's invariant is preserved, and the author didn't have to know the invariant existed.
 
 ## The meta-lesson
 
-Shape choices are invariant choices. When wellcrafted picked the destructure-friendly `{ data, error }` shape, it picked a discriminator (`error !== null`) that implicitly assumes error values are never null. That assumption isn't documented in the shape — the shape has no way to document it — so it has to live as a convention.
+Shape choices are invariant choices. When wellcrafted picked the destructure-friendly `{ data, error }` shape, it picked a discriminator (`error !== null`) that implicitly assumes error values are never null. That assumption isn't documented in the shape (the shape has no way to document it), so it has to live as a convention.
 
 We tried to promote the convention into a type-level constraint. The attempt failed because:
 

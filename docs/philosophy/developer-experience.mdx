@@ -554,7 +554,7 @@ async function getUser(id: string) {
 }
 ```
 
-This lets you adopt Result types incrementally — new code uses Results directly, legacy code gets wrapped at the boundary. The factory owns the message template and the `extractErrorMessage` call, so call sites stay clean.
+This lets you adopt Result types incrementally: new code uses Results directly, legacy code gets wrapped at the boundary. The factory owns the message template and the `extractErrorMessage` call, so call sites stay clean.
 
 ### Framework Integration
 
@@ -605,7 +605,7 @@ function UserProfile({ userId }: { userId: string }) {
 
 ## Conclusion
 
-wellcrafted transforms error handling from a source of bugs into a source of confidence. The developer experience improvements go beyond syntax — they fundamentally change how you think about and work with failure scenarios.
+wellcrafted transforms error handling from a source of bugs into a source of confidence. The developer experience improvements go beyond syntax; they fundamentally change how you think about and work with failure scenarios.
 
 **Mental model benefits**:
 - Shift from defensive exception handling to constructive outcome handling
@@ -622,7 +622,7 @@ wellcrafted transforms error handling from a source of bugs into a source of con
 - Clear, explicit testing patterns for both success and failure paths
 - Source maps that point to meaningful business logic
 
-Once you experience error handling that actually helps you write better code, it's hard to go back to hoping exceptions don't happen. You're not just writing more reliable code — you're writing code that helps future developers (including yourself) understand and maintain complex error scenarios.
+Once you experience error handling that actually helps you write better code, it's hard to go back to hoping exceptions don't happen. You're not just writing more reliable code; you're writing code that helps future developers (including yourself) understand and maintain complex error scenarios.
 
 ---
 

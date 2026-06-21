@@ -6,7 +6,7 @@ icon: 'fingerprint'
 
 # Brand Types: Nominal Typing in TypeScript
 
-Brand types (also known as opaque types or nominal types) allow you to create distinct types from primitive types, preventing accidental mixing of values that should be semantically different. This is a powerful technique for making illegal states unrepresentable in your type system.
+Brand types (also known as opaque types or nominal types) allow you to create distinct types from primitive types, preventing accidental mixing of values that should be semantically different. This is a technique for making illegal states unrepresentable in your type system.
 
 ## The Problem with Structural Typing
 
@@ -51,7 +51,7 @@ transferMoney(orderId, userId, 100); // ❌ Type error: OrderId is not assignabl
 
 ## How Brand Types Work
 
-The implementation is elegantly simple:
+The implementation is simple:
 
 ```typescript
 declare const brand: unique symbol;
@@ -60,7 +60,7 @@ export type Brand<T extends string> = { [brand]: { [K in T]: true } };
 
 This creates a phantom property using a unique symbol that exists only at the type level. The property doesn't exist at runtime, but TypeScript's type system treats each brand as a distinct type.
 
-The nested object structure `{ [K in T]: true }` enables brand stacking—when brands are intersected, the inner object properties merge rather than conflicting, allowing hierarchical brand relationships.
+The nested object structure `{ [K in T]: true }` enables brand stacking: when brands are intersected, the inner object properties merge rather than conflicting, allowing hierarchical brand relationships.
 
 ### Why This Implementation?
 
@@ -436,12 +436,12 @@ deleteUser(adminId); // ✅ Also works - AdminUserId extends UserId
 
 ## Summary
 
-Brand types are a simple yet powerful technique for adding nominal typing to TypeScript:
+Brand types are a simple technique for adding nominal typing to TypeScript:
 
 - **Prevent errors**: Catch ID mix-ups and parameter swapping at compile time
 - **Document guarantees**: Branded types communicate validation and invariants
 - **Zero runtime cost**: Brands exist only in the type system
-- **Composable**: Work seamlessly with Result types and other patterns
+- **Composable**: Work with Result types and other patterns
 
 Use brand types strategically at API boundaries and for values that are easily confused but semantically different. They're one more tool in your toolkit for making illegal states unrepresentable.
 
@@ -452,7 +452,7 @@ Use brand types strategically at API boundaries and for values that are easily c
     See brand types preventing bugs in authentication and file upload code
   </Card>
   <Card title="Result Pattern Deep Dive" icon="code-branch" href="/core/result-pattern">
-    Learn how brand types work seamlessly with Result discriminated unions
+    Learn how brand types work with Result discriminated unions
   </Card>
   <Card title="Service Layer Pattern" icon="layer-group" href="/patterns/service-layer">
     Use brand types for type-safe service APIs and dependency injection

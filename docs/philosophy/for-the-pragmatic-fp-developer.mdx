@@ -24,13 +24,13 @@ You tried an FP error handling library and it felt like writing in a foreign lan
 
 You went back to `try-catch` not because you think it's better, but because the alternative was worse in practice. The cognitive tax wasn't paying off for your team.
 
-If that's you, here's the deal: you don't have to choose between "untyped try-catch" and "full functional runtime." There's a middle ground that gives you the one thing you actually wanted—typed, named errors—without the parts that didn't work.
+If that's you, here's the deal: you don't have to choose between "untyped try-catch" and "full functional runtime." There's a middle ground that gives you the one thing you actually wanted (typed, named errors) without the parts that didn't work.
 
 ---
 
 ## What You Wanted vs. What You Got
 
-The core appeal of FP error handling has always been three things: errors in the type signature, exhaustive handling, and named variants you can branch on. Everything else—the method chains, the generators, the effect system—is machinery to support those three things in languages that have the features for it.
+The core appeal of FP error handling has always been three things: errors in the type signature, exhaustive handling, and named variants you can branch on. Everything else (the method chains, the generators, the effect system) is machinery to support those three things in languages that have the features for it.
 
 TypeScript doesn't have those features. So the machinery becomes the product, and the original goals get buried under it.
 
@@ -75,7 +75,7 @@ wellcrafted makes specific, deliberate trade-offs. You should know what they are
 
 **No method chains.** There's no `.map()` or `.andThen()` on the Result type. Composition is `if (error) return error` and early returns. This is verbose compared to Rust's `?` operator. It's also immediately readable to anyone who knows TypeScript.
 
-**No dependency injection.** Effect's service system is genuinely elegant. wellcrafted has nothing like it. Pass your dependencies as function arguments. It works. It's not as composable.
+**No dependency injection.** Effect's service system is genuinely well-designed. wellcrafted has nothing like it. Pass your dependencies as function arguments. It works. It's not as composable.
 
 **No runtime.** No fibers, no structured concurrency, no resource management. If you need those, Effect has them and wellcrafted doesn't.
 
@@ -94,13 +94,13 @@ These are real things you give up. They're also things that most TypeScript appl
 | The full FP toolkit (Option, Either, pipe) | fp-ts |
 | Typed errors that work with async/await and serialize cleanly | wellcrafted |
 
-wellcrafted is the smallest circle on that Venn diagram. It does one thing: gives you typed, named, serializable error variants that compose with the TypeScript you already write. If that's all you wanted from FP error handling—and for most teams, it is—this is the library that stops there instead of continuing into territory TypeScript can't support well.
+wellcrafted is the smallest circle on that Venn diagram. It does one thing: gives you typed, named, serializable error variants that compose with the TypeScript you already write. If that's all you wanted from FP error handling (and for most teams, it is), this is the library that stops there instead of continuing into territory TypeScript can't support well.
 
 ---
 
 ## The Bet
 
-wellcrafted makes a bet: most TypeScript teams don't need a functional programming framework. They need a way to define errors that the type system can see. Everything else—async/await, early returns, switch statements, destructuring—TypeScript already does well enough.
+wellcrafted makes a bet: most TypeScript teams don't need a functional programming framework. They need a way to define errors that the type system can see. Everything else (async/await, early returns, switch statements, destructuring) TypeScript already does well enough.
 
 If you tried typed errors and walked away, you weren't wrong about the goal. You were right that TypeScript's errors should be typed. The libraries you tried were right about the theory. The gap was in the execution: they needed language features that TypeScript doesn't have, and the workarounds cost more than they saved.
 

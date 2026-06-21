@@ -6,7 +6,7 @@ icon: 'layer-group'
 
 # Service Layer Pattern
 
-Build robust, testable services using wellcrafted's Result types and error handling with the factory function pattern — no classes needed.
+Build testable services using wellcrafted's Result types and error handling with the factory function pattern: no classes needed.
 
 ## Core Principles
 
@@ -84,7 +84,7 @@ export const UserServiceLive = createUserService(databaseInstance);
 ```typescript
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
-// Separate namespaces — payment and persistence are different concerns
+// Separate namespaces: payment and persistence are different concerns
 const PaymentError = defineErrors({
   PaymentFailed: ({ amount }: { amount: number }) => ({
     message: 'Payment processing failed',

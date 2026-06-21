@@ -7,9 +7,9 @@ icon: 'lightbulb'
 # Design Principles
 
 > "The best programs are written not by adding features, but by removing them."  
-> — Antoine de Saint-Exupéry (paraphrased)
+> Antoine de Saint-Exupéry (paraphrased)
 
-wellcrafted is built on four core principles that guide every design decision. These aren't abstract ideals—they're practical philosophies proven in 22,824 lines of production TypeScript code.
+wellcrafted is built on four core principles that guide every design decision. These aren't abstract ideals; they're practical philosophies proven in 22,824 lines of production TypeScript code.
 
 ## 1. Errors as Values, Not Control Flow
 
@@ -98,7 +98,7 @@ This shift from exceptional cases to explicit cases transforms error handling fr
 
 ### JavaScript's Hidden Strengths
 
-JavaScript gets a lot of criticism, but it has some genuinely powerful features that wellcrafted embraces:
+JavaScript gets a lot of criticism, but it has some genuinely useful features that wellcrafted embraces:
 
 **Plain Objects**: No classes, no prototypes, no inheritance complexity. Just `{ data, error }` objects that work everywhere.
 
@@ -121,13 +121,13 @@ if (result.error) {
 
 ### What We Don't Do
 
-**No Method Chaining**: Rust's `.map()` and `.and_then()` are elegant in Rust, but feel foreign in JavaScript. We use standard JavaScript control flow instead.
+**No Method Chaining**: Rust's `.map()` and `.and_then()` read well in Rust, but feel foreign in JavaScript. We use standard JavaScript control flow instead.
 
-**No Classes**: Error objects are plain data structures, not class instances that lose their prototype when serialized. They use `name` and `message` because that's what JavaScript's `Error` class already uses — see [Why `name` and `message`](/philosophy/why-name-and-message) for the full reasoning.
+**No Classes**: Error objects are plain data structures, not class instances that lose their prototype when serialized. They use `name` and `message` because that's what JavaScript's `Error` class already uses; see [Why `name` and `message`](/philosophy/why-name-and-message) for the full reasoning.
 
 **No Complex Abstractions**: The entire Result core is ~50 lines of code you can read and understand in 5 minutes.
 
-**No Magic**: Every pattern is explicit and visible. No hidden behavior, no surprising transformations.
+**No Hidden Behavior**: Every pattern is explicit and visible. No concealed behavior, no surprising transformations.
 
 ### The Unix Philosophy for TypeScript
 
@@ -313,7 +313,7 @@ Simple primitives that compose well scale from scripts to applications:
 
 ## Conclusion
 
-wellcrafted's design principles aren't academic abstractions—they're practical philosophies proven in production code. By treating errors as values, working with JavaScript's strengths, making behavior explicit, and favoring composition over complexity, we create code that is:
+wellcrafted's design principles aren't academic abstractions; they're practical philosophies proven in production code. By treating errors as values, working with JavaScript's strengths, making behavior explicit, and favoring composition over complexity, we create code that is:
 
 - **Reliable**: No hidden failure modes or surprise exceptions
 - **Maintainable**: Clear patterns that new developers can understand

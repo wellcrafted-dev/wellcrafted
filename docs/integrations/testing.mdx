@@ -10,7 +10,7 @@ This guide covers how to test functions that return `Result<T, E>`, custom match
 
 ## Testing Services That Return Results
 
-Services returning Results are straightforward to test — assert on the `Ok` or `Err` value directly:
+Services returning Results are straightforward to test: assert on the `Ok` or `Err` value directly:
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';

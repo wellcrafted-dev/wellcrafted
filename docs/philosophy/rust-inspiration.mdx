@@ -30,7 +30,7 @@ enum HttpError {
 
 A few things to notice:
 
-- **`HttpError` is the namespace.** The variants — `Connection`, `Response`, `Parse` — live under it. They are short, one-word names because the enum name already provides the context.
+- **`HttpError` is the namespace.** The variants (`Connection`, `Response`, `Parse`) live under it. They are short, one-word names because the enum name already provides the context.
 - **Each variant is a struct with named fields.** `Connection` carries a `cause`. `Response` carries a `status` and an optional `body_message`. The fields are part of the type.
 - **`#[error("...")]` defines the display string** for each variant, interpolating fields by name.
 - **You construct** with `HttpError::Connection { cause: "timeout".into() }` and **discriminate** with `match`.
@@ -104,7 +104,7 @@ switch (error.name) {
 ```
 </CodeGroup>
 
-The `name` field on each error object is the discriminant. It is stamped automatically from the key you provide — `'Connection'`, `'Response'`, `'Parse'`. You never write it by hand; `defineErrors` handles it. That is directly analogous to how Rust stamps the variant identity into the enum value at construction time.
+The `name` field on each error object is the discriminant. It is stamped automatically from the key you provide: `'Connection'`, `'Response'`, `'Parse'`. You never write it by hand; `defineErrors` handles it. That is directly analogous to how Rust stamps the variant identity into the enum value at construction time.
 
 ## Five Places Where the Languages Diverge
 
@@ -138,7 +138,7 @@ Both co-locate the message template with the variant definition. Both interpolat
 
 ### `Err<...>` Wrapping Instead of Direct Returns
 
-In Rust, a function returning `Result<T, HttpError>` returns the error variant directly. Rust's `?` operator and return type tell the compiler which side of the Result you are on. TypeScript does not have that. `defineErrors` factories always return `Err<...>` — an object shaped `{ data: null, error: ... }` — so that `trySync` and `tryAsync` can tell errors apart from successful values without ambiguity.
+In Rust, a function returning `Result<T, HttpError>` returns the error variant directly. Rust's `?` operator and return type tell the compiler which side of the Result you are on. TypeScript does not have that. `defineErrors` factories always return `Err<...>` (an object shaped `{ data: null, error: ... }`) so that `trySync` and `tryAsync` can tell errors apart from successful values without ambiguity.
 
 ### `Object.freeze` Instead of Ownership
 
@@ -146,7 +146,7 @@ Rust's ownership model prevents mutation after construction. TypeScript has no o
 
 ### Discriminated Unions Instead of `match`
 
-Rust's `match` is exhaustive by default — the compiler forces you to handle every variant. TypeScript has no native pattern matching yet, but discriminated unions on `error.name` get you most of the way there. A `switch` on a string literal union narrows the type in each branch, and you can use `never` checks for exhaustiveness if you want it.
+Rust's `match` is exhaustive by default; the compiler forces you to handle every variant. TypeScript has no native pattern matching yet, but discriminated unions on `error.name` get you most of the way there. A `switch` on a string literal union narrows the type in each branch, and you can use `never` checks for exhaustiveness if you want it.
 
 | Difference | Rust | TypeScript | Why |
 |---|---|---|---|
@@ -160,7 +160,7 @@ Rust's `match` is exhaustive by default — the compiler forces you to handle ev
 
 The thing that unlocked the `defineErrors` design comes straight from Rust: **the enum name is the namespace, the variant name is the discriminant.**
 
-In Rust, you would never name a variant `ConnectionError` inside an enum called `HttpError`. That would be `HttpError::ConnectionError` — redundant. You name it `Connection`. The enum already tells you it is an `HttpError`. The variant tells you which kind.
+In Rust, you would never name a variant `ConnectionError` inside an enum called `HttpError`. That would be `HttpError::ConnectionError`, redundant. You name it `Connection`. The enum already tells you it is an `HttpError`. The variant tells you which kind.
 
 The same logic applies in TypeScript:
 
@@ -174,7 +174,7 @@ const HttpError = defineErrors({
 
 `HttpError` is the context. `Connection` is the discriminant. The `name` on the error object will be `'Connection'`, not `'HttpConnectionError'` or `'HttpError.Connection'`. Short, unambiguous, and exactly what you `switch` on.
 
-This is the pattern that was missing from TypeScript error handling. Not just a way to make errors with `name` fields — but a way to define a family of errors under a shared namespace with the same structural clarity that Rust's enum system provides.
+This is the pattern that was missing from TypeScript error handling. Not just a way to make errors with `name` fields, but a way to define a family of errors under a shared namespace with the same structural clarity that Rust's enum system provides.
 
 **The enum name is the namespace. The variant name is the discriminant. Everything else follows from there.**
 
@@ -206,7 +206,7 @@ enum NetworkError {
 
 Each failure case gets its own variant. The enum's discriminant does the work. There is no inner enum to match on separately.
 
-The same principle applies in TypeScript. When a `defineErrors` variant has a string literal union field like `reason: 'timeout' | 'refused' | 'dns'`, that field is an inner enum in disguise. Consumers have to narrow twice — once on `error.name`, once on `error.reason` — which defeats the purpose of having a discriminated union in the first place.
+The same principle applies in TypeScript. When a `defineErrors` variant has a string literal union field like `reason: 'timeout' | 'refused' | 'dns'`, that field is an inner enum in disguise. Consumers have to narrow twice (once on `error.name`, once on `error.reason`), which defeats the purpose of having a discriminated union in the first place.
 
 ```typescript
 // The Rust instinct is correct here: make each case a variant
@@ -226,7 +226,7 @@ const NetworkError = defineErrors({
 });
 ```
 
-If you are coming from Rust, trust your instincts on this. The pattern that feels right in Rust — one variant per failure case, fields specific to that case — is exactly right here too.
+If you are coming from Rust, trust your instincts on this. The pattern that feels right in Rust (one variant per failure case, fields specific to that case) is exactly right here too.
 
 ## Constructor Owns the Conversion (Rust's `#[from]`)
 
@@ -243,14 +243,14 @@ enum AudioError {
 The call site never converts anything. You pass the raw `IoError` and the variant handles it:
 
 ```rust
-// The variant owns the conversion — not the call site
+// The variant owns the conversion, not the call site
 let raw: IoError = ...;
 let err: AudioError = raw.into(); // From impl does the work
 ```
 
 This is a deliberate design choice. The error definition knows how to present itself. The call site just hands over the raw material.
 
-The same principle applies with `defineErrors`. The constructor function is where conversion logic lives — not the call site:
+The same principle applies with `defineErrors`. The constructor function is where conversion logic lives, not the call site:
 
 ```typescript
 import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
@@ -262,7 +262,7 @@ const AudioError = defineErrors({
   }),
 });
 
-// Call site — just pass the raw error, like Rust's From impl
+// Call site: just pass the raw error, like Rust's From impl
 try {
   playSound(file);
 } catch (error) {
@@ -275,7 +275,7 @@ The `extractErrorMessage` call lives inside the constructor, not at the call sit
 The anti-pattern is doing the conversion at the call site:
 
 ```typescript
-// Don't do this — no Rust equivalent because Rust wouldn't let you
+// Don't do this: no Rust equivalent because Rust wouldn't let you
 try {
   playSound(file);
 } catch (error) {
@@ -304,7 +304,7 @@ const HttpError = defineErrors({
   }),
 });
 
-// InferErrors extracts the discriminated union — no manual type definitions
+// InferErrors extracts the discriminated union, no manual type definitions
 type HttpError = InferErrors<typeof HttpError>;
 // = Readonly<{ name: 'Connection'; message: string; cause: unknown }>
 // | Readonly<{ name: 'Response'; message: string; status: number }>
@@ -312,7 +312,7 @@ type HttpError = InferErrors<typeof HttpError>;
 
 In Rust, the proc macro reads your enum definition and generates code. In TypeScript, `const` generic inference reads your config object and infers types. Both produce the same result: a namespace of constructors and a union type of all variants, derived from a single source of truth. The definition is the type. No duplication, no drift.
 
-The ten lines of `defineErrors` runtime do what `thiserror`'s proc macro does: iterate the variants, stamp each one with its name, and produce ready-to-use constructors. The type system does the rest. That's the whole trick: plain functions for runtime, type inference for compile time, and the definition site looks like `thiserror` because it *is* `thiserror`—just without the macro.
+The ten lines of `defineErrors` runtime do what `thiserror`'s proc macro does: iterate the variants, stamp each one with its name, and produce ready-to-use constructors. The type system does the rest. That's the whole trick: plain functions for runtime, type inference for compile time, and the definition site looks like `thiserror` because it *is* `thiserror`, just without the macro.
 
 ---
 

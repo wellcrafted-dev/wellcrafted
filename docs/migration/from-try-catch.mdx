@@ -642,7 +642,7 @@ async function fetchUser(id: string): Promise<User> {
 
 ### Pattern 4: Graceful Error Handling with Ok(undefined)
 
-One powerful pattern with `tryAsync` is treating certain "errors" as successful outcomes. This is perfect for operations where the exception doesn't represent a true failure from a business logic perspective.
+One useful pattern with `tryAsync` is treating certain "errors" as successful outcomes. This is perfect for operations where the exception doesn't represent a true failure from a business logic perspective.
 
 ```typescript
 // Before - treating all exceptions as errors

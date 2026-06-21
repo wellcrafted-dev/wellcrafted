@@ -91,7 +91,7 @@ type Brand<K extends string | symbol> = { [k in K]: K };
 interface UserId extends Brand<"UserId"> {}
 ```
 
-Effect maps `K` to itself (`{ UserId: "UserId" }`) rather than to `true`. Both approaches work for brand stacking; we chose boolean markers for simpler semantics—the marker's presence is what matters, not its value.
+Effect maps `K` to itself (`{ UserId: "UserId" }`) rather than to `true`. Both approaches work for brand stacking; we chose boolean markers for simpler semantics: the marker's presence is what matters, not its value.
 
 ### ArkType
 
@@ -113,7 +113,7 @@ We chose `true` as the marker value for several reasons:
 2. **Conventional pattern**: Boolean flags are a common TypeScript idiom for feature detection
 3. **Minimal surface**: `true` is the simplest possible "yes" value
 
-The alternative of self-mapping (`{ UserId: "UserId" }`) works identically at runtime but adds conceptual overhead—why store the name twice?
+The alternative of self-mapping (`{ UserId: "UserId" }`) works identically at runtime but adds conceptual overhead: why store the name twice?
 
 ## Practical Implications
 
@@ -142,6 +142,6 @@ This is the same subtyping relationship you'd expect from class inheritance, but
 
 ## Further Reading
 
-- [Brand Types](/core/brand-types) — Usage guide and common patterns
-- [Effect-TS Brand module](https://github.com/Effect-TS/effect/blob/main/packages/effect/src/Brand.ts) — Alternative implementation with self-mapping
-- [TypeScript Handbook: Branded Types](https://www.typescriptlang.org/play/#example/nominal-typing) — Official playground example
+- [Brand Types](/core/brand-types): Usage guide and common patterns
+- [Effect-TS Brand module](https://github.com/Effect-TS/effect/blob/main/packages/effect/src/Brand.ts): Alternative implementation with self-mapping
+- [TypeScript Handbook: Branded Types](https://www.typescriptlang.org/play/#example/nominal-typing): Official playground example

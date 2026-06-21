@@ -373,13 +373,13 @@ export function createApplicationService(
 
 ## Key Takeaways
 
-1. **Errors in signatures** — every example makes failures visible in the return type, no surprise runtime exceptions.
-2. **Error transformation at boundaries** — database errors become service errors, service errors become HTTP responses.
-3. **Branded types prevent mixups** — `UserId` and `SessionToken` can never be accidentally swapped.
-4. **Framework agnostic** — these patterns work in Next.js, Svelte, plain Node, or anywhere TypeScript runs.
+1. **Errors in signatures**: every example makes failures visible in the return type, no surprise runtime exceptions.
+2. **Error transformation at boundaries**: database errors become service errors, service errors become HTTP responses.
+3. **Branded types prevent mixups**: `UserId` and `SessionToken` can never be accidentally swapped.
+4. **Framework agnostic**: these patterns work in Next.js, Svelte, plain Node, or anywhere TypeScript runs.
 
 <Note>
-**Why split variants?** The examples above use specific variants like `LoginFailed`, `FileTooLarge`, and `InvalidFields` rather than a single catch-all `Operation` variant. This is the recommended pattern — each variant carries exactly the context it needs as required fields, and consumers can `switch` on `error.name` to handle each case distinctly. A single catch-all variant is only acceptable when *all* failures are handled identically by every consumer. For guidance on when optional keys are appropriate, see [Optional Keys in Error Definitions](/patterns/optional-keys).
+**Why split variants?** The examples above use specific variants like `LoginFailed`, `FileTooLarge`, and `InvalidFields` rather than a single catch-all `Operation` variant. This is the recommended pattern: each variant carries exactly the context it needs as required fields, and consumers can `switch` on `error.name` to handle each case distinctly. A single catch-all variant is only acceptable when *all* failures are handled identically by every consumer. For guidance on when optional keys are appropriate, see [Optional Keys in Error Definitions](/patterns/optional-keys).
 </Note>
 
 <Note>

@@ -80,7 +80,7 @@ Each method returned a new builder type with the constraint baked in. `.withCont
 This was the most "correct" version. It was also the most complex. The builder had four modes depending on which methods you called, three layers of type indirection, and about 60 lines of runtime.
 
 ```typescript
-// .withFields<T>() was a phantom call — purely type-level, disguised as a method
+// .withFields<T>() was a phantom call: purely type-level, disguised as a method
 const { FileError, FileErr } = createTaggedError('FileError')
   .withFields<{ path: string; code: number }>()   // does nothing at runtime
   .withMessage(({ path, code }) => `File error ${code}: ${path}`);

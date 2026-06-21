@@ -10,7 +10,7 @@ icon: 'shield-check'
 
 Production systems have a different relationship with errors than development environments. In development, you can restart, debug, and iterate quickly. In production, every failure impacts real users, costs money, and damages trust.
 
-wellcrafted's error-handling patterns weren't designed in isolation—they evolved from real production pain points where traditional exception handling fell short.
+wellcrafted's error-handling patterns weren't designed in isolation; they evolved from real production pain points where traditional exception handling fell short.
 
 ## The Hidden Cost of Exceptions
 
@@ -53,7 +53,7 @@ async function updateProfile(userId: string, data: ProfileData) {
 
 **What went wrong?** The try-catch block silently swallowed errors. Callers had no way to know that the operation failed. Users saw "Profile updated successfully" while their data was never saved.
 
-**How long to detect?** Days or weeks. Silent failures are the worst kind—they break user trust without triggering your monitoring systems.
+**How long to detect?** Days or weeks. Silent failures are the worst kind: they break user trust without triggering your monitoring systems.
 
 ### Scenario 3: The Cascade Failure
 
@@ -209,7 +209,7 @@ async function handleProfileUpdate(req: Request): Promise<Response> {
 }
 ```
 
-**What changed**: The calling code *must* handle the error case. TypeScript enforces this—you can't access `profile` without first checking if `error` is null. Silent failures become impossible.
+**What changed**: The calling code *must* handle the error case. TypeScript enforces this: you can't access `profile` without first checking if `error` is null. Silent failures become impossible.
 
 ### Scenario 3 Solved: Discriminated Error Types
 
@@ -532,7 +532,7 @@ const userError = {
 
 ### Structured Error Metrics
 
-wellcrafted's consistent error structure enables powerful monitoring:
+wellcrafted's consistent error structure enables structured monitoring:
 
 ```typescript
 // Automatic error categorization
@@ -586,7 +586,7 @@ function updateSLI(error: BaseError) {
 
 ## The Production Reality Check
 
-Production systems taught us that error handling isn't just about catching exceptions—it's about building systems that fail gracefully, provide actionable feedback, and maintain observability under stress.
+Production systems taught us that error handling isn't just about catching exceptions: it's about building systems that fail gracefully, provide actionable feedback, and maintain observability under stress.
 
 wellcrafted's patterns emerged from these production lessons:
 
@@ -596,7 +596,7 @@ wellcrafted's patterns emerged from these production lessons:
 - **Error messages should guide users toward resolution**, not just report that something broke
 - **Monitoring systems need structured error data** to provide meaningful insights
 
-These aren't theoretical concerns—they're the difference between a system that scales gracefully and one that requires constant manual intervention.
+These aren't theoretical concerns: they're the difference between a system that scales gracefully and one that requires constant manual intervention.
 
 ## Conclusion
 
