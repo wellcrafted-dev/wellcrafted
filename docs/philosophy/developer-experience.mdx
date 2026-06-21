@@ -352,7 +352,7 @@ Because wellcrafted errors are explicit in your code, source maps point to the a
 ```typescript
 async function processPayment(order: Order): Promise<Result<Payment, PaymentError>> {
   const { data: validation, error } = await validatePayment(order);
-  if (error) return error;
+  if (error) return Err(error);
 
   const { data: payment, error: paymentError } = await chargeCard(order.total);
   if (paymentError) {

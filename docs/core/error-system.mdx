@@ -912,7 +912,7 @@ async function fetchWithRetry<T>(
   let lastError: NetworkError | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const result = await tryAsync<T, NetworkRequestError>({
+    const result = await tryAsync<T, NetworkError>({
       try: () => fetch(url).then(r => r.json()),
       catch: () => NetworkError.Request({ url, attempt, maxRetries })
     });
