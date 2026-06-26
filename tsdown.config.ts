@@ -7,6 +7,7 @@ export default defineConfig({
 		"src/logger/index.ts",
 		"src/json.ts",
 		"src/brand.ts",
+		"src/function.ts",
 		"src/query/index.ts",
 		"src/standard-schema/index.ts",
 		"src/testing.ts",
