@@ -139,13 +139,13 @@ async function fetchUser(id: number): Promise<Result<User, ApiError>> {
     const response = await fetch(endpoint);
 
     if (!response.ok) {
-      // HTTP error — we have the status code
+      // HTTP error: we have the status code
       return ApiError.HttpError({ endpoint, statusCode: response.status });
     }
 
     return Ok(await response.json() as User);
   } catch {
-    // fetch threw — network failure, no status code available
+    // fetch threw: network failure, no status code available
     return ApiError.NetworkError({ endpoint });
   }
 }
@@ -169,7 +169,7 @@ import { defineErrors, type InferErrors } from "wellcrafted/error";
 
 // Separate error namespaces for validation vs submission.
 // Each namespace groups related errors; TypeScript unions
-// compose them at function boundaries — no wrapper type needed.
+// compose them at function boundaries; no wrapper type needed.
 const ValidationError = defineErrors({
   InvalidType: ({ receivedType }: { receivedType: string }) => ({
     message: `Expected form data, received ${receivedType}`,
@@ -206,7 +206,7 @@ interface SignupForm {
   confirmPassword: string;
 }
 
-// Validation function — only returns ValidationError
+// Validation function: only returns ValidationError
 function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> {
   if (!data || typeof data !== 'object') {
     return ValidationError.InvalidType({ receivedType: typeof data });
@@ -229,7 +229,7 @@ function validateSignupForm(data: unknown): Result<SignupForm, ValidationError> 
   return Ok({ email, password, confirmPassword });
 }
 
-// Submission function — only returns SubmissionError
+// Submission function: only returns SubmissionError
 async function submitSignup(
   form: SignupForm
 ): Promise<Result<{ userId: string }, SubmissionError>> {
@@ -252,7 +252,7 @@ async function submitSignup(
   });
 }
 
-// Using it all together — the union happens naturally at the call site
+// Using it all together: the union happens naturally at the call site
 async function handleSignup(formData: unknown) {
   const { data: validForm, error: validationError } = validateSignupForm(formData);
 
@@ -364,9 +364,6 @@ In just 5 minutes, you've learned how to:
 ## Next Steps
 
 <CardGroup>
-  <Card title="Core Concepts" icon="lightbulb" href="/getting-started/core-concepts">
-    Understand the theory behind the patterns
-  </Card>
   <Card title="Result Pattern Deep Dive" icon="code-branch" href="/core/result-pattern">
     Master advanced Result techniques
   </Card>
@@ -416,5 +413,5 @@ const id = "123" as MyId;
 ```
 
 <Note>
-Ready to dive deeper? Check out our [comprehensive guides](/guides/error-handling) or explore [framework integrations](/patterns/framework-integration).
+Ready to dive deeper? Read the [error system](/core/error-system) design or explore the [TanStack Query integration](/integrations/tanstack-query).
 </Note>

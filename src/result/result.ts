@@ -83,7 +83,7 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
  *
  * Wraps the provided `error` (the failure value) and sets `data` to `null`.
  *
- * **Don't call `Err(null)`.** It produces `{ data: null, error: null }` —
+ * **Don't call `Err(null)`.** It produces `{ data: null, error: null }`,
  * structurally identical to `Ok(null)`. The built-in `isErr` check
  * (`result.error !== null`) reads it as Ok, silently misclassifying your
  * failure as success. `Err(undefined)` is also discouraged: the discriminator
@@ -94,9 +94,9 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
  * what you meant was success-with-no-payload.
  *
  * At `catch (error: unknown)` boundaries, wrap the caught value in a tagged
- * error rather than passing it through — `TaggedError.X({ cause: error })`
- * is always non-null by construction, so the discriminator works regardless
- * of what was thrown.
+ * error rather than passing it through. A `defineErrors` factory like
+ * `MyError.Unexpected({ cause: error })` is always non-null by construction,
+ * so the discriminator works regardless of what was thrown.
  *
  * See `docs/philosophy/err-null-is-ok-null.md` for the full rationale.
  *

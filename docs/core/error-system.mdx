@@ -6,15 +6,15 @@ icon: 'triangle-exclamation'
 
 # Error System Design
 
-wellcrafted's error system is built on a simple yet powerful principle: **errors should be data, not control flow**. This page explains the design philosophy, implementation details, and best practices for creating robust error handling in your applications.
+wellcrafted's error system is built on a simple principle: **errors should be data, not control flow**. This page explains the design philosophy, implementation details, and best practices for error handling in your applications.
 
 <Tip>
-**Why this API?** The `defineErrors` design is directly inspired by Rust's [`thiserror`](https://docs.rs/thiserror) crate — short variant names under a namespace, typed fields per variant, and a display message co-located with the definition. See [Rust's thiserror in TypeScript](/philosophy/rust-inspiration) for the full story.
+**Why this API?** The `defineErrors` design is directly inspired by Rust's [`thiserror`](https://docs.rs/thiserror) crate: short variant names under a namespace, typed fields per variant, and a display message co-located with the definition. See [Rust's thiserror in TypeScript](/philosophy/rust-inspiration) for the full story.
 </Tip>
 
 ## The TaggedError Pattern
 
-At the heart of wellcrafted's error system is the `TaggedError` type - a structured, serializable error representation that works seamlessly with TypeScript's type system.
+At the heart of wellcrafted's error system is the tagged error: a structured, serializable error representation that works with TypeScript's type system.
 
 ### Why TaggedError?
 
@@ -30,7 +30,7 @@ TaggedError solves all these issues:
 1. **JSON-serializable**: Plain objects that survive any serialization boundary
 2. **Type-safe discrimination**: The `name` field acts as a discriminant for TypeScript
 3. **Lightweight**: No overhead of class instantiation or prototype chains
-4. **Flat structure**: Fields are spread directly on the error object — no nesting
+4. **Flat structure**: Fields are spread directly on the error object, no nesting
 
 ## The TaggedError Shape
 
@@ -46,9 +46,9 @@ The minimal type for any tagged error is:
 type AnyTaggedError = { name: string; message: string };
 ```
 
-### `name` — The Discriminant
+### `name`: The Discriminant
 
-This is your error's unique identifier and the key to pattern matching — the same `.name` property every JavaScript `Error` already has. See [Why `name` and `message`](/philosophy/why-name-and-message) for why we follow this convention. Use it in `if` statements and `switch` statements to handle different error types:
+This is your error's unique identifier and the key to pattern matching, the same `.name` property every JavaScript `Error` already has. See [Why `name` and `message`](/philosophy/why-name-and-message) for why we follow this convention. Use it in `if` statements and `switch` statements to handle different error types:
 
 ```typescript
 const AppError = defineErrors({
@@ -85,9 +85,9 @@ function handleError(error: AppError) {
 }
 ```
 
-### `message` — Human-Readable Text
+### `message`: Human-Readable Text
 
-When using `defineErrors`, the constructor function computes the message from the input fields — the caller never passes `message` directly:
+When using `defineErrors`, the constructor function computes the message from the input fields; the caller never passes `message` directly:
 
 ```typescript
 import { defineErrors } from 'wellcrafted/error';
@@ -102,7 +102,7 @@ const AuthError = defineErrors({
 return AuthError.Validation({ email: userInput });
 ```
 
-### Fields — Flat on the Error Object
+### Fields: Flat on the Error Object
 
 Additional data is spread directly on the error object, not nested under a `context` property. This makes access natural and concise:
 
@@ -129,7 +129,7 @@ function processUser(id: number): Result<User, InferError<typeof ProcessingError
 ```
 
 <Note>
-Fields should include the function's input parameters and any relevant debugging information. Since they are spread flat on the error object, you get direct access — `error.userId` instead of `error.context.userId`.
+Fields should include the function's input parameters and any relevant debugging information. Since they are spread flat on the error object, you get direct access: `error.userId` instead of `error.context.userId`.
 </Note>
 
 ## The Three Tiers
@@ -154,7 +154,7 @@ RecordingError.RecorderBusy();
 
 ### Tier 2: Cause-Wrapping Error
 
-For errors that wrap a caught error. Accept `cause: unknown` and call `extractErrorMessage` inside the message template — not at the call site:
+For errors that wrap a caught error. Accept `cause: unknown` and call `extractErrorMessage` inside the message template, not at the call site:
 
 ```typescript
 const AudioError = defineErrors({
@@ -178,7 +178,7 @@ For errors that carry rich, typed debugging information:
 
 ```typescript
 const HttpError = defineErrors({
-  // reason is genuinely optional enrichment — HTTP/2 dropped reason phrases,
+  // reason is genuinely optional enrichment: HTTP/2 dropped reason phrases,
   // so many responses won't have one.
   Response: ({ status, reason }: { status: number; reason?: string }) => ({
     message: `HTTP ${status}${reason ? `: ${reason}` : ''}`,
@@ -196,14 +196,14 @@ HttpError.Response({ status: 500, reason: 'Internal server error' });
 
 ## Wrapping Caught Errors with extractErrorMessage
 
-When a `catch` block hands you `unknown`, the constructor should own the conversion — not the call site.
+When a `catch` block hands you `unknown`, the constructor should own the conversion, not the call site.
 
 ### Preferred: Transform Inside the Constructor
 
 Accept `cause: unknown`, call `extractErrorMessage(cause)` in the message template, and store the raw `cause` for programmatic access:
 
 ```typescript
-import { defineErrors, extractErrorMessage } from '@wellcrafted/result/error';
+import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
 
 const AudioError = defineErrors({
   PlaySound: ({ cause }: { cause: unknown }) => ({
@@ -212,7 +212,7 @@ const AudioError = defineErrors({
   }),
 });
 
-// Call site stays clean — just pass the raw error
+// Call site stays clean, just pass the raw error
 try {
   await audioContext.play(soundFile);
 } catch (error) {
@@ -233,7 +233,7 @@ The resulting error carries both a human-readable `message` and the original `ca
 ### Anti-Pattern: Transform at the Call Site
 
 ```typescript
-// Don't do this — every call site must remember to call extractErrorMessage
+// Don't do this; every call site must remember to call extractErrorMessage
 try {
   await audioContext.play(soundFile);
 } catch (error) {
@@ -245,7 +245,7 @@ This scatters presentation logic across every `catch` block instead of centraliz
 
 ### Why
 
-- **Constructor owns the template.** It already decides the message format — it should also decide how raw inputs become strings.
+- **Constructor owns the template.** It already decides the message format; it should also decide how raw inputs become strings.
 - **Call sites pass raw data.** Callers hand over what they have; the constructor does the rest.
 - **`cause` stays available.** Storing `cause: unknown` means consumers can inspect the original error programmatically, not just read a stringified version.
 - **Same principle as Rust's `#[from]`.** In `thiserror`, the `#[from]` attribute tells the variant to handle conversion automatically. The call site just wraps; the definition owns the transform.
@@ -255,7 +255,7 @@ This scatters presentation logic across every `catch` block instead of centraliz
 There is no dedicated cause step. If you need to chain errors, model `cause` as just another field:
 
 ```typescript
-import { defineErrors, type InferError } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 
 // Define errors for each layer
 const NetworkError = defineErrors({
@@ -386,19 +386,19 @@ type FileNotFoundError = InferError<typeof FileError.NotFound>;
 
 ## The defineErrors API
 
-wellcrafted provides `defineErrors` — a declarative API that eliminates boilerplate and enforces consistent error structure. Each key in the config object maps to a constructor function that returns `{ message, ...fields }`. The `name` is automatically stamped from the key, and each factory returns `Err<...>` directly — ready to use in a `Result` return.
+wellcrafted provides `defineErrors`, a declarative API that eliminates boilerplate and enforces consistent error structure. Each key in the config object maps to a constructor function that returns `{ message, ...fields }`. The `name` is automatically stamped from the key, and each factory returns `Err<...>` directly, ready to use in a `Result` return.
 
 ```typescript
 import { defineErrors, type InferError, type InferErrors } from 'wellcrafted/error';
 
 // Define errors with constructor functions
 const AppError = defineErrors({
-  // Static error — no input, fixed message
+  // Static error: no input, fixed message
   Network: () => ({
     message: 'Network request failed',
   }),
 
-  // Structured error — typed input, computed message
+  // Structured error: typed input, computed message
   FileNotFound: ({ path }: { path: string }) => ({
     message: `File not found: ${path}`,
     path,
@@ -406,15 +406,15 @@ const AppError = defineErrors({
 });
 
 // Each variant is accessed via the namespace
-// AppError.Network() — returns Err<{ name: 'Network'; message: string }>
-// AppError.FileNotFound({ path }) — returns Err<{ name: 'FileNotFound'; message: string; path: string }>
+// AppError.Network() returns Err<{ name: 'Network'; message: string }>
+// AppError.FileNotFound({ path }) returns Err<{ name: 'FileNotFound'; message: string; path: string }>
 
 // Extract types
 type AppError = InferErrors<typeof AppError>;
 type FileNotFoundError = InferError<typeof AppError.FileNotFound>;
 ```
 
-### Constructor Functions — Define Message and Fields Together
+### Constructor Functions: Define Message and Fields Together
 
 Each constructor function receives the input fields and returns an object with `message` plus any additional fields to spread on the error. The `name` is stamped automatically from the key.
 
@@ -457,18 +457,18 @@ const FileError = defineErrors({
   }),
 });
 
-// Fields are REQUIRED — TypeScript enforces it
+// Fields are REQUIRED; TypeScript enforces it
 FileError.Write({ path: '/etc/passwd' });
 // FileError.Write();  // Type error! fields are required
 ```
 
 ### Optional Fields (Enrichment)
 
-Use optional properties only for genuine enrichment — data that may not be available at the call site:
+Use optional properties only for genuine enrichment: data that may not be available at the call site:
 
 ```typescript
 const ParseError = defineErrors({
-  // line is genuinely optional enrichment — parsing may fail before
+  // line is genuinely optional enrichment: parsing may fail before
   // a line number is identified (e.g., binary format mismatch)
   Log: ({ file, line }: { file: string; line?: number }) => ({
     message: `Log parse failed: ${file}${line != null ? `:${line}` : ''}`,
@@ -477,10 +477,10 @@ const ParseError = defineErrors({
   }),
 });
 
-// file is always required — you always know what you're parsing
+// file is always required; you always know what you're parsing
 ParseError.Log({ file: 'app.ts' });
 
-// line is optional enrichment — provide it when available
+// line is optional enrichment; provide it when available
 ParseError.Log({ file: 'app.ts', line: 42 });
 // ParseError.Log({ wrong: true });  // Type error! wrong shape
 ```
@@ -493,7 +493,7 @@ Fields must be JSON-serializable primitives, arrays, or nested objects. This ens
 // Valid JSON-serializable fields
 FileError.Write({ path: '/etc/passwd' });
 
-// Not allowed — Date, functions, class instances are not JSON-serializable
+// Not allowed: Date, functions, class instances are not JSON-serializable
 // FileError.Write({ createdAt: new Date(), handler: () => {} });  // Type error!
 ```
 
@@ -526,7 +526,7 @@ type RequestError = InferError<typeof HttpError.Request>;
 import { defineErrors, type InferError, type InferErrors } from 'wellcrafted/error';
 
 const AppError = defineErrors({
-  // Tier 1: Static — no fields, no args at call site
+  // Tier 1: Static, no fields, no args at call site
   Network: () => ({
     message: 'Network request failed',
   }),
@@ -543,7 +543,7 @@ const AppError = defineErrors({
     path,
   }),
 
-  // Structured with optional enrichment — line number may not be available
+  // Structured with optional enrichment: line number may not be available
   // when parsing fails before a line is identified
   Log: ({ file, line }: { file: string; line?: number }) => ({
     message: `Log parse failed: ${file}${line != null ? `:${line}` : ''}`,
@@ -552,7 +552,7 @@ const AppError = defineErrors({
   }),
 });
 
-// Access variants via the namespace — each returns Err<...> directly
+// Access variants via the namespace; each returns Err<...> directly
 // AppError.Network()
 // AppError.Parse({ cause: error })
 // AppError.FileNotFound({ path: '...' })
@@ -565,7 +565,7 @@ type FileNotFoundError = InferError<typeof AppError.FileNotFound>;
 
 ### Using in tryAsync/trySync
 
-The factory pattern works seamlessly with error mapping. Each variant returns `Err<...>` directly, making it a natural fit for the `catch` callback:
+The factory pattern works with error mapping. Each variant returns `Err<...>` directly, making it a natural fit for the `catch` callback:
 
 ```typescript
 const ApiError = defineErrors({
@@ -633,7 +633,7 @@ const DbError = defineErrors({
   }),
 });
 
-// At the call site — fields capture function inputs and debugging info
+// At the call site: fields capture function inputs and debugging info
 DbError.Query({
   query: 'SELECT * FROM users WHERE id = ?',  // Function input
   params: [userId],                             // Function input
@@ -658,7 +658,7 @@ Readonly<{ name: "SessionExpired"; message: string; sessionId: string }>
 
 ### 3. Avoid String Literal Unions as Sub-Discriminants
 
-If you find yourself adding a field like `reason: 'timeout' | 'refused' | 'dns'` inside a single variant, that field is acting as a second discriminant — duplicating what variant names already do. Split into separate variants instead.
+If you find yourself adding a field like `reason: 'timeout' | 'refused' | 'dns'` inside a single variant, that field is acting as a second discriminant, duplicating what variant names already do. Split into separate variants instead.
 
 This is a common mistake, especially if you are coming from a codebase where errors were loosely typed strings. The instinct to group related failures under one name is natural, but it forces consumers into double narrowing (`switch` on `name`, then `if` on `reason`) and often leads to dishonest optional fields.
 
@@ -688,11 +688,11 @@ const NetworkError = defineErrors({
 });
 ```
 
-Freeform `string` fields for metadata are fine — the anti-pattern is specifically **string literal unions** that consumers would switch on. For wrapping caught errors, prefer `cause: unknown` with `extractErrorMessage(cause)` inside the message template.
+Freeform `string` fields for metadata are fine; the anti-pattern is specifically **string literal unions** that consumers would switch on. For wrapping caught errors, prefer `cause: unknown` with `extractErrorMessage(cause)` inside the message template.
 
 ### 3b. Avoid Conditional Logic on Factory Inputs
 
-A related smell: if your constructor uses `if`/`switch` on its own inputs to decide what message to produce, the variant is doing double duty. Each branch is really a separate error — flatten the keys.
+A related smell: if your constructor uses `if`/`switch` on its own inputs to decide what message to produce, the variant is doing double duty. Each branch is really a separate error; flatten the keys.
 
 ```typescript
 // Avoid: if/switch inside the constructor signals multiple errors hiding in one variant
@@ -714,10 +714,10 @@ const FormError = defineErrors({
 
 The problems are the same as string literal unions, just harder to spot:
 - **Dishonest optionals**: `field`, `value`, and `receivedType` are all optional because no single call site needs all of them. That's a sign they belong on different variants.
-- **Hidden branching**: Consumers can't discriminate on `name` alone — they'd need to inspect `field` or `receivedType` to know which validation failed.
+- **Hidden branching**: Consumers can't discriminate on `name` alone; they'd need to inspect `field` or `receivedType` to know which validation failed.
 - **Untypeable messages**: TypeScript can't narrow the message or fields based on which branch ran.
 
-Flatten into separate variants with honest, required fields — and split into separate namespaces when errors serve different purposes:
+Flatten into separate variants with honest, required fields, and split into separate namespaces when errors serve different purposes:
 
 ```typescript
 // Prefer: each validation failure is its own variant with exactly the fields it needs.
@@ -753,7 +753,7 @@ type SubmissionError = InferErrors<typeof SubmissionError>;
 function handleForm(data: unknown): Result<User, ValidationError | SubmissionError> { ... }
 ```
 
-**The rule of thumb**: if a constructor branches on its inputs to decide the message, each branch should be its own variant. The variant name *is* the discriminant — don't rebuild one inside the constructor body.
+**The rule of thumb**: if a constructor branches on its inputs to decide the message, each branch should be its own variant. The variant name *is* the discriminant; don't rebuild one inside the constructor body.
 
 ### 4. Use Union Types for Function Signatures
 
@@ -861,7 +861,7 @@ When you need to collect multiple errors:
 
 ```typescript
 const FormError = defineErrors({
-  // value is genuinely optional enrichment — sensitive fields like
+  // value is genuinely optional enrichment: sensitive fields like
   // passwords should not include the value in error output
   Validation: ({ field, value }: { field: string; value?: string }) => ({
     message: `Validation failed for field "${field}"`,
@@ -912,8 +912,8 @@ async function fetchWithRetry<T>(
   let lastError: NetworkError | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const result = await tryAsync<T, NetworkRequestError>({
-      try: () => fetch(url).then(r => r.json()),
+    const result = await tryAsync({
+      try: (): Promise<T> => fetch(url).then(r => r.json()),
       catch: () => NetworkError.Request({ url, attempt, maxRetries })
     });
 
@@ -935,7 +935,7 @@ async function fetchWithRetry<T>(
 
 ## Integration with Result Type
 
-TaggedErrors are designed to work seamlessly with the Result type:
+TaggedErrors are designed to work with the Result type:
 
 ```typescript
 import { Result, Ok, Err, tryAsync } from "wellcrafted/result";
@@ -954,7 +954,7 @@ const UserError = defineErrors({
 type UserError = InferErrors<typeof UserError>;
 
 async function getUser(id: string): Promise<Result<User, UserError>> {
-  const result = await tryAsync<User, InferError<typeof UserError.DatabaseFailure>>({
+  const result = await tryAsync({
     try: () => database.users.findById(id),
     catch: () => UserError.DatabaseFailure({ userId: id })
   });
@@ -974,7 +974,7 @@ async function getUser(id: string): Promise<Result<User, UserError>> {
 The TaggedError system transforms error handling from an afterthought to a first-class concern:
 
 - **Structured**: Every error has a consistent shape with `name` and `message`
-- **Flat**: Fields are spread directly on the error object — no nesting
+- **Flat**: Fields are spread directly on the error object, no nesting
 - **Serializable**: Works across all JavaScript boundaries
 - **Type-safe**: Full TypeScript discrimination support
 - **Debuggable**: Rich fields for troubleshooting

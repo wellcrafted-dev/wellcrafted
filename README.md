@@ -9,15 +9,113 @@
 
 Tagged errors and Result types as plain objects. < 2KB, zero dependencies.
 
-Most Result libraries hand you a container and leave the error type as an exercise. You get `Ok` and `Err` but nothing to help you define, compose, or serialize the errors themselves. So you end up with string literals, ad-hoc objects, or class hierarchies that break the moment you call `JSON.stringify`.
+`try/catch` throws away your error's type the moment you catch it. You get `catch (error: unknown)` and you're guessing again. And a thrown `Error` travels badly: `JSON.stringify(new Error("boom"))` is `{}`, so the message vanishes the moment it hits a log line, a Web Worker, or an IPC boundary, where `instanceof` stops working too.
 
-wellcrafted takes the opposite approach: start with the errors. `defineErrors` gives you typed, serializable, composable error variants inspired by Rust's [thiserror](https://docs.rs/thiserror). The Result type is just `{ data, error }` destructuring — the same shape you already know from Supabase, SvelteKit load functions, and TanStack Query. No `.isOk()` method chains, no `.map().andThen().orElse()` pipelines. Check `error`, use `data`. That's it.
+wellcrafted fixes both. Define your errors once as plain data, return them instead of throwing, and check them with the `{ data, error }` shape you already know from Supabase, SvelteKit load functions, and TanStack Query. No `.isOk()` method chains, no `.map().andThen().orElse()` pipelines. Check `error`, use `data`.
 
 ```typescript
-import { defineErrors, extractErrorMessage, type InferErrors } from "wellcrafted/error";
-import { tryAsync, Ok, type Result } from "wellcrafted/result";
+import { defineErrors } from "wellcrafted/error";
+import { trySync } from "wellcrafted/result";
 
-// Define domain errors — all variants in one call
+// The key becomes error.name. The fields you return are typed on the error.
+const { ParseError } = defineErrors({
+  ParseError: ({ path }: { path: string }) => ({
+    message: `Could not parse ${path}`,
+    path,
+  }),
+});
+
+const { data, error } = trySync({
+  try: () => JSON.parse(raw),
+  catch: () => ParseError({ path: "config.json" }),
+});
+
+if (error) {
+  // error is { name: "ParseError"; message: string; path: string }
+  console.error(error.message, error.path);
+} else {
+  // data is the parsed value, error is null
+  use(data);
+}
+```
+
+That's the whole idea: define an error, wrap the throwing call, destructure the result, check `error`. A *tagged error* is just an object with a `name` field you can `switch` on. Everything below is that pattern at scale.
+
+## Install
+
+```bash
+npm install wellcrafted
+```
+
+## A real service
+
+Here is the pattern in shipping code, lightly trimmed from [Whispering](https://github.com/EpicenterHQ/epicenter)'s transcription layer. Each service owns a small vocabulary of things that can go wrong, declared up front with `defineErrors`.
+
+```typescript
+import {
+  defineErrors,
+  extractErrorMessage,
+  type InferErrors,
+} from "wellcrafted/error";
+import { type Result, tryAsync } from "wellcrafted/result";
+
+export const ElevenLabsError = defineErrors({
+  MissingApiKey: () => ({ message: "ElevenLabs API key is required" }),
+  FileTooLarge: ({ sizeMb, maxMb }: { sizeMb: number; maxMb: number }) => ({
+    message: `File ${sizeMb.toFixed(1)}MB exceeds ${maxMb}MB limit`,
+    sizeMb,
+    maxMb,
+  }),
+  Unexpected: ({ cause }: { cause: unknown }) => ({
+    message: extractErrorMessage(cause),
+    cause,
+  }),
+});
+export type ElevenLabsError = InferErrors<typeof ElevenLabsError>;
+
+async function transcribe(
+  audio: Blob,
+  apiKey: string,
+): Promise<Result<string, ElevenLabsError>> {
+  if (!apiKey) return ElevenLabsError.MissingApiKey(); // a factory already is an Err
+
+  const sizeMb = audio.size / (1024 * 1024);
+  if (sizeMb > 1000) return ElevenLabsError.FileTooLarge({ sizeMb, maxMb: 1000 });
+
+  return tryAsync({
+    try: () => callElevenLabs(apiKey, audio), // may throw
+    catch: (cause) => ElevenLabsError.Unexpected({ cause }),
+  });
+}
+```
+
+The caller checks `error`, then `switch`es on `error.name` to handle each case with the right fields in scope:
+
+```typescript
+const { data, error } = await transcribe(audio, apiKey);
+if (error) {
+  switch (error.name) {
+    case "MissingApiKey": return promptForKey();
+    case "FileTooLarge":  return warn(`Audio too large: ${error.sizeMb}MB`);
+    case "Unexpected":    return report(error.cause);
+  }
+}
+showTranscript(data); // data is string, error is null
+```
+
+Three things are doing the work here, and the rest of this README is just those three things.
+
+## Define your errors
+
+You can put any value in `Ok` and `Err`. So why `defineErrors`?
+
+Because errors aren't random. A function fails in a handful of known ways, and a namespace is where you enumerate them up front: the closed set of what can go wrong. A user service fails with `AlreadyExists`, `CreateFailed`, or `InvalidEmail`, and nothing else. That set is exactly a Rust error enum: the namespace is the enum, each key is a variant, and `switch (error.name)` is the `match`. `defineErrors` brings the [thiserror](https://docs.rs/thiserror) pattern to TypeScript as plain objects instead of classes.
+
+Enumerating the set up front is what makes the rest pay off. The union flows into your `Result<T, E>` signature, so a caller sees every way the call can fail right in the type, and a `switch` with a [`never` guard](#exhaustiveness) turns a forgotten variant into a compile error.
+
+Each key becomes a variant. Your constructor returns `{ message, ...fields }`; `defineErrors` stamps the key on as `name` and hands back a factory that returns `Err<...>` directly. `InferErrors` extracts the union of every variant for your `Result<T, E>` signatures.
+
+```typescript
 const UserError = defineErrors({
   AlreadyExists: ({ email }: { email: string }) => ({
     message: `User ${email} already exists`,
@@ -31,62 +129,21 @@ const UserError = defineErrors({
 });
 type UserError = InferErrors<typeof UserError>;
 //   ^? { name: "AlreadyExists"; message: string; email: string }
-//    | { name: "CreateFailed"; message: string; email: string; cause: unknown }
-
-// Each factory returns Err<...> directly — no wrapping needed
-async function createUser(email: string): Promise<Result<User, UserError>> {
-  const existing = await db.findByEmail(email);
-  if (existing) return UserError.AlreadyExists({ email });
-
-  return tryAsync({
-    try: () => db.users.create({ email }),
-    catch: (error) => UserError.CreateFailed({ email, cause: error }),
-  });
-}
-
-// Discriminate with switch — TypeScript narrows automatically
-const { data, error } = await createUser("alice@example.com");
-if (error) {
-  switch (error.name) {
-    case "AlreadyExists": console.log(error.email);   break;
-    case "CreateFailed":  console.log(error.email);   break;
-    //                           ^ TypeScript knows exactly which fields exist
-  }
-}
+//    | { name: "CreateFailed";  message: string; email: string; cause: unknown }
 ```
 
-## Install
+Two properties make this pay off:
 
-```bash
-npm install wellcrafted
-```
+**Errors are data, not classes.** Plain frozen objects, no prototype chain. The fields you put on them are plain own properties, so they survive `JSON.stringify`, a Web Worker, or an IPC hop with no `stack` noise and no `instanceof` that breaks across package boundaries. The error you create is the error that arrives.
 
-## Why define errors at all?
+**Every factory returns `Err<...>` directly.** No wrapping step. Return it from a `tryAsync` catch handler or as a standalone early return (`if (existing) return UserError.AlreadyExists({ email })`). The `Result` type flows out naturally.
 
-You can use `Ok` and `Err` with any value. So why bother with `defineErrors`?
+## Wrap throwing code
 
-Because in practice, errors aren't random. Every service has a handful of things that can go wrong, and you want to enumerate them upfront. A user service has `AlreadyExists`, `CreateFailed`, `InvalidEmail`. An HTTP client has `Connection`, `Timeout`, `Response`. These are logical groups — the error vocabulary for a domain. Rust codified this with [thiserror](https://docs.rs/thiserror). `defineErrors` brings the same pattern to TypeScript, but outputs plain objects instead of classes.
-
-**Errors are data, not classes.** Plain frozen objects with no prototype chain. `JSON.stringify` just works — no `stack` property eating up your logs, no `instanceof` checks that break across package boundaries. This matters anywhere errors cross a serialization boundary: Web Workers, server actions, sync engines, IPC. The error you create is the error that arrives.
-
-**Every factory returns `Err<...>` directly.** No wrapping step. Return it from a `tryAsync` catch handler or as a standalone early return — `if (existing) return UserError.AlreadyExists({ email })`. The Result type flows naturally.
-
-**Discriminated unions for free.** `switch (error.name)` gives you full TypeScript narrowing. No `instanceof`, no type predicates, no manual union types. Add a new variant and every consumer that switches gets a compile error until they handle it.
-
-## Wrapping unsafe code
-
-`trySync` and `tryAsync` turn throwing operations into `Result` types. The `catch` handler receives the raw error and returns an `Err<...>` from your `defineErrors` factories.
+`trySync` and `tryAsync` turn a throwing operation into a `Result`. The `catch` handler receives the raw error and returns one of your `defineErrors` variants. Anything you don't wrap keeps throwing exactly as before, so you can adopt this one function at a time.
 
 ```typescript
-import { trySync, tryAsync } from "wellcrafted/result";
-
-const JsonError = defineErrors({
-  ParseFailed: ({ input, cause }: { input: string; cause: unknown }) => ({
-    message: `Invalid JSON: ${extractErrorMessage(cause)}`,
-    input: input.slice(0, 100),
-    cause,
-  }),
-});
+import { trySync, tryAsync, Ok } from "wellcrafted/result";
 
 // Synchronous
 const { data, error } = trySync({
@@ -101,135 +158,88 @@ const { data, error } = await tryAsync({
 });
 ```
 
-When `catch` returns `Ok(fallback)` instead of `Err`, the return type narrows to `Ok<T>` — no error checking needed:
+When `catch` returns `Ok(fallback)` instead of an error, there is no error branch left: the return type narrows to `Ok<T>`, so `error` is always `null` and you can skip the check.
 
 ```typescript
-const { data: parsed } = trySync({
-  try: (): unknown => JSON.parse(riskyJson),
-  catch: () => Ok([]),
+const { data: items } = trySync({
+  try: (): string[] => JSON.parse(riskyJson),
+  catch: () => Ok([] as string[]), // recovered; there is no error to check
 });
-// parsed is always defined — the catch recovered
 ```
 
-## Composing errors across layers
+## Compose across layers
 
-This is where the pattern pays off. Each layer defines its own error vocabulary; inner errors become `cause` fields, and `extractErrorMessage` formats them inside the factory so call sites stay clean.
+Each layer defines its own vocabulary and folds the layer below into a `cause` field. `extractErrorMessage` formats that cause inside the factory, so call sites stay clean. You propagate with a plain `if (error) return` (there is no `?` operator; see [what you give up](#what-you-give-up)).
 
 ```typescript
-// Service layer: domain errors wrap raw failures via cause
-const UserServiceError = defineErrors({
-  NotFound: ({ userId }: { userId: string }) => ({
-    message: `User ${userId} not found`,
-    userId,
-  }),
-  FetchFailed: ({ userId, cause }: { userId: string; cause: unknown }) => ({
-    message: `Failed to fetch user ${userId}: ${extractErrorMessage(cause)}`,
-    userId,
-    cause,
-  }),
-});
-type UserServiceError = InferErrors<typeof UserServiceError>;
-
 async function getUser(userId: string): Promise<Result<User, UserServiceError>> {
-  const response = await tryAsync({
+  const { data: response, error } = await tryAsync({
     try: () => fetch(`/api/users/${userId}`),
     catch: (cause) => UserServiceError.FetchFailed({ userId, cause }),
-    //                 raw fetch error becomes cause ^^^^^
+    //                  raw fetch error becomes cause ^^^^^
   });
-  if (response.error) return response;
+  if (error) return Err(error); // propagate as-is
 
-  if (response.data.status === 404) return UserServiceError.NotFound({ userId });
-
-  return tryAsync({
-    try: () => response.data.json() as Promise<User>,
-    catch: (cause) => UserServiceError.FetchFailed({ userId, cause }),
-  });
-}
-
-// API handler: maps domain errors to HTTP responses
-async function handleGetUser(request: Request, userId: string) {
-  const { data, error } = await getUser(userId);
-
-  if (error) {
-    switch (error.name) {
-      case "NotFound":
-        return Response.json({ error: error.message }, { status: 404 });
-      case "FetchFailed":
-        return Response.json({ error: error.message }, { status: 502 });
-    }
-  }
-
-  return Response.json(data);
+  if (response.status === 404) return UserServiceError.NotFound({ userId });
+  return Ok(await response.json());
 }
 ```
 
-The full error chain is JSON-serializable at every level. Log it, send it over the wire, display it in a toast. The structure survives.
+Your tagged fields are plain data, so the chain logs and crosses the wire cleanly. The raw `cause` is the exception: it serializes only as well as whatever you caught, which is why the factories above fold it through `extractErrorMessage` into the `message` string.
 
 ## The Result type
 
-The foundation is a simple discriminated union:
+The foundation is one discriminated union:
 
 ```typescript
-import { Ok, Err, trySync, tryAsync, type Result } from "wellcrafted/result";
-
-type Ok<T>      = { data: T; error: null };
-type Err<E>     = { error: E; data: null };
+type Ok<T>        = { data: T; error: null };
+type Err<E>       = { error: E; data: null };
 type Result<T, E> = Ok<T> | Err<E>;
 ```
 
-Check `error` first, and TypeScript narrows `data` automatically:
+Check `error` first and TypeScript narrows `data` for you:
 
 ```typescript
 const { data, error } = await someOperation();
-if (error) {
-  // error is E, data is null
-  return;
-}
+if (error) return; // error is E, data is null
 // data is T, error is null
 ```
 
+`if (error)` works because errors from `defineErrors` are always objects, and an object is truthy. The exact check is `error !== null` (or the `isErr` guard); reach for it if you ever put a falsy value like `0` or `""` in an `Err`.
+
+### Exhaustiveness
+
+`switch (error.name)` narrows each case, and your editor autocompletes every variant. To make a *new* variant a compile error until it is handled, add a `never` check in `default`:
+
+```typescript
+switch (error.name) {
+  case "NotFound":    return notFound();
+  case "FetchFailed": return badGateway();
+  default:
+    error satisfies never; // add a variant and this line fails to compile
+}
+```
+
+Plain TypeScript does not enforce exhaustive `switch` on its own; this one line is how you opt in.
+
+## What you give up
+
+wellcrafted is not an effect system, and the honest cost is control flow. There is no `?` operator, so you propagate with an explicit `if (error) return` at each step. There is no dependency injection, no automatic short-circuiting, and no built-in concurrency. If you need those, reach for [Effect](https://effect.website); that is what it is for.
+
+In exchange, the whole API is `{ data, error }`, `async/await`, and `switch`: no new runtime, no generators, no pipe operators to learn.
+
 ## Also in the box
 
-### Brand Types
+Each lives behind its own subpath import, so you pay for only what you use.
 
-Create distinct types from primitives so TypeScript catches mix-ups at compile time. Zero runtime footprint — purely a type utility.
+- `wellcrafted/brand`: `Brand<T>` makes distinct types from primitives (`type UserId = string & Brand<"UserId">`) so the compiler catches mix-ups. Zero runtime.
+- `wellcrafted/logger`: a small DI-based structured logger keyed on log level, built to take your `defineErrors` types directly. No global singleton.
+- `wellcrafted/testing`: `expectOk` / `expectErr` unwrap a `Result` in a test, or throw with a readable message.
+- `wellcrafted/json`: `parseJson` is `JSON.parse` that returns a `Result` instead of throwing.
+- `wellcrafted/query`: TanStack Query adapters for Result-returning functions. Queries expose `.options`, `.fetch`, and `.ensure`; mutations are callable and expose `.options`.
+- `wellcrafted/standard-schema`: wrap a `Result` as a [Standard Schema](https://github.com/standard-schema/standard-schema) for validators that speak the spec.
 
-```typescript
-import type { Brand } from "wellcrafted/brand";
-
-type UserId = string & Brand<"UserId">;
-type OrderId = string & Brand<"OrderId">;
-
-function getUser(id: UserId) { /* ... */ }
-
-const userId = "abc" as UserId;
-const orderId = "xyz" as OrderId;
-getUser(userId);   // compiles
-getUser(orderId);  // type error
-```
-
-### Query Integration
-
-TanStack Query factories with `.options` for reactive components and explicit imperative helpers for event handlers.
-
-```typescript
-import { createQueryFactories } from "wellcrafted/query";
-
-const { defineQuery, defineMutation } = createQueryFactories(queryClient);
-
-const userQuery = defineQuery({
-  queryKey: ["users", userId],
-  queryFn: () => getUser(userId), // returns Result<User, UserError>
-});
-
-// Reactive: pass to useQuery (React) or createQuery (Svelte)
-const query = createQuery(() => userQuery.options);
-
-// Imperative: choose the query read policy explicitly
-const { data, error } = await userQuery.fetch();
-```
-
-## Comparison
+## How it compares
 
 |  | wellcrafted | neverthrow | better-result | fp-ts | Effect |
 |---|---|---|---|---|---|
@@ -239,89 +249,33 @@ const { data, error } = await userQuery.fetch();
 | Bundle size | < 2KB | ~5KB | ~2KB | ~30KB | ~50KB |
 | Syntax | async/await | Method chains | Method chains + generators | Pipe operators | Generators |
 
-Every Result library gives you a container. wellcrafted gives you what goes inside it — then gets out of the way.
+Every Result library hands you a container. wellcrafted hands you what goes inside it, then gets out of the way.
 
-## Philosophy
+## API at a glance
 
-wellcrafted is deliberately idiomatic to JavaScript. The `{ data, error }` shape isn't novel — it's the same pattern used by Supabase, SvelteKit load functions, and TanStack Query. We chose it because it's already familiar, already destructurable, and requires zero new mental models.
+From `wellcrafted/result`:
 
-The same principle applies throughout: async/await instead of generators, `switch` instead of `.match()`, plain objects instead of class hierarchies. The best abstractions are the ones your team already knows. wellcrafted adds type-safe error definition on top of patterns that JavaScript developers use every day — it doesn't ask you to learn a new programming paradigm to handle errors.
+- `Ok(data)` / `Err(error)`: construct a success or failure
+- `trySync` / `tryAsync`: wrap a throwing operation, sync or async
+- `Result<T, E>`: the `Ok<T> | Err<E>` union
 
-## API Reference
+From `wellcrafted/error`:
 
-### Error functions
+- `defineErrors(config)`: define a namespace of error variant factories
+- `extractErrorMessage(value)`: pull a readable string out of any `unknown`
+- `InferErrors<typeof MyError>`: the union of all variants; `InferError<typeof MyError.Variant>`: one variant
 
-- **`defineErrors(config)`** — define multiple error factories in a single call. Each key becomes a variant; the value is a factory returning `{ message, ...fields }`. Every factory returns `Err<...>` directly.
-- **`extractErrorMessage(error)`** — extract a readable string from any `unknown` error value.
+Less common but there when you need them: `isOk` / `isErr` type guards, `unwrap` (extract or throw), `partitionResults` (split an array of Results), and `resolve` (handle values that may or may not be Results).
 
-### Error types
+## Teach your AI agent
 
-- **`InferErrors<T>`** — extract union of all error types from a `defineErrors` return value.
-- **`InferError<T>`** — extract a single variant's error type from one factory.
-
-### Result functions
-
-- **`Ok(data)`** — create a success result
-- **`Err(error)`** — create a failure result
-- **`trySync({ try, catch })`** — wrap a synchronous throwing operation
-- **`tryAsync({ try, catch })`** — wrap an async throwing operation
-- **`isOk(result)` / `isErr(result)`** — type guards
-- **`unwrap(result)`** — extract data or throw error
-- **`resolve(value)`** — handle values that may or may not be Results
-- **`partitionResults(results)`** — split an array of Results into separate ok/err arrays
-
-### Query functions
-
-- **`createQueryFactories(client)`** — create query/mutation factories for TanStack Query
-- **`defineQuery(options)`**: define a query with `.options`, `.fetch()`, and `.ensure()`
-- **`defineMutation(options)`**: define a callable mutation with `.options` for hooks
-
-### Standard Schema
-
-- **`ResultSchema(dataSchema, errorSchema)`** — [Standard Schema](https://github.com/standard-schema/standard-schema) wrapper for Result types, interoperable with any validator that supports the spec.
-
-### Other types
-
-- **`Result<T, E>`** — union of `Ok<T> | Err<E>`
-- **`Brand<T, B>`** — branded type wrapper for distinct primitives
-
-## AI Agent Skills
-
-If you use an AI coding agent (Claude Code, Cursor, etc.), teach it how to use wellcrafted correctly:
+If you use an AI coding agent, install the skills that teach it the patterns and anti-patterns directly:
 
 ```bash
 npx skills add wellcrafted-dev/wellcrafted
 ```
 
-This installs 5 skills that teach your agent the patterns, anti-patterns, and API conventions:
-
-| Skill | What it teaches |
-| --- | --- |
-| `define-errors` | `defineErrors` variants, `extractErrorMessage`, `InferErrors`/`InferError` type extraction |
-| `result-types` | `Ok`, `Err`, `trySync`/`tryAsync`, the `{ data, error }` destructuring pattern |
-| `query-factories` | `createQueryFactories`, `defineQuery`/`defineMutation`, reactive options, and imperative helpers |
-| `branded-types` | `Brand<T>`, brand constructor pattern, when to add runtime validation |
-| `patterns` | Architectural style guide: control flow, factory composition, service layers, error composition |
-
-Skills work with any agent that supports [`npx skills`](https://www.npmjs.com/package/skills). Install once, update with `npx skills update`.
-
-
-## Development Setup
-
-### AI Agent Skills
-
-AI agent skills are managed via [`npx skills`](https://www.npmjs.com/package/skills), sourced from [Epicenter](https://github.com/EpicenterHQ/epicenter). Only skills relevant to wellcrafted's domain are installed.
-
-```bash
-# Install skills (already committed, but can be refreshed)
-npx skills add EpicenterHQ/epicenter --skill error-handling --skill define-errors -a claude-code -y
-
-# Update all installed skills
-npx skills update
-
-# List installed skills
-npx skills list
-```
+This installs five skills: `define-errors`, `result-types`, `query-factories`, `branded-types`, and `patterns` (the architectural style guide). They work with any agent that supports [`npx skills`](https://www.npmjs.com/package/skills). Install once, update with `npx skills update`.
 
 ## License
 

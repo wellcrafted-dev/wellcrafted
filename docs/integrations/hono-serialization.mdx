@@ -126,7 +126,7 @@ forEachAction(client, ({ workspaceId, actionName, action }) => {
     const query = c.req.query();
     const input = Object.keys(query).length > 0 ? query : undefined;
 
-    const maybeResult = await action(input) as Result<unknown, TaggedError> | unknown;
+    const maybeResult = await action(input) as Result<unknown, AnyTaggedError> | unknown;
 
     const data = isResult(maybeResult) ? maybeResult.data : maybeResult;
     const error = isResult(maybeResult) ? maybeResult.error : undefined;

@@ -56,9 +56,9 @@ if (result.error !== null) {
 }
 ```
 
-The edge case is `Ok<null>` — when your success value is intentionally `null`. In this case, `data === null` doesn't mean failure; it means success with a null value.
+The edge case is `Ok<null>`, when your success value is intentionally `null`. In this case, `data === null` doesn't mean failure; it means success with a null value.
 
-**Bottom line**: Check `error` first — it works reliably in every scenario, including `Ok<null>`. Checking `data` works great when you know your success type is non-nullable, but `error` is the safer, more consistent choice.
+**Bottom line**: Check `error` first; it works reliably in every scenario, including `Ok<null>`. Checking `data` works great when you know your success type is non-nullable, but `error` is the safer, more consistent choice.
 
 ### Control-Flow Analysis in Action
 
@@ -182,12 +182,12 @@ function processUser(result: Result<User, ApiError>) {
 
 ### Exhaustive Pattern Matching
 
-With discriminated unions, TypeScript can ensure you handle all cases:
+With discriminated unions, a `never` check in `default` turns a missing case into a compile error:
 
 ```typescript
 type AuthError = Readonly<{ name: "AuthError"; message: string }>;
 type NetworkError = Readonly<{ name: "NetworkError"; message: string }>;
-type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
+type ValidationError = Readonly<{ name: "ValidationError"; message: string; field: string }>;
 
 type AppError = AuthError | NetworkError | ValidationError;
 
@@ -199,10 +199,16 @@ function handleError(error: AppError): string {
       return "Check your internet connection";
     case "ValidationError":
       return `Invalid ${error.field}`;
-    // TypeScript ensures all cases are handled!
+    default: {
+      // add a variant without a case and this line stops compiling
+      const _exhaustive: never = error;
+      return _exhaustive;
+    }
   }
 }
 ```
+
+A plain `switch` does not enforce this on its own; the `never` assignment in `default` is what opts you in.
 
 ## Working with Results
 
@@ -476,7 +482,7 @@ The discriminated union design with `null` as the discriminant provides the perf
     See complete examples using Results in production applications
   </Card>
   <Card title="Service Layer Pattern" icon="layer-group" href="/patterns/service-layer">
-    Build robust services using Result-returning functions
+    Build services using Result-returning functions
   </Card>
   <Card title="Brand Types" icon="fingerprint" href="/core/brand-types">
     Combine Results with brand types for maximum type safety

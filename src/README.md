@@ -55,8 +55,8 @@ The implementation provides utility functions:
 - `Err<E>(error: E)`: Create an Err data structure containing an error type
 - `isOk(result)`: Type guard to check for success
 - `isErr(result)`: Type guard to check for Err data structure
-- `trySync<T, E>({ try, catch })`: Execute a synchronous operation safely
-- `tryAsync<T, E>({ try, catch })`: Execute an asynchronous operation safely
+- `trySync({ try, catch })`: Execute a synchronous operation safely
+- `tryAsync({ try, catch })`: Execute an asynchronous operation safely
 
 ### Basic Usage
 
@@ -73,7 +73,7 @@ if (isOk(result)) {
 
 ```typescript
 // Define an error type with defineErrors
-const { ValidationError, ValidationErr } = defineErrors({
+const { ValidationError } = defineErrors({
   ValidationError: ({ cause }: { cause: unknown }) => ({
     message: `JSON parsing failed: ${extractErrorMessage(cause)}`,
     cause,
@@ -83,7 +83,7 @@ const { ValidationError, ValidationErr } = defineErrors({
 // Wrapping a potentially throwing operation
 const result = trySync({
   try: () => JSON.parse(jsonString),
-  catch: (error) => ValidationErr({ cause: error }),
+  catch: (error) => ValidationError({ cause: error }),
 });
 
 if (isErr(result)) {
@@ -98,7 +98,7 @@ if (isErr(result)) {
 The implementation provides type inference helpers:
 
 - `UnwrapOk<R>`: Extract the success type from a Result type
-- `UnwrapError<R>`: Extract the error type from a Result type
+- `UnwrapErr<R>`: Extract the error type from a Result type
 
 ## Best Practices
 

@@ -49,6 +49,7 @@ Same pattern for mutations:
 
 ```typescript
 const createPost = defineMutation({
+  mutationKey: ['posts', 'create'],
   mutationFn: async (input: { title: string; body: string }) => {
     const { data, error } = await postService.create(input);
     if (error) {
@@ -61,6 +62,8 @@ const createPost = defineMutation({
   },
 });
 ```
+
+`mutationKey` is required on `defineMutation` and `mutationOptions`, just as `queryKey` is required on `defineQuery`.
 
 ## Reactive Options and Imperative Helpers
 
@@ -178,6 +181,7 @@ Optimistic updates for instant UI feedback:
 
 ```typescript
 const updateUser = defineMutation({
+  mutationKey: ['users', 'update'],
   mutationFn: async (input: { userId: string; name: string }) => {
     const { data, error } = await userService.update(input);
     if (error) return Err({ title: 'Failed to update user', description: error.message });

@@ -84,7 +84,7 @@ async function fetchUserOld(id: string): Promise<User> {
 type ApiError = Readonly<{ name: "ApiError"; message: string }>;
 
 async function fetchUser(id: string): Promise<Result<User, ApiError>> {
-  return tryAsync<User, ApiError>({
+  return tryAsync({
     try: () => fetchUserOld(id),
     catch: (error) => Err({
       name: "ApiError",
@@ -181,7 +181,7 @@ function parseConfig(json: string): Config {
 
 // After
 function parseConfig(json: string): Result<Config, ConfigError> {
-  return trySync<Config, ConfigError>({
+  return trySync({
     try: () => {
       const parsed = JSON.parse(json);
       return validateConfig(parsed);
@@ -426,7 +426,7 @@ class UserService {
     if (existsResult.error) return existsResult;
     
     // Step 4: Hash password with error handling
-    const hashResult = await tryAsync<string, DatabaseError>({
+    const hashResult = await tryAsync({
       try: () => bcrypt.hash(input.password, 10),
       catch: (error) => Err({
         name: "DatabaseError",
@@ -479,7 +479,7 @@ class UserService {
   private async checkUserExists(
     email: string
   ): Result<void, UserExistsError | DatabaseError> {
-    const result = await tryAsync<User | null, DatabaseError>({
+    const result = await tryAsync({
       try: () => this.db.findByEmail(email),
       catch: (error) => Err({
         name: "DatabaseError",
@@ -642,7 +642,7 @@ async function fetchUser(id: string): Promise<User> {
 
 ### Pattern 4: Graceful Error Handling with Ok(undefined)
 
-One powerful pattern with `tryAsync` is treating certain "errors" as successful outcomes. This is perfect for operations where the exception doesn't represent a true failure from a business logic perspective.
+One useful pattern with `tryAsync` is treating certain "errors" as successful outcomes. This is perfect for operations where the exception doesn't represent a true failure from a business logic perspective.
 
 ```typescript
 // Before - treating all exceptions as errors
@@ -786,5 +786,5 @@ Migrating from try-catch to Results is a journey that pays dividends in:
 Start small, migrate gradually, and enjoy more reliable code!
 
 <Note>
-Ready to continue your journey? Learn about migrating from [fp-ts](/migration/from-fp-ts), [Effect](/migration/from-effect), or [neverthrow](/migration/from-neverthrow).
+Ready to continue your journey? See why wellcrafted moves away from chained combinators in [From Effect to Pragmatic Errors](/philosophy/from-effect-to-pragmatic-errors), or revisit the [Error System Design](/core/error-system).
 </Note>

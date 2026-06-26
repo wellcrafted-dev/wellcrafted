@@ -10,7 +10,7 @@ icon: 'shield-check'
 
 Production systems have a different relationship with errors than development environments. In development, you can restart, debug, and iterate quickly. In production, every failure impacts real users, costs money, and damages trust.
 
-wellcrafted's error-handling patterns weren't designed in isolation—they evolved from real production pain points where traditional exception handling fell short.
+wellcrafted's error-handling patterns weren't designed in isolation; they evolved from real production pain points where traditional exception handling fell short.
 
 ## The Hidden Cost of Exceptions
 
@@ -53,7 +53,7 @@ async function updateProfile(userId: string, data: ProfileData) {
 
 **What went wrong?** The try-catch block silently swallowed errors. Callers had no way to know that the operation failed. Users saw "Profile updated successfully" while their data was never saved.
 
-**How long to detect?** Days or weeks. Silent failures are the worst kind—they break user trust without triggering your monitoring systems.
+**How long to detect?** Days or weeks. Silent failures are the worst kind: they break user trust without triggering your monitoring systems.
 
 ### Scenario 3: The Cascade Failure
 
@@ -86,7 +86,17 @@ try {
 ```typescript
 type PaymentError = Readonly<{ name: "PaymentError"; message: string }>;
 type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
-type GatewayError = Readonly<{ name: "GatewayError"; message: string }>;
+type GatewayError = Readonly<{
+  name: "GatewayError";
+  message: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  paymentMethodId: string;
+  customerId: string;
+  gatewayResponse: number | undefined;
+  timestamp: string;
+}>;
 
 async function processPayment(
   order: Order,
@@ -105,17 +115,18 @@ async function processPayment(
       paymentMethodId: paymentMethod.id,
       customerId: order.customerId
     }),
-    catch: (error): GatewayError => ({
-      name: "GatewayError",
-      message: "Payment gateway request failed",
-      orderId: order.id,
-      amount: order.total,
-      currency: order.currency,
-      paymentMethodId: paymentMethod.id,
-      customerId: order.customerId,
-      gatewayResponse: error.response?.status,
-      timestamp: new Date().toISOString(),
-    })
+    catch: (error) =>
+      Err<GatewayError>({
+        name: "GatewayError",
+        message: "Payment gateway request failed",
+        orderId: order.id,
+        amount: order.total,
+        currency: order.currency,
+        paymentMethodId: paymentMethod.id,
+        customerId: order.customerId,
+        gatewayResponse: (error as { response?: { status?: number } }).response?.status,
+        timestamp: new Date().toISOString(),
+      })
   });
   
   if (error) return Err(error);
@@ -209,13 +220,13 @@ async function handleProfileUpdate(req: Request): Promise<Response> {
 }
 ```
 
-**What changed**: The calling code *must* handle the error case. TypeScript enforces this—you can't access `profile` without first checking if `error` is null. Silent failures become impossible.
+**What changed**: The calling code *must* handle the error case. TypeScript enforces this: you can't access `profile` without first checking if `error` is null. Silent failures become impossible.
 
 ### Scenario 3 Solved: Discriminated Error Types
 
 ```typescript
 type ApiError =
-  | Readonly<{ name: "RateLimitError"; message: string }>
+  | Readonly<{ name: "RateLimitError"; message: string; retryAfter: string | null }>
   | Readonly<{ name: "NetworkError"; message: string }>
   | Readonly<{ name: "AuthError"; message: string }>
   | Readonly<{ name: "NotFoundError"; message: string }>;
@@ -244,45 +255,38 @@ async function fetchUserData(
 
       return response.json();
     },
-    catch: (error): ApiError => {
-      if (typeof error === "object" && error?.type) {
-        switch (error.type) {
-          case "rate_limit":
-            return {
-              name: "RateLimitError",
-              message: "API rate limit exceeded",
-              userId: id,
-              retryAfter: error.retryAfter,
-              timestamp: new Date().toISOString(),
-            };
-          case "auth":
-            return {
-              name: "AuthError",
-              message: "Authentication failed",
-              userId: id,
-              status: error.status,
-            };
-          case "not_found":
-            return {
-              name: "NotFoundError",
-              message: "User not found",
-              userId: id,
-            };
-          default:
-            return {
-              name: "NetworkError",
-              message: "Network request failed",
-              userId: id,
-              status: error.status,
-            };
-        }
+    catch: (error) => {
+      const e = error as { type?: string; retryAfter?: string | null; status?: number };
+      switch (e.type) {
+        case "rate_limit":
+          return Err({
+            name: "RateLimitError" as const,
+            message: "API rate limit exceeded",
+            userId: id,
+            retryAfter: e.retryAfter ?? null,
+            timestamp: new Date().toISOString(),
+          });
+        case "auth":
+          return Err({
+            name: "AuthError" as const,
+            message: "Authentication failed",
+            userId: id,
+            status: e.status,
+          });
+        case "not_found":
+          return Err({
+            name: "NotFoundError" as const,
+            message: "User not found",
+            userId: id,
+          });
+        default:
+          return Err({
+            name: "NetworkError" as const,
+            message: e.type ? "Network request failed" : "Unexpected error",
+            userId: id,
+            status: e.status,
+          });
       }
-
-      return {
-        name: "NetworkError",
-        message: "Unexpected error",
-        userId: id,
-      };
     }
   });
 }
@@ -452,12 +456,17 @@ function handleApiError(error: ApiError) {
       return redirectToLogin();
     case "NetworkError":
       return showNetworkErrorDialog();
-    // TypeScript error if you miss a case!
+    default: {
+      // every variant is handled, so `error` is `never` here;
+      // add a variant without a case and this line stops compiling
+      const _exhaustive: never = error;
+      return _exhaustive;
+    }
   }
 }
 ```
 
-**Team impact**: Code reviews can mechanically verify that all error cases are handled. No more "did we handle the timeout case?" discussions—TypeScript enforces completeness.
+**Team impact**: Code reviews can mechanically verify that all error cases are handled. No more "did we handle the timeout case?" discussions: the `never` check in `default` enforces completeness.
 
 ## The Debugging Advantage
 
@@ -527,7 +536,7 @@ const userError = {
 
 ### Structured Error Metrics
 
-wellcrafted's consistent error structure enables powerful monitoring:
+wellcrafted's consistent error structure enables structured monitoring:
 
 ```typescript
 // Automatic error categorization
@@ -581,7 +590,7 @@ function updateSLI(error: BaseError) {
 
 ## The Production Reality Check
 
-Production systems taught us that error handling isn't just about catching exceptions—it's about building systems that fail gracefully, provide actionable feedback, and maintain observability under stress.
+Production systems taught us that error handling isn't just about catching exceptions: it's about building systems that fail gracefully, provide actionable feedback, and maintain observability under stress.
 
 wellcrafted's patterns emerged from these production lessons:
 
@@ -591,7 +600,7 @@ wellcrafted's patterns emerged from these production lessons:
 - **Error messages should guide users toward resolution**, not just report that something broke
 - **Monitoring systems need structured error data** to provide meaningful insights
 
-These aren't theoretical concerns—they're the difference between a system that scales gracefully and one that requires constant manual intervention.
+These aren't theoretical concerns: they're the difference between a system that scales gracefully and one that requires constant manual intervention.
 
 ## Conclusion
 

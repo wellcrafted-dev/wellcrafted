@@ -106,7 +106,7 @@ These aren't features TypeScript chose not to include. They're features that req
 
 ## The Compromise That Actually Works
 
-The insight behind wellcrafted: take the one idea from FP error handling that TypeScript can express well—typed, named error variants—and implement it using patterns the language is built for.
+The insight behind wellcrafted: take the one idea from FP error handling that TypeScript can express well (typed, named error variants) and implement it using patterns the language is built for.
 
 ```typescript
 import { defineErrors, extractErrorMessage, type InferErrors } from "wellcrafted/error";
@@ -170,6 +170,6 @@ wellcrafted is not a functional programming library. It doesn't have `.map()` or
 
 If your team has bought into Effect and it's working, keep using it. If you need structured concurrency or runtime dependency injection, wellcrafted doesn't have it. Those are real capabilities for teams that need them.
 
-But if you tried FP error handling, found it awkward, and went back to untyped `try-catch`—you don't have to stay there. The gap between "raw try-catch" and "full functional runtime" is wide, and there's a practical spot in the middle: typed errors, plain objects, patterns your team already knows.
+But if you tried FP error handling, found it awkward, and went back to untyped `try-catch`, you don't have to stay there. The gap between "raw try-catch" and "full functional runtime" is wide, and there's a practical spot in the middle: typed errors, plain objects, patterns your team already knows.
 
 The problem was never that you couldn't learn generators or method chains. The problem was that TypeScript doesn't have the features that make those patterns worth the cost.

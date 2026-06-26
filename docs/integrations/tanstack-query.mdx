@@ -6,7 +6,7 @@ icon: 'database'
 
 # TanStack Query Integration
 
-Wellcrafted provides seamless integration with TanStack Query through the `wellcrafted/query` module. This integration combines the type safety of Result patterns with the reactive power of TanStack Query.
+The `wellcrafted/query` module adapts your Result-returning functions for TanStack Query. Define the data-fetching logic once and use it either way: a query exposes `.options` for reactive components plus `.fetch()`/`.ensure()` for imperative calls, while a mutation is callable directly in an event handler and also exposes `.options`.
 
 ## Quick Start
 

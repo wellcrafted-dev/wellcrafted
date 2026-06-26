@@ -193,7 +193,7 @@ Services are factory functions that return objects with methods returning `Resul
 
 ```typescript
 import { defineErrors, extractErrorMessage, type InferErrors } from 'wellcrafted/error';
-import { Ok, tryAsync, type Result } from 'wellcrafted/result';
+import { Ok, Err, tryAsync, type Result } from 'wellcrafted/result';
 
 // 1. Define domain errors
 const UserError = defineErrors({
@@ -221,7 +221,8 @@ function createUserService(db: Database) {
         try: () => db.users.findById(userId),
         catch: (cause) => UserError.FetchFailed({ cause }),
       });
-      if (error) return error;
+      // error here is the raw tagged error, not an Err: wrap it before returning
+      if (error) return Err(error);
       if (!user) return UserError.NotFound({ userId });
       return Ok(user);
     },
@@ -278,12 +279,17 @@ const HttpError = defineErrors({
 
 // Layer 2: domain service wraps HTTP errors via cause
 const UserError = defineErrors({
+  NotFound: ({ userId }: { userId: string }) => ({
+    message: `User ${userId} not found`,
+    userId,
+  }),
   FetchFailed: ({ userId, cause }: { userId: string; cause: unknown }) => ({
     message: `Failed to fetch user ${userId}: ${extractErrorMessage(cause)}`,
     userId,
     cause,
   }),
 });
+type UserError = InferErrors<typeof UserError>;
 
 // The HTTP error becomes cause in the domain error
 async function getUser(userId: string): Promise<Result<User, UserError>> {
@@ -292,7 +298,8 @@ async function getUser(userId: string): Promise<Result<User, UserError>> {
     catch: (cause) => UserError.FetchFailed({ userId, cause }),
     //                 raw fetch error ^^^^ becomes cause
   });
-  if (error) return error;
+  // error is the raw tagged error here: wrap it before returning
+  if (error) return Err(error);
 
   if (response.status === 404) return UserError.NotFound({ userId });
 
