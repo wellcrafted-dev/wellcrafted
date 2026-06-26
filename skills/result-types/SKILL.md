@@ -258,9 +258,9 @@ Use sparingly — `unwrap` throws, which defeats the purpose of Result types. Us
 ```typescript
 import { resolve } from 'wellcrafted/result';
 
-// If value is a Result, returns it as-is
-// If value is not a Result, wraps it in Ok()
-const result = resolve(maybeResult);
+// If value is a Result: returns its data if Ok, throws if Err (like unwrap)
+// If value is not a Result: returns the value unchanged
+const data = resolve(maybeResult);
 ```
 
 ### partitionResults — split an array of Results
