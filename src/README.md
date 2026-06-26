@@ -55,8 +55,8 @@ The implementation provides utility functions:
 - `Err<E>(error: E)`: Create an Err data structure containing an error type
 - `isOk(result)`: Type guard to check for success
 - `isErr(result)`: Type guard to check for Err data structure
-- `trySync<T, E>({ try, catch })`: Execute a synchronous operation safely
-- `tryAsync<T, E>({ try, catch })`: Execute an asynchronous operation safely
+- `trySync({ try, catch })`: Execute a synchronous operation safely
+- `tryAsync({ try, catch })`: Execute an asynchronous operation safely
 
 ### Basic Usage
 
