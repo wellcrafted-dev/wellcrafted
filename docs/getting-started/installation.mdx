@@ -10,9 +10,8 @@ wellcrafted is available on npm and works with any TypeScript project. It has ze
 
 ## Requirements
 
-- **TypeScript**: 4.5 or higher (for template literal types)
-- **Node.js**: 14 or higher (for development)
-- **Module System**: Works with both CommonJS and ES Modules
+- **TypeScript**: 5.0 or higher (for `const` type parameters)
+- **Module System**: ES Modules only (ESM)
 
 ## Package Manager Installation
 
@@ -74,12 +73,11 @@ import { type Brand } from "wellcrafted/brand";
 Avoid importing from the package root (`wellcrafted`) as this will import all modules and prevent tree-shaking.
 </Warning>
 
-## Module Systems
+## Module System
 
-### ES Modules (Recommended)
+wellcrafted ships as ES Modules only. Import from the subpath exports:
 
 ```typescript
-// ES Module syntax (recommended)
 import { Ok, Err } from "wellcrafted/result";
 
 export async function fetchUser(id: string) {
@@ -92,23 +90,7 @@ export async function fetchUser(id: string) {
 }
 ```
 
-### CommonJS
-
-```javascript
-// CommonJS syntax
-const { Ok, Err } = require("wellcrafted/result");
-
-async function fetchUser(id) {
-  try {
-    const user = await api.getUser(id);
-    return Ok(user);
-  } catch (error) {
-    return Err(error);
-  }
-}
-
-module.exports = { fetchUser };
-```
+There is no `require()` entry point. From a CommonJS module, load wellcrafted with a dynamic `import()`.
 
 ## Bundle Size
 
