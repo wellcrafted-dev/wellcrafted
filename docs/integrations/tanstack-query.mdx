@@ -6,7 +6,7 @@ icon: 'database'
 
 # TanStack Query Integration
 
-The `wellcrafted/query` module adapts your Result-returning functions for TanStack Query. A query or mutation defined once is callable directly in an event handler and exposes `.options` for reactive components, so you write the data-fetching logic in one place and use it either way.
+The `wellcrafted/query` module adapts your Result-returning functions for TanStack Query. Define the data-fetching logic once and use it either way: a query exposes `.options` for reactive components plus `.fetch()`/`.ensure()` for imperative calls, while a mutation is callable directly in an event handler and also exposes `.options`.
 
 ## Quick Start
 
