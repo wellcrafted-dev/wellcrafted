@@ -86,7 +86,17 @@ try {
 ```typescript
 type PaymentError = Readonly<{ name: "PaymentError"; message: string }>;
 type ValidationError = Readonly<{ name: "ValidationError"; message: string }>;
-type GatewayError = Readonly<{ name: "GatewayError"; message: string }>;
+type GatewayError = Readonly<{
+  name: "GatewayError";
+  message: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  paymentMethodId: string;
+  customerId: string;
+  gatewayResponse: number | undefined;
+  timestamp: string;
+}>;
 
 async function processPayment(
   order: Order,
@@ -105,17 +115,18 @@ async function processPayment(
       paymentMethodId: paymentMethod.id,
       customerId: order.customerId
     }),
-    catch: (error): GatewayError => ({
-      name: "GatewayError",
-      message: "Payment gateway request failed",
-      orderId: order.id,
-      amount: order.total,
-      currency: order.currency,
-      paymentMethodId: paymentMethod.id,
-      customerId: order.customerId,
-      gatewayResponse: error.response?.status,
-      timestamp: new Date().toISOString(),
-    })
+    catch: (error) =>
+      Err<GatewayError>({
+        name: "GatewayError",
+        message: "Payment gateway request failed",
+        orderId: order.id,
+        amount: order.total,
+        currency: order.currency,
+        paymentMethodId: paymentMethod.id,
+        customerId: order.customerId,
+        gatewayResponse: (error as { response?: { status?: number } }).response?.status,
+        timestamp: new Date().toISOString(),
+      })
   });
   
   if (error) return Err(error);
@@ -215,7 +226,7 @@ async function handleProfileUpdate(req: Request): Promise<Response> {
 
 ```typescript
 type ApiError =
-  | Readonly<{ name: "RateLimitError"; message: string }>
+  | Readonly<{ name: "RateLimitError"; message: string; retryAfter: string | null }>
   | Readonly<{ name: "NetworkError"; message: string }>
   | Readonly<{ name: "AuthError"; message: string }>
   | Readonly<{ name: "NotFoundError"; message: string }>;
@@ -244,45 +255,38 @@ async function fetchUserData(
 
       return response.json();
     },
-    catch: (error): ApiError => {
-      if (typeof error === "object" && error?.type) {
-        switch (error.type) {
-          case "rate_limit":
-            return {
-              name: "RateLimitError",
-              message: "API rate limit exceeded",
-              userId: id,
-              retryAfter: error.retryAfter,
-              timestamp: new Date().toISOString(),
-            };
-          case "auth":
-            return {
-              name: "AuthError",
-              message: "Authentication failed",
-              userId: id,
-              status: error.status,
-            };
-          case "not_found":
-            return {
-              name: "NotFoundError",
-              message: "User not found",
-              userId: id,
-            };
-          default:
-            return {
-              name: "NetworkError",
-              message: "Network request failed",
-              userId: id,
-              status: error.status,
-            };
-        }
+    catch: (error) => {
+      const e = error as { type?: string; retryAfter?: string | null; status?: number };
+      switch (e.type) {
+        case "rate_limit":
+          return Err({
+            name: "RateLimitError" as const,
+            message: "API rate limit exceeded",
+            userId: id,
+            retryAfter: e.retryAfter ?? null,
+            timestamp: new Date().toISOString(),
+          });
+        case "auth":
+          return Err({
+            name: "AuthError" as const,
+            message: "Authentication failed",
+            userId: id,
+            status: e.status,
+          });
+        case "not_found":
+          return Err({
+            name: "NotFoundError" as const,
+            message: "User not found",
+            userId: id,
+          });
+        default:
+          return Err({
+            name: "NetworkError" as const,
+            message: e.type ? "Network request failed" : "Unexpected error",
+            userId: id,
+            status: e.status,
+          });
       }
-
-      return {
-        name: "NetworkError",
-        message: "Unexpected error",
-        userId: id,
-      };
     }
   });
 }
