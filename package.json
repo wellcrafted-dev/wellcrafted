@@ -29,6 +29,10 @@
 			"types": "./dist/brand.d.ts",
 			"import": "./dist/brand.js"
 		},
+		"./function": {
+			"types": "./dist/function.d.ts",
+			"import": "./dist/function.js"
+		},
 		"./query": {
 			"types": "./dist/query/index.d.ts",
 			"import": "./dist/query/index.js"
