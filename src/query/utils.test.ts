@@ -8,16 +8,16 @@ import { Err, Ok } from "../result/index.js";
 import {
 	createQueryFactories,
 	defineKeys,
-	mutationOptions,
-	queryOptions,
+	resultMutationOptions,
+	resultQueryOptions,
 } from "./utils.js";
 
 const queryClient = new QueryClient();
 const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 
-describe("queryOptions", () => {
+describe("resultQueryOptions", () => {
 	it("infers literal queryKey tuple without `as const`", () => {
-		const options = queryOptions({
+		const options = resultQueryOptions({
 			queryKey: ["users", "user-123"],
 			queryFn: ({ queryKey }) => {
 				expectTypeOf(queryKey).toEqualTypeOf<readonly ["users", "user-123"]>();
@@ -33,7 +33,7 @@ describe("queryOptions", () => {
 	it("preserves Ok/Err data and error types through inference", () => {
 		type AuthError = { code: "UNAUTHORIZED"; message: string };
 
-		const options = queryOptions({
+		const options = resultQueryOptions({
 			queryKey: ["session"],
 			queryFn: ():
 				| ReturnType<typeof Ok<{ userId: string }>>
@@ -53,7 +53,7 @@ describe("queryOptions", () => {
 	});
 
 	it("resolves Ok values into the TanStack data channel", async () => {
-		const options = queryOptions({
+		const options = resultQueryOptions({
 			queryKey: ["ok"],
 			queryFn: () => Ok(42),
 		});
@@ -68,7 +68,7 @@ describe("queryOptions", () => {
 	});
 
 	it("throws Err values into the TanStack error channel", async () => {
-		const options = queryOptions({
+		const options = resultQueryOptions({
 			queryKey: ["err"],
 			queryFn: () => Err("boom"),
 		});
@@ -84,7 +84,7 @@ describe("queryOptions", () => {
 	});
 
 	it("supports sync Result-returning queryFn", async () => {
-		const options = queryOptions({
+		const options = resultQueryOptions({
 			queryKey: ["sync"],
 			queryFn: () => Ok("sync-data"),
 		});
@@ -98,12 +98,12 @@ describe("queryOptions", () => {
 	});
 });
 
-describe("mutationOptions", () => {
+describe("resultMutationOptions", () => {
 	it("infers variables and data from mutationFn", async () => {
 		type Input = { name: string };
 		type SaveError = { code: "CONFLICT"; message: string };
 
-		const options = mutationOptions({
+		const options = resultMutationOptions({
 			mutationKey: ["users", "create"],
 			mutationFn: (
 				input: Input,
@@ -132,7 +132,7 @@ describe("mutationOptions", () => {
 	it("accepts observer-only hook options", () => {
 		type SaveError = { code: "CONFLICT"; message: string };
 
-		const options = mutationOptions({
+		const options = resultMutationOptions({
 			mutationKey: ["users", "create"],
 			mutationFn: (input: { name: string }) =>
 				input.name.length > 0
@@ -147,7 +147,7 @@ describe("mutationOptions", () => {
 	});
 
 	it("resolves Ok values into the TanStack data channel", async () => {
-		const options = mutationOptions({
+		const options = resultMutationOptions({
 			mutationKey: ["m"],
 			mutationFn: async (n: number) => Ok(n * 2),
 		});
@@ -157,7 +157,7 @@ describe("mutationOptions", () => {
 	});
 
 	it("supports sync Result-returning mutationFn", async () => {
-		const options = mutationOptions({
+		const options = resultMutationOptions({
 			mutationKey: ["sync-mutation"],
 			mutationFn: (n: number) => Ok(n * 3),
 		});
@@ -167,7 +167,7 @@ describe("mutationOptions", () => {
 	});
 
 	it("throws Err values into the TanStack error channel", async () => {
-		const options = mutationOptions({
+		const options = resultMutationOptions({
 			mutationKey: ["m-err"],
 			mutationFn: async () => Err("fail"),
 		});
@@ -191,12 +191,12 @@ describe("defineQuery", () => {
 		>();
 	});
 
-	it("composes through queryOptions: .options matches queryOptions shape", () => {
+	it("composes through resultQueryOptions: .options matches resultQueryOptions shape", () => {
 		const userQuery = defineQuery({
 			queryKey: ["users", "u1"],
 			queryFn: () => Ok({ id: "u1" }),
 		});
-		const standalone = queryOptions({
+		const standalone = resultQueryOptions({
 			queryKey: ["users", "u1"],
 			queryFn: () => Ok({ id: "u1" }),
 		});

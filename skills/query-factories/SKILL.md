@@ -63,7 +63,7 @@ const createPost = defineMutation({
 });
 ```
 
-`mutationKey` is required on `defineMutation` and `mutationOptions`, just as `queryKey` is required on `defineQuery`.
+`mutationKey` is required on `defineMutation` and `resultMutationOptions`, just as `queryKey` is required on `defineQuery`.
 
 ## Reactive Options and Imperative Helpers
 
