@@ -11,11 +11,11 @@ import type {
 import { Err, Ok, type Result, resolve } from "../result/index.js";
 
 /**
- * Input for `queryOptions` and `defineQuery`.
+ * Input for `resultQueryOptions` and `defineQuery`.
  *
  * Mirrors TanStack Query's `QueryObserverOptions` but expects `queryFn` to
  * return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
- * throwing data/error contract by `queryOptions`.
+ * throwing data/error contract by `resultQueryOptions`.
  *
  * @template TQueryFnData - The success type produced by `queryFn`
  * @template TError - The error type carried by the Result
@@ -38,11 +38,11 @@ type QueryOptionsInput<
 };
 
 /**
- * Input for `mutationOptions` and `defineMutation`.
+ * Input for `resultMutationOptions` and `defineMutation`.
  *
  * Mirrors TanStack Query's `MutationObserverOptions` but expects `mutationFn`
  * to return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
- * throwing data/error contract by `mutationOptions`.
+ * throwing data/error contract by `resultMutationOptions`.
  *
  * @template TData - The success type produced by `mutationFn`
  * @template TError - The error type carried by the Result
@@ -77,20 +77,20 @@ type MutationOptionsInput<
  * `QueryClient`-bound imperative helpers from `defineQuery`:
  *
  * ```ts
- * const query = createQuery(() => queryOptions({
+ * const query = createQuery(() => resultQueryOptions({
  *   queryKey: ['user', userId],
  *   queryFn: () => services.getUser(userId),
  * }));
  * ```
  *
  * `defineQuery` composes through this helper, so the `.options` it returns
- * is the same shape `queryOptions` produces.
+ * is the same shape `resultQueryOptions` produces.
  *
  * @param input - Result-aware query configuration
  * @returns TanStack Query `QueryObserverOptions` with `queryFn` rewired to
  *   resolve `Ok` and throw `Err`
  */
-export function queryOptions<
+export function resultQueryOptions<
 	TQueryFnData = unknown,
 	TError = DefaultError,
 	TData = TQueryFnData,
@@ -122,20 +122,20 @@ export function queryOptions<
  * `QueryClient`-bound imperative helpers from `defineMutation`:
  *
  * ```ts
- * const save = createMutation(() => mutationOptions({
+ * const save = createMutation(() => resultMutationOptions({
  *   mutationKey: ['saveUser'],
  *   mutationFn: (input: SaveUserInput) => services.saveUser(input),
  * }));
  * ```
  *
  * `defineMutation` composes through this helper, so the `.options` it
- * returns is the same shape `mutationOptions` produces.
+ * returns is the same shape `resultMutationOptions` produces.
  *
  * @param input - Result-aware mutation configuration
  * @returns TanStack Query `MutationObserverOptions` with `mutationFn` rewired
  *   to resolve `Ok` and throw `Err`
  */
-export function mutationOptions<
+export function resultMutationOptions<
 	TData,
 	TError,
 	TVariables = void,
@@ -162,7 +162,7 @@ export function mutationOptions<
  *
  * Query imperative reads require an explicit cache policy.
  *
- * - `options`: Options shape produced by `queryOptions`, ready for hooks.
+ * - `options`: Options shape produced by `resultQueryOptions`, ready for hooks.
  * - `fetch()`: Always evaluates freshness; refetches if stale.
  * - `ensure()`: Prefers cached data; fetches only when missing.
  */
@@ -190,7 +190,7 @@ type DefineQueryOutput<
  * The returned function directly executes the mutation.
  *
  * - `(variables)` (callable): Imperatively runs the mutation, returning a Result.
- * - `options`: Options shape produced by `mutationOptions`, ready for hooks.
+ * - `options`: Options shape produced by `resultMutationOptions`, ready for hooks.
  */
 type DefineMutationOutput<
 	TData,
@@ -207,11 +207,11 @@ type DefineMutationOutput<
  * Use this when you want a reusable query/mutation definition that carries
  * its own imperative query helpers (`.fetch`, `.ensure`) and callable mutation
  * execution powered by a specific client. For local one-shot options that only need
- * to flow into a framework hook, prefer `queryOptions` / `mutationOptions`
+ * to flow into a framework hook, prefer `resultQueryOptions` / `resultMutationOptions`
  * directly: those are platform-agnostic and do not require a `QueryClient`.
  *
- * Both `defineQuery` and `defineMutation` compose through `queryOptions` and
- * `mutationOptions`, so there is exactly one place that unwraps `Result`
+ * Both `defineQuery` and `defineMutation` compose through `resultQueryOptions` and
+ * `resultMutationOptions`, so there is exactly one place that unwraps `Result`
  * into TanStack's throwing contract.
  *
  * @param queryClient - The TanStack `QueryClient` to bind imperative helpers to
@@ -249,7 +249,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 			TQueryKey
 		>,
 	): DefineQueryOutput<TQueryFnData, TError, TData, TQueryData, TQueryKey> => {
-		const options = queryOptions(input);
+		const options = resultQueryOptions(input);
 
 		async function fetch(): Promise<Result<TQueryData, TError>> {
 			try {
@@ -303,7 +303,7 @@ export function createQueryFactories(queryClient: QueryClient) {
 			TMutationKey
 		>,
 	): DefineMutationOutput<TData, TError, TVariables, TContext> => {
-		const options = mutationOptions(input);
+		const options = resultMutationOptions(input);
 
 		async function run(variables: TVariables) {
 			try {
