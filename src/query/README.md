@@ -10,7 +10,7 @@ The query utilities solve a common integration challenge: your service functions
 
 `wellcrafted/query` exposes two layers built on the same conversion path:
 
-1. **`queryOptions` / `mutationOptions`**: platform-agnostic adapters that turn a Result-returning `queryFn` or `mutationFn` into normal TanStack Query options. No `QueryClient` needed. Compose them directly with any framework hook (`createQuery`, `useQuery`, `createMutation`, `useMutation`).
+1. **`resultQueryOptions` / `resultMutationOptions`**: platform-agnostic adapters that turn a Result-returning `queryFn` or `mutationFn` into normal TanStack Query options. No `QueryClient` needed. Compose them directly with any framework hook (`createQuery`, `useQuery`, `createMutation`, `useMutation`).
 
 2. **`createQueryFactories(queryClient)` -> `defineQuery` / `defineMutation`**: bind the same options to a specific `QueryClient` and attach imperative helpers. Queries expose explicit `.fetch()` and `.ensure()` methods because those choose different cache policies. Mutations are callable because there is one imperative action: run the mutation.
 
@@ -18,20 +18,20 @@ The query utilities solve a common integration challenge: your service functions
 import { QueryClient } from '@tanstack/query-core';
 import {
   createQueryFactories,
-  queryOptions,
-  mutationOptions,
+  resultQueryOptions,
+  resultMutationOptions,
 } from 'wellcrafted/query';
 
 // Local options used directly inside a hook
 const user = createQuery(() =>
-  queryOptions({
+  resultQueryOptions({
     queryKey: ['user', userId],
     queryFn: () => services.getUser(userId),
   }),
 );
 
 const save = createMutation(() =>
-  mutationOptions({
+  resultMutationOptions({
     mutationKey: ['saveUser'],
     mutationFn: (input: SaveUserInput) => services.saveUser(input),
   }),
@@ -42,24 +42,37 @@ const queryClient = new QueryClient();
 const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 ```
 
-### `queryOptions(input)`
+### `resultQueryOptions(input)`
 
 - Accepts a `queryKey` plus a `queryFn` that returns `Result<TData, TError>` (sync or async).
 - Returns standard `QueryObserverOptions` whose `queryFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
 - Preserves literal `queryKey` tuples (no `as const` needed) and Result data/error inference.
 
-### `mutationOptions(input)`
+### `resultMutationOptions(input)`
 
 - Accepts a `mutationKey` plus a `mutationFn` that returns `Result<TData, TError>` (sync or async).
 - Returns standard mutation observer options whose `mutationFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
 - Infers variables from the `mutationFn` parameter.
 
-### When to use which
+### Which one do I reach for?
 
-- Reach for `queryOptions` / `mutationOptions` when the options are local to a hook call site and you do not need imperative execution outside reactivity.
-- Reach for `defineQuery` / `defineMutation` when you want a reusable definition with `.options` for hooks plus imperative helpers (`.fetch`, `.ensure`, and callable mutations) for preloaders, event handlers, and workflows.
+Both families ride the same conversion path, so the choice is about *where the operation lives*, not about how Results are unwrapped.
 
-> Note on naming: TanStack Query's framework adapters export their own `queryOptions` and `mutationOptions` identity helpers. Wellcrafted's versions occupy the same name on purpose; this package is the Result-aware equivalent. If you ever need both in one file, alias one on import.
+Reach for **`resultQueryOptions` / `resultMutationOptions`** when the operation is local to the hook call site — any of:
+
+- **Hook-local**: it is defined and used in one component, not shared.
+- **Reactive options**: the `queryKey`, `enabled`, or `queryFn` closes over framework state (Svelte `$derived`, React state, props). These adapters run *inside* the reactive thunk (`createQuery(() => resultQueryOptions({ … }))`), so the options recompute every render. `defineQuery.options` is a static snapshot computed once and cannot carry a reactive key.
+- **No global / a local `QueryClient`**: you are in a shared package with no app client to bind, or you want a purpose-built client with its own policy. These adapters are client-agnostic; the hook supplies the client.
+
+Reach for **`createQueryFactories(queryClient).defineQuery` / `defineMutation`** when the operation is a reusable, `QueryClient`-bound handle — any of:
+
+- **Shared / reusable identity**: one definition consumed from several call sites (an RPC/query layer).
+- **Imperative execution**: you need `.fetch()` / `.ensure()` on a query, or a callable mutation handle, for preloaders, event handlers, and workflows — not just reactive `.options`.
+- **Bound to the app client**: it lives at module scope against one long-lived `QueryClient`.
+
+> **Cache operations stay on the `QueryClient`.** Wellcrafted deliberately does **not** wrap `invalidateQueries`, `setQueryData`, `getQueryData`, `ensureQueryData`, `prefetchQuery`, or any other cache method. Those already have TanStack's own contract and no `Result` to unwrap, so wrapping them would add surface without value. Call them directly on the `queryClient` (see the mutation cache-update examples below). The two families above wrap exactly one thing: a Result-returning `queryFn` / `mutationFn`.
+
+> **Note on naming:** these adapters were previously called `queryOptions` / `mutationOptions`, which collided with TanStack Query's own identity helpers of the same name. The `result*` prefix removes that collision and says what they do — adapt a `Result`-returning function — so both can coexist in one file without aliasing.
 
 ## Architecture Pattern: The RPC-like Approach
 
