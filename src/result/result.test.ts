@@ -34,7 +34,9 @@ describe("Ok / Err structural invariants", () => {
 	test("Err with meaningful values works as expected", () => {
 		expect(Err("string error").error).toBe("string error");
 		expect(Err(new Error("native")).error).toBeInstanceOf(Error);
-		expect(Err({ name: "Tagged", message: "failed" }).error.name).toBe("Tagged");
+		expect(Err({ name: "Tagged", message: "failed" }).error.name).toBe(
+			"Tagged",
+		);
 		expect(Err(0).error).toBe(0);
 		expect(Err(false).error).toBe(false);
 	});

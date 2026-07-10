@@ -516,11 +516,20 @@ Commits are created only after explicit approval. If approved, each wave is one 
 
 ### Wave 1: Make baseline verification green
 
-- [ ] Repair and pin Mintlify validation.
-- [ ] Run Mint commands from `docs/` under an explicit Node 24 job.
-- [ ] Add non-mutating lint and format checks.
-- [ ] Fix the current site validation warning.
-- [ ] Commit only when the existing content passes these baseline checks.
+- [x] Repair and pin Mintlify validation.
+- [x] Run Mint commands from `docs/` under an explicit Node 24 job.
+- [x] Add non-mutating lint and format checks.
+- [x] Fix the current site validation warning.
+- [x] Commit only when the existing content passes these baseline checks.
+
+Verification on 2026-07-10:
+
+- `PUPPETEER_SKIP_DOWNLOAD=true bun install --frozen-lockfile` passed with the exact `mint@4.2.684` dependency.
+- `bun run docs:validate` and `bun run docs:links` passed from `docs/` with Node 24.17.0. The CI workflow now runs both commands in an explicit Node 24 job.
+- `bun run lint:check` exited successfully without writes. It still reports 12 pre-existing warnings: one unused suppression and 11 non-null assertions in tests.
+- `bun run format:check`, `bun run typecheck`, `bun run build`, and `bun test` passed. The test run completed 158 tests with no failures.
+- The unsupported `@mintlify/components` import was removed. Mintlify provides `Card` and `CardGroup` as built-in components.
+- The primary orchestrator independently reran the baseline checks before committing this wave.
 
 ### Wave 2: Add examples and isolated package proof
 

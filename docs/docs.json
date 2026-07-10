@@ -69,9 +69,7 @@
 					},
 					{
 						"group": "\ud83d\udd04 Migration",
-						"pages": [
-							"migration/from-try-catch"
-						]
+						"pages": ["migration/from-try-catch"]
 					}
 				]
 			}

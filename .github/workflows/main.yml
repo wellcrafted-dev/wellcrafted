@@ -38,7 +38,26 @@ jobs:
           echo "No pre-1.0 major changesets found."
 
       - run: bun install --frozen-lockfile
-      - run: bun run lint
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - run: bun run lint:check
+      - run: bun run format:check
       - run: bun run typecheck
       - run: bun run build
       - run: bun test
+
+  docs:
+    name: Docs (Node 24)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - run: bun run docs:validate
+      - run: bun run docs:links
