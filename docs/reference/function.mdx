@@ -1,0 +1,54 @@
+---
+title: Function reference
+description: Current runtime export from wellcrafted/function.
+---
+
+# `wellcrafted/function`
+
+This subpath exports one run-at-most-once wrapper and no named types.
+
+```typescript
+import { once } from "wellcrafted/function";
+```
+
+## Export
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `once` | Value | Invokes a function on the first call and returns its cached result on later calls. |
+
+```typescript
+function once<TArgs extends readonly unknown[], TReturn>(
+  fn: (...args: TArgs) => TReturn,
+): (...args: TArgs) => TReturn;
+```
+
+The first call's arguments are passed to `fn`. Later arguments are ignored, and later calls return the same cached value, including the same object reference.
+
+```typescript
+const initialize = once((name: string) => ({ name }));
+
+const first = initialize("first");
+const second = initialize("ignored");
+
+first === second; // true
+second.name; // "first"
+```
+
+## First-call failure edge
+
+The wrapper marks itself called before invoking `fn`. If the first invocation throws, later calls do not retry and return the uninitialized cache—`undefined` at runtime—even though the generic signature still says `TReturn`.
+
+```typescript
+const initialize = once(() => {
+  throw new Error("failed");
+});
+
+try {
+  initialize();
+} catch {}
+
+initialize(); // undefined at runtime; no retry
+```
+
+That mismatch is a deferred API bug, not a behavior changed by this documentation pass. Use `once` only when a first-call throw is impossible, already terminal, or otherwise acceptable.

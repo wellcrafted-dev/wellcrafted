@@ -33,8 +33,8 @@ export type Err<E> = { error: E; data: null };
  * - `Err<E>`: Represents a failure outcome, containing an `error` field with the error value of type `E`.
  *            In this case, the `data` field is `null`.
  *
- * This type promotes explicit error handling by requiring developers to check
- * the variant of the `Result` before accessing its potential value or error.
+ * This type supports explicit error handling by letting callers narrow the
+ * variant before using its success value or error.
  * It helps avoid runtime errors often associated with implicit error handling (e.g., relying on `try-catch` for all errors).
  *
  * @template T - The type of the success value if the operation is successful (held in `Ok<T>`).
@@ -97,8 +97,6 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
  * error rather than passing it through. A `defineErrors` factory like
  * `MyError.Unexpected({ cause: error })` is always non-null by construction,
  * so the discriminator works regardless of what was thrown.
- *
- * See `docs/philosophy/err-null-is-ok-null.md` for the full rationale.
  *
  * @template E - The type of the error value.
  * @param error - The error value to wrap. Don't pass `null` or `undefined`.

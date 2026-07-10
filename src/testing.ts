@@ -7,9 +7,10 @@ import { isErr, isOk, type Result } from "./result/index.js";
  * These helpers intentionally **throw**. A failed expectation should abort the
  * test, and every test runner reports a thrown error as a failure. Tests are
  * the one place throwing is the correct control flow, so these are fenced into
- * the `wellcrafted/testing` entry point and kept out of `wellcrafted/result`,
- * which stays throw-free. Importing from `wellcrafted/testing` in production
- * code is a smell worth linting against.
+ * the `wellcrafted/testing` entry point. Importing from
+ * `wellcrafted/testing` in production code is a smell worth linting against.
+ * Other entry points also contain deliberate throwing adapters such as
+ * `unwrap`, `resolve`, and the TanStack Query helpers.
  *
  * They are framework-agnostic: they throw a plain `Error` rather than calling
  * into a specific runner, so they work under bun, vitest, jest, or

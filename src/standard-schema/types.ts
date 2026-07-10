@@ -205,7 +205,10 @@ export function hasValidate<T extends StandardTypedV1>(
 }
 
 /**
- * Checks if a schema has JSON Schema generation capability.
+ * Checks shallowly for a non-null `jsonSchema` object.
+ *
+ * This guard does not verify that `input` and `output` converter members are
+ * callable. Invoking malformed converter objects may still fail at runtime.
  */
 export function hasJsonSchema<T extends StandardTypedV1>(
 	schema: T,

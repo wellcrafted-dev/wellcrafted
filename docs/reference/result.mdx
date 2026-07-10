@@ -1,0 +1,97 @@
+---
+title: Result reference
+description: Current runtime and type exports from wellcrafted/result.
+---
+
+# `wellcrafted/result`
+
+Import Result constructors, guards, throwing adapters, and small flow helpers from this subpath.
+
+```typescript
+import { Ok, isErr, type Result } from "wellcrafted/result";
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `Ok` | Value and type | `Ok(data)` returns `{ data, error: null }`; `Ok<T>` describes that shape. |
+| `Err` | Value and type | `Err(error)` returns `{ data: null, error }`; `Err<E>` describes that shape. |
+| `Result` | Type | `Ok<T> \| Err<E>`. |
+| `UnwrapOk` | Type | Extracts the success type from a Result union. |
+| `UnwrapErr` | Type | Extracts the error type from a Result union. |
+| `isResult` | Value | Shape guard for a non-null object with both `data` and `error` properties. |
+| `isOk` | Value | Narrows when `error === null`. |
+| `isErr` | Value | Narrows when `error !== null`. |
+| `trySync` | Value | Runs a synchronous callback and delegates a caught value to a Result-returning `catch` callback. |
+| `tryAsync` | Value | Awaits an asynchronous callback and delegates rejection or a thrown value to a Result-returning `catch` callback. |
+| `unwrap` | Value | Returns Ok data or throws the contained Err value. |
+| `resolve` | Value | Returns a plain value or Ok data; throws the contained Err value. |
+| `tapErr` | Value | Calls a function on Err and returns the original Result reference. |
+| `partitionResults` | Value | Groups Result wrappers into `{ oks, errs }` with `Object.groupBy`. |
+
+`Ok` and `Err` each occupy both TypeScript namespaces: use the same imported name as a constructor in value position and as a generic in type position.
+
+## Result shape and guards
+
+```typescript
+type Result<T, E> =
+  | { data: T; error: null }
+  | { data: null; error: E };
+
+function isResult<T = unknown, E = unknown>(
+  value: unknown,
+): value is Result<T, E>;
+
+function isOk<T, E>(result: Result<T, E>): result is Ok<T>;
+function isErr<T, E>(result: Result<T, E>): result is Err<E>;
+```
+
+`isResult` checks only the container shape. It does not validate either payload. At an untrusted boundary, validate the data or error body separately.
+
+Use `error !== null` or `isErr`. A truthiness check misses permitted falsy error values such as `0`, `false`, `""`, `undefined`, and `NaN`.
+
+`Ok(null)` is valid. `Err(null)` produces the same `{ data: null, error: null }` structure, so no generic guard can distinguish the author's intent. Keep Err values non-null and meaningful.
+
+## Catching throwing operations
+
+```typescript
+function trySync<T, R extends Ok<T> | Err<any>>(options: {
+  try: () => T;
+  catch: (error: unknown) => R;
+}): Ok<T> | R;
+
+function tryAsync<T, R extends Ok<T> | Err<any>>(options: {
+  try: () => Promise<T>;
+  catch: (error: unknown) => R;
+}): Promise<Ok<T> | R>;
+```
+
+These helpers catch the `try` callback only. If the `catch` callback itself throws, that thrown value escapes. Keep the wrapped operation narrow so each boundary owns one failure meaning.
+
+## Throwing adapters
+
+```typescript
+function unwrap<T, E>(result: Result<T, E>): T;
+function resolve<T, E>(value: T | Result<T, E>): T;
+```
+
+Both functions deliberately cross from Result flow into a throwing contract. They throw the contained error value exactly as stored; it does not have to be an `Error` instance. `resolve` first uses the shallow `isResult` check, so a plain object with both keys is treated as a Result-shaped value.
+
+## Error taps and partitions
+
+```typescript
+function tapErr<T, E>(
+  logFn: (error: E) => void,
+): (result: Result<T, E>) => Result<T, E>;
+
+function partitionResults<T, E>(
+  results: Result<T, E>[],
+): { oks: Ok<T>[]; errs: Err<E>[] };
+```
+
+`tapErr` returns the same object reference. If `logFn` throws, the tap throws.
+
+`partitionResults` preserves the original Ok and Err wrapper objects and their relative order inside each group. It depends on runtime support for `Object.groupBy`; use the tested runtime matrix from [installation](/start/installation).
+
+For application flow patterns, see [Compose Result-returning functions](/guides/composing-results).

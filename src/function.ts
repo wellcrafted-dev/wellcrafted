@@ -3,6 +3,10 @@
  * every later call is a no-op that returns that same cached result. Arguments passed after
  * the first call are ignored.
  *
+ * The call is marked as used before `fn` runs. If the first invocation throws,
+ * later calls do not retry and return the uninitialized cached value
+ * (`undefined` at runtime). Use `once` only when that behavior is acceptable.
+ *
  * Canonical use: an idempotent `[Symbol.dispose]` whose teardown is reachable from more than
  * one path and must not run twice. `once` makes that guarantee declarative instead of a
  * hand-rolled `let disposed` flag.

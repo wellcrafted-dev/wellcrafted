@@ -6,8 +6,11 @@ import {
 import { type Result, trySync } from "./result/index.js";
 
 /**
- * JSON-serializable value types.
- * Ensures data can be safely serialized via JSON.stringify.
+ * Recursive approximation of JSON-shaped values.
+ *
+ * This is not a serialization proof. TypeScript's `number` includes `NaN`,
+ * infinities, and negative zero, which JSON normalizes rather than preserving
+ * exactly. Runtime values can also violate their annotations.
  *
  * @example
  * ```typescript
@@ -49,10 +52,10 @@ export const { JsonParseError } = defineErrors({
 /**
  * The error {@link parseJson} produces when its input is not valid JSON.
  *
- * JSON parsing has exactly one failure mode (the engine throws a `SyntaxError`),
- * so this is a single variant. A valid-JSON-but-wrong-shape value is not a
- * parse failure: validate the returned {@link JsonValue} against a schema for
- * that case.
+ * The wrapper exposes one parse-failure variant. Its `cause` field preserves
+ * the raw thrown value and is not necessarily JSON-compatible. A
+ * valid-JSON-but-wrong-shape value is not a parse failure: validate the
+ * returned {@link JsonValue} against an application schema for that case.
  */
 export type JsonParseError = InferError<typeof JsonParseError>;
 
@@ -63,7 +66,7 @@ export type JsonParseError = InferError<typeof JsonParseError>;
  * Unlike `JSON.parse`, which returns `any` and throws on malformed input, this:
  * - types the success value as {@link JsonValue}, forcing you to narrow or
  *   validate before treating it as a known shape
- * - reports failure as a tagged {@link JsonParseError} rather than an exception
+ * - converts a thrown parser failure into a tagged {@link JsonParseError}
  *
  * No reviver argument is accepted. A reviver can return arbitrary values, which
  * would make the {@link JsonValue} success type a lie.

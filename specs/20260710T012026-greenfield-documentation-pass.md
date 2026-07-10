@@ -585,10 +585,20 @@ Verification on 2026-07-10:
 
 ### Wave 5: Establish complete reference ownership
 
-- [ ] Add exactly one reference page for each of nine subpaths.
-- [ ] Cover every current runtime and type export.
-- [ ] Align JSDoc edge cases and examples with the same facts.
-- [ ] Report public-looking implementation exports as deferred API questions.
+- [x] Add exactly one reference page for each of nine subpaths.
+- [x] Cover every current runtime and type export.
+- [x] Align JSDoc edge cases and examples with the same facts.
+- [x] Report public-looking implementation exports as deferred API questions.
+
+Verification on 2026-07-10:
+
+- Added exactly nine reference owners under `docs/reference/`, one for each published subpath: result, error, logger, json, brand, function, query, standard-schema, and testing. Navigation and legacy pages remain unchanged for the later cutover wave.
+- Audited each page against the authoritative v0.44.0 inventory. The pages cover every runtime and type export, the dual-space `Ok`, `Err`, and `JsonParseError` names, all three Standard Schema namespace surfaces, and the fact that query definitions are factory returns rather than top-level exports.
+- Recorded the required edge contracts: shallow Result and Standard Schema guards, `Ok(null)`/`Err(null)`, contained-value throwing adapters, callback and sink exceptions, wrapper-preserving partitioning, shallow freezing and conditional serialization, wall-clock logger timestamps, JSON numeric limits, `once` first-throw behavior, query cache and casting boundaries, and testing's null-error collision.
+- Corrected only factual public JSDoc and comments in the identified source files. No runtime logic, type signature, export, or package metadata changed.
+- Kept `ErrorBody`, `ErrorsConfig`, `ValidatedConfig`, `DefineErrorsReturn`, and `FAILURES` documented as current exports while recording their long-term public role as a separate API-cleanup question.
+- `bun run format:check`, `bun run typecheck`, `bun run build`, and `bun test` passed; the test run completed 158 tests with no failures. `bun run docs:examples` passed its build, strict example typecheck, canonical snippet comparison, and three offline examples.
+- Under Node 24.17.0, `bun run docs:validate` and `bun run docs:links` passed. The focused current-reference claims sweep found no retired APIs, unsupported root imports, serialization absolutes, vanity metrics, reliability claims, or uppercase brand uses.
 
 ### Wave 6: Rebuild integrations and agent skills
 
@@ -642,7 +652,11 @@ Verification on 2026-07-10:
 
 ### Public exports that look internal
 
-The documentation must not erase names that are currently importable. It should describe them honestly and raise a separate API proposal if the maintainer wants to remove them before 1.0.
+The documentation must not erase names that are currently importable. `ErrorBody`, `ErrorsConfig`, `ValidatedConfig`, `DefineErrorsReturn`, and `FAILURES` are documented in their current reference owners. A separate API proposal should decide whether they remain public before 1.0; this pass does not remove or hide them.
+
+### Documented runtime/type mismatches
+
+`once` marks the first call as used before invoking the wrapped function. If that invocation throws, later calls return `undefined` without retrying despite the `TReturn` signature. `extractErrorMessage` can throw for cyclic or bigint-containing arrays and can return `undefined` when a custom `toJSON()` does so despite its `string` signature. The reference records current behavior; changing either contract requires separate API work.
 
 ### Query type dependency
 

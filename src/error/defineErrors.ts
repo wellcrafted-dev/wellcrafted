@@ -12,6 +12,11 @@ import type {
  * factory returns `Err<...>` directly — ready for `trySync`/`tryAsync` catch
  * handlers. The variant name is stamped as `name` on the error object.
  *
+ * The type contract requires `message: string` and reserves `name`; other
+ * fields are unconstrained. JSON compatibility is a caller-owned convention,
+ * not something `defineErrors` enforces. The stamped error object is frozen
+ * shallowly, so nested values remain mutable.
+ *
  * @example
  * ```ts
  * const HttpError = defineErrors({

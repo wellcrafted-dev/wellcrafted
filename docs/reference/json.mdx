@@ -1,0 +1,70 @@
+---
+title: JSON reference
+description: Current runtime and type exports from wellcrafted/json.
+---
+
+# `wellcrafted/json`
+
+This subpath parses JSON into a recursive value type without a generic type assertion.
+
+```typescript
+import { parseJson, type JsonValue } from "wellcrafted/json";
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `JsonParseError` | Value and type | Factory for the tagged parse failure and the inferred error-body type. |
+| `parseJson` | Value | Returns `Result<JsonValue, JsonParseError>` for one JSON string. |
+| `JsonValue` | Type | Recursive approximation of JSON values. |
+| `JsonObject` | Type | `Record<string, JsonValue>`. |
+
+`JsonParseError` occupies both TypeScript namespaces: the value is an Err-returning factory, while the type is its tagged error body.
+
+## Value types
+
+```typescript
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+type JsonObject = Record<string, JsonValue>;
+```
+
+These types are useful recursive approximations, not serialization proofs. TypeScript's `number` includes `NaN`, infinities, and negative zero even though JSON normalizes some of those values. Runtime values can also violate annotations. Exact round-trip behavior still depends on the complete runtime value.
+
+## Parsing
+
+```typescript
+function parseJson(
+  text: string,
+): Result<JsonValue, JsonParseError>;
+```
+
+`parseJson` calls `JSON.parse` without a reviver. A successful parse is typed as `JsonValue`; it is not asserted to an application-specific shape. Validate or narrow the result before treating it as a user, configuration, or API payload.
+
+```typescript
+const result = parseJson('{"count":1}');
+
+if (result.error !== null) {
+  console.error(result.error.message);
+} else {
+  const value: JsonValue = result.data;
+  // Validate value before using it as a known object shape.
+}
+```
+
+## Parse failures
+
+```typescript
+const JsonParseError: (input: { cause: unknown }) => Err<JsonParseError>;
+```
+
+The factory stores a readable message and the raw thrown `cause`. That cause is useful for local diagnostics but is not necessarily JSON-compatible or boundary-friendly. Normalize it before sending the error through JSON, HTTP, workers, IPC, or persistence.
+
+A valid JSON value with the wrong application shape is still an Ok parse. Runtime schema validation is a separate operation.

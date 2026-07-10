@@ -1,0 +1,41 @@
+---
+title: Brand reference
+description: Current type export from wellcrafted/brand.
+---
+
+# `wellcrafted/brand`
+
+This subpath exports one type-only nominal marker. It has no runtime exports.
+
+```typescript
+import type { Brand } from "wellcrafted/brand";
+```
+
+## Export
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `Brand` | Type | `Brand<T extends string>` adds a composable unique-symbol marker keyed by `T`. |
+
+```typescript
+type UserId = string & Brand<"UserId">;
+type OrderId = string & Brand<"OrderId">;
+
+function UserId(value: string): UserId {
+  return value as UserId;
+}
+```
+
+`Brand` performs no validation and emits no JavaScript. Use a constructor or runtime schema at the boundary where a plain value becomes branded. The assertion belongs in that one boundary, not throughout application code.
+
+Brands compose through intersection. A child can include its parent marker, and multiple markers can coexist without collapsing to `never`.
+
+```typescript
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ConfigPath = AbsolutePath & Brand<"ConfigPath">;
+
+declare const configPath: ConfigPath;
+const absolutePath: AbsolutePath = configPath;
+```
+
+The brand marker gives static assignability only. It does not prove that a string is a valid user ID, path, or other domain value at runtime.

@@ -1,0 +1,38 @@
+---
+title: Testing reference
+description: Current runtime exports from wellcrafted/testing.
+---
+
+# `wellcrafted/testing`
+
+This test-only subpath provides framework-agnostic Result assertions. It has no named type exports.
+
+```typescript
+import { expectErr, expectOk } from "wellcrafted/testing";
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `expectOk` | Value | Returns Ok data and throws a plain `Error` for Err. |
+| `expectErr` | Value | Returns Err error data and throws a plain `Error` for Ok. |
+
+```typescript
+function expectOk<T>(result: Result<T, unknown>): T;
+function expectErr<E>(result: Result<unknown, E>): E;
+```
+
+The returned value is narrowed, so tests do not need casts or optional access.
+
+```typescript
+const user = expectOk(loadUser("user-1"));
+expect(user.name).toBe("Ada");
+
+const error = expectErr(loadUser("missing"));
+expect(error.name).toBe("NotFound");
+```
+
+These helpers intentionally throw on the opposite branch. They use plain `Error`, so they work with Bun's test runner and other runners that report thrown exceptions as failures.
+
+They follow the same `error === null` discriminator as `isOk` and `isErr`. The `Err(null)` structural collision therefore applies: `expectErr(Err(null))` throws as though it received Ok, while `expectOk(Err(null))` returns the `null` data slot. Keep Err values non-null and meaningful.
