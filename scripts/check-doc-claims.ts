@@ -76,16 +76,7 @@ const APPROVED_LEGACY_CLAIM_EXCLUSIONS = [
 	"docs/philosophy/why-name-and-message.mdx",
 ] as const;
 
-// This retained page is waiting for the already-approved rewrite/rename cutover.
-// It is not part of the deletion allowlist approved for Wave 11.
-const TEMPORARY_REWRITE_CLAIM_EXCLUSIONS = [
-	"docs/integrations/hono-serialization.mdx",
-] as const;
-
-const LEGACY_CLAIM_EXCLUSIONS = [
-	...APPROVED_LEGACY_CLAIM_EXCLUSIONS,
-	...TEMPORARY_REWRITE_CLAIM_EXCLUSIONS,
-];
+const LEGACY_CLAIM_EXCLUSIONS = APPROVED_LEGACY_CLAIM_EXCLUSIONS;
 
 const DOC_EXTENSIONS = new Set([".json", ".md", ".mdx"]);
 const EXAMPLE_EXTENSIONS = new Set([
@@ -300,8 +291,6 @@ async function collectFiles(root: string): Promise<string[]> {
 
 async function validateExclusions(findings: Finding[]): Promise<Set<string>> {
 	const approved = new Set<string>(APPROVED_LEGACY_CLAIM_EXCLUSIONS);
-	const temporaryRewrites = new Set<string>(TEMPORARY_REWRITE_CLAIM_EXCLUSIONS);
-	const allowed = new Set([...approved, ...temporaryRewrites]);
 	const configured = new Set<string>();
 
 	for (const rawPath of LEGACY_CLAIM_EXCLUSIONS) {
@@ -317,7 +306,7 @@ async function validateExclusions(findings: Finding[]): Promise<Set<string>> {
 		}
 		configured.add(path);
 
-		if (!path.startsWith("docs/") || !allowed.has(path)) {
+		if (!path.startsWith("docs/") || !approved.has(path)) {
 			findings.push({
 				line: 1,
 				message: `Legacy exclusion is outside the exact claims exclusions: ${path}`,
@@ -341,17 +330,6 @@ async function validateExclusions(findings: Finding[]): Promise<Set<string>> {
 			findings.push({
 				line: 1,
 				message: `Retained legacy file is missing its exact exclusion: ${path}`,
-				path: "scripts/check-doc-claims.ts",
-				rule: "gate-config",
-			});
-		}
-	}
-
-	for (const path of temporaryRewrites) {
-		if ((await pathExists(path)) && !configured.has(path)) {
-			findings.push({
-				line: 1,
-				message: `Retained rewrite source is missing its exact exclusion: ${path}`,
 				path: "scripts/check-doc-claims.ts",
 				rule: "gate-config",
 			});
@@ -731,7 +709,7 @@ async function main(): Promise<void> {
 	}
 
 	console.log(
-		`documentation claims: ${publicFiles.length - exclusions.size} files checked, ${APPROVED_LEGACY_CLAIM_EXCLUSIONS.length} deletion-approved legacy files and ${TEMPORARY_REWRITE_CLAIM_EXCLUSIONS.length} retained rewrite source excluded`,
+		`documentation claims: ${publicFiles.length - exclusions.size} files checked, ${APPROVED_LEGACY_CLAIM_EXCLUSIONS.length} deletion-approved legacy files excluded`,
 	);
 }
 

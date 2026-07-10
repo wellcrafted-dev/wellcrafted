@@ -654,10 +654,49 @@ Verification on 2026-07-10:
 
 ### Wave 9: Cut over while the old path remains
 
-- [ ] Rewire navigation and every inbound link to the new owners.
-- [ ] Confirm old pages and source READMEs have no remaining unique content.
-- [ ] Remove current-path dependence on old files while leaving them on disk.
-- [ ] Commit the cutover separately.
+- [x] Rewire navigation and every inbound link to the new owners.
+- [x] Confirm old pages and source READMEs have no remaining unique content.
+- [x] Remove current-path dependence on old files while leaving them on disk.
+- [x] Commit the cutover separately.
+
+Migration ledger completed on 2026-07-10:
+
+| Retained legacy owner | Replacement owner(s) | Disposition | Unique-content evidence |
+| --- | --- | --- | --- |
+| `docs/getting-started/installation.mdx` | `docs/start/installation.mdx` | Migrated and corrected | Consumer installation, subpath imports, compiler configuration, and runtime prerequisites are owned by the tested installation page. Unsupported root-import, legacy module-resolution, and contributor-setup guidance was corrected or dropped. |
+| `docs/getting-started/quick-start.mdx` | `docs/start/quick-start.mdx`, `examples/quick-start.ts` | Migrated and corrected | The first Result loop is now explained by the start page and mechanically synchronized with the runnable canonical example. Undefined helpers and duplicate API tours were dropped. |
+| `docs/migration/from-try-catch.mdx` | `docs/start/migrating-from-try-catch.mdx` | Migrated and corrected | The surgical adoption sequence, caller migration, and rollback adapter remain. Persona copy, combinator history, and stale links were dropped. |
+| `docs/core/result-pattern.mdx` | `docs/guides/composing-results.mdx`, `docs/reference/result.mdx`, `docs/decisions/result-shape.mdx` | Split, migrated, and corrected | Task flow, the complete current API, and shape rationale have distinct owners. Falsy-error guards, `Ok(null)`/`Err(null)`, throwing edges, and current exports are corrected there; the legacy tutorial has no remaining unique fact. |
+| `docs/core/error-system.mdx` | `docs/guides/defining-error-vocabularies.mdx`, `docs/guides/serialization-boundaries.mdx`, `docs/reference/error.mdx`, `docs/decisions/error-contract.mdx` | Split, migrated, and corrected | Variant design, boundary limits, current exports, and durable rationale are owned separately. Perfect-serialization, deep-immutability, and tagged-body-versus-`Err` mistakes were corrected. |
+| `docs/core/brand-types.mdx` | `docs/reference/brand.mdx`, `docs/integrations/validation-libraries.mdx`, `docs/decisions/brand-representation.mdx` | Split, migrated, and corrected | Type behavior, runtime-validator recipes, and representation rationale have sole owners. Claims that branding validates or changes runtime data were dropped. |
+| `docs/patterns/optional-keys.mdx` | `docs/guides/defining-error-vocabularies.mdx` | Migrated and corrected | Required-versus-optional variant field guidance and constructor ownership moved to the vocabulary guide. Repeated factory reference was dropped. |
+| `docs/patterns/real-world.mdx` | `docs/guides/service-boundaries.mdx`, `examples/service-boundary.ts` | Migrated and corrected | The grounded service-to-caller pattern is adapted, attributed, and checked against the canonical example. Broad framework, production, and universal-use claims were dropped. |
+| `docs/patterns/service-layer.mdx` | `docs/guides/service-boundaries.mdx`, `docs/guides/composing-results.mdx` | Migrated and corrected | Boundary ownership, manual propagation, classification, and caller handling remain in the two task guides. Prescriptive folder architecture and duplicate helper APIs were dropped. |
+| `docs/integrations/testing.mdx` | `docs/reference/testing.mdx` | Migrated and corrected | `expectOk` and `expectErr`, narrowing, opposite-branch throws, and the null-error collision are complete in the sole testing reference. The null-unsafe custom matcher was dropped. |
+| `docs/philosophy/err-null-is-ok-null.md` | `docs/decisions/result-shape.mdx`, `docs/guides/composing-results.mdx` | Migrated and corrected | The structural collision, non-null-error convention, truthy-error convention, and valid `Ok(null)` case are preserved without claiming the type enforces the convention. |
+| `docs/philosophy/error-api-evolution.mdx` | `docs/decisions/error-contract.mdx` | Migrated and condensed | The durable progression from manual literals through brittle overloads and fluent modes to constructor functions remains. Dates, call-site counts, and historical tutorial detail were dropped. |
+| `docs/philosophy/rust-inspiration.mdx` | `docs/decisions/error-contract.mdx` | Migrated and qualified | The limited `thiserror` analogy remains as rationale for namespaced variants and co-located messages. Claims of language-level enum equivalence were dropped. |
+| `docs/philosophy/why-name-and-message.mdx` | `docs/decisions/error-contract.mdx` | Migrated and condensed | The JavaScript vocabulary rationale for `name` and human-facing `message` remains. Duplicate factory instructions moved to the guide and reference. |
+| `docs/philosophy/brand-implementation.mdx` | `docs/decisions/brand-representation.mdx` | Migrated and corrected | Nested private-marker rationale and verified assignability cases remain. Runtime identity, validation, serialization-marker, and universal-composition claims were dropped. |
+| `docs/philosophy/for-the-pragmatic-fp-developer.mdx` | `docs/decisions/pragmatic-tradeoffs.mdx` | Migrated and condensed | The explicit-propagation cost and the boundary between Results, exceptions, and an effect system remain. Persona framing and superiority claims were dropped. |
+| `docs/philosophy/from-effect-to-pragmatic-errors.mdx` | `docs/decisions/pragmatic-tradeoffs.mdx` | Migrated and condensed | TypeScript control-flow constraints and the Effect escape hatch remain in the factual choice guide. Competitor size, performance, and universal-simplicity claims were dropped. |
+| `docs/philosophy/production-reliability.mdx` | `docs/guides/service-boundaries.mdx`, `docs/guides/serialization-boundaries.mdx` | Grounded examples migrated; unsupported claims dropped | Boundary classification and serialization lessons survive in checked guides. Uptime, production-hours, importer, incident-prevention, and other reliability or vanity claims have no public replacement. |
+| `docs/philosophy/developer-experience.mdx` | `docs/guides/composing-results.mdx`, `docs/reference/testing.mdx` | Exact behavior migrated; unsupported claims dropped | Ordinary narrowing, explicit branching, and test-helper behavior are owned by current guide/reference pages. Debugging-speed, productivity, editor-universality, and anecdotal claims were dropped. |
+| `docs/philosophy/design-principles.mdx` | `README.md`, `docs/decisions/pragmatic-tradeoffs.mdx`, `docs/decisions/error-contract.mdx` | Durable principles migrated and corrected | Plain-data errors, ordinary control flow, explicit cost, and the larger-system escape hatch remain in concise owners. Perfect serialization, works-anywhere, never-throws, and other universal claims were dropped. |
+| `src/README.md` | `README.md`, `docs/guides/`, `docs/reference/` | Split and migrated | The public package mental model, workflows, and exact APIs now live at the repository front door and public docs. A source-folder tutorial has no remaining unique reader job. |
+| `src/error/README.md` | `docs/guides/defining-error-vocabularies.mdx`, `docs/guides/serialization-boundaries.mdx`, `docs/reference/error.mdx` | Split, migrated, and corrected | Variant rules, current signatures, shallow freeze, and conditional JSON behavior are complete in public owners. Type-enforced or perfect-serialization implications were corrected. |
+| `src/query/README.md` | `docs/integrations/tanstack-query.mdx`, `docs/reference/query.mdx` | Split, migrated, and corrected | The two query families, exact returned handle shapes, `defineKeys`, reactive snapshots, cache ownership, and prerequisite are complete in public owners. Retired names and performance claims were dropped. |
+
+Cutover proof on 2026-07-10:
+
+- The Documentation tab contains exactly 24 current routes: four Start routes including the index, four guides, nine subpath references, three integrations, and four decisions. Navbar and footer configuration are unchanged.
+- Current owners in `README.md`, `CONTRIBUTING.md`, `docs/index.mdx`, `docs/start/`, `docs/guides/`, `docs/reference/`, the three current integration pages, `docs/decisions/`, and `skills/` have no links to a legacy owner. Links already pointed at the split owner matching their intent, so no allowlisted legacy page needed link-only churn.
+- `docs/integrations/hono-serialization.mdx` is now a compatibility notice pointing to `/integrations/hono`; it owns no HTTP guidance. Its separate temporary claims exclusion was removed, and the notice passes the same current-content claims gate as the Hono owner.
+- All 20 deletion-approved legacy documentation files and all three source READMEs remain on disk. None is required by current navigation or current-owner links.
+- `bun run format`, `bun run format:check`, `bun run lint:check`, `bun run typecheck`, `bun test`, and `bun run build` passed. The test run completed 188 tests with no failures; lint reported only the 12 pre-existing warnings recorded in earlier waves.
+- `bun run docs:claims`, `bun run docs:snippets`, `bun run docs:exports`, and `bun run docs:examples` passed. The claims gate now checks the Hono compatibility route and reports 42 current files checked with only the 20 deletion-approved legacy pages excluded; export coverage remains 79 tuples across nine reference owners.
+- `bun run package:smoke`, `bun run compat:types`, and `bun run compat:runtime` passed. Under bundled Node 24.14.0, `bun run docs:validate` and `bun run docs:links` passed.
+- A first-reader structural navigation review confirmed a linear start path, task-oriented guides before reference, integrations separated from core usage, and rationale last. A rendered desktop and narrow-width review was not performed in this wave because no browser-backed local preview was available in this delegated task; it remains an explicit Wave 10 visual check and Wave 12 fresh-context review rather than an implied pass.
 
 ### Wave 10: Record the pre-deletion proof checkpoint
 
