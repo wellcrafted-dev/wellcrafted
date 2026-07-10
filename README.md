@@ -20,7 +20,7 @@ wellcrafted has no root export. Import from a published subpath such as `wellcra
 
 Define the failures a function can return, then use the Result shape to handle both outcomes.
 
-<!-- docs:quick-start:start -->
+<!-- docs:snippet quick-start:start -->
 ```typescript quick-start.ts
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 import { Ok, type Result } from "wellcrafted/result";
@@ -55,7 +55,7 @@ if (failure.error !== null) {
 	console.error(failure.error.message);
 }
 ```
-<!-- docs:quick-start:end -->
+<!-- docs:snippet quick-start:end -->
 
 The example is extracted from the checked [`examples/quick-start.ts`](examples/quick-start.ts) source. The documentation checks compare both copies with that file so they cannot drift unnoticed.
 

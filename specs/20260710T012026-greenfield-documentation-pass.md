@@ -463,7 +463,7 @@ Pin the Mintlify CLI version rather than letting `bunx` silently change validati
 Strict content gates are designed and enabled only after the canonical content exists:
 
 - `docs:exports`: derive `(subpath, export kind, symbol)` tuples from the manifest and emitted declarations, then compare them with machine-readable markers on exactly one reference page. Searching prose does not count as coverage.
-- `docs:claims`: scan `README.md`, `CONTRIBUTING.md`, `docs/`, `examples/`, and `skills/`; exclude `CHANGELOG.md`, historical specs, and explicitly marked historical quotations. Reject a documented list of retired names, unsupported root imports, conflicting requirements, npm contributor commands, serialization absolutes, unsupported metrics, and stale links.
+- `docs:claims`: scan `README.md`, `CONTRIBUTING.md`, `docs/`, `examples/`, and `skills/`; exclude `CHANGELOG.md`, historical specs, and explicitly marked historical quotations. Reject a documented list of retired names, unsupported root imports, conflicting requirements, npm contributor commands, serialization absolutes, unsupported metrics, reliability claims, unsafe Result checks, and incorrect brand casing. The dedicated `docs:links` gate owns stale links instead of duplicating link resolution here.
 - `docs:snippets`: enable only after an include, extraction, or comparison prototype passes against the intended Markdown and MDX corpus. Canonical example drift is the first required case.
 
 Retained legacy files may have explicit temporary exclusions through the pre-deletion proof. The deletion wave removes each exclusion atomically with its approved legacy file, then reruns the strict gates.
@@ -635,10 +635,22 @@ Verification on 2026-07-10:
 
 ### Wave 8: Prove and enable strict content gates
 
-- [ ] Prototype machine-readable export markers, exact claims roots/exclusions, and canonical snippet comparison.
-- [ ] Make each strict gate pass against canonical content.
-- [ ] Add explicit temporary exclusions only for retained legacy files.
-- [ ] Enable the passing gates in CI.
+- [x] Prototype machine-readable export markers, exact claims roots/exclusions, and canonical snippet comparison.
+- [x] Make each strict gate pass against canonical content.
+- [x] Add explicit temporary exclusions only for retained legacy files.
+- [x] Enable the passing gates in CI.
+
+Verification on 2026-07-10:
+
+- Added `docs:exports` as a build plus declaration checker. It derives `(subpath, export kind, symbol)` tuples from `package.json#exports` and emitted declarations, including namespace members, and requires an exact one-line marker of the form `{/* docs:export subpath="wellcrafted/result" kind="value" symbol="Ok" */}`. Every tuple must appear once in its sole `docs/reference/<subpath>.mdx` owner, and the reference-file set must match the nine manifest subpaths exactly. The gate passed with 79 value, type, and namespace tuples across nine owners.
+- Added `docs:claims` over exactly `README.md`, `CONTRIBUTING.md`, `docs/`, `examples/`, and `skills/`. It scans `.json`, `.md`, and `.mdx` under `docs/`; common JavaScript, TypeScript, Markdown, and MDX files under `examples/`; and Markdown or MDX under `skills/`. `CHANGELOG.md` and `specs/` are outside those roots. Decision pages may use an exact, reasoned, non-nested, and consumed allowance only for retired API history; no other claim class can be allowed inline. Stale links remain owned by `docs:links`.
+- The claims gate has 20 exact deletion-approved legacy exclusions: `docs/core/brand-types.mdx`, `docs/core/error-system.mdx`, `docs/core/result-pattern.mdx`, `docs/getting-started/installation.mdx`, `docs/getting-started/quick-start.mdx`, `docs/integrations/testing.mdx`, `docs/migration/from-try-catch.mdx`, `docs/patterns/optional-keys.mdx`, `docs/patterns/real-world.mdx`, `docs/patterns/service-layer.mdx`, `docs/philosophy/brand-implementation.mdx`, `docs/philosophy/design-principles.mdx`, `docs/philosophy/developer-experience.mdx`, `docs/philosophy/err-null-is-ok-null.md`, `docs/philosophy/error-api-evolution.mdx`, `docs/philosophy/for-the-pragmatic-fp-developer.mdx`, `docs/philosophy/from-effect-to-pragmatic-errors.mdx`, `docs/philosophy/production-reliability.mdx`, `docs/philosophy/rust-inspiration.mdx`, and `docs/philosophy/why-name-and-message.mdx`. The gate passed across 41 current public files with those 20 files excluded.
+- `docs/integrations/hono-serialization.mdx` is a separate temporary retained rewrite-source exclusion until the already-approved `docs/integrations/hono.mdx` cutover. This does not change its disposition to “Approved after proof,” does not add it to the Wave 11 deletion allowlist, and does not expand deletion approval. The claims gate requires this exclusion to be removed when the old rewrite source leaves the current path.
+- Added `docs:snippets` with source markers `// docs:snippet <id>:start|end` in `examples/**/*.ts` and HTML or MDX target markers in `README.md` and `docs/**/*.{md,mdx}`. Each ID has exactly one source and at least one target; multiple exact targets are allowed. A target contains one fenced code block and no prose. Newline style and trailing whitespace are normalized, while code content otherwise compares exactly. Malformed, nested, mismatched, duplicate, orphaned, unused, or drifted regions fail. The checked IDs are `quick-start`, `service-boundary`, `serialization-boundary`, and `tanstack-query`; the quick start has both README and reusable-snippet targets.
+- Replaced the deleted focused quick-start checker in `docs:examples` with `docs:snippets` while preserving the package build, strict example typecheck, and the quick-start, service-boundary, and serialization-boundary runtime examples. The hardened snippet tests cover the explicit four-snippet source, target, and public-owner manifest so a whole pair or owner import cannot disappear silently.
+- Added table-driven claims tests for multiline and aliased retired APIs, direct and coerced Result truthiness, consumer and uptime metrics, JSON-field enforcement, and unconditional serialization claims. Explicit limitations and current APIs remain accepted. The focused gate suites now cover 30 cases, and the full test suite passed 188 tests with no failures.
+- Added `docs:exports`, `docs:claims`, and `docs:snippets` to the main CI job after the existing build, test, and documentation-example steps. `docs:exports`, `docs:claims`, `docs:snippets`, `format:check`, `typecheck`, `build`, `test`, `docs:examples`, `package:smoke`, `compat:types`, and `compat:runtime` passed. `lint:check` passed with 12 pre-existing warnings and no Wave 8 finding.
+- With Node 24.14.0, `docs:validate` and `docs:links` passed. The main workflow parsed as YAML, and `git diff --check` passed.
 
 ### Wave 9: Cut over while the old path remains
 

@@ -3,6 +3,8 @@ title: Put Results at service boundaries
 description: Convert narrow throwing operations into domain errors and propagate them through linear service code.
 ---
 
+import ServiceBoundaryExample from "/snippets/service-boundary.mdx";
+
 # Put Results at service boundaries
 
 A service boundary is where an uncontrolled throwing API becomes a controlled error vocabulary. Wrap only the operation that throws, give that failure a domain name, and let the rest of the service use `Result` returns and early exits.
@@ -39,6 +41,12 @@ function getDisplayName(
 ```
 
 The `trySync` block owns one failure unit: reading the record. `getDisplayName` does not catch anything. It manually propagates `ReadFailed`, classifies a successful empty lookup as `NotFound`, and leaves the happy path at the bottom.
+
+## Checked local example
+
+The local canonical example includes the imports, error vocabulary, and service factory omitted from the adapted excerpt above. The snippet is checked against `examples/service-boundary.ts`.
+
+<ServiceBoundaryExample />
 
 ## Keep dependencies explicit
 

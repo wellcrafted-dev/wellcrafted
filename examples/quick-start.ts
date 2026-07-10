@@ -1,4 +1,4 @@
-// docs:quick-start:start
+// docs:snippet quick-start:start
 
 import { defineErrors, type InferErrors } from "wellcrafted/error";
 import { Ok, type Result } from "wellcrafted/result";
@@ -33,7 +33,7 @@ if (failure.error !== null) {
 	console.error(failure.error.message);
 }
 
-// docs:quick-start:end
+// docs:snippet quick-start:end
 
 if (success.data !== 3000 || success.error !== null) {
 	throw new Error("Expected the valid port to succeed.");

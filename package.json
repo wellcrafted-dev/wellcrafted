@@ -59,7 +59,10 @@
 		"docs:dev": "cd docs && mint dev",
 		"docs:validate": "cd docs && mint validate",
 		"docs:links": "cd docs && mint broken-links",
-		"docs:examples": "bun run build && bun node_modules/typescript/bin/tsc --project examples/tsconfig.json && bun scripts/check-quick-start-docs.ts && bun examples/quick-start.ts && bun examples/service-boundary.ts && bun examples/serialization-boundary.ts",
+		"docs:exports": "bun run build && bun scripts/check-doc-exports.ts",
+		"docs:claims": "bun scripts/check-doc-claims.ts",
+		"docs:snippets": "bun scripts/check-doc-snippets.ts",
+		"docs:examples": "bun run build && bun node_modules/typescript/bin/tsc --project examples/tsconfig.json && bun run docs:snippets && bun examples/quick-start.ts && bun examples/service-boundary.ts && bun examples/serialization-boundary.ts",
 		"package:smoke": "bun run build && bun scripts/package-smoke.ts",
 		"compat:types": "bun run build && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.bundler.json && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.nodenext.json",
 		"compat:runtime": "bun run build && bun scripts/fixtures/runtime/all-subpaths.mjs"

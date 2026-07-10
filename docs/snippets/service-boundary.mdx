@@ -1,10 +1,5 @@
-/**
- * Adapted from Epicenter's service-boundary pattern at commit 4d438c0:
- * https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/client/src/transcribe.ts
- */
-import { assertEqual } from "./assert.js";
-
-// docs:snippet service-boundary:start
+{/* docs:snippet service-boundary:start */}
+```typescript service-boundary.ts
 import {
 	defineErrors,
 	extractErrorMessage,
@@ -50,17 +45,5 @@ function createUserService({ records }: { records: Map<string, User> }) {
 		},
 	};
 }
-// docs:snippet service-boundary:end
-
-const users = createUserService({
-	records: new Map([["user-1", { id: "user-1", displayName: "Ada" }]]),
-});
-
-assertEqual(users.getDisplayName("user-1"), {
-	data: "Ada",
-	error: null,
-});
-assertEqual(users.getDisplayName("missing").error?.name, "NotFound");
-assertEqual(users.getDisplayName("storage-offline").error?.name, "ReadFailed");
-
-console.log("service-boundary: success, domain, and I/O failures passed");
+```
+{/* docs:snippet service-boundary:end */}

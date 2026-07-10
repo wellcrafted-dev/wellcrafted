@@ -3,11 +3,19 @@ title: Preserve errors across serialization boundaries
 description: Move Result-shaped error data through JSON when every field is compatible, without confusing shape preservation with validation or typing.
 ---
 
+import SerializationBoundaryExample from "/snippets/serialization-boundary.mdx";
+
 # Preserve errors across serialization boundaries
 
 wellcrafted errors are plain data, so a Result can cross JSON, HTTP, workers, IPC, logs, and UI without an error-class transformation layer when every field in the complete value is JSON-compatible.
 
 That promise is conditional. `defineErrors` does not type-enforce JSON-compatible fields, and arbitrary fields do not serialize perfectly. You choose the fields, so you also own their boundary behavior.
+
+## Checked local example
+
+This checked example puts a JSON-compatible error beside the native `Error` counterexample. The snippet is kept in sync with `examples/serialization-boundary.ts`.
+
+<SerializationBoundaryExample />
 
 ## Use boundary-friendly fields
 

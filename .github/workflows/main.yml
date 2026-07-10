@@ -48,6 +48,9 @@ jobs:
       - run: bun run build
       - run: bun test
       - run: bun run docs:examples
+      - run: bun run docs:exports
+      - run: bun run docs:claims
+      - run: bun run docs:snippets
       - run: bun run package:smoke
       - run: bun run compat:types
       - run: bun run compat:runtime

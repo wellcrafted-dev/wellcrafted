@@ -1,6 +1,5 @@
-import { assertEqual } from "./assert.js";
-
-// docs:snippet serialization-boundary:start
+{/* docs:snippet serialization-boundary:start */}
+```typescript serialization-boundary.ts
 import { defineErrors } from "wellcrafted/error";
 
 const UploadError = defineErrors({
@@ -34,11 +33,5 @@ const withNativeCause = UploadError.Unexpected({
 const roundTripped = JSON.parse(JSON.stringify(withNativeCause)) as {
 	error: { cause: unknown };
 };
-// docs:snippet serialization-boundary:end
-
-assertEqual(JSON.parse(JSON.stringify(boundaryFriendly)), boundaryFriendly);
-assertEqual(roundTripped.error.cause, {});
-
-console.log(
-	"serialization-boundary: JSON-compatible data and cause caveat passed",
-);
+```
+{/* docs:snippet serialization-boundary:end */}

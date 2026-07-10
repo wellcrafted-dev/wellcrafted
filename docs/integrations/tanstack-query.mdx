@@ -4,6 +4,8 @@ description: Adapt Result-returning functions to TanStack Query hooks and QueryC
 icon: database
 ---
 
+import TanStackQueryExample from "/snippets/tanstack-query.mdx";
+
 # TanStack Query
 
 `wellcrafted/query` converts a Result-returning query or mutation function into TanStack Query's contract: Ok resolves into the data channel, while Err throws its contained value into the error channel.
@@ -20,6 +22,12 @@ There are two adapter families. Choose by who owns execution.
 | --- | --- |
 | A framework hook owns execution | `resultQueryOptions` or `resultMutationOptions` |
 | One `QueryClient` owns reusable reactive and imperative handles | `createQueryFactories` |
+
+## Checked local example
+
+The canonical example exercises both adapter families and `defineKeys` against the current package declarations. It is kept in sync with `examples/tanstack-query.ts`.
+
+<TanStackQueryExample />
 
 ## Direct options adapters
 
