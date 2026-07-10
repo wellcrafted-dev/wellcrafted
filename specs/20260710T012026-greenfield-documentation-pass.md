@@ -568,9 +568,20 @@ Verification on 2026-07-10:
 
 ### Wave 4: Build the guide path
 
-- [ ] Add error-vocabulary, Result-composition, service-boundary, and serialization-boundary guides.
-- [ ] Ground examples in approved Epicenter patterns.
-- [ ] Keep exact signatures out of guides unless needed for the task.
+- [x] Add error-vocabulary, Result-composition, service-boundary, and serialization-boundary guides.
+- [x] Ground examples in approved Epicenter patterns.
+- [x] Keep exact signatures out of guides unless needed for the task.
+
+Verification on 2026-07-10:
+
+- Added exactly four task-focused guides under `docs/guides/`: defining error vocabularies, composing Results, service boundaries, and serialization boundaries. No navigation or legacy documentation changed in this wave.
+- The Result guide adapts and attributes Epicenter's table lookup pattern for `Ok(null)`, reachable read and not-found errors, manual propagation, and recovery to an honest `Ok` fallback. It documents `error !== null` and `isErr` as the exact guards, the falsy-error truthiness limitation, and the structural `Err(null)`/`Ok(null)` collision.
+- The service guide adapts and attributes Epicenter's transcription flow through a short task excerpt synchronized with the canonical example's cause-as-string behavior. It wraps one reachable throwing operation, propagates the narrowed Result, and keeps domain classification separate from the I/O boundary.
+- The error guide distinguishes required and optional fields, keeps formatting and cause normalization owned by constructors, and shows `InferError` for one variant. The error and serialization guides lead with plain boundary-friendly data only when every field is JSON-compatible and state that `defineErrors` does not type-enforce that condition.
+- The serialization guide covers positive and negative cases, states that unsupported array entries become `null`, demonstrates a native `Error` cause becoming `{}`, and separates JSON shape preservation, runtime validation, and end-to-end static typing.
+- Public guide text contains no importer counts, reliability claims, production metrics, or other vanity metrics. Exact API signatures appear only where the task requires a compilable usage pattern.
+- `bun run format` passed without changing existing files. `bun run docs:examples` passed its strict typecheck, canonical snippet comparison, and three offline runtime examples.
+- With Node 24.17.0, `bun run docs:validate` and `bun run docs:links` passed.
 
 ### Wave 5: Establish complete reference ownership
 

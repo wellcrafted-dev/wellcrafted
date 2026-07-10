@@ -1,0 +1,98 @@
+---
+title: Compose Result-returning functions
+description: Keep expected failures in linear TypeScript control flow with exact Result discrimination.
+---
+
+# Compose Result-returning functions
+
+Check a `Result`, return its error branch immediately, and keep the success path unindented. This is ordinary TypeScript control flow; the important detail is using the exact discriminator.
+
+The following lookup pattern is adapted from [Epicenter's table implementation at commit `4d438c0`](https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/workspace/src/document/table.ts).
+
+```typescript
+import { defineErrors, type InferErrors } from "wellcrafted/error";
+import { Ok, type Result } from "wellcrafted/result";
+
+const TableError = defineErrors({
+  ReadFailed: ({ table }: { table: string }) => ({
+    message: `Could not read table "${table}".`,
+    table,
+  }),
+  RowNotFound: ({ table, rowId }: { table: string; rowId: string }) => ({
+    message: `Row "${rowId}" was not found in "${table}".`,
+    table,
+    rowId,
+  }),
+});
+
+type TableError = InferErrors<typeof TableError>;
+type Row = { id: string; title: string };
+
+const tables = new Map<string, Map<string, Row>>([
+  [
+    "documents",
+    new Map([["row-1", { id: "row-1", title: "Draft" }]]),
+  ],
+]);
+
+function findRow(table: string, rowId: string): Result<Row | null, TableError> {
+  const rows = tables.get(table);
+  if (rows === undefined) return TableError.ReadFailed({ table });
+
+  return Ok(rows.get(rowId) ?? null);
+}
+
+function requireRow(table: string, rowId: string): Result<Row, TableError> {
+  const rowResult = findRow(table, rowId);
+  if (rowResult.error !== null) return rowResult;
+  if (rowResult.data === null) {
+    return TableError.RowNotFound({ table, rowId });
+  }
+
+  return Ok(rowResult.data);
+}
+```
+
+`Ok(null)` is useful here: absence is a successful lookup result, while `requireRow` decides that absence is an error for its own contract. The lower-level function does not have to invent a failure that its caller may not want.
+
+## Discriminate on `error`
+
+Use `result.error !== null` or `isErr(result)` for the error branch. Both follow the Result shape's actual discriminator.
+
+```typescript
+import { isErr } from "wellcrafted/result";
+
+const result = requireRow("documents", "row-2");
+
+if (isErr(result)) {
+  console.error(result.error.message);
+} else {
+  console.log(result.data.title);
+}
+```
+
+Do not use `if (result.error)` as the general rule. The public `Err<E>` type permits falsy error values such as `0`, `false`, `""`, `undefined`, and `NaN`; a truthiness check misses them.
+
+`Err(null)` is the shape's hard edge. It produces `{ data: null, error: null }`, which is structurally identical to `Ok(null)`, so no generic guard can recover the author's intent. Keep error values non-null and meaningful. `Err(undefined)` remains distinguishable by `error !== null`, but it is still a poor error value and fails truthiness checks.
+
+## Recover when the caller owns a fallback
+
+Recovery turns a specific error into `Ok(fallback)` when the caller can honestly satisfy its contract. Handle only the variant you can recover from and propagate the rest.
+
+```typescript
+function findOrCreate(rowId: string): Result<Row, TableError> {
+  const result = requireRow("documents", rowId);
+  if (result.error === null) return result;
+  if (result.error.name !== "RowNotFound") return result;
+
+  return Ok({ id: rowId, title: "Untitled" });
+}
+```
+
+Do not recover merely to hide an error. A fallback belongs at the layer that can decide it is a valid success.
+
+## Propagate without widening the boundary
+
+Return the narrowed error branch itself when the caller already includes that error type. Wrap an error in a new variant only when crossing into a domain that owns a different vocabulary. This keeps each layer's signature honest and avoids losing structured fields to repeated message-only transformations.
+
+For throwing dependencies, move the conversion into a narrow boundary rather than wrapping an entire workflow. The [service boundary guide](/guides/service-boundaries) shows that pattern.

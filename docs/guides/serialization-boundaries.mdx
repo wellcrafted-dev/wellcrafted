@@ -1,0 +1,110 @@
+---
+title: Preserve errors across serialization boundaries
+description: Move Result-shaped error data through JSON when every field is compatible, without confusing shape preservation with validation or typing.
+---
+
+# Preserve errors across serialization boundaries
+
+wellcrafted errors are plain data, so a Result can cross JSON, HTTP, workers, IPC, logs, and UI without an error-class transformation layer when every field in the complete value is JSON-compatible.
+
+That promise is conditional. `defineErrors` does not type-enforce JSON-compatible fields, and arbitrary fields do not serialize perfectly. You choose the fields, so you also own their boundary behavior.
+
+## Use boundary-friendly fields
+
+```typescript
+import { defineErrors } from "wellcrafted/error";
+
+const UploadError = defineErrors({
+  Rejected: ({
+    fileName,
+    reasons,
+  }: {
+    fileName: string;
+    reasons: string[];
+  }) => ({
+    message: `Upload rejected for "${fileName}".`,
+    fileName,
+    reasons,
+  }),
+});
+
+const result = UploadError.Rejected({
+  fileName: "report.csv",
+  reasons: ["too large", "unsupported encoding"],
+});
+
+const json = JSON.stringify(result);
+const received: unknown = JSON.parse(json);
+```
+
+The Result container, tagged error name, message, file name, and reasons survive this round trip because the entire value is composed from plain objects, dense arrays, strings, and `null`.
+
+For exact JavaScript-value preservation, stay with `null`, booleans, strings, finite numbers where negative-zero identity does not matter, dense arrays without extra properties, and own enumerable string-keyed fields on ordinary objects. Apply the same rule recursively to every nested value.
+
+JSON can normalize, omit, or reject other values:
+
+| Field value | JSON behavior |
+| --- | --- |
+| `undefined`, functions, symbols | Omitted from objects; replaced with `null` in arrays |
+| `NaN`, `Infinity`, `-Infinity` | Normalized to `null` |
+| `-0` | Normalized to `0` |
+| `Date` | Converted to a string |
+| Native `Error` | Usually becomes an empty object because its details are non-enumerable |
+| `bigint` or a cyclic graph | `JSON.stringify` throws |
+| Class instances, null-prototype objects, sparse arrays | Do not satisfy the exact plain-data round-trip model |
+
+The exported `JsonValue` type is useful for describing JSON-shaped data, but TypeScript cannot express every runtime restriction, such as excluding `NaN` from `number`. A type annotation is not a serialization proof.
+
+Native causes show why the condition matters:
+
+```typescript
+const UnexpectedError = defineErrors({
+  Failed: ({ cause }: { cause: unknown }) => ({
+    message: "Upload failed unexpectedly.",
+    cause,
+  }),
+});
+
+const withNativeCause = UnexpectedError.Failed({
+  cause: new Error("disk full"),
+});
+const roundTripped = JSON.parse(JSON.stringify(withNativeCause));
+
+roundTripped.error.cause;
+// {} — Error.message and Error.stack are non-enumerable
+```
+
+## Normalize a caught cause before the wire
+
+Inside one process, preserving a raw `cause: unknown` can help debugging. Across JSON, normalize it to the fields the receiver needs.
+
+```typescript
+import { extractErrorMessage } from "wellcrafted/error";
+
+const BoundaryError = defineErrors({
+  StorageUnavailable: ({ cause }: { cause: unknown }) => ({
+    message: "Upload storage is unavailable.",
+    causeMessage: extractErrorMessage(cause),
+  }),
+});
+
+const result = BoundaryError.StorageUnavailable({
+  cause: new Error("disk full"),
+});
+```
+
+This variant keeps a string rather than the native `Error`. If callers need more context, add deliberate JSON-compatible fields such as `operation`, `resourceId`, or a stable application code.
+
+The runnable [`examples/serialization-boundary.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/examples/serialization-boundary.ts) also shows the negative case: `defineErrors` accepts a native `Error`, but its details do not survive the JSON round trip.
+
+## Separate three boundary guarantees
+
+Preserving a JSON shape, validating at runtime, and providing end-to-end static types solve different problems.
+
+1. Shape preservation means compatible values encode and decode with the intended structure.
+2. Runtime validation checks that untrusted bytes actually match the expected Result and payload schemas.
+3. End-to-end static typing gives the producer and consumer a shared compile-time contract.
+
+None implies the other two. `JSON.parse` returns data that must still be treated as unknown until it is validated or narrowed. A shared TypeScript type does not inspect incoming bytes. A runtime schema can reject bad input even when the producer was written in another language and shares no TypeScript types.
+
+At an HTTP boundary, define all three contracts explicitly: the JSON response shape, the schema used to validate received data, and the mechanism—shared types, generated clients, or manual declarations—that gives each side static types.
