@@ -700,9 +700,23 @@ Cutover proof on 2026-07-10:
 
 ### Wave 10: Record the pre-deletion proof checkpoint
 
-- [ ] Run full type, test, build, packed-package, compatibility, runtime, docs, examples, exports, claims, snippets, and visual checks while old files remain.
-- [ ] Record exact commands, versions, and results in this spec.
-- [ ] Commit the proof checkpoint before deleting anything.
+- [x] Run full type, test, build, packed-package, compatibility, runtime, docs, examples, exports, claims, snippets, and visual checks while old files remain.
+- [x] Record exact commands, versions, and results for the completed nonvisual proof in this spec.
+- [x] Commit the proof checkpoint before deleting anything.
+
+Nonvisual pre-deletion proof on 2026-07-10:
+
+- The checkpoint ran from commit `4a62cf8412d1e4042e533bae17767a69ee991f16` (`docs: cut over to canonical documentation owners`) with Bun 1.3.1, TypeScript 5.8.3, Biome 2.3.3, tsdown 0.12.9, pinned `mint` 4.2.684, and Node 24.14.0 for Mint. `PUPPETEER_SKIP_DOWNLOAD=true bun install --frozen-lockfile` passed and changed no installs.
+- `bun run lint:check`, `bun run format:check`, `bun run typecheck`, `bun run build`, and `bun test` passed. Lint reported the same 12 pre-existing warnings and no errors; formatting changed nothing; the full suite completed 188 tests with no failures.
+- `bun run docs:examples`, `bun run package:smoke`, `bun run compat:types`, and `bun run compat:runtime` passed. The example gate built the package, typechecked canonical examples, compared canonical snippets, and ran all three offline examples. Package smoke proved the tarball, nine subpaths, unsupported root, strict consumer typechecks, and explicit query prerequisite. The compatibility fixtures passed both type configurations and invoked every subpath while rejecting the root import.
+- `bun run docs:exports`, `bun run docs:claims`, and `bun run docs:snippets` passed. Export coverage found 79 tuples across nine sole reference owners. Claims checked 42 current files with exactly 20 deletion-approved legacy exclusions. Snippets matched their canonical examples.
+- `bun test scripts/check-doc-claims.test.ts scripts/check-doc-snippets.test.ts` passed 30 focused gate tests with no failures.
+- With the Node 24.14.0 binary first on `PATH`, `bun run docs:validate` and `bun run docs:links` passed against pinned Mint 4.2.684. Build validation passed and no broken links were found.
+- `bun -e 'import { parse } from "yaml"; const value=parse(await Bun.file(".github/workflows/main.yml").text()); if (!value || typeof value !== "object") throw new Error("workflow did not parse as an object"); console.log("workflow YAML parsed")'` passed.
+- The explicit pre-deletion presence check found all 20 deletion-approved legacy documentation files and all three approved source READMEs. A direct count of `APPROVED_LEGACY_CLAIM_EXCLUSIONS` found exactly 20 entries. `git diff --check` passed, and status remained clean on `codex/docs-greenfield-pass`, ten commits ahead of `origin/main`, before this proof record was added.
+- The first in-app browser attempt rejected localhost under its URL security policy, so no workaround was attempted through that surface. The later Computer Use review launched `bun run docs:dev`, opened the local preview in Chrome, and inspected the home page, quick start, serialization guide, Result reference, and Hono guide at the desktop viewport and a 400-pixel responsive viewport. Navigation, cards, prose, code blocks, and scrollable tables stayed readable and contained at both widths.
+- The visual pass caught two template artifacts before approval: the configured logo SVGs rendered “Mint Starter Kit,” and the Hono frontmatter icon requested a remote `hono.svg` that returned 403. Removing the stale logo override made Mint render the lowercase `wellcrafted` name, and removing the broken Hono icon eliminated that request. Desktop and narrow rechecks passed with the corrected header and Hono page.
+- After those two visual fixes, `bun run format:check`, `bun run lint:check`, `bun run typecheck`, `bun run build`, and `bun test` passed again; lint retained the same 12 warnings and the full suite retained 188 passing tests. `bun run docs:examples`, `bun run package:smoke`, `bun run compat:types`, `bun run compat:runtime`, `bun run docs:exports`, `bun run docs:claims`, and `bun run docs:snippets` passed again. Node 24.14.0 `bun run docs:validate` and `bun run docs:links` also passed against the final rendered files.
 
 ### Wave 11: Delete only approved obsolete owners
 
