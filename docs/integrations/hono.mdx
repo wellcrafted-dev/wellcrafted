@@ -1,0 +1,138 @@
+---
+title: Hono HTTP boundaries
+description: Preserve, validate, and type Result-shaped JSON across a Hono boundary without conflating those guarantees.
+icon: hono
+---
+
+# Hono HTTP boundaries
+
+A Hono route can send a Result-shaped JSON envelope directly when every field in the complete value is JSON-compatible. That preserves a useful wire shape; it does not by itself validate untrusted data or create end-to-end static types.
+
+Keep three guarantees separate:
+
+| Guarantee | What provides it | What it does not provide |
+| --- | --- | --- |
+| JSON shape preservation | JSON-compatible Result, data, and error fields | Runtime validation or shared TypeScript types |
+| Runtime validation | A schema that checks the full untrusted envelope and payload | A producer/consumer compile-time contract |
+| End-to-end static typing | Hono's shared route type and `hc` client | Runtime inspection of received bytes |
+
+None implies either of the others.
+
+## Return the Result envelope
+
+This error vocabulary is adapted from [Epicenter's blob errors at commit `4d438c0`](https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/server/src/routes/blob-errors.ts). Its intended wire fields are strings and finite numbers. Callers must actually supply compatible values because `defineErrors` does not enforce that condition.
+
+```typescript
+import { Hono } from "hono";
+import { defineErrors, type InferErrors } from "wellcrafted/error";
+import { Ok, type Result } from "wellcrafted/result";
+
+const BlobError = defineErrors({
+  InvalidSha256: ({ value }: { value: string }) => ({
+    message: `Invalid sha256: "${value}".`,
+    value,
+  }),
+  BlobTooLarge: ({ size, maxBytes }: { size: number; maxBytes: number }) => ({
+    message: `Blob exceeds the ${maxBytes} byte limit.`,
+    size,
+    maxBytes,
+  }),
+  NotFound: ({ sha256 }: { sha256: string }) => ({
+    message: "Blob not found.",
+    sha256,
+  }),
+});
+
+type BlobError = InferErrors<typeof BlobError>;
+type BlobMetadata = { sha256: string; sizeBytes: number };
+
+declare function getBlobMetadata(
+  sha256: string,
+): Promise<Result<BlobMetadata, BlobError>>;
+
+function statusForBlobError(error: BlobError): 400 | 404 | 413 {
+  switch (error.name) {
+    case "InvalidSha256": return 400;
+    case "NotFound": return 404;
+    case "BlobTooLarge": return 413;
+  }
+}
+
+const app = new Hono();
+
+const routes = app.get("/api/blobs/:sha256", async (c) => {
+  const result = await getBlobMetadata(c.req.param("sha256"));
+  if (result.error !== null) {
+    return c.json(result, statusForBlobError(result.error));
+  }
+
+  return c.json(result, 200);
+});
+
+export type AppType = typeof routes;
+```
+
+The HTTP status and JSON body are separate contracts. Status selects the transport response; the Result envelope carries application data or a tagged error. Do not infer one solely from the other, and do not replace a useful 4xx status with a blanket 500 merely because the body is Err.
+
+`defineErrors` does not enforce JSON-compatible fields. A raw native `Error`, `bigint`, function, class instance, `undefined`, or cyclic value can be accepted by the factory and fail or change during JSON serialization. Normalize such fields before this boundary.
+
+## Validate untrusted responses at runtime
+
+Treat `response.json()` as untrusted. Validate the full envelope, including the active payload, rather than checking only that `data` and `error` keys exist.
+
+```typescript
+import { z } from "zod";
+
+const blobMetadataSchema = z.object({
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  sizeBytes: z.number().int().nonnegative(),
+}).strict();
+
+const blobErrorSchema = z.discriminatedUnion("name", [
+  z.object({
+    name: z.literal("InvalidSha256"),
+    message: z.string(),
+    value: z.string(),
+  }).strict(),
+  z.object({
+    name: z.literal("BlobTooLarge"),
+    message: z.string(),
+    size: z.number(),
+    maxBytes: z.number(),
+  }).strict(),
+  z.object({
+    name: z.literal("NotFound"),
+    message: z.string(),
+    sha256: z.string(),
+  }).strict(),
+]);
+
+const blobResultSchema = z.union([
+  z.object({ data: blobMetadataSchema, error: z.null() }).strict(),
+  z.object({ data: z.null(), error: blobErrorSchema }).strict(),
+]);
+
+const unknownBody: unknown = await response.json();
+const body = blobResultSchema.parse(unknownBody);
+```
+
+This validation proves the received runtime value matches the schema. It does not prove that the server's TypeScript handler was compiled against the same schema.
+
+## Share static route types with `hc`
+
+Hono's client can derive request and response types from the exported route type.
+
+```typescript
+import { hc } from "hono/client";
+import type { AppType } from "./server";
+
+const client = hc<AppType>("https://api.example.com");
+const response = await client.api.blobs[":sha256"].$get({
+  param: { sha256 },
+});
+const body = await response.json();
+```
+
+This gives producer and consumer a shared compile-time contract when they use the same `AppType`. It does not validate the bytes at runtime; deployments can drift, intermediaries can alter responses, and an unchecked server implementation can still violate a type. Use the runtime schema as well when the boundary is untrusted or independently deployed.
+
+Conversely, a schema-validated `fetch` client can be runtime-safe without importing `AppType`. Choose each guarantee explicitly instead of treating JSON, validation, or `hc` as a substitute for the others.

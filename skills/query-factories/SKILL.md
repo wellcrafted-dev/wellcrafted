@@ -1,203 +1,98 @@
 ---
 name: query-factories
-description: TanStack Query integration with wellcrafted's createQueryFactories, defineQuery, and defineMutation. Use when setting up queries/mutations that return Result types or using reactive options and imperative helpers.
+description: Adapt wellcrafted Results to TanStack Query through direct options adapters or QueryClient-bound factories.
 ---
 
-# Query Factories
+# TanStack Query adapters
 
-```typescript
-import { createQueryFactories } from 'wellcrafted/query';
+Install the tested type prerequisite explicitly; wellcrafted does not currently declare it for consumers.
+
+```bash
+bun add @tanstack/query-core@5.82.0
 ```
 
-## Setup
+```typescript
+import {
+  createQueryFactories,
+  defineKeys,
+  resultMutationOptions,
+  resultQueryOptions,
+} from "wellcrafted/query";
+```
 
-`createQueryFactories` takes a TanStack `QueryClient` and returns `defineQuery` and `defineMutation`:
+## Choose one family
+
+Use `resultQueryOptions` and `resultMutationOptions` when a framework hook owns execution:
 
 ```typescript
-import { QueryClient } from '@tanstack/react-query'; // or @tanstack/svelte-query
-import { createQueryFactories } from 'wellcrafted/query';
+const profileOptions = resultQueryOptions({
+  queryKey: ["account-profile", accountId],
+  queryFn: () => accountService.getProfile(accountId),
+});
 
-const queryClient = new QueryClient();
+const signOutOptions = resultMutationOptions({
+  mutationKey: ["account", "signOut"],
+  mutationFn: () => accountService.signOut(),
+});
+```
+
+Ok resolves into TanStack's data channel. Err throws its contained value into TanStack's error channel.
+
+Options are snapshots. In reactive frameworks, construct them inside the hook's reactive accessor when keys, `enabled`, or other options depend on reactive state.
+
+```typescript
+const profile = createQuery(() =>
+  resultQueryOptions({
+    queryKey: ["account-profile", accountId],
+    queryFn: () => accountService.getProfile(accountId),
+    enabled: accountId !== null,
+  }),
+);
+```
+
+Use `createQueryFactories(queryClient)` when the same client should own options and imperative handles:
+
+```typescript
 const { defineQuery, defineMutation } = createQueryFactories(queryClient);
-```
 
-## defineQuery
+const profile = defineQuery({
+  queryKey: ["account-profile", accountId],
+  queryFn: () => accountService.getProfile(accountId),
+});
 
-Define a query whose `queryFn` returns a `Result<T, E>`:
-
-```typescript
-import { Ok, Err, type Result } from 'wellcrafted/result';
-
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  queryFn: async (): Promise<Result<User, UserError>> => {
-    const { data, error } = await getUser(userId);
-    if (error) {
-      return Err({
-        title: 'Failed to load user',
-        description: error.message,
-      });
-    }
-    return Ok(data);
-  },
+const signOut = defineMutation({
+  mutationKey: ["account", "signOut"],
+  mutationFn: () => accountService.signOut(),
 });
 ```
 
-## defineMutation
+The query shape is `{ options, fetch(), ensure() }` and is not callable. `fetch()` uses TanStack's freshness policy; `ensure()` prefers existing cache data.
 
-Same pattern for mutations:
+The mutation is callable and has `.options`:
 
 ```typescript
-const createPost = defineMutation({
-  mutationKey: ['posts', 'create'],
-  mutationFn: async (input: { title: string; body: string }) => {
-    const { data, error } = await postService.create(input);
-    if (error) {
-      return Err({
-        title: 'Failed to create post',
-        description: error.message,
-      });
-    }
-    return Ok(data);
-  },
+await signOut(undefined);
+signOut.options;
+```
+
+There is no `.execute()` method.
+
+## Keep cache work on QueryClient
+
+Call `invalidateQueries`, `setQueryData`, `getQueryData`, prefetching, and other cache methods directly on the owning `QueryClient`. wellcrafted adapts Result-returning functions; it does not replace TanStack's cache API.
+
+Thrown values caught by bound helpers are cast to the configured error type, not runtime-validated.
+
+## Define keys
+
+```typescript
+const accountKeys = defineKeys({
+  all: ["accounts"],
+  detail: (accountId: string) => ["accounts", accountId],
+  exactDetail: (accountId: string) => ["accounts", accountId] as const,
 });
 ```
 
-`mutationKey` is required on `defineMutation` and `resultMutationOptions`, just as `queryKey` is required on `defineQuery`.
+Static entries preserve readonly literal tuples. Factory entries preserve tuple shape but widen literal positions unless the return uses `as const`.
 
-## Reactive Options and Imperative Helpers
-
-Every query and mutation provides reactive options plus imperative helpers.
-
-### Reactive: `.options`
-
-Pass `.options` to your framework's query hook. It's a static object — wrap it in an accessor for Svelte, pass directly in React.
-
-```typescript
-// React
-import { useQuery, useMutation } from '@tanstack/react-query';
-
-const query = useQuery(userQuery.options);
-const mutation = useMutation(createPost.options);
-```
-
-```typescript
-// Svelte
-import { createQuery, createMutation } from '@tanstack/svelte-query';
-
-const query = createQuery(() => userQuery.options);
-const mutation = createMutation(() => createPost.options);
-```
-
-### Imperative: `.fetch()`, `.ensure()`, and callable mutations
-
-Use in event handlers and workflows without reactive overhead:
-
-```typescript
-// Queries use .fetch() for TanStack freshness policy
-const fetched = await userQuery.fetch();
-
-// Queries use .ensure() for cache-first reads
-const ensured = await userQuery.ensure();
-
-// Mutations are callable
-const created = await createPost({
-  title: 'Hello',
-  body: 'World',
-});
-```
-
-### When to use each
-
-| `.options` (reactive) | `.fetch()`, `.ensure()`, callable mutation (imperative) |
-| --- | --- |
-| Component data display | Event handlers |
-| Loading/error states | Sequential workflows |
-| Auto-refetch | One-time operations |
-| Cache synchronization | Outside component context |
-
-## Error Transformation
-
-Transform service errors into user-facing errors at the query boundary. Service errors describe what went wrong technically; user-facing errors describe what to show the user.
-
-```typescript
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  queryFn: async () => {
-    // Service returns technical error (UserError.NotFound, UserError.FetchFailed)
-    const { data, error } = await getUser(userId);
-
-    if (error) {
-      // Transform to user-facing error
-      return Err({
-        title: 'Failed to load user',
-        description: error.message,
-      });
-    }
-
-    return Ok(data);
-  },
-});
-```
-
-### Anti-pattern: returning raw service errors
-
-```typescript
-// WRONG — raw service errors leak into the UI layer
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  queryFn: () => getUser(userId), // Raw UserError reaches components
-});
-
-// CORRECT — transform at the boundary
-const userQuery = defineQuery({
-  queryKey: ['users', userId],
-  queryFn: async () => {
-    const { data, error } = await getUser(userId);
-    if (error) return Err({ title: 'Failed to load user', description: error.message });
-    return Ok(data);
-  },
-});
-```
-
-## Query Key Organization
-
-Organize keys hierarchically for targeted cache invalidation:
-
-```typescript
-const userKeys = {
-  all: ['users'] as const,
-  lists: ['users', 'list'] as const,
-  byId: (id: string) => ['users', id] as const,
-  posts: (id: string) => ['users', id, 'posts'] as const,
-};
-```
-
-Invalidating `['users']` clears everything; invalidating `['users', id]` clears just that user.
-
-## Cache Management
-
-Optimistic updates for instant UI feedback:
-
-```typescript
-const updateUser = defineMutation({
-  mutationKey: ['users', 'update'],
-  mutationFn: async (input: { userId: string; name: string }) => {
-    const { data, error } = await userService.update(input);
-    if (error) return Err({ title: 'Failed to update user', description: error.message });
-
-    // Optimistic cache update
-    queryClient.setQueryData<User>(
-      userKeys.byId(input.userId),
-      (old) => old ? { ...old, name: input.name } : old,
-    );
-
-    // Invalidate to refetch fresh data in background
-    queryClient.invalidateQueries({ queryKey: userKeys.all });
-
-    return Ok(data);
-  },
-});
-```
-
-See also: `result-types` skill for the Result type pattern. `define-errors` skill for creating error variants.
+`examples/tanstack-query.ts` is the canonical checked example. Use the public integration guide for the attributed reactive account pattern and the query reference for exact contracts.

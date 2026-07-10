@@ -602,10 +602,20 @@ Verification on 2026-07-10:
 
 ### Wave 6: Rebuild integrations and agent skills
 
-- [ ] Rewrite TanStack Query around the current two-family model and `defineKeys`.
-- [ ] Put official testing usage in `reference/testing`; do not create a duplicate testing integration page.
-- [ ] Rewrite Hono as the approved HTTP boundary guide with distinct shape, runtime-validation, and static-typing contracts; keep validation focused on brand validators.
-- [ ] Reconcile all five distributable skills against current exports and canonical examples.
+- [x] Rewrite TanStack Query around the current two-family model and `defineKeys`.
+- [x] Put official testing usage in `reference/testing`; do not create a duplicate testing integration page.
+- [x] Rewrite Hono as the approved HTTP boundary guide with distinct shape, runtime-validation, and static-typing contracts; keep validation focused on brand validators.
+- [x] Reconcile all five distributable skills against current exports and canonical examples.
+
+Verification on 2026-07-10:
+
+- Rewrote `docs/integrations/tanstack-query.mdx` around direct options adapters versus `QueryClient`-bound factories, the reactive snapshot rule, current query and mutation handle shapes, `defineKeys`, direct cache ownership, and the explicit tested `@tanstack/query-core@5.82.0` prerequisite. The reactive example is adapted from and attributed to Epicenter's account popover at commit `4d438c0`; no performance or architecture superiority claim remains.
+- Rewrote `docs/integrations/validation-libraries.mdx` as focused runtime-boundary recipes for ArkType, Zod, and Valibot. It keeps `Brand` type-only, puts validation before the single branding assertion, and makes clear that branding changes neither runtime validation nor serialization behavior by itself.
+- Added `docs/integrations/hono.mdx`, adapted from and attributed to Epicenter's blob errors at commit `4d438c0`. It treats conditional JSON shape preservation, full-envelope runtime validation, and Hono `AppType`/`hc` static typing as three independent guarantees and states that none implies the others. HTTP status mapping remains separate from the Result envelope.
+- Audited `docs/reference/testing.mdx` as the sole new testing owner; it already covers both helpers, opposite-branch throws, narrowing, and the `Err(null)` collision, so no duplicate testing integration content was added. The legacy Hono and testing pages remain on disk, and navigation remains unchanged for the cutover and deletion waves.
+- Reconciled all five distributable skills. Result guidance uses exact null guards and current propagation/throwing boundaries; error guidance covers Err wrappers, honest fields, constructor ownership, shallow freeze, and conditional serialization; query guidance covers both families and current handle shapes; brand guidance stays type-only and boundary-focused; patterns is a compact service, propagation, serialization, validation, and UI checklist pointing to canonical examples and public owners. It reuses domain vocabularies when their complete values are JSON-compatible and introduces normalized fields or wire variants only when existing payloads are not boundary-friendly.
+- `bun run format` passed without changing existing files. `bun run typecheck` and `bun test` passed with 158 tests and no failures. `bun run docs:examples` passed its build, strict example typecheck, canonical snippet comparison, and three offline examples.
+- Under Node 24.17.0, `bun run docs:validate` and `bun run docs:links` passed. The focused current Wave 6 claims sweep found no retired APIs, unsupported root imports, unsafe generic error truthiness, serialization absolutes, vanity metrics, reliability claims, performance claims, or uppercase brand uses. `git diff --check` passed.
 
 ### Wave 7: Consolidate decisions
 
