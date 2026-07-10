@@ -1,7 +1,7 @@
 {
 	"name": "wellcrafted",
 	"version": "0.44.0",
-	"description": "Delightful TypeScript patterns for elegant, type-safe applications",
+	"description": "Plain error data and ergonomic Result types for TypeScript applications",
 	"type": "module",
 	"files": [
 		"dist",
@@ -59,21 +59,20 @@
 		"docs:dev": "cd docs && mint dev",
 		"docs:validate": "cd docs && mint validate",
 		"docs:links": "cd docs && mint broken-links",
-		"docs:examples": "bun run build && bun node_modules/typescript/bin/tsc --project examples/tsconfig.json && bun examples/quick-start.ts && bun examples/service-boundary.ts && bun examples/serialization-boundary.ts",
+		"docs:examples": "bun run build && bun node_modules/typescript/bin/tsc --project examples/tsconfig.json && bun scripts/check-quick-start-docs.ts && bun examples/quick-start.ts && bun examples/service-boundary.ts && bun examples/serialization-boundary.ts",
 		"package:smoke": "bun run build && bun scripts/package-smoke.ts",
 		"compat:types": "bun run build && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.bundler.json && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.nodenext.json",
 		"compat:runtime": "bun run build && bun scripts/fixtures/runtime/all-subpaths.mjs"
 	},
 	"keywords": [
 		"typescript",
-		"delightful",
-		"elegant",
-		"type-safe",
-		"well-crafted",
-		"polished",
-		"utilities",
 		"result",
+		"result-types",
 		"error-handling",
+		"typed-errors",
+		"structured-errors",
+		"error-data",
+		"json",
 		"brand-types"
 	],
 	"author": "",

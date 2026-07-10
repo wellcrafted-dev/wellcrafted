@@ -1,0 +1,105 @@
+---
+title: 'Install wellcrafted'
+description: 'Install wellcrafted and choose the supported subpath for your application.'
+icon: 'download'
+---
+
+# Install wellcrafted
+
+Install `wellcrafted` with your application's package manager.
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install wellcrafted
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add wellcrafted
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add wellcrafted
+    ```
+  </Tab>
+  <Tab title="Bun">
+    ```bash
+    bun add wellcrafted
+    ```
+  </Tab>
+</Tabs>
+
+## Import a subpath
+
+wellcrafted has no root export. Importing from `"wellcrafted"` is unsupported; choose the subpath that owns the API you need.
+
+```typescript
+import { defineErrors } from "wellcrafted/error";
+import { Ok, type Result } from "wellcrafted/result";
+```
+
+The package publishes nine subpaths:
+
+| Subpath | Purpose |
+| --- | --- |
+| `wellcrafted/result` | Result values, guards, throwing-boundary helpers, and Result utilities |
+| `wellcrafted/error` | Named error variants and error-message extraction |
+| `wellcrafted/logger` | Composable logging sinks and loggers |
+| `wellcrafted/json` | JSON value types and Result-returning JSON parsing |
+| `wellcrafted/brand` | Compile-time branded values |
+| `wellcrafted/function` | Small function utilities |
+| `wellcrafted/query` | TanStack Query adapters and factories |
+| `wellcrafted/standard-schema` | Standard Schema adaptation |
+| `wellcrafted/testing` | Result assertions for tests |
+
+## Tested configurations
+
+The current consumer fixtures prove these configurations. They are tested configurations, not minimum-version guarantees for every TypeScript or JavaScript runtime.
+
+| Area | Tested configuration |
+| --- | --- |
+| TypeScript | 5.8.3 with `strict: true` and `skipLibCheck: false` |
+| Module resolution | `Bundler` and `NodeNext` |
+| Compiler target and libraries | `ES2024` target with `ESNext` and `DOM` libraries |
+| Bun | 1.3.1 |
+| Node.js | 22.17.0 and 24.4.1 |
+
+wellcrafted is ESM-only. The compatibility fixtures import all nine subpaths from the packed package and exercise runtime-sensitive APIs; they do not establish a broader promise for untested configurations.
+
+## TanStack Query prerequisite
+
+The declarations for `wellcrafted/query` import `@tanstack/query-core`. The current package does not declare that dependency for consumers, so install it explicitly when you use the query subpath. The packed-consumer fixture proves version 5.82.0.
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install wellcrafted @tanstack/query-core@5.82.0
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add wellcrafted @tanstack/query-core@5.82.0
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add wellcrafted @tanstack/query-core@5.82.0
+    ```
+  </Tab>
+  <Tab title="Bun">
+    ```bash
+    bun add wellcrafted @tanstack/query-core@5.82.0
+    ```
+  </Tab>
+</Tabs>
+
+<CardGroup>
+  <Card title="Run the quick start" icon="play" href="/start/quick-start">
+    Define one error vocabulary and handle both Result paths.
+  </Card>
+  <Card title="Contribute to wellcrafted" icon="code-pull-request" href="https://github.com/wellcrafted-dev/wellcrafted/blob/main/CONTRIBUTING.md">
+    Set up the repository with Bun and run its checks.
+  </Card>
+</CardGroup>

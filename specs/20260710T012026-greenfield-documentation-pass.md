@@ -549,10 +549,22 @@ Verification on 2026-07-10:
 
 ### Wave 3: Replace the front door and start path
 
-- [ ] Rewrite README around the approved product sentence and runnable example.
-- [ ] Rewrite site index as navigation, not duplicate positioning.
-- [ ] Create new installation, quick start, and migration paths while leaving their old files on disk and out of the new navigation until cutover.
-- [ ] Add `CONTRIBUTING.md` with Bun, checks, docs workflow, changesets, and PR expectations.
+- [x] Rewrite README around the approved product sentence and runnable example.
+- [x] Rewrite site index as navigation, not duplicate positioning.
+- [x] Create new installation, quick start, and migration paths while leaving their old files on disk and out of the new navigation until cutover.
+- [x] Add `CONTRIBUTING.md` with Bun, checks, docs workflow, changesets, and PR expectations.
+
+Verification on 2026-07-10:
+
+- The README and site index now use the exact approved serialization-first sentence with the JSON-compatibility limitation immediately beside it. Unsupported size, competitor, reliability, broad runtime, and serialization claims were removed from the front door; agent skills remain a short secondary note.
+- `docs/start/installation.mdx` states only the Wave 2-proven TypeScript 5.8.3, Bundler and NodeNext, ES2024 with ESNext and DOM libraries, Bun 1.3.1, and Node 22.17.0 and 24.4.1 configurations. It identifies all nine subpaths, the unsupported root import, ESM-only output, and the explicit tested `@tanstack/query-core@5.82.0` prerequisite without changing package dependency metadata.
+- `docs/start/quick-start.mdx` imports the supported Mint reusable snippet at `docs/snippets/quick-start.mdx`. `scripts/check-quick-start-docs.ts`, run by `docs:examples`, proved that both the snippet and README code fence match the documented region of `examples/quick-start.ts`.
+- `docs/start/migrating-from-try-catch.mdx` teaches a narrow throwing boundary, staged caller migration, a rollback-compatible throwing adapter, and the Effect escape hatch. It keeps JSON shape preservation separate from runtime validation and static typing and links the attributed Epicenter service pattern.
+- The legacy getting-started and migration files remain on disk, and their sidebar routes remain unchanged for the Wave 9 cutover. Only the site name in `docs/docs.json` changed to lowercase `wellcrafted`.
+- `CONTRIBUTING.md` records Bun setup, non-mutating checks, Node 24 Mint usage, canonical-example ownership, the documentation-only changeset rule, the pre-1.0 minor-breaking convention, and focused pull-request expectations. `package.json` now uses a factual description and concrete discovery keywords; no changeset was added because this wave does not change installed runtime behavior or public APIs.
+- `bun run docs:examples` passed, including strict example typechecking, the focused snippet comparison, and all three offline examples. `bun run package:smoke`, `bun run compat:types`, and `bun run compat:runtime` also passed.
+- `bun run lint:check`, `bun run format:check`, `bun run typecheck`, `bun run build`, and `bun test` passed. The test run completed 158 tests with no failures; lint reported only the same 12 pre-existing warnings recorded in Waves 1 and 2.
+- Under Node 24.17.0, `bun run docs:validate` and `bun run docs:links` passed. The public-content claim sweep and `git diff --check` also passed.
 
 ### Wave 4: Build the guide path
 
