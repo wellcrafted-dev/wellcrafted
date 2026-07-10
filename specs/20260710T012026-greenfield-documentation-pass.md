@@ -619,9 +619,19 @@ Verification on 2026-07-10:
 
 ### Wave 7: Consolidate decisions
 
-- [ ] Preserve only durable rationale and honest tradeoffs.
-- [ ] Create consolidated Result, error-contract, tradeoff, and brand decisions while leaving their old source pages on disk until deletion.
-- [ ] Remove unsupported production or marketing claims.
+- [x] Preserve only durable rationale and honest tradeoffs.
+- [x] Create consolidated Result, error-contract, tradeoff, and brand decisions while leaving their old source pages on disk until deletion.
+- [x] Remove unsupported production or marketing claims.
+
+Verification on 2026-07-10:
+
+- Added exactly four rationale owners under `docs/decisions/`: Result shape, error contract, pragmatic tradeoffs, and brand representation. They link to task guides and exact references instead of duplicating API tutorials. Navigation and all legacy decision sources remain unchanged for the later cutover and deletion waves.
+- The Result decision records the exact two shapes, error-side discriminator, direct access and destructuring, `switch` exhaustiveness, `Ok(null)`/`Err(null)` collision, non-null and truthy-error conventions, shallow `isResult`, and error-governed malformed envelopes. It records why an explicit tag, data discrimination, and the reverted `NonNullable` constraint are not current contracts and makes no never-throws claim.
+- The error decision preserves `name` as variant identity, `message` as human text using JavaScript's existing vocabulary, enumerable own structured fields, conditional JSON behavior, exact factory/freeze behavior, the limited Rust enum analogy, and the durable simplification from manual literals through brittle overloads and fluent modes to plain constructor functions. It contains no historical counts, dates, or usage metrics.
+- The tradeoff decision states the cost of explicit propagation and translation and gives a factual choice table for wellcrafted, Effect, and raw exceptions. Effect is an escape hatch when dependency graphs, cancellation/concurrency, resource scopes, scheduling, retries, or automatic propagation are the actual problem; no persona, anecdote, metric, or superiority claim remains.
+- The brand decision records the private unique-symbol nested marker, why flat literal slots collapse under intersection, explicit hierarchy construction, verified assignability across sibling, child, deep, multiple, number, and object cases, the modest role of `true`, and the lack of runtime validation, identity, or serialized marker data.
+- `bun run format` passed without changing existing files. `bun run typecheck` and `bun test` passed with 158 tests and no failures. `bun run docs:examples` passed its build, strict example typecheck, canonical snippet comparison, and three offline examples.
+- Under Node 24.17.0, `bun run docs:validate` and `bun run docs:links` passed. The focused public decision claim sweep found no importer counts, production or reliability claims, performance claims, unsupported serialization promises, historical call-site counts, or uppercase brand uses. `git diff --check` passed.
 
 ### Wave 8: Prove and enable strict content gates
 

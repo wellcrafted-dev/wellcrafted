@@ -1,0 +1,49 @@
+---
+title: Use named plain-object error variants
+description: Why wellcrafted errors use name, message, structured fields, and plain constructor functions.
+---
+
+# Use named plain-object error variants
+
+## Decision
+
+Expected errors are named plain-object variants. `name` identifies the variant for code; `message` is human-readable text following JavaScript's existing `Error` vocabulary. Additional own enumerable fields carry structured context.
+
+```typescript
+const BlobError = defineErrors({
+  NotFound: ({ sha256 }: { sha256: string }) => ({
+    message: "Blob not found.",
+    sha256,
+  }),
+});
+```
+
+The variant constructor must return `message: string`. `name` is reserved and stamped from the configuration key after the body is spread. Each generated factory returns an Err wrapper, with the tagged body under `.error`. The body is `Readonly` in its public type and shallow-frozen at runtime; nested values are not deeply immutable.
+
+Short variant names belong under a descriptive namespace. `BlobError.NotFound` carries both domain and failure meaning without repeating `Error` in every key. Callers branch on `error.name` and structured data, not `instanceof`.
+
+## Why plain objects
+
+Native `Error` puts `name` and `message` on a familiar interface, but those properties are normally non-enumerable and class identity depends on a prototype. JSON does not preserve that prototype, and default serialization does not preserve those non-enumerable fields.
+
+wellcrafted stamps enumerable own fields onto an ordinary object, so compatible data can preserve its shape without reconstructing an error class. This is conditional: `defineErrors` does not enforce JSON-compatible fields. A native cause, function, bigint value, class instance, `undefined`, or cycle can still change or fail across JSON. The qualification belongs beside every serialization claim.
+
+## Rust influence, adapted to TypeScript
+
+Rust's enum-based error patterns supplied a useful mental model: a namespace resembles an enum, keys resemble variants, and each constructor carries associated data plus display text. TypeScript then narrows a union with `switch`, with an optional `never` exhaustiveness check.
+
+The mapping is not one-to-one. TypeScript uses ordinary functions and objects rather than enum layout, macros, ownership, exhaustive `match`, or the `?` operator. The factory returns an Err wrapper because the chosen TypeScript Result container needs an explicit error branch.
+
+## Why the builder was removed
+
+Manual literals repeated reserved fields at every call site. Early factories reduced repetition, but overload-heavy APIs made type extraction brittle. Fluent builders then introduced modes and phantom type-only calls that obscured the underlying operation.
+
+The durable simplification is a plain function:
+
+```typescript
+input => ({ message, ...fields })
+```
+
+`defineErrors` groups those functions, stamps the variant key, freezes the top-level body, and wraps it in Err. Required, optional, static, and computed-message variants are ordinary function signatures rather than builder modes.
+
+For defining a vocabulary, see [Define an error vocabulary](/guides/defining-error-vocabularies). For the exact factory and type exports, see the [Error reference](/reference/error). For boundary limitations, see [Preserve errors across serialization boundaries](/guides/serialization-boundaries).
