@@ -533,10 +533,19 @@ Verification on 2026-07-10:
 
 ### Wave 2: Add examples and isolated package proof
 
-- [ ] Add the four canonical learning examples.
-- [ ] Add strict example typechecking and runnable offline examples.
-- [ ] Add isolated packed-consumer, compatibility-type, and runtime fixtures.
-- [ ] Wire only checks that already pass into CI.
+- [x] Add the four canonical learning examples.
+- [x] Add strict example typechecking and runnable offline examples.
+- [x] Add isolated packed-consumer, compatibility-type, and runtime fixtures.
+- [x] Wire only checks that already pass into CI.
+
+Verification on 2026-07-10:
+
+- `bun run docs:examples` built the package, typechecked all four examples with TypeScript 5.8.3, `strict: true`, and `skipLibCheck: false`, then ran the quick-start, service-boundary, and serialization-boundary examples offline. The TanStack Query example is typechecked but intentionally not executed as part of the learning path.
+- `bun run compat:types` passed against all nine subpaths under both Bundler and NodeNext resolution. The fixture uses the ES2024 target with the ESNext and DOM libraries and keeps library checking enabled. This is compatibility evidence for the later installation decision, not yet a broader public support promise.
+- `bun run package:smoke` packed the built package with `bun pm pack`, installed it in a temporary consumer outside the repository package boundary, and passed strict Bundler and NodeNext consumer typechecks. It confirmed that `wellcrafted/query` fails typechecking without `@tanstack/query-core`, then passed with the explicit pinned `@tanstack/query-core@5.82.0` prerequisite. Its runtime fixture imported all nine subpaths, invoked `partitionResults` and `composeSinks`, and confirmed that the unsupported root import rejects.
+- The runtime fixture passed under Bun 1.3.1, Node 22.17.0, and Node 24.4.1. CI now reruns the Bun fixture in the main job and the same fixture in Node 22 and Node 24 matrix jobs; those maintained-major jobs do not expand the package's undeclared metadata by themselves.
+- The main CI job now runs `docs:examples`, `package:smoke`, `compat:types`, and `compat:runtime` after the existing build and test gates. The Bun runtime used there is pinned to 1.3.1.
+- The final local pass also completed the frozen install, formatting check, typecheck, build, 158-test suite, Mint validation, Mint link check, and `git diff --check`. Lint exited successfully with the same 12 pre-existing warnings recorded in Wave 1 and no new warning from Wave 2 files.
 
 ### Wave 3: Replace the front door and start path
 

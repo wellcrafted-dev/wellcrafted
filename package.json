@@ -58,7 +58,11 @@
 		"release": "bun run build && changeset version && changeset publish",
 		"docs:dev": "cd docs && mint dev",
 		"docs:validate": "cd docs && mint validate",
-		"docs:links": "cd docs && mint broken-links"
+		"docs:links": "cd docs && mint broken-links",
+		"docs:examples": "bun run build && bun node_modules/typescript/bin/tsc --project examples/tsconfig.json && bun examples/quick-start.ts && bun examples/service-boundary.ts && bun examples/serialization-boundary.ts",
+		"package:smoke": "bun run build && bun scripts/package-smoke.ts",
+		"compat:types": "bun run build && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.bundler.json && bun node_modules/typescript/bin/tsc --project scripts/fixtures/compatibility/tsconfig.nodenext.json",
+		"compat:runtime": "bun run build && bun scripts/fixtures/runtime/all-subpaths.mjs"
 	},
 	"keywords": [
 		"typescript",
