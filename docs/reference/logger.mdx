@@ -1,0 +1,89 @@
+---
+title: Logger reference
+description: Current runtime and type exports from wellcrafted/logger.
+---
+
+# `wellcrafted/logger`
+
+{/* docs:export subpath="wellcrafted/logger" kind="value" symbol="consoleSink" */}
+{/* docs:export subpath="wellcrafted/logger" kind="value" symbol="createLogger" */}
+{/* docs:export subpath="wellcrafted/logger" kind="value" symbol="memorySink" */}
+{/* docs:export subpath="wellcrafted/logger" kind="value" symbol="composeSinks" */}
+{/* docs:export subpath="wellcrafted/logger" kind="value" symbol="tapErr" */}
+{/* docs:export subpath="wellcrafted/logger" kind="type" symbol="LogEvent" */}
+{/* docs:export subpath="wellcrafted/logger" kind="type" symbol="LogLevel" */}
+{/* docs:export subpath="wellcrafted/logger" kind="type" symbol="LogSink" */}
+{/* docs:export subpath="wellcrafted/logger" kind="type" symbol="Logger" */}
+{/* docs:export subpath="wellcrafted/logger" kind="type" symbol="LoggableError" */}
+
+This subpath provides dependency-injected structured logging around tagged errors.
+
+```typescript
+import { createLogger, memorySink } from "wellcrafted/logger";
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `consoleSink` | Value | Sends each event to the matching `console[event.level]` method with a source prefix. |
+| `createLogger` | Value | Creates a source-bound logger using an injected sink or `consoleSink`. |
+| `memorySink` | Value | Returns an isolated `{ sink, events }` pair for tests. |
+| `composeSinks` | Value | Fans events and async disposal out to sinks sequentially. |
+| `tapErr` | Value | Re-export of the Result error-tap helper. |
+| `LogEvent` | Type | Normalized `{ ts, level, source, message, data? }` event. |
+| `LogLevel` | Type | `"trace" \| "debug" \| "info" \| "warn" \| "error"`. |
+| `LogSink` | Type | Event callback intersected with `Partial<AsyncDisposable>`. |
+| `Logger` | Type | Five logging methods with typed warn/error inputs. |
+| `LoggableError` | Type | A raw tagged error or its Err wrapper. |
+
+`LogSink` and `composeSinks` use `AsyncDisposable` and `Symbol.asyncDispose`. Consumer type libraries and runtimes must support those names; see the tested matrix in [installation](/start/installation).
+
+## Events and loggers
+
+```typescript
+type LogEvent = {
+  ts: number;
+  level: LogLevel;
+  source: string;
+  message: string;
+  data?: unknown;
+};
+
+function createLogger(source: string, sink?: LogSink): Logger;
+```
+
+`createLogger` timestamps events with wall-clock epoch milliseconds from `Date.now()`. The value is JSON-friendly but not monotonic.
+
+`warn` and `error` accept a raw `{ name, message, ...fields }` error or the Err wrapper returned by `defineErrors`; native `Error` is structurally accepted because it has string `name` and `message` fields. These methods copy the error message into the event and put the tagged error in `data`. `trace`, `debug`, and `info` accept free-form message and data arguments.
+
+Sink exceptions are not caught. If a sink throws, the logger call throws.
+
+## Built-in sinks
+
+```typescript
+const consoleSink: (event: LogEvent) => void;
+
+function memorySink(): {
+  sink: LogSink;
+  events: LogEvent[];
+};
+```
+
+`consoleSink` delegates to the matching console method. stdout and stderr routing is runtime-defined; use a custom sink when a CLI needs an exact stream contract.
+
+`memorySink` stores the same event objects it receives in a mutable array. Each call creates independent state.
+
+## Composition and taps
+
+```typescript
+function composeSinks(...sinks: LogSink[]): LogSink;
+
+function tapErr<T, E>(
+  logFn: (error: E) => void,
+): (result: Result<T, E>) => Result<T, E>;
+```
+
+`composeSinks` emits in argument order. If one sink throws, later sinks do not run. Its async-dispose method also awaits members in order and stops if one disposal throws. The runtime return value always has `[Symbol.asyncDispose]`, but the public `LogSink` return type exposes cleanup as optional, so callers may need to narrow or use optional access.
+
+`tapErr` calls the supplied method only for Err and returns the same Result reference. A throwing logger method escapes.

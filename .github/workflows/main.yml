@@ -10,6 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
 
       # Guard against `"wellcrafted": major` changesets while still in 0.x.
       # wellcrafted@1.0.0 was published and unpublished on 2025-07-17; npm
@@ -38,7 +40,54 @@ jobs:
           echo "No pre-1.0 major changesets found."
 
       - run: bun install --frozen-lockfile
-      - run: bun run lint
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - run: bun run lint:check
+      - run: bun run format:check
       - run: bun run typecheck
       - run: bun run build
       - run: bun test
+      - run: bun run docs:examples
+      - run: bun run docs:exports
+      - run: bun run docs:claims
+      - run: bun run docs:snippets
+      - run: bun run package:smoke
+      - run: bun run compat:types
+      - run: bun run compat:runtime
+
+  runtime:
+    name: Runtime (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          package-manager-cache: false
+      - run: bun install --frozen-lockfile
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - run: bun run build
+      - run: node scripts/fixtures/runtime/all-subpaths.mjs
+
+  docs:
+    name: Docs (Node 24)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - run: bun run docs:validate
+      - run: bun run docs:links

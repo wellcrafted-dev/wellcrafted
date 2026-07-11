@@ -1,0 +1,40 @@
+---
+title: Keep propagation explicit and know when to stop
+description: Where wellcrafted's ordinary TypeScript model fits, and when an effect system or exception is the better contract.
+---
+
+# Keep propagation explicit and know when to stop
+
+## Decision
+
+wellcrafted keeps expected failures as data and propagation as visible TypeScript. Functions accept ordinary parameters, return Results, use `async` and `await`, and translate errors with early returns.
+
+```typescript
+const userResult = await users.get(userId);
+if (userResult.error !== null) return userResult;
+
+const postsResult = await posts.list(userResult.data.id);
+if (postsResult.error !== null) return postsResult;
+
+return Ok({ user: userResult.data, posts: postsResult.data });
+```
+
+That visibility is both the benefit and the cost. wellcrafted does not add a `?` operator, automatic Result chains, a dependency environment, fibers, structured concurrency, cancellation, resource scopes, retry scheduling, or automatic error conversion. Applications own propagation and translation at each boundary.
+
+## Choose the contract by the job
+
+| Job | Prefer |
+| --- | --- |
+| Expected failures as plain data, ordinary function parameters, `async` workflows, a few explicit early returns, or adapters at HTTP/query/UI boundaries | wellcrafted |
+| Typed dependency graphs, coordinated cancellation or concurrency, scoped resources, scheduled retries, or automatic propagation across many layers | Effect or another effect system |
+| Programmer bugs, violated invariants, or integration with an external API that explicitly expects throwing control flow | Raw exceptions or a deliberate throwing adapter |
+
+Results are not a rule that every thrown value must disappear. `trySync` and `tryAsync` convert narrow external operations into expected domain failures. In the other direction, `unwrap`, `resolve`, testing assertions, and query adapters deliberately throw because their consumers use throwing contracts.
+
+## Stopping rule
+
+Stop adding manual Result plumbing when the application repeatedly needs capabilities outside this model. Warning signs include the same error union threaded through many unrelated layers, hand-built dependency environments, coordinated cancellation across concurrent tasks, resource lifetime protocols, or repeated retry and scheduling machinery.
+
+At that point, adopting Effect is an escape hatch, not a failure and not a claim that either tool is universally superior. Choose the model that owns the complexity already present in the application.
+
+For the small-model workflow, see [Put Results at service boundaries](/guides/service-boundaries) and [Compose Result-returning functions](/guides/composing-results). For exact throwing edges, see the [Result reference](/reference/result).

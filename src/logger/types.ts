@@ -13,9 +13,9 @@ export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 /**
  * The normalized event every sink receives.
  *
- * - `ts` is epoch millis (not a `Date`) — cheap to create, easy to serialize,
- *   trivially monotonic for ordering. Sinks that want ISO-8601 on the wire
- *   convert at serialization time.
+ * - `ts` is wall-clock epoch millis from `Date.now()` (not a `Date`) — cheap
+ *   to create and easy to serialize. It is not a monotonic clock. Sinks that
+ *   want ISO-8601 on the wire convert at serialization time.
  * - `source` is the logger's namespace, stamped once at `createLogger` and
  *   carried on every event. Analogous to `tracing`'s `target`.
  * - `message` is human text. For `warn`/`error` it's copied from the

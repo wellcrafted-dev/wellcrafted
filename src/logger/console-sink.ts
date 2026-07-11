@@ -19,17 +19,9 @@ import type { LogSink } from "./types.js";
  *
  * No dispose handler — `console` is not a resource.
  *
- * ### CLI authors: stream routing
- *
- * `console[level]` routes by level, not uniformly to stdout:
- * - `console.log` (not used here) is the only method that writes stdout.
- * - `console.info`, `console.debug`, `console.warn`, `console.error`,
- *   `console.trace` all write **stderr** in Node/Bun.
- *
- * For a CLI that emits structured program output on stdout and diagnostics
- * on stderr, this default is correct — every logger event goes to stderr.
- * Authors who expect `log.info` to print to stdout will be surprised; write
- * a custom sink that routes to `process.stdout` if that's the requirement.
+ * Stream routing is runtime-defined. The sink delegates each level to the
+ * matching `console` method and makes no stdout/stderr guarantee. CLI authors
+ * who need an exact stream contract should provide a custom sink.
  */
 export const consoleSink = ((event) => {
 	const prefix = `[${event.source}]`;

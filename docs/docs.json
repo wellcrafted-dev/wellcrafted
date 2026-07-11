@@ -1,7 +1,7 @@
 {
 	"$schema": "https://mintlify.com/docs.json",
 	"theme": "maple",
-	"name": "WellCrafted",
+	"name": "wellcrafted",
 	"colors": {
 		"primary": "#3B82F6",
 		"light": "#60A5FA",
@@ -12,65 +12,58 @@
 		"source": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 	},
 	"favicon": "/favicon.svg",
-	"logo": {
-		"light": "/logo/light.svg",
-		"dark": "/logo/dark.svg"
-	},
 	"navigation": {
 		"tabs": [
 			{
 				"tab": "Documentation",
 				"groups": [
 					{
-						"group": "\ud83d\ude80 Getting Started",
+						"group": "Getting started",
 						"pages": [
 							"index",
-							"getting-started/installation",
-							"getting-started/quick-start"
+							"start/installation",
+							"start/quick-start",
+							"start/migrating-from-try-catch"
 						]
 					},
 					{
-						"group": "\u26a1 Core",
+						"group": "Guides",
 						"pages": [
-							"core/result-pattern",
-							"core/error-system",
-							"core/brand-types"
+							"guides/defining-error-vocabularies",
+							"guides/composing-results",
+							"guides/service-boundaries",
+							"guides/serialization-boundaries"
 						]
 					},
 					{
-						"group": "\ud83d\udee0\ufe0f Patterns",
+						"group": "Reference",
 						"pages": [
-							"patterns/real-world",
-							"patterns/optional-keys",
-							"patterns/service-layer"
+							"reference/result",
+							"reference/error",
+							"reference/logger",
+							"reference/json",
+							"reference/brand",
+							"reference/function",
+							"reference/query",
+							"reference/standard-schema",
+							"reference/testing"
 						]
 					},
 					{
-						"group": "\ud83d\udd0c Integrations",
+						"group": "Integrations",
 						"pages": [
-							"integrations/validation-libraries",
 							"integrations/tanstack-query",
-							"integrations/hono-serialization",
-							"integrations/testing"
+							"integrations/validation-libraries",
+							"integrations/hono"
 						]
 					},
 					{
-						"group": "\ud83d\udcad Philosophy",
+						"group": "Decisions",
 						"pages": [
-							"philosophy/design-principles",
-							"philosophy/why-name-and-message",
-							"philosophy/err-null-is-ok-null",
-							"philosophy/rust-inspiration",
-							"philosophy/error-api-evolution",
-							"philosophy/developer-experience",
-							"philosophy/production-reliability",
-							"philosophy/brand-implementation"
-						]
-					},
-					{
-						"group": "\ud83d\udd04 Migration",
-						"pages": [
-							"migration/from-try-catch"
+							"decisions/result-shape",
+							"decisions/error-contract",
+							"decisions/brand-representation",
+							"decisions/pragmatic-tradeoffs"
 						]
 					}
 				]

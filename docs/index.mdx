@@ -1,91 +1,50 @@
 ---
 title: wellcrafted
-description: 'Tagged errors and Result types as plain objects. Under 2KB, zero dependencies.'
+description: 'Plain error data and ergonomic Result types for TypeScript applications.'
 ---
-
-import { Card, CardGroup } from '@mintlify/components'
 
 # wellcrafted
 
-Tagged errors and Result types as plain objects. Under 2KB, zero dependencies.
+wellcrafted defines expected errors as plain, boundary-friendly data that can move through JSON, HTTP, workers, IPC, logs, and UI when every field is JSON-compatible. Its familiar `{ data, error }` Result shape makes that data ergonomic to return and handle in ordinary TypeScript.
 
-wellcrafted gives you a Rust-inspired `Result` type and a `defineErrors` helper that puts the errors a function can return into its signature, instead of hiding them behind `throw`. The errors are plain frozen objects, so they survive `JSON.stringify`, a Web Worker, or an IPC boundary intact.
+`defineErrors` does not type-enforce JSON-compatible fields, and arbitrary fields do not serialize perfectly. Runtime validation and end-to-end static typing are separate boundary concerns.
 
-If you just want the fast tour, the [README](https://github.com/wellcrafted-dev/wellcrafted) covers what, why, and how in one screen. These pages go deeper.
+## Start here
 
 <CardGroup>
-  <Card title="Quick Start" icon="rocket" href="/getting-started/quick-start">
-    The essential patterns, in five minutes
+  <Card title="Install wellcrafted" icon="download" href="/start/installation">
+    Choose a package subpath and check the tested compiler and runtime matrix.
   </Card>
-  <Card title="Result Pattern" icon="code-branch" href="/core/result-pattern">
-    A deep dive into the Result type
+  <Card title="Run the quick start" icon="play" href="/start/quick-start">
+    Define one expected failure and handle both Result paths.
   </Card>
-  <Card title="Examples" icon="code" href="/patterns/real-world">
-    Real-world implementations
+  <Card title="Migrate from try/catch" icon="arrows-rotate" href="/start/migrating-from-try-catch">
+    Introduce Results one throwing boundary at a time.
   </Card>
 </CardGroup>
 
-## The problem it solves
-
-Nothing in this signature tells you what can go wrong:
-
-```typescript
-// Which of these throws, and with what?
-async function saveUser(user: User): Promise<void> {
-  await validate(user);
-  await checkPermissions();
-  await database.save(user);
-}
-```
-
-With a `Result` return type, every failure is in the type, and the caller has to deal with it:
-
-```typescript
-async function saveUser(
-  user: User,
-): Promise<Result<void, ValidationError | AuthError | DatabaseError>> {
-  const validation = await validate(user);
-  if (validation.error) return validation;
-
-  const auth = await checkPermissions();
-  if (auth.error) return auth;
-
-  return database.save(user);
-}
-```
-
-The core is about fifty lines of code you can read in one sitting. There is no runtime, no generators, and no pipe operators: just `{ data, error }`, `async/await`, and `switch`.
-
-## The primitives
+## Continue by task
 
 <CardGroup>
-  <Card title="Result Type" icon="shield-check" href="/core/result-pattern">
-    Explicit success and failure states you check with `{ data, error }`
+  <Card title="Define an error vocabulary" icon="tags" href="/guides/defining-error-vocabularies">
+    Design named variants and deliberate boundary-friendly fields.
   </Card>
-  <Card title="Tagged Errors" icon="tags" href="/core/error-system">
-    `defineErrors` variants: structured, serializable, switchable on `name`
+  <Card title="Compose Result-returning functions" icon="code-branch" href="/guides/composing-results">
+    Propagate success and expected failure with ordinary TypeScript control flow.
   </Card>
-  <Card title="Brand Types" icon="fingerprint" href="/core/brand-types">
-    Distinct types from primitives, caught at compile time
+  <Card title="Put Results at service boundaries" icon="layer-group" href="/guides/service-boundaries">
+    Classify infrastructure failures into application-owned error data.
   </Card>
-</CardGroup>
-
-## Why it works this way
-
-`defineErrors` is modeled on Rust's [thiserror](https://docs.rs/thiserror): name the handful of things that can go wrong in a domain, up front, as data. The rest of the design follows from picking shapes you already know (`{ data, error }` from Supabase and SvelteKit) over inventing new ones.
-
-Read more on the [design principles](/philosophy/design-principles), the [Rust inspiration](/philosophy/rust-inspiration) behind `defineErrors`, and why we lean on [developer experience](/philosophy/developer-experience) over machinery.
-
-## Going further
-
-<CardGroup>
-  <Card title="Service Architecture" icon="layer-group" href="/patterns/service-layer">
-    Layered services that each own their error vocabulary
+  <Card title="Preserve errors across boundaries" icon="arrow-right-arrow-left" href="/guides/serialization-boundaries">
+    Keep JSON shape, runtime validation, and static typing as separate guarantees.
   </Card>
-  <Card title="TanStack Query" icon="plug" href="/integrations/tanstack-query">
-    Result-returning queries and mutations, reactive or imperative
+  <Card title="Use TanStack Query" icon="plug" href="/integrations/tanstack-query">
+    Adapt Result-returning functions to TanStack's throwing contract.
   </Card>
-  <Card title="Migrating from try/catch" icon="arrows-rotate" href="/migration/from-try-catch">
-    Adopt it one function at a time
+  <Card title="Validate branded values" icon="shield-check" href="/integrations/validation-libraries">
+    Combine compile-time brands with ArkType, Zod, or Valibot validation.
+  </Card>
+  <Card title="Read the repository examples" icon="code" href="https://github.com/wellcrafted-dev/wellcrafted/tree/main/examples">
+    Inspect the checked quick-start, service, serialization, and query scenarios.
   </Card>
 </CardGroup>

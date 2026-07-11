@@ -1,0 +1,55 @@
+---
+title: Represent brands as nested markers
+description: Why wellcrafted uses a private unique symbol with nested marker keys for composable branded types.
+---
+
+# Represent brands as nested markers
+
+## Decision
+
+`Brand<T>` is a type-only marker built from a private unique symbol and a nested key map.
+
+```typescript
+declare const brand: unique symbol;
+
+type Brand<T extends string> = {
+  [brand]: { [K in T]: true };
+};
+```
+
+No marker exists at runtime. The representation affects TypeScript assignability only.
+
+## Why the marker is nested
+
+A flat literal slot does not compose:
+
+```typescript
+type FlatBrand<T extends string> = { [brand]: T };
+
+type A = string & FlatBrand<"A">;
+type B = A & FlatBrand<"B">;
+// The shared slot requires "A" & "B", which collapses to never.
+```
+
+With nested keys, intersections accumulate properties instead of intersecting incompatible literal values.
+
+```typescript
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ConfigPath = AbsolutePath & Brand<"ConfigPath">;
+```
+
+`ConfigPath` includes the `AbsolutePath` marker through the explicit intersection, so a child is assignable to its parent while the parent is not assignable to the child. Sibling markers remain distinct. The same structure supports multiple markers, deep hierarchies, and branded string, number, or object bases.
+
+The hierarchy is not inferred from names. `string & Brand<"ConfigPath">` alone is not a child of `AbsolutePath`; the type must explicitly include `AbsolutePath`.
+
+## Why `true`
+
+The nested value only records marker presence. `true` is a modest, readable presence value. It is not uniquely optimal; another compatible nested sentinel could provide the same assignability behavior.
+
+## Runtime limits
+
+A type assertion can lie. `value as UserId` performs no validation, and the private marker provides no runtime identity or `instanceof` behavior. Constructors and schemas must establish any runtime invariant before returning a branded value.
+
+Serialization carries only the base runtime value. A branded string is still a string in JSON, and a receiver must validate and brand it again.
+
+For constructors and assignability, see the [Brand reference](/reference/brand). For ArkType, Zod, and Valibot boundary recipes, see [Validate branded values](/integrations/validation-libraries).

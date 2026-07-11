@@ -1,0 +1,66 @@
+---
+title: Keep the data and error Result shape
+description: Why wellcrafted keeps its familiar Result shape, including its null collision and error conventions.
+---
+
+# Keep the data and error Result shape
+
+## Decision
+
+wellcrafted keeps these two Result shapes:
+
+```typescript
+type Ok<T> = { data: T; error: null };
+type Err<E> = { data: null; error: E };
+```
+
+The error field is the discriminator. `error === null` means Ok; `error !== null` means Err. This supports direct property access and familiar destructuring while keeping propagation in ordinary TypeScript control flow.
+
+```typescript
+const result = await loadUser(userId);
+if (result.error !== null) return result;
+
+return Ok(result.data.name);
+```
+
+Tagged error unions narrow further through `switch`. Use a `never` check when the caller needs exhaustiveness.
+
+```typescript
+function handle(error: UserError) {
+  switch (error.name) {
+    case "NotFound":
+      return showMissing(error.userId);
+    case "ReadFailed":
+      return showReadFailure(error.message);
+    default:
+      error satisfies never;
+  }
+}
+```
+
+## The structural limit
+
+`Ok(null)` is a valid success, commonly representing an absent value that is not itself an error. That choice creates one hard limit:
+
+```typescript
+Ok(null);  // { data: null, error: null }
+Err(null); // { data: null, error: null }
+```
+
+The two values are structurally identical. No runtime guard can recover whether the author intended success or failure. `data` cannot become the discriminator without breaking `Ok(null)`.
+
+The convention is therefore to keep error values non-null and meaningful. Use `error !== null` or `isErr`; those checks still recognize other falsy values permitted by `E`, including `0`, `false`, `""`, `undefined`, and `NaN`. A shorter truthiness convention—`if (error)`—is safe only when an application separately guarantees truthy object errors. The API enforces neither convention.
+
+`isResult` is intentionally shallow. It checks for a non-null object with `data` and `error` keys, not the payloads. If both fields are populated, the non-null error field governs and the guards classify the value as Err.
+
+## Rejected alternatives
+
+Adding an explicit status or variant tag would distinguish `Ok(null)` from `Err(null)`, but it would change the public shape rather than document it. That requires a separate API decision.
+
+Discriminating on `data` was rejected because successful null data is useful and already supported.
+
+Constraining `E` with `NonNullable` was tried and reverted. It blocks direct null literals, but it cannot prevent unchecked values or dishonest casts from producing null at runtime. It also makes `catch (error: unknown)` boundaries awkward and encourages casts that silence the constraint without enforcing the invariant.
+
+This decision does not make a never-throws promise. `unwrap`, `resolve`, testing assertions, and query adapters deliberately enter throwing contracts.
+
+For usage, see [Compose Result-returning functions](/guides/composing-results). For exact exports and guard behavior, see the [Result reference](/reference/result).

@@ -1,288 +1,88 @@
 ---
 name: result-types
-description: Working with Result types, Ok, Err, trySync, tryAsync, and utility functions from wellcrafted. Use when wrapping unsafe code, handling errors with Results, or destructuring { data, error } responses.
+description: Use wellcrafted Result values, exact guards, throwing boundaries, recovery, and small Result utilities.
 ---
 
-# Result Types
+# Result types
 
 ```typescript
-import { Ok, Err, trySync, tryAsync, type Result } from 'wellcrafted/result';
+import {
+  Err,
+  Ok,
+  isErr,
+  isOk,
+  partitionResults,
+  resolve,
+  tapErr,
+  tryAsync,
+  trySync,
+  unwrap,
+  type Result,
+} from "wellcrafted/result";
 ```
 
-## The Shape
-
-Results are plain objects with two properties — `data` and `error`. Successful results carry a `T` in `data` with `error: null`; failed results carry an `E` in `error` with `data: null`.
+## Shape and discrimination
 
 ```typescript
-type Ok<T>  = { data: T; error: null };
-type Err<E> = { error: E; data: null };
-type Result<T, E> = Ok<T> | Err<E>;
+type Result<T, E> =
+  | { data: T; error: null }
+  | { data: null; error: E };
 ```
 
-This is the same destructuring shape used by Supabase and SvelteKit load functions. **Always discriminate by the error side — `isErr(result)` or `result.error !== null`:**
+Use `result.error !== null`, `isErr(result)`, or `isOk(result)`. Do not use generic truthiness: the public Err type permits `0`, `false`, `""`, `undefined`, and `NaN`.
 
 ```typescript
-const { data, error } = await someOperation();
-if (error !== null) {
-  // error is E, data is null
-  return;
-}
-// data is T here
+const result = await loadUser(userId);
+if (result.error !== null) return result;
+
+return Ok(result.data.name);
 ```
 
-### Never discriminate by `data`
+`Ok(null)` is valid. `Err(null)` creates the same `{ data: null, error: null }` structure, so no guard can recover the intended branch. Keep error values non-null and meaningful. `isResult` checks only for a non-null object with both keys; it does not validate payloads.
 
-`Ok(null)` is a legitimate value (`T` can be `null` — common for "not found is not an error"), so `data === null` is ambiguous: it could be `Ok<null>` or `Err<E>`. The only reliable discriminator is the error side.
+## Wrap a narrow throwing operation
 
-```typescript
-// Wrong — Ok(null) is legal; this treats success as failure
-if (result.data === null) { /* handle "error" */ }
-
-// Right — non-null on the error side means Err, by convention
-if (result.error !== null) { /* handle error */ }
-
-// Right — named guard, same check, clearer intent
-if (isErr(result)) { /* handle error */ }
-```
-
-**Don't call `Err(null)`.** It produces `{ data: null, error: null }` — structurally identical to `Ok(null)`. Under the shape, `isErr`/`isOk` read it as Ok, so `Err(null)` silently becomes success. `Err(undefined)` is also discouraged — the discriminator technically works (`undefined !== null` is true), but the value is meaningless and trips `if (error)` falsy checks downstream. Either:
-
-- Use `Ok(null)`/`Ok(undefined)` (if what you meant was success-with-no-payload).
-- Define a tagged error via `defineErrors` with a real name.
-- Wrap a caught exception in one of your `defineErrors` variants, e.g. `MyError.Unexpected({ cause: error })` (see below). There is no `TaggedError` factory to import; you create the namespace yourself with `defineErrors`.
-
-At every `catch (error: unknown)` boundary, don't pass the raw `unknown` to `Err`. Wrap it in a tagged error via `defineErrors`. The tagged error is non-null by construction, so the shape's invariant holds regardless of what was thrown (including `throw null`). See `docs/philosophy/err-null-is-ok-null.md` for why this is a documentation rule rather than a type-level constraint.
-
-## Constructors
+Use `trySync` or `tryAsync` around the smallest operation with one failure meaning. The catch callback returns an Err-producing variant or an Ok fallback.
 
 ```typescript
-// Success
-const result = Ok({ id: '123', name: 'Alice' });
-
-// Failure
-const result = Err({ name: 'NotFound', message: 'User not found' });
-
-// Void success — use Ok(undefined)
-const result = Ok(undefined);
-```
-
-## trySync and tryAsync
-
-Wrap throwing operations into Results. The `catch` handler receives the raw error and returns an error variant.
-
-```typescript
-import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
-
-const JsonError = defineErrors({
-  ParseFailed: ({ input, cause }: { input: string; cause: unknown }) => ({
-    message: `Invalid JSON: ${extractErrorMessage(cause)}`,
-    input: input.slice(0, 100),
-    cause,
-  }),
+const userResult = trySync({
+  try: () => records.get(userId) ?? null,
+  catch: (cause) =>
+    UserError.ReadFailed({ cause: extractErrorMessage(cause) }),
 });
 
-// Synchronous
-const { data, error } = trySync({
-  try: () => JSON.parse(rawInput),
-  catch: (cause) => JsonError.ParseFailed({ input: rawInput, cause }),
-});
-
-// Asynchronous — always await
-const { data, error } = await tryAsync({
-  try: () => fetch(url).then((r) => r.json()),
-  catch: (cause) => HttpError.Connection({ url, cause }),
-});
+if (userResult.error !== null) return userResult;
+if (userResult.data === null) return UserError.NotFound({ userId });
+return Ok(userResult.data);
 ```
 
-See also: `define-errors` skill for creating error variants.
-
-## Key Rules
-
-1. Use `trySync` for synchronous code, `tryAsync` for async
-2. Always `await` tryAsync — it returns a Promise
-3. Match return types — if try returns `T`, catch should return `Err<E>` or `Ok<T>` for recovery
-4. Use `Ok(undefined)` for void operations
-5. Return `Err(error)` to propagate errors up the chain
-6. Pass the raw caught error as `cause` — let the error factory call `extractErrorMessage`
-
-## Recovery Pattern
-
-When `catch` returns `Ok(fallback)` instead of `Err`, the return type narrows to `Ok<T>` — no error checking needed:
+When destructuring, `error` is the raw error body. Wrap it to return a Result:
 
 ```typescript
-const { data: config } = trySync({
-  try: (): unknown => JSON.parse(configJson),
-  catch: () => Ok({ theme: 'dark', fontSize: 14 }),
-});
-// config is always defined — the catch recovered
-```
-
-```typescript
-// File existence check with fallback
-const { data: exists } = trySync({
-  try: () => fs.existsSync(path),
-  catch: () => Ok(false),
-});
-```
-
-## Wrapping Guidelines
-
-### Minimal wrap — only the risky operation
-
-```typescript
-// CORRECT: Wrap only the call that can throw
-const { data: response, error } = await tryAsync({
-  try: () => fetch(`/api/users/${userId}`),
-  catch: (cause) => UserError.FetchFailed({ userId, cause }),
-});
+const { data, error } = await operation();
 if (error !== null) return Err(error);
-
-// Continue with non-throwing operations
-const user = await response.json();
-return Ok(user);
+return Ok(data);
 ```
 
+Return `Ok(fallback)` only when the current layer can honestly recover.
+
 ```typescript
-// WRONG: Wrapping too much
-const { data, error } = await tryAsync({
-  try: async () => {
-    const response = await fetch(`/api/users/${userId}`);
-    const user = await response.json();
-    await updateCache(user);
-    return user;
-  },
-  catch: (error) => Err(error), // Too vague
+const config = trySync({
+  try: () => JSON.parse(text) as unknown,
+  catch: () => Ok(defaultConfig),
 });
 ```
 
-### Immediate return pattern
+The helpers catch only the `try` callback. A throwing catch callback escapes.
 
-Return errors immediately after checking. This creates linear control flow.
+## Deliberate throwing boundaries
 
-```typescript
-// CORRECT: Check and return immediately
-const { data: user, error: fetchError } = await getUser(userId);
-if (fetchError) return Err(fetchError);
+`unwrap(result)` returns Ok data and throws the contained Err value. `resolve(value)` does the same for a value that may already be plain. Use them where a throwing consumer requires that contract, not as routine Result flow.
 
-const { data: posts, error: postsError } = await getPosts(user.id);
-if (postsError) return Err(postsError);
+## Small utilities
 
-return Ok({ user, posts });
-```
+`tapErr(logFn)` calls the function for Err and returns the same Result reference; a throwing callback escapes.
 
-```typescript
-// WRONG: Nested error handling
-const { data: user, error: fetchError } = await getUser(userId);
-if (!fetchError) {
-  const { data: posts, error: postsError } = await getPosts(user.id);
-  if (!postsError) {
-    return Ok({ user, posts });
-  } else {
-    return Err(postsError);
-  }
-} else {
-  return Err(fetchError);
-}
-```
+`partitionResults(results)` returns the original wrappers grouped as `{ oks, errs }`. It requires runtime support for `Object.groupBy`.
 
-### When to extend the try block
-
-Include multiple operations in one block when they must succeed or fail together:
-
-```typescript
-// Atomic operation — all steps are part of "save document"
-const { data, error } = await tryAsync({
-  try: async () => {
-    const validated = schema.parse(document);
-    const saved = await db.documents.insert(validated);
-    await index.add(saved.id, saved.content);
-    return saved;
-  },
-  catch: (cause) => DbError.InsertFailed({ cause }),
-});
-```
-
-## The Destructured-Error Gotcha
-
-When you destructure `{ data, error }`, the `error` variable is the raw error value — NOT wrapped in `Err`. You must wrap it before returning from a function that returns `Result`:
-
-```typescript
-// WRONG — error is the raw value, not a Result
-const { data, error } = await tryAsync({ ... });
-if (error !== null) return error; // Type error: returns raw error, not Result
-
-// CORRECT — wrap with Err() to return a proper Result
-const { data, error } = await tryAsync({ ... });
-if (error !== null) return Err(error);
-```
-
-This is different from returning the entire result object:
-
-```typescript
-// Also correct — result is already a Result type
-const result = await tryAsync({ ... });
-if (result.error !== null) return result; // Returns the full Result
-```
-
-## Utility Functions
-
-### isOk / isErr — type guards
-
-```typescript
-import { isOk, isErr } from 'wellcrafted/result';
-
-const result = await getUser(userId);
-
-if (isOk(result)) {
-  console.log(result.data.name);
-}
-
-if (isErr(result)) {
-  console.log(result.error.message);
-}
-```
-
-### unwrap — extract data or throw
-
-```typescript
-import { unwrap } from 'wellcrafted/result';
-
-// Returns data if Ok, throws error if Err
-const user = unwrap(await getUser(userId));
-```
-
-Use sparingly — `unwrap` throws, which defeats the purpose of Result types. Useful in tests and scripts where you know the operation should succeed.
-
-### resolve — handle values that may or may not be Results
-
-```typescript
-import { resolve } from 'wellcrafted/result';
-
-// If value is a Result: returns its data if Ok, throws if Err (like unwrap)
-// If value is not a Result: returns the value unchanged
-const data = resolve(maybeResult);
-```
-
-### partitionResults — split an array of Results
-
-```typescript
-import { partitionResults } from 'wellcrafted/result';
-
-const results = await Promise.all(userIds.map(getUser));
-const { oks, errs } = partitionResults(results);
-// oks:  Ok<User>[]        the successful Results (access .data on each)
-// errs: Err<UserError>[]  the failed Results (access .error on each)
-```
-
-The arrays hold the Result objects themselves, not the unwrapped values. Read `.data` off each `Ok` and `.error` off each `Err`.
-
-## Wrapping Summary
-
-| Scenario | Approach |
-| --- | --- |
-| Single risky operation | Wrap just that operation |
-| Sequential operations | Wrap each separately, return immediately on error |
-| Atomic operations | Wrap together in one block |
-| Different error types | Separate blocks with appropriate error types |
-
-See also: `define-errors` skill for error variant definitions. `patterns` skill for service architecture.
+The canonical runnable flows are `examples/quick-start.ts` and `examples/service-boundary.ts`. Use the public Result reference for the complete current surface.

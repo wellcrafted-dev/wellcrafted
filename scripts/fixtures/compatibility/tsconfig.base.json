@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"allowJs": false,
+		"lib": ["ESNext", "DOM"],
+		"noEmit": true,
+		"rootDir": "../../..",
+		"skipLibCheck": false,
+		"strict": true,
+		"target": "ES2024",
+		"types": [],
+		"verbatimModuleSyntax": true
+	},
+	"files": ["./all-subpaths.ts"]
+}

@@ -1,0 +1,101 @@
+---
+title: Query reference
+description: Current runtime exports from wellcrafted/query.
+---
+
+# `wellcrafted/query`
+
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="createQueryFactories" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="defineKeys" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultMutationOptions" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultQueryOptions" */}
+
+This subpath adapts Result-returning functions to TanStack Query's throwing data/error channels.
+
+It has an explicit tested type prerequisite: install `@tanstack/query-core@5.82.0` when importing `wellcrafted/query`. The current package does not declare that prerequisite in dependency metadata, so consumers must install it themselves.
+
+```bash
+bun add @tanstack/query-core@5.82.0
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `resultQueryOptions` | Value | Converts a Result-returning query function into TanStack query observer options. |
+| `resultMutationOptions` | Value | Converts a Result-returning mutation function into TanStack mutation observer options. |
+| `createQueryFactories` | Value | Binds reusable query and mutation definitions to one `QueryClient`. |
+| `defineKeys` | Value | Identity helper that validates query-key maps while preserving tuple information. |
+
+There are no named type exports from this subpath. `defineQuery` and `defineMutation` are returned by `createQueryFactories`; they are not top-level imports.
+
+## Direct adapters
+
+```typescript
+const queryOptions = resultQueryOptions({
+  queryKey: ["account", accountId],
+  queryFn: () => accountService.get(accountId),
+});
+
+const mutationOptions = resultMutationOptions({
+  mutationKey: ["account", "rename"],
+  mutationFn: (input: { accountId: string; name: string }) =>
+    accountService.rename(input),
+});
+```
+
+The inputs mirror TanStack's observer options except that the query or mutation function returns `Result` synchronously or asynchronously. The adapters replace that function with an async function: Ok resolves with `data`; Err throws its contained value into TanStack's error channel.
+
+Use these client-agnostic adapters when a framework hook owns execution and cache access. They do not require a `QueryClient` argument.
+
+## QueryClient-bound factories
+
+```typescript
+import { QueryClient } from "@tanstack/query-core";
+import { createQueryFactories } from "wellcrafted/query";
+
+const queryClient = new QueryClient();
+const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+```
+
+`defineQuery(input)` returns this shape:
+
+```typescript
+{
+  options,
+  fetch(): Promise<Result<TQueryData, TError>>,
+  ensure(): Promise<Result<TQueryData, TError>>,
+}
+```
+
+The query definition is not callable. `fetch()` delegates to `QueryClient.fetchQuery`, which applies TanStack freshness behavior. `ensure()` delegates to `QueryClient.ensureQueryData`, which prefers existing cache data. Both return the cache data type `TQueryData`, which can differ from the observer's selected `TData`.
+
+`defineMutation(input)` returns a callable function with one property:
+
+```typescript
+const saveAccount = defineMutation({
+  mutationKey: ["account", "save"],
+  mutationFn: accountService.save,
+});
+
+const result = await saveAccount(input);
+saveAccount.options;
+```
+
+There is no `.execute()` method. Calling the function builds and executes a mutation through the bound client's mutation cache.
+
+The factory helpers catch values thrown by TanStack and cast them to the configured `TError` before returning Err. They do not validate the thrown value at runtime.
+
+## Query keys
+
+```typescript
+const accountKeys = defineKeys({
+  all: ["accounts"],
+  detail: (accountId: string) => ["accounts", accountId],
+  exactDetail: (accountId: string) => ["accounts", accountId] as const,
+});
+```
+
+Static entries preserve readonly literal tuples without `as const`. Factory entries preserve tuple shape but widen literal positions under contextual typing. Add `as const` inside a factory when those literal positions must remain exact. Empty arrays and values that are not key tuples are rejected.
+
+For choosing between adapters and bound factories in UI code, see the [TanStack Query integration guide](/integrations/tanstack-query).
