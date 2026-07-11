@@ -736,11 +736,19 @@ Deletion proof on 2026-07-10:
 
 ### Wave 12: Independent final review
 
-- [ ] Run fresh-context first-reader review.
-- [ ] Run skeptical API and claims review.
-- [ ] Incorporate grounded findings or record why they were rejected.
-- [ ] Add the review summary and final proof results to this spec.
-- [ ] Stop on a local PR-ready branch. Do not push, publish, deploy, or open a PR without permission.
+- [x] Run fresh-context first-reader review.
+- [x] Run skeptical API and claims review.
+- [x] Incorporate grounded findings or record why they were rejected.
+- [x] Add the review summary and final proof results to this spec.
+- [x] Stop on a local PR-ready branch. Do not push, publish, deploy, or open a PR without permission.
+
+Independent review and final proof on 2026-07-10:
+
+- A fresh-context first-reader reviewer found three grounded navigation/ownership issues: `.claude/skills/services-layer/SKILL.md` still linked a deleted error-system page, the home page's “Continue by task” section omitted all four core guides, and `reference/query` named the TanStack integration without linking it. The stale skill reference now points to the vocabulary guide, the home page exposes all four core tasks before secondary integrations, and the Query reference links the integration owner.
+- A separate skeptical API and claims reviewer found no issues. That review independently checked serialization qualifications, falsy Result errors and the `Err(null)` collision, the Hono three-guarantee distinction, four pinned Epicenter attributions, metric and reliability prohibitions, the TanStack prerequisite, the 42-file claims scan with zero exclusions, and the exact Wave 11 deletion set.
+- After incorporating the first-reader findings, `PUPPETEER_SKIP_DOWNLOAD=true bun install --frozen-lockfile` made no changes. Format, lint, typecheck, build, and all 188 tests passed; lint retained the same 12 pre-existing warnings and no errors.
+- Examples, package smoke, both compatibility fixtures, 79 export tuples across nine reference owners, all 42 current-file claims, and canonical snippets passed. Node 24.14.0 Mint validation and broken-link checks passed against pinned Mint 4.2.684, and the workflow YAML parsed successfully.
+- The branch is local and PR-ready. No push, publication, deployment, or pull request was performed.
 
 ## Edge Cases and Deferred API Questions
 
