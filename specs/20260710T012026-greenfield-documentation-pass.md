@@ -720,10 +720,19 @@ Nonvisual pre-deletion proof on 2026-07-10:
 
 ### Wave 11: Delete only approved obsolete owners
 
-- [ ] Delete only paths in the Wave 0 allowlist.
-- [ ] Remove every temporary legacy exclusion.
-- [ ] Sweep for stale names, imports, claims, and links.
-- [ ] Rerun the full suite before committing the deletion, so the deletion commit is independently green.
+- [x] Delete only paths in the Wave 0 allowlist.
+- [x] Remove every temporary legacy exclusion.
+- [x] Sweep for stale names, imports, claims, and links.
+- [x] Rerun the full suite before committing the deletion, so the deletion commit is independently green.
+
+Deletion proof on 2026-07-10:
+
+- Deleted exactly the 20 approved legacy documentation owners and three approved source READMEs recorded in the Wave 0 disposition table. `docs/integrations/hono-serialization.mdx` remains as the approved compatibility notice and was not part of the deletion allowlist.
+- Removed the complete temporary claims-exclusion mechanism. `bun run docs:claims` now scans all 42 remaining public files with no exclusions.
+- The stale-path sweep found one source-test comment that still named `docs/philosophy/err-null-is-ok-null.md`; it now points to the canonical `docs/decisions/result-shape.mdx`. A second sweep found no current links or imports for the deleted paths.
+- `bun run format:check`, `bun run lint:check`, `bun run typecheck`, `bun run build`, and `bun test` passed after deletion. Lint retained 12 pre-existing warnings and no errors; the full suite retained 188 passing tests.
+- `bun run docs:examples`, `bun run package:smoke`, `bun run compat:types`, `bun run compat:runtime`, `bun run docs:exports`, `bun run docs:claims`, and `bun run docs:snippets` passed. Export coverage retained 79 tuples across nine owners, package and compatibility checks retained all nine supported subpaths, and canonical examples and snippets remained synchronized.
+- With Node 24.14.0 first on `PATH`, `bun run docs:validate` and `bun run docs:links` passed against pinned Mint 4.2.684. The deletion change is independently green before commit.
 
 ### Wave 12: Independent final review
 

@@ -53,31 +53,6 @@ const CLAIM_ALLOWANCE_PATTERN =
 	/<!-- docs:claims:allow-(start|end) rule="([^"]+)"(?: reason="([^"]+)")? -->/g;
 const DECISION_ALLOWABLE_CLAIM_RULES = new Set<ClaimRuleName>(["retired-api"]);
 
-const APPROVED_LEGACY_CLAIM_EXCLUSIONS = [
-	"docs/core/brand-types.mdx",
-	"docs/core/error-system.mdx",
-	"docs/core/result-pattern.mdx",
-	"docs/getting-started/installation.mdx",
-	"docs/getting-started/quick-start.mdx",
-	"docs/integrations/testing.mdx",
-	"docs/migration/from-try-catch.mdx",
-	"docs/patterns/optional-keys.mdx",
-	"docs/patterns/real-world.mdx",
-	"docs/patterns/service-layer.mdx",
-	"docs/philosophy/brand-implementation.mdx",
-	"docs/philosophy/design-principles.mdx",
-	"docs/philosophy/developer-experience.mdx",
-	"docs/philosophy/err-null-is-ok-null.md",
-	"docs/philosophy/error-api-evolution.mdx",
-	"docs/philosophy/for-the-pragmatic-fp-developer.mdx",
-	"docs/philosophy/from-effect-to-pragmatic-errors.mdx",
-	"docs/philosophy/production-reliability.mdx",
-	"docs/philosophy/rust-inspiration.mdx",
-	"docs/philosophy/why-name-and-message.mdx",
-] as const;
-
-const LEGACY_CLAIM_EXCLUSIONS = APPROVED_LEGACY_CLAIM_EXCLUSIONS;
-
 const DOC_EXTENSIONS = new Set([".json", ".md", ".mdx"]);
 const EXAMPLE_EXTENSIONS = new Set([
 	".cjs",
@@ -248,15 +223,6 @@ function toRepositoryPath(path: string): string {
 	return path.split(sep).join(posix.sep);
 }
 
-async function pathExists(path: string): Promise<boolean> {
-	try {
-		await stat(resolve(REPOSITORY_ROOT, path));
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 function includePublicFile(root: string, path: string): boolean {
 	const extension = extname(path);
 	switch (root) {
@@ -287,56 +253,6 @@ async function collectFiles(root: string): Promise<string[]> {
 		if (entry.isFile()) files.push(child);
 	}
 	return files;
-}
-
-async function validateExclusions(findings: Finding[]): Promise<Set<string>> {
-	const approved = new Set<string>(APPROVED_LEGACY_CLAIM_EXCLUSIONS);
-	const configured = new Set<string>();
-
-	for (const rawPath of LEGACY_CLAIM_EXCLUSIONS) {
-		const path = toRepositoryPath(rawPath);
-		if (configured.has(path)) {
-			findings.push({
-				line: 1,
-				message: `Duplicate legacy exclusion: ${path}`,
-				path: "scripts/check-doc-claims.ts",
-				rule: "gate-config",
-			});
-			continue;
-		}
-		configured.add(path);
-
-		if (!path.startsWith("docs/") || !approved.has(path)) {
-			findings.push({
-				line: 1,
-				message: `Legacy exclusion is outside the exact claims exclusions: ${path}`,
-				path: "scripts/check-doc-claims.ts",
-				rule: "gate-config",
-			});
-			continue;
-		}
-		if (!(await pathExists(path))) {
-			findings.push({
-				line: 1,
-				message: `Legacy exclusion points to a missing file: ${path}`,
-				path: "scripts/check-doc-claims.ts",
-				rule: "gate-config",
-			});
-		}
-	}
-
-	for (const path of approved) {
-		if ((await pathExists(path)) && !configured.has(path)) {
-			findings.push({
-				line: 1,
-				message: `Retained legacy file is missing its exact exclusion: ${path}`,
-				path: "scripts/check-doc-claims.ts",
-				rule: "gate-config",
-			});
-		}
-	}
-
-	return configured;
 }
 
 function parseAllowances(
@@ -679,7 +595,6 @@ async function scanFile(path: string, findings: Finding[]): Promise<void> {
 
 async function main(): Promise<void> {
 	const findings: Finding[] = [];
-	const exclusions = await validateExclusions(findings);
 	const publicFiles = (
 		await Promise.all(
 			PUBLIC_CLAIM_ROOTS.map(async (root) => {
@@ -693,7 +608,6 @@ async function main(): Promise<void> {
 		.sort();
 
 	for (const path of publicFiles) {
-		if (exclusions.has(path)) continue;
 		await scanFile(path, findings);
 	}
 
@@ -708,9 +622,7 @@ async function main(): Promise<void> {
 		);
 	}
 
-	console.log(
-		`documentation claims: ${publicFiles.length - exclusions.size} files checked, ${APPROVED_LEGACY_CLAIM_EXCLUSIONS.length} deletion-approved legacy files excluded`,
-	);
+	console.log(`documentation claims: ${publicFiles.length} files checked`);
 }
 
 if (import.meta.main) await main();

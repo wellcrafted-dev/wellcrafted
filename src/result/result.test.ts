@@ -44,7 +44,7 @@ describe("Ok / Err structural invariants", () => {
 	// Documents the shape's known limit. `Err(null)` produces
 	// `{ data: null, error: null }` which is structurally identical to `Ok(null)`,
 	// so the isErr discriminator reads it as Ok. We do NOT ban this at the type
-	// level — see docs/philosophy/err-null-is-ok-null.md for why. Test pins the
+	// level — see docs/decisions/result-shape.mdx for why. Test pins the
 	// runtime behavior so contributors can see the limit exists.
 	test("Err(null) collides with Ok(null) — the shape's known limit", () => {
 		const badErr = Err(null);
