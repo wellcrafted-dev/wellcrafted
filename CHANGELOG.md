@@ -1,5 +1,11 @@
 # wellcrafted
 
+## 0.45.0
+
+### Minor Changes
+
+- 4d31903: Remove the public `resolve` helper. Use `unwrap` when converting a known `Result` into its success value or a thrown error.
+
 ## 0.44.0
 
 ### Minor Changes
