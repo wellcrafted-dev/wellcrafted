@@ -8,7 +8,7 @@ import type {
 	QueryKey,
 	QueryObserverOptions,
 } from "@tanstack/query-core";
-import { Err, Ok, type Result, resolve } from "../result/index.js";
+import { Err, Ok, type Result, unwrap } from "../result/index.js";
 
 /**
  * Input for `resultQueryOptions` and `defineQuery`.
@@ -88,7 +88,7 @@ type MutationOptionsInput<
  *
  * @param input - Result-aware query configuration
  * @returns TanStack Query `QueryObserverOptions` with `queryFn` rewired to
- *   resolve `Ok` and throw `Err`
+ *   unwrap `Ok` and throw `Err`
  */
 export function resultQueryOptions<
 	TQueryFnData = unknown,
@@ -101,7 +101,7 @@ export function resultQueryOptions<
 ): QueryObserverOptions<TQueryFnData, TError, TData, TQueryData, TQueryKey> {
 	return {
 		...input,
-		queryFn: async (context) => resolve(await input.queryFn(context)),
+		queryFn: async (context) => unwrap(await input.queryFn(context)),
 	} satisfies QueryObserverOptions<
 		TQueryFnData,
 		TError,
@@ -133,7 +133,7 @@ export function resultQueryOptions<
  *
  * @param input - Result-aware mutation configuration
  * @returns TanStack Query `MutationObserverOptions` with `mutationFn` rewired
- *   to resolve `Ok` and throw `Err`
+ *   to unwrap `Ok` and throw `Err`
  */
 export function resultMutationOptions<
 	TData,
@@ -153,7 +153,7 @@ export function resultMutationOptions<
 	return {
 		...input,
 		mutationFn: async (variables: TVariables) =>
-			resolve(await input.mutationFn(variables)),
+			unwrap(await input.mutationFn(variables)),
 	} satisfies MutationObserverOptions<TData, TError, TVariables, TContext>;
 }
 

@@ -265,7 +265,7 @@ From `wellcrafted/error`:
 - `extractErrorMessage(value)`: pull a readable string out of any `unknown`
 - `InferErrors<typeof MyError>`: the union of all variants; `InferError<typeof MyError.Variant>`: one variant
 
-Less common but there when you need them: `isOk` / `isErr` type guards, `unwrap` (extract or throw), `partitionResults` (split an array of Results), and `resolve` (handle values that may or may not be Results).
+Less common but there when you need them: `isOk` / `isErr` type guards, `unwrap` (extract or throw), and `partitionResults` (split an array of Results).
 
 ## Teach your AI agent
 
