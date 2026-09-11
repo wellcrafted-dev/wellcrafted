@@ -49,6 +49,19 @@ describe("once", () => {
 		expect(seen).toEqual([1]);
 	});
 
+	it("rethrows the first failure without invoking the function again", () => {
+		const failure = new Error("initialization failed");
+		let calls = 0;
+		const wrapped = once((): string => {
+			calls++;
+			throw failure;
+		});
+
+		expect(() => wrapped()).toThrow(failure);
+		expect(() => wrapped()).toThrow(failure);
+		expect(calls).toBe(1);
+	});
+
 	// =============================================================================
 	// Types: the wrapper mirrors the wrapped function's signature
 	// =============================================================================
