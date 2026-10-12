@@ -1,849 +1,299 @@
-# Query Utilities
+# wellcrafted/query
 
-A set of utilities for integrating wellcrafted's Result types with TanStack Query, providing a clean pattern for organizing your data fetching layer.
+Adapters between Result-returning services and TanStack Query.
 
-## Overview
+Your services return `Result<T, E>`. TanStack Query expects a `queryFn` that resolves with data or throws an error. `wellcrafted/query` converts in both directions:
 
-The query utilities solve a common integration challenge: your service functions return `Result<T, E>` types, but TanStack Query expects functions that either return data or throw errors. These utilities bridge that gap while providing two convenient interfaces for each query and mutation.
+- `resultQueryOptions` and `resultMutationOptions` turn a Result-returning function into plain TanStack options. `Ok` resolves, `Err` throws into TanStack's error channel, and the error type comes from the Result.
+- `runQuery` and `runMutation` run those options through a `QueryClient` and hand you a Result again, for workflows and event handlers.
 
-## Quick Start
+That is the whole module: four functions. Everything else is TanStack.
 
-`wellcrafted/query` exposes two layers built on the same conversion path:
-
-1. **`resultQueryOptions` / `resultMutationOptions`**: platform-agnostic adapters that turn a Result-returning `queryFn` or `mutationFn` into normal TanStack Query options. No `QueryClient` needed. Compose them directly with any framework hook (`createQuery`, `useQuery`, `createMutation`, `useMutation`).
-
-2. **`createQueryFactories(queryClient)` -> `defineQuery` / `defineMutation`**: bind the same options to a specific `QueryClient` and attach imperative helpers. Queries expose explicit `.fetch()` and `.ensure()` methods because those choose different cache policies. Mutations are callable because there is one imperative action: run the mutation.
-
-```typescript
-import { QueryClient } from '@tanstack/query-core';
-import {
-  createQueryFactories,
-  resultQueryOptions,
-  resultMutationOptions,
-} from 'wellcrafted/query';
-
-// Local options used directly inside a hook
-const user = createQuery(() =>
-  resultQueryOptions({
-    queryKey: ['user', userId],
-    queryFn: () => services.getUser(userId),
-  }),
-);
-
-const save = createMutation(() =>
-  resultMutationOptions({
-    mutationKey: ['saveUser'],
-    mutationFn: (input: SaveUserInput) => services.saveUser(input),
-  }),
-);
-
-// Reusable definitions bound to a QueryClient
-const queryClient = new QueryClient();
-const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+```sh
+bun add wellcrafted @tanstack/query-core
 ```
+
+`@tanstack/query-core` is an optional peer dependency (`^5.102.0`). Framework adapters such as `@tanstack/react-query` and `@tanstack/svelte-query` already depend on it.
+
+## Quick start
+
+```ts
+// lib/query/client.ts
+import { QueryClient } from '@tanstack/query-core';
+
+export const queryClient = new QueryClient();
+```
+
+```ts
+// lib/query/todos.ts
+import { resultMutationOptions, resultQueryOptions } from 'wellcrafted/query';
+import * as api from '$lib/services/todos'; // returns Result<T, TodoError>
+
+const todosRoot = ['todos'] as const;
+
+export const todoKeys = {
+  all: todosRoot,
+  lists: [...todosRoot, 'list'] as const,
+};
+
+export const todoQueries = {
+  list: (filter: TodoFilter) =>
+    resultQueryOptions({
+      queryKey: [...todoKeys.lists, filter],
+      queryFn: () => api.listTodos(filter),
+    }),
+  detail: (id: string) =>
+    resultQueryOptions({
+      queryKey: [...todosRoot, 'detail', id],
+      queryFn: () => api.getTodo(id),
+    }),
+};
+
+export const addTodo = resultMutationOptions({
+  mutationKey: [...todosRoot, 'add'],
+  mutationFn: (title: string) => api.addTodo(title),
+  onSuccess: (_todo, _title, _onMutateResult, { client }) =>
+    client.invalidateQueries({ queryKey: todoKeys.lists }),
+});
+```
+
+Hooks take the definitions directly:
+
+```svelte
+<script lang="ts">
+  import { createMutation, createQuery } from '@tanstack/svelte-query';
+  import { addTodo, todoQueries } from '$lib/query/todos';
+
+  let { id }: { id: string } = $props();
+
+  const todo = createQuery(() => todoQueries.detail(id));
+  const add = createMutation(() => addTodo);
+</script>
+```
+
+```tsx
+import { useMutation, useQuery } from '@tanstack/react-query';
+
+function Todo({ id }: { id: string }) {
+  const todo = useQuery(todoQueries.detail(id));
+  const add = useMutation(addTodo);
+  // todo.error is TodoError | null
+}
+```
+
+Anything in TanStack that accepts options takes them too: `useQueries` and `queryClient.query`.
+
+Workflows run the same definitions and get Results back:
+
+```ts
+import { runMutation, runQuery } from 'wellcrafted/query';
+
+const { data: todo, error } = await runQuery(queryClient, todoQueries.detail(id));
+if (error) return Err(error);
+
+const { error: addError } = await runMutation(queryClient, addTodo, 'Buy milk');
+```
+
+## API
 
 ### `resultQueryOptions(input)`
 
-- Accepts a `queryKey` plus a `queryFn` that returns `Result<TData, TError>` (sync or async).
-- Returns standard `QueryObserverOptions` whose `queryFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
-- Preserves literal `queryKey` tuples (no `as const` needed) and Result data/error inference.
+Takes TanStack query options whose `queryFn` returns `Result<TQueryFnData, TError>` (sync or async) and returns plain TanStack query options. Every other option (`staleTime`, `enabled`, `select`, `placeholderData`, and so on) passes through unchanged.
+
+The returned `queryKey` carries a `DataTag`, the same tag TanStack's own `queryOptions()` adds. Cache reads and writes through that key are typed:
+
+```ts
+const { queryKey } = todoQueries.detail(id);
+queryClient.getQueryData(queryKey); // Todo | undefined
+queryClient.setQueryData(queryKey, (old) => old && { ...old, done: true });
+```
+
+`queryKey` is inferred as a literal tuple, including keys built by spreading a group, so `as const` is optional at the call site.
 
 ### `resultMutationOptions(input)`
 
-- Accepts a `mutationKey` plus a `mutationFn` that returns `Result<TData, TError>` (sync or async).
-- Returns standard mutation observer options whose `mutationFn` resolves `Ok(data)` with `data` and throws on `Err(error)`.
-- Infers variables from the `mutationFn` parameter.
+Takes TanStack mutation options whose `mutationFn` returns `Result<TData, TError>` and returns plain TanStack mutation options. `mutationKey` is required.
 
-### Which one do I reach for?
+`mutationFn(variables, context)` and the lifecycle callbacks receive TanStack's `MutationFunctionContext`, `{ client, meta, mutationKey }`. Use `context.client` to invalidate or update the cache, so the definition never imports a client:
 
-Both families ride the same conversion path, so the choice is about *where the operation lives*, not about how Results are unwrapped.
-
-Reach for **`resultQueryOptions` / `resultMutationOptions`** when the operation is local to the hook call site — any of:
-
-- **Hook-local**: it is defined and used in one component, not shared.
-- **Reactive options**: the `queryKey`, `enabled`, or `queryFn` closes over framework state (Svelte `$derived`, React state, props). These adapters run *inside* the reactive thunk (`createQuery(() => resultQueryOptions({ … }))`), so the options recompute every render. `defineQuery.options` is a static snapshot computed once and cannot carry a reactive key.
-- **No global / a local `QueryClient`**: you are in a shared package with no app client to bind, or you want a purpose-built client with its own policy. These adapters are client-agnostic; the hook supplies the client.
-
-Reach for **`createQueryFactories(queryClient).defineQuery` / `defineMutation`** when the operation is a reusable, `QueryClient`-bound handle — any of:
-
-- **Shared / reusable identity**: one definition consumed from several call sites (an RPC/query layer).
-- **Imperative execution**: you need `.fetch()` / `.ensure()` on a query, or a callable mutation handle, for preloaders, event handlers, and workflows — not just reactive `.options`.
-- **Bound to the app client**: it lives at module scope against one long-lived `QueryClient`.
-
-> **Cache operations stay on the `QueryClient`.** Wellcrafted deliberately does **not** wrap `invalidateQueries`, `setQueryData`, `getQueryData`, `ensureQueryData`, `prefetchQuery`, or any other cache method. Those already have TanStack's own contract and no `Result` to unwrap, so wrapping them would add surface without value. Call them directly on the `queryClient` (see the mutation cache-update examples below). The two families above wrap exactly one thing: a Result-returning `queryFn` / `mutationFn`.
-
-> **Note on naming:** these adapters were previously called `queryOptions` / `mutationOptions`, which collided with TanStack Query's own identity helpers of the same name. The `result*` prefix removes that collision and says what they do — adapt a `Result`-returning function — so both can coexist in one file without aliasing.
-
-## Architecture Pattern: The RPC-like Approach
-
-The query utilities enable a powerful architectural pattern inspired by RPC (Remote Procedure Call), where your query layer acts as a bridge between UI components and pure service functions. This pattern is used successfully in production apps like [Whispering](https://github.com/braden-w/whispering).
-
-```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│     UI      │ --> │ Query/RPC   │ --> │   Services   │
-│ Components  │     │    Layer    │     │    (Pure)    │
-└─────────────┘     └─────────────┘     └──────────────┘
-      ↑                    │
-      └────────────────────┘
-         Reactive Updates
-```
-
-### Layer Responsibilities
-
-1. **Services Layer**: Pure functions with no UI dependencies
-   - Business logic only
-   - Return `Result<T, E>` types
-   - Platform-agnostic
-   - Easily testable
-
-2. **Query Layer**: Adds reactivity and caching
-   - Wraps service calls with TanStack Query
-   - Handles runtime dependency injection
-   - Transforms errors for UI consumption
-   - Manages cache updates
-
-3. **UI Layer**: Consumes queries reactively or imperatively
-   - Uses reactive options and imperative helpers
-   - Handles loading states
-   - Displays errors
-
-## Recommended Folder Structure
-
-Here's how to organize your code for maximum clarity:
-
-```
-src/
-├── services/           # Pure business logic
-│   ├── api/           # External API calls
-│   │   ├── users.ts
-│   │   └── products.ts
-│   ├── db/            # Database operations
-│   │   └── index.ts
-│   └── platform/      # Platform-specific code
-│       ├── web.ts
-│       └── desktop.ts
-│
-├── query/             # Query layer with caching
-│   ├── _factories.ts  # createQueryFactories setup
-│   ├── users.ts       # User-related queries
-│   ├── products.ts    # Product-related queries
-│   └── index.ts       # RPC namespace export
-│
-└── components/        # UI components
-    └── UserList.svelte
-```
-
-## Real-World Example: Building an RPC Namespace
-
-This example shows how to build a complete data fetching layer:
-
-### Step 1: Create Your Services
-
-```typescript
-// services/api/users.ts
-import { Ok, Err, type Result } from 'wellcrafted/result';
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
-export type UserServiceError = {
-  code: 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNAUTHORIZED';
-  message: string;
-};
-
-export async function getUser(id: string): Promise<Result<User, UserServiceError>> {
-  try {
-    const response = await fetch(`/api/users/${id}`);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return Err({ code: 'NOT_FOUND', message: 'User not found' });
-      }
-      return Err({ code: 'NETWORK_ERROR', message: 'Failed to fetch user' });
-    }
-    
-    return Ok(await response.json());
-  } catch (error) {
-    return Err({ code: 'NETWORK_ERROR', message: error.message });
-  }
-}
-
-export async function updateUser(user: User): Promise<Result<User, UserServiceError>> {
-  // Implementation...
-}
-```
-
-### Step 2: Create Query Definitions
-
-```typescript
-// query/_factories.ts
-import { QueryClient } from '@tanstack/query-core';
-import { createQueryFactories } from 'wellcrafted/query';
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-    },
+```ts
+export const toggleTodo = resultMutationOptions({
+  mutationKey: [...todosRoot, 'toggle'],
+  mutationFn: (id: string) => api.toggleTodo(id),
+  onSuccess: (todo, id, _onMutateResult, { client }) => {
+    client.setQueryData(todoQueries.detail(id).queryKey, todo);
+    return client.invalidateQueries({ queryKey: todoKeys.lists });
   },
 });
-
-export const { defineQuery, defineMutation } = createQueryFactories(queryClient);
 ```
 
-```typescript
-// query/users.ts
-import { defineQuery, defineMutation, queryClient } from './_factories';
-import * as userService from '../services/api/users';
+### `runQuery(client, options)`
 
-export const users = {
-  // Query with parameters
-  getUser: (userId: string) => 
-    defineQuery({
-      queryKey: ['users', userId],
-      queryFn: () => userService.getUser(userId),
-    }),
+```ts
+runQuery(client: QueryClient, options): Promise<Result<TData, TError | CancelledError>>
+```
 
-  // Query all users
-  getAllUsers: defineQuery({
-    queryKey: ['users'],
-    queryFn: () => userService.getAllUsers(),
-  }),
+Wraps `client.query(options)`, TanStack's imperative read (added in 5.102, replacing `fetchQuery` and `ensureQueryData`). Fresh cached data comes back without a request; stale or missing data is fetched; an in-flight request for the same key is shared. The result lands in the cache, so every observer sees it.
 
-  // Mutation with optimistic updates
-  updateUser: defineMutation({
-    mutationKey: ['users', 'update'],
-    mutationFn: async (user: User) => {
-      const result = await userService.updateUser(user);
-      
-      if (result.error) return result;
+`staleTime` decides what counts as fresh. To accept any cached data and fetch only when the cache is empty, pass `staleTime: 'static'`:
 
-      // Optimistic cache update
-      queryClient.setQueryData(['users', user.id], user);
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+```ts
+await runQuery(queryClient, { ...todoQueries.detail(id), staleTime: 'static' });
+```
 
-      return result;
-    },
-    onError: (error) => {
-      // Error is already in the right format for UI
-      console.error('Failed to update user:', error);
-    },
-  }),
+The error side includes TanStack's `CancelledError`, which the call rejects with when the query is cancelled or the client is cleared mid-flight. Check it with `instanceof` (`isCancelledError` is deprecated upstream):
+
+```ts
+import { CancelledError } from '@tanstack/query-core';
+
+const { data, error } = await runQuery(queryClient, todoQueries.detail(id));
+if (error instanceof CancelledError) return;
+if (error) return report(error);
+```
+
+### `runMutation(client, options, variables)`
+
+```ts
+runMutation(client: QueryClient, options, variables): Promise<Result<TData, TError>>
+```
+
+Runs the mutation through a `MutationObserver`, TanStack's public way to run a mutation outside a hook, then detaches the observer so the finished mutation is garbage collected after `gcTime`. Because it goes through the mutation cache, the definition's `onMutate`/`onSuccess`/`onError`/`onSettled` run (and with them any invalidation), and `useIsMutating`, `useMutationState`, mutation scopes, and devtools all see it.
+
+```ts
+const { data: todo, error } = await runMutation(queryClient, addTodo, 'Buy milk');
+```
+
+## Keys and option factories
+
+The key factory holds groups: the root and the prefixes you invalidate together. A group belongs to no single query. Option factories own the leaf keys, and build each one by spreading a group:
+
+```ts
+const todosRoot = ['todos'] as const;
+
+export const todoKeys = {
+  all: todosRoot,
+  lists: [...todosRoot, 'list'] as const,
+};
+
+export const todoQueries = {
+  list: (filter: TodoFilter) =>
+    resultQueryOptions({ queryKey: [...todoKeys.lists, filter], queryFn: () => api.listTodos(filter) }),
+  detail: (id: string) =>
+    resultQueryOptions({ queryKey: [...todosRoot, 'detail', id], queryFn: () => api.getTodo(id) }),
 };
 ```
 
-### Step 3: Create the RPC Namespace
+Every key spreads the root, so every key starts with it, and `invalidateQueries({ queryKey: todoKeys.all })` reaches every leaf by construction. The root is its own constant because referencing `todoKeys.all` inside its own object literal can trip TypeScript's circularity check.
 
-```typescript
-// query/index.ts
-export { queryClient } from './_factories';
+Which key to use:
 
-import { users } from './users';
-import { products } from './products';
-import { settings } from './settings';
+| You want to | Use | Why |
+| --- | --- | --- |
+| Invalidate, cancel, or refetch a group | `todoKeys.all`, `todoKeys.lists` | A group belongs to no single query, and the key factory imports without the API client or session. |
+| Do anything with one entry: read or write its data, invalidate exactly it | `todoQueries.detail(id).queryKey` | The `DataTag` types `getQueryData` and `setQueryData`, and the leaf key lives in one place. |
 
-// This creates your RPC-like interface
-export const rpc = {
-  users,
-  products,
-  settings,
-} as const;
+Extract a leaf key into the key factory only when some code needs it without the option factory, for example a module that cannot reach the API client or session. Keep the smaller piece underneath, and pull it out on its own only when it must be reused on its own.
+
+## Imperative use
+
+`runQuery` and `runMutation` exist to go through the cache: request deduplication, cache fill, staleness, mutation callbacks, and `isMutating`. Use them when something else observes the data, such as a component showing the same todo, or a spinner keyed on `useIsMutating`.
+
+If nothing observes the data, call the service directly. A one-off export script that reads every todo does not need a cache entry.
+
+## Result in, Result out
+
+Services return Results. `resultQueryOptions` and `resultMutationOptions` adapt them for TanStack. `runQuery` and `runMutation` adapt back for workflows. Pass the Result-returning function straight in; do not unwrap first.
+
+```ts
+// Wrong: throws by hand
+queryFn: async () => {
+  const { data, error } = await api.getTodo(id);
+  if (error) throw error;
+  return data;
+},
+
+// Right
+queryFn: () => api.getTodo(id),
 ```
 
-### Step 4: Use in Components
+To change the error a component sees, map it inside `queryFn` and keep returning a Result:
 
-```svelte
-<!-- components/UserProfile.svelte -->
-<script lang="ts">
-  import { createQuery, createMutation } from '@tanstack/svelte-query';
-  import { rpc } from '$lib/query';
-
-  let { userId } = $props<{ userId: string }>();
-
-  // Reactive query - automatically updates UI (Svelte 5 requires accessor function)
-  const userQuery = createQuery(() => rpc.users.getUser(() => userId).options);
-
-  // Reactive mutation - provides loading states
-  const updateMutation = createMutation(() => rpc.users.updateUser.options);
-
-  // Or use imperatively in event handlers
-  async function handleQuickUpdate(updates: Partial<User>) {
-    const { data, error } = await rpc.users.updateUser({
-      ...userQuery.data,
-      ...updates
-    });
-
-    if (error) {
-      toast.error(error.message);
-    }
-  }
-</script>
-
-{#if userQuery.isPending}
-  <div>Loading user...</div>
-{:else if userQuery.error}
-  <div>Error: {userQuery.error.message}</div>
-{:else if userQuery.data}
-  <UserForm 
-    user={userQuery.data}
-    onSave={(user) => updateMutation.mutate(user)}
-    isSaving={updateMutation.isPending}
-  />
-{/if}
+```ts
+queryFn: async () => {
+  const { data, error } = await api.getTodo(id);
+  if (error) return Err({ title: 'Could not load todo', description: error.message });
+  return Ok(data);
+},
 ```
 
-**React equivalent:**
+## Client lifetime
 
-```tsx
-// components/UserProfile.tsx
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { rpc } from '../query';
-import { toast } from '../toast';
+Definitions take no client. You pass the client where you call: a framework provider for hooks, an argument for `runQuery` and `runMutation`, `context.client` inside mutation callbacks.
 
-interface UserProfileProps {
-  userId: string;
+- Single-page app: create one client in one module (`export const queryClient = new QueryClient()`) and import it where you call.
+- SSR or per-session isolation: create a client per request or session and use the same definitions with it. Nothing leaks between requests because no definition holds a client.
+
+When a definition needs per-session transport (an authenticated fetch, a session-scoped database), build the option factories inside the session constructor. They close over the transport and still take no client. The key factory stays at module level, so code outside the session can still invalidate groups:
+
+```ts
+export function createTodoQueries(api: TodoApi) {
+  return {
+    detail: (id: string) =>
+      resultQueryOptions({ queryKey: [...todosRoot, 'detail', id], queryFn: () => api.getTodo(id) }),
+  };
 }
-
-export function UserProfile({ userId }: UserProfileProps) {
-  // Reactive query - automatically updates UI (React passes options directly)
-  const userQuery = useQuery(rpc.users.getUser(userId).options);
-
-  // Reactive mutation - provides loading states
-  const updateMutation = useMutation(rpc.users.updateUser.options);
-
-  // Or use imperatively in event handlers
-  async function handleQuickUpdate(updates: Partial<User>) {
-    const { data, error } = await rpc.users.updateUser({
-      ...userQuery.data,
-      ...updates
-    });
-
-    if (error) {
-      toast.error(error.message);
-    }
-  }
-
-  if (userQuery.isPending) return <div>Loading user...</div>;
-  if (userQuery.error) return <div>Error: {userQuery.error.message}</div>;
-  if (!userQuery.data) return null;
-
-  return (
-    <UserForm
-      user={userQuery.data}
-      onSave={(user) => updateMutation.mutate(user)}
-      isSaving={updateMutation.isPending}
-    />
-  );
-}
-```
-
-## The Dual Interface Pattern
-
-Every query and mutation provides two ways to use it:
-
-### 1. Reactive Interface (`.options`)
-
-Best for UI components that need to track state:
-
-**Svelte 5** (wrap entire expression in accessor function):
-
-```typescript
-// With reactive parameter - creates a reactive subscription
-const userId = $state('abc-123');
-const query = createQuery(() => rpc.users.getUser(() => userId).options);
-// Access: query.data, query.isPending, query.error
-// Query automatically re-runs when userId changes
-
-// With static parameter - simpler when value never changes
-const query = createQuery(() => rpc.users.getUser('static-id').options);
-```
-
-**React** (pass options directly):
-
-```tsx
-// With reactive parameter - creates a reactive subscription
-const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options);
-// Access: query.data, query.isPending, query.error
-// Query automatically re-runs when userId changes
-
-// With static parameter - simpler when value never changes
-const query = useQuery(rpc.users.getUser('static-id').options);
-```
-
-**Important**:
-- **Svelte 5**: Wrap in accessor function `() => ...options`. For reactive parameters inside, also use accessor functions `() => param`.
-- **React**: Pass `.options` directly (it's a property, not a function). Pass reactive parameters directly (no accessor function needed).
-
-### 2. Imperative Interface
-
-Best for event handlers and workflows:
-
-```typescript
-// Direct execution without subscriptions
-const { data, error } = await rpc.users.updateUser(user);
-// No reactive overhead, just the result
-
-// For queries, .ensure() prefers cached data
-const { data, error } = await rpc.users.getUser('123').ensure();
-
-// Use .fetch() when you need to check freshness
-const { data, error } = await rpc.users.getUser('123').fetch();
-```
-
-Queries are not directly callable. Choose `.fetch()` when you want TanStack's freshness policy, or `.ensure()` when you want cache-first data and only want to fetch if data is missing.
-
-Mutations are directly callable because there is only one imperative action:
-
-```typescript
-const ensured = await rpc.users.getUser('123').ensure();
-const fetched = await rpc.users.getUser('123').fetch();
-
-const updated = await rpc.users.updateUser(user);
-```
-
-## Common Mistakes with `.options`
-
-Understanding the `.options` pattern is crucial for proper reactive behavior. Here are the most common mistakes:
-
-### ❌ Mistake 1: Wrong `.options` pattern for your framework
-
-**Svelte 5:**
-
-```typescript
-// WRONG: Not wrapping in accessor function
-const userId = $state('abc-123');
-const query = createQuery(rpc.users.getUser(userId).options);
-//            ^^^^^^^^^^^^                                 ^
-//            Missing outer accessor       Svelte 5 requires () => ...
-
-// ALSO WRONG: Calling .options() with parentheses (.options is a property)
-const query = createQuery(() => rpc.users.getUser(userId).options());
-//                                                               ^^
-//                                                     Don't call it!
-```
-
-```typescript
-// CORRECT: Wrap in accessor, use inner accessor for reactive param
-const userId = $state('abc-123');
-const query = createQuery(() => rpc.users.getUser(() => userId).options);
-//                        ^^^^                    ^^^^^^^^^^^
-//                  outer accessor           inner accessor for reactive param
-```
-
-**React:**
-
-```tsx
-// WRONG: Calling .options() with parentheses (.options is a property)
-const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options());
-//                                                      ^^
-//                                              Don't call it!
-
-// ALSO WRONG: Using unnecessary accessor function
-const [userId, setUserId] = useState('abc-123');
-const query = useQuery(() => rpc.users.getUser(userId).options);
-//                     ^^^^
-//                  Don't need accessor wrapper in React!
-```
-
-```tsx
-// CORRECT: Pass .options directly (it's a property, not a function)
-const [userId, setUserId] = useState('abc-123');
-const query = useQuery(rpc.users.getUser(userId).options);
-//                                       ^^^^^^^ direct param
-//                                                      ^ no parentheses!
-```
-
-**Why it's wrong**:
-- **Svelte 5**: Requires accessor wrapper `() => ...options` and inner accessors `() => param` for reactive values
-- **React**: Pass `.options` directly (no parentheses, no wrapper) with direct parameter passing
-
-### ❌ Mistake 2: Passing reactive values directly (Svelte-specific)
-
-```typescript
-// WRONG: Passes a snapshot, breaks reactivity (missing both accessors)
-const id = $state('abc-123');
-const query = createQuery(rpc.users.getUser(id).options);
-//                        ^                  ^^
-//              Missing outer accessor    Direct value breaks reactivity
-```
-
-```typescript
-// CORRECT: Use accessor functions for reactive tracking
-const id = $state('abc-123');
-const query = createQuery(() => rpc.users.getUser(() => id).options);
-//                        ^^^^                    ^^^^^^^^
-//                   outer accessor         inner accessor preserves reactivity
-```
-
-**Why it's wrong**: In Svelte 5, `createQuery` expects an accessor function that returns the options. Additionally, when you pass `id` directly to the RPC method, the query definition runs once with the current value. Changes to `id` won't trigger new queries. Using `() => id` creates a function that TanStack Query can call each time it needs the value, preserving reactivity.
-
-**Note**: This is Svelte-specific. React hooks automatically track dependencies, so you pass values directly without accessor wrappers.
-
-### ❌ Mistake 3: Wrong method call order
-
-**Svelte 5:**
-
-```typescript
-// WRONG: Can't access .options before calling the method
-const query = createQuery(() => rpc.users.getUser.options(() => userId));
-//                                                ^^^^^^^^^^^^^^^^^^^^^^^
-//                                                .options isn't a function
-```
-
-```typescript
-// CORRECT: Call method with accessor, then access .options property
-const query = createQuery(() => rpc.users.getUser(() => userId).options);
-//                        ^^^^          ^^^^^^^^^^^^^ call with accessor
-//                   outer accessor                              ^^^^^^^ then .options property
-```
-
-**React:**
-
-```tsx
-// WRONG: Can't access .options before calling the method
-const query = useQuery(rpc.users.getUser.options(userId));
-//                                      ^^^^^^^^^^^^^^^^^
-//                                      .options isn't a function
-```
-
-```tsx
-// CORRECT: Call method with param, then access .options property
-const query = useQuery(rpc.users.getUser(userId).options);
-//                              ^^^^^^^^^^^^ call with param
-//                                                      ^ then .options property (not function!)
-```
-
-**Why it's wrong**: The RPC method structure is:
-- **Svelte 5**: `() => method(() => param).options` (outer accessor, inner accessor for param, then property)
-- **React**: `method(param).options` (direct param, then property access)
-
-First call the method with its parameter, which returns an object containing the `.options` property.
-
-### When to Use Accessor Functions (Svelte 5-Specific)
-
-**Note**: Accessor functions are only needed in Svelte 5. React hooks automatically track dependencies, so you pass values directly.
-
-In Svelte 5, you always need the outer accessor wrapper `() => ...options`. Additionally, use inner accessor functions for **reactive values**:
-
-```typescript
-// ✅ Props (Svelte 5)
-let { userId } = $props<{ userId: string }>();
-const query = createQuery(() => rpc.users.getUser(() => userId).options);
-
-// ✅ $state variables
-const searchTerm = $state('');
-const query = createQuery(() => rpc.products.search(() => searchTerm).options);
-
-// ✅ $derived values
-const fullName = $derived(`${firstName} ${lastName}`);
-const query = createQuery(() => rpc.users.searchByName(() => fullName).options);
-
-// ✅ Store values
-const settings = getSettings(); // returns a store
-const query = createQuery(() => rpc.api.getData(() => settings.apiKey).options);
-```
-
-For **static values**, you still need the outer accessor but can pass the value directly to the RPC method:
-
-```typescript
-// ✅ String literals
-const query = createQuery(() => rpc.users.getUser('user-123').options);
-
-// ✅ Numbers
-const query = createQuery(() => rpc.products.getProduct(42).options);
-
-// ✅ Constants
-const ADMIN_ID = 'admin-001';
-const query = createQuery(() => rpc.users.getUser(ADMIN_ID).options);
-```
-
-### Quick Reference
-
-| Pattern | Svelte 5 | React | Use Case |
-|---------|----------|-------|----------|
-| **No parameters** | `createQuery(() => rpc.users.getAll.options)` | `useQuery(rpc.users.getAll.options)` | Static query, no params |
-| **Static parameter** | `createQuery(() => rpc.users.getUser('id-123').options)` | `useQuery(rpc.users.getUser('id-123').options)` | Non-reactive value |
-| **Reactive parameter** | `createQuery(() => rpc.users.getUser(() => userId).options)` | `useQuery(rpc.users.getUser(userId).options)` | Props, state, derived |
-| **Multiple parameters** | `createQuery(() => rpc.products.search(() => term, () => category).options)` | `useQuery(rpc.products.search(term, category).options)` | Multiple reactive values |
-
-**Key differences:**
-- **Svelte 5**: Outer accessor wrapper `() => ...options`, inner accessor functions `() => param` for reactive values
-- **React**: `.options` property directly (no wrapper, no parentheses), direct parameter passing
-
-## Advanced Patterns
-
-### Runtime Dependency Injection
-
-The query layer can handle dynamic service selection based on runtime conditions:
-
-```typescript
-// query/transcription.ts
-import { settings } from '../stores/settings';
-
-export const transcription = {
-  transcribe: defineMutation({
-    mutationFn: async (audio: Blob) => {
-      // Select service based on user settings
-      const provider = settings.value.transcriptionProvider;
-      
-      switch (provider) {
-        case 'openai':
-          return services.openai.transcribe(audio, {
-            apiKey: settings.value.openaiKey,
-            model: settings.value.openaiModel,
-          });
-        case 'whisper':
-          return services.whisper.transcribe(audio);
-        default:
-          return Err({ code: 'INVALID_PROVIDER', message: `Unknown provider: ${provider}` });
-      }
-    },
-  }),
-};
-```
-
-### Error Transformation
-
-Transform service errors into UI-friendly formats:
-
-```typescript
-// query/users.ts
-export const users = {
-  createUser: defineMutation({
-    mutationFn: async (userData: CreateUserInput) => {
-      const result = await userService.createUser(userData);
-      
-      if (result.error) {
-        // Transform service error to UI error
-        return Err({
-          title: 'Failed to create user',
-          description: getErrorMessage(result.error.code),
-          action: { type: 'retry', data: userData },
-        });
-      }
-      
-      return result;
-    },
-  }),
-};
-
-function getErrorMessage(code: string): string {
-  switch (code) {
-    case 'DUPLICATE_EMAIL':
-      return 'A user with this email already exists';
-    case 'INVALID_DATA':
-      return 'Please check your input and try again';
-    default:
-      return 'An unexpected error occurred';
-  }
-}
-```
-
-### Coordinating Multiple Services
-
-The query layer can orchestrate complex operations:
-
-```typescript
-// query/orders.ts
-export const orders = {
-  placeOrder: defineMutation({
-    mutationFn: async (orderData: OrderInput) => {
-      // Step 1: Validate inventory
-      const inventory = await rpc.inventory.checkAvailability.ensure();
-      if (!hasStock(orderData.items, inventory.data)) {
-        return Err({ code: 'OUT_OF_STOCK', message: 'Some items are out of stock' });
-      }
-
-      // Step 2: Process payment
-      const payment = await services.payment.charge(orderData.payment);
-      if (payment.error) return Err(payment.error);
-
-      // Step 3: Create order
-      const order = await services.orders.create({
-        ...orderData,
-        paymentId: payment.data.id,
-      });
-
-      // Step 4: Update caches
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-
-      return order;
-    },
-  }),
-};
 ```
 
 ## Testing
 
-The factory pattern makes testing straightforward:
+Create a fresh `QueryClient` per test with retries off, then drive the definitions with `runQuery` and `runMutation`:
 
-```typescript
-// tests/users.test.ts
+```ts
+import { beforeEach, expect, it } from 'bun:test';
 import { QueryClient } from '@tanstack/query-core';
-import { createQueryFactories } from 'wellcrafted/query';
-import { vi } from 'vitest';
+import { runMutation, runQuery } from 'wellcrafted/query';
+import { expectErr, expectOk } from 'wellcrafted/testing';
 
-describe('User Queries', () => {
-  let queryClient: QueryClient;
-  let defineQuery: ReturnType<typeof createQueryFactories>['defineQuery'];
-
-  beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } }
-    });
-    ({ defineQuery } = createQueryFactories(queryClient));
+let client: QueryClient;
+beforeEach(() => {
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+});
 
-  it('should fetch user data', async () => {
-    const mockUser = { id: '1', name: 'Test User', email: 'test@example.com' };
-    vi.mocked(userService.getUser).mockResolvedValue(Ok(mockUser));
+it('reads a todo into the cache', async () => {
+  const todo = expectOk(await runQuery(client, todoQueries.detail('t1')));
+  expect(client.getQueryData(todoQueries.detail('t1').queryKey)).toEqual(todo);
+});
 
-    const userQuery = defineQuery({
-      queryKey: ['users', '1'],
-      queryFn: () => userService.getUser('1'),
-    });
+it('invalidates lists after adding a todo', async () => {
+  const list = todoQueries.list('all');
+  await runQuery(client, list);
+  expectOk(await runMutation(client, addTodo, 'Buy milk'));
+  expect(client.getQueryState(list.queryKey)?.isInvalidated).toBe(true);
+});
 
-    const result = await userQuery.fetch();
-    expect(result.data).toEqual(mockUser);
-  });
+it('returns the service error', async () => {
+  const error = expectErr(await runQuery(client, todoQueries.detail('missing')));
+  expect(error.name).toBe('NotFound');
 });
 ```
 
-## Best Practices
+Because the client is an argument, tests never share cache state and never mock a module-level client.
 
-1. **Keep Services Pure**: Services should only contain business logic, no UI concerns
-2. **Use Result Types**: Always return `Result<T, E>` from services for consistent error handling
-3. **Transform Errors in Query Layer**: Convert service errors to UI-friendly formats
-4. **Leverage Both Interfaces**: Use reactive for UI state, imperative for workflows
-5. **Organize by Feature**: Group related queries together (users, products, etc.)
-6. **Cache Thoughtfully**: Update related caches after mutations
+## Migrating from 0.44
 
-## Migration Guide
+| Before | After |
+| --- | --- |
+| `const { defineQuery, defineMutation } = createQueryFactories(queryClient)` | Delete. Import `resultQueryOptions` and `resultMutationOptions`. |
+| `defineQuery({ queryKey, queryFn })` | `resultQueryOptions({ queryKey, queryFn })` |
+| `defineMutation({ mutationKey, mutationFn })` | `resultMutationOptions({ mutationKey, mutationFn })` |
+| `createQuery(() => userQuery.options)` | `createQuery(() => userQuery)` |
+| `useMutation(createPost.options)` | `useMutation(createPost)` |
+| `await userQuery.fetch()` | `await runQuery(queryClient, userQuery)` |
+| `await userQuery.ensure()` | `await runQuery(queryClient, { ...userQuery, staleTime: 'static' })` |
+| `await createPost(input)` | `await runMutation(queryClient, createPost, input)` |
+| A captured `queryClient` inside `mutationFn` or a callback | `onSuccess: (data, vars, onMutateResult, { client }) => client.invalidateQueries(...)` |
+| `defineKeys(...)` | A plain `as const` key factory for groups; leaf keys inside the option factories (see [Keys and option factories](#keys-and-option-factories)). |
 
-If you're migrating from a traditional setup:
-
-```typescript
-// Before: Direct API calls in components
-async function loadUser() {
-  try {
-    const response = await fetch(`/api/users/${userId}`);
-    user = await response.json();
-  } catch (error) {
-    errorMessage = error.message;
-  }
-}
-
-// After: Using the query pattern (Svelte 5)
-const userQuery = createQuery(() => rpc.users.getUser(() => userId).options);
-// Automatically handles loading, error, caching, and refetching
-```
-
-## Troubleshooting `.options` Errors
-
-If you're getting errors with `.options`, use this quick diagnostic guide:
-
-### Error: "Cannot read property 'options' of undefined"
-
-**Problem**: The RPC method itself is undefined.
-
-**Common causes**:
-```typescript
-// ❌ Typo in method name
-createQuery(() => rpc.users.getUzer(id).options);  // 'getUzer' doesn't exist
-
-// ❌ Method not exported from RPC namespace
-createQuery(() => rpc.users.privateMethod(id).options);  // not in exports
-```
-
-**Fix**: Check that the method exists and is properly exported in your RPC namespace.
-
-### Error: "options is not a function" (when calling it)
-
-**Problem**: You're trying to call `.options()` with parentheses.
-
-**Fix**: Remove the parentheses from `.options` (it's a property, not a function):
-```typescript
-// ❌ Wrong: calling .options() with parentheses
-createQuery(() => rpc.users.getUser(id).options())
-
-// ✅ Correct (Svelte 5): .options as property with accessor wrapper
-const id = $state('abc-123');
-createQuery(() => rpc.users.getUser(() => id).options)
-
-// ✅ Correct (React): .options as property directly
-useQuery(rpc.users.getUser(id).options)
-```
-
-### Query doesn't update when reactive value changes (Svelte 5)
-
-**Problem**: You're missing the outer accessor wrapper or passing the value directly instead of using an inner accessor function.
-
-**Symptoms**: Query runs once but doesn't re-run when `userId` changes.
-
-**Fix**: Use both outer and inner accessor functions:
-```typescript
-let { userId } = $props<{ userId: string }>();
-
-// ❌ Wrong: Missing outer accessor
-createQuery(rpc.users.getUser(() => userId).options)
-
-// ❌ Wrong: Missing inner accessor for reactive value
-createQuery(() => rpc.users.getUser(userId).options)
-
-// ✅ Correct: Both outer and inner accessors
-createQuery(() => rpc.users.getUser(() => userId).options)
-```
-
-### Type error: "Type 'string' is not assignable to type '() => string'"
-
-**Problem**: Your RPC method expects an accessor function but you're passing a static value.
-
-**When this happens**: The method was defined to always use accessors for reactivity.
-
-**Fix**: Either wrap in an accessor or update the RPC method definition:
-```typescript
-// Option 1: Wrap in accessor (if value might change)
-createQuery(() => rpc.users.getUser(() => CONSTANT_ID).options)
-
-// Option 2: Update RPC definition to accept both
-// In query/users.ts:
-getUser: (userId: string | (() => string)) => defineQuery({
-  queryKey: ['users', typeof userId === 'function' ? userId() : userId],
-  queryFn: () => services.getUser(
-    typeof userId === 'function' ? userId() : userId
-  ),
-}),
-```
-
-### Query runs too many times
-
-**Problem**: Accessor function has side effects or creates new objects on each call.
-
-**Symptoms**: You see excessive network requests or query re-runs.
-
-**Fix**: Make accessor functions pure and stable:
-```typescript
-// ❌ Wrong: Creates new object every call
-createQuery(
-  () => rpc.products.search(() => ({ term: searchTerm, category })).options
-)
-
-// ✅ Correct: Pass primitive values separately or use $derived
-const searchParams = $derived({ term: searchTerm, category });
-createQuery(
-  () => rpc.products.searchWithParams(() => searchParams).options
-)
-```
-
-## Additional Resources
-
-- [Whispering App](https://github.com/braden-w/whispering) - A real-world example using this pattern
-- [TanStack Query Docs](https://tanstack.com/query) - Learn more about the underlying query library
-- [Result Type Pattern](/result/README.md) - Understanding Result types for error handling
+Upgrade `@tanstack/query-core` (or your framework adapter) to `5.102.0` or later; `runQuery` calls `client.query`.
