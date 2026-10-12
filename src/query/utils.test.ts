@@ -1,55 +1,65 @@
-import { QueryClient } from "@tanstack/query-core";
-import type {
-	MutationObserverOptions,
-	QueryObserverOptions,
-} from "@tanstack/query-core";
 import { describe, expect, expectTypeOf, it } from "bun:test";
-import { Err, Ok } from "../result/index.js";
 import {
-	createQueryFactories,
-	defineKeys,
+	CancelledError,
+	type dataTagErrorSymbol,
+	type MutationFunctionContext,
+	QueryClient,
+} from "@tanstack/query-core";
+import { Err, Ok, type Result } from "../result/index.js";
+import {
 	resultMutationOptions,
 	resultQueryOptions,
+	runMutation,
+	runQuery,
 } from "./utils.js";
 
-const queryClient = new QueryClient();
-const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+function queryContext(queryKey: readonly unknown[]) {
+	return {
+		queryKey,
+		signal: new AbortController().signal,
+		meta: undefined,
+	};
+}
+
+function mutationContext(client: QueryClient): MutationFunctionContext {
+	return { client, meta: undefined };
+}
 
 describe("resultQueryOptions", () => {
 	it("infers literal queryKey tuple without `as const`", () => {
-		const options = resultQueryOptions({
+		resultQueryOptions({
 			queryKey: ["users", "user-123"],
 			queryFn: ({ queryKey }) => {
 				expectTypeOf(queryKey).toEqualTypeOf<readonly ["users", "user-123"]>();
 				return Ok({ id: queryKey[1] });
 			},
 		});
+	});
 
-		expectTypeOf(options.queryKey).toEqualTypeOf<
-			readonly ["users", "user-123"]
+	it("tags queryKey so cache reads infer the data type", () => {
+		const client = new QueryClient();
+		const options = resultQueryOptions({
+			queryKey: ["session"],
+			queryFn: () => Ok({ userId: "u1" }),
+		});
+
+		expectTypeOf(client.getQueryData(options.queryKey)).toEqualTypeOf<
+			{ userId: string } | undefined
 		>();
 	});
 
-	it("preserves Ok/Err data and error types through inference", () => {
+	it("infers the error type from the Result", () => {
 		type AuthError = { code: "UNAUTHORIZED"; message: string };
 
 		const options = resultQueryOptions({
 			queryKey: ["session"],
-			queryFn: ():
-				| ReturnType<typeof Ok<{ userId: string }>>
-				| ReturnType<typeof Err<AuthError>> => Ok({ userId: "u1" }),
+			queryFn: (): Result<{ userId: string }, AuthError> =>
+				Ok({ userId: "u1" }),
 		});
 
-		expectTypeOf(options.queryKey).toEqualTypeOf<readonly ["session"]>();
-		expectTypeOf(options).toEqualTypeOf<
-			QueryObserverOptions<
-				{ userId: string },
-				AuthError,
-				{ userId: string },
-				{ userId: string },
-				readonly ["session"]
-			>
-		>();
+		expectTypeOf<
+			(typeof options.queryKey)[typeof dataTagErrorSymbol]
+		>().toEqualTypeOf<AuthError>();
 	});
 
 	it("resolves Ok values into the TanStack data channel", async () => {
@@ -59,12 +69,7 @@ describe("resultQueryOptions", () => {
 		});
 
 		const queryFn = options.queryFn as (ctx: unknown) => Promise<number>;
-		const data = await queryFn({
-			queryKey: ["ok"],
-			signal: new AbortController().signal,
-			meta: undefined,
-		});
-		expect(data).toBe(42);
+		expect(await queryFn(queryContext(["ok"]))).toBe(42);
 	});
 
 	it("throws Err values into the TanStack error channel", async () => {
@@ -74,295 +79,251 @@ describe("resultQueryOptions", () => {
 		});
 
 		const queryFn = options.queryFn as (ctx: unknown) => Promise<unknown>;
-		expect(
-			queryFn({
-				queryKey: ["err"],
-				signal: new AbortController().signal,
-				meta: undefined,
-			}),
-		).rejects.toBe("boom");
+		expect(queryFn(queryContext(["err"]))).rejects.toBe("boom");
 	});
 
-	it("supports sync Result-returning queryFn", async () => {
+	it("supports async Result-returning queryFn", async () => {
 		const options = resultQueryOptions({
-			queryKey: ["sync"],
-			queryFn: () => Ok("sync-data"),
+			queryKey: ["async"],
+			queryFn: async () => Ok("async-data"),
 		});
 
-		const data = await (options.queryFn as (ctx: unknown) => Promise<string>)({
-			queryKey: ["sync"],
-			signal: new AbortController().signal,
-			meta: undefined,
-		});
-		expect(data).toBe("sync-data");
+		const queryFn = options.queryFn as (ctx: unknown) => Promise<string>;
+		expect(await queryFn(queryContext(["async"]))).toBe("async-data");
 	});
 });
 
 describe("resultMutationOptions", () => {
-	it("infers variables and data from mutationFn", async () => {
-		type Input = { name: string };
+	it("infers variables, data, and error from mutationFn", async () => {
 		type SaveError = { code: "CONFLICT"; message: string };
+		const client = new QueryClient();
 
 		const options = resultMutationOptions({
 			mutationKey: ["users", "create"],
-			mutationFn: (
-				input: Input,
-			):
-				| ReturnType<typeof Ok<{ id: string; name: string }>>
-				| ReturnType<typeof Err<SaveError>> =>
+			mutationFn: (input: {
+				name: string;
+			}): Result<{ id: string; name: string }, SaveError> =>
 				Ok({ id: "u1", name: input.name }),
+			throwOnError: (error) => {
+				expectTypeOf(error).toEqualTypeOf<SaveError>();
+				return false;
+			},
 		});
 
-		// Variables type flows through: calling with the right shape produces
-		// the right Promise<TData> resolution.
-		const data = await options.mutationFn?.({ name: "ada" });
+		const data = await options.mutationFn?.(
+			{ name: "ada" },
+			mutationContext(client),
+		);
 		expectTypeOf(data).toEqualTypeOf<
 			{ id: string; name: string } | undefined
 		>();
-		expectTypeOf(options).toEqualTypeOf<
-			MutationObserverOptions<
-				{ id: string; name: string },
-				SaveError,
-				Input,
-				unknown
-			>
-		>();
+		expect(data).toEqual({ id: "u1", name: "ada" });
 	});
 
-	it("accepts observer-only hook options", () => {
-		type SaveError = { code: "CONFLICT"; message: string };
+	it("passes the mutation context to mutationFn", async () => {
+		const client = new QueryClient();
+		let received: QueryClient | undefined;
 
 		const options = resultMutationOptions({
-			mutationKey: ["users", "create"],
-			mutationFn: (input: { name: string }) =>
-				input.name.length > 0
-					? Ok({ id: "u1", name: input.name })
-					: Err<SaveError>({ code: "CONFLICT", message: "Name is required." }),
-			throwOnError: (error) => error.code === "CONFLICT",
+			mutationKey: ["context"],
+			mutationFn: (_: undefined, { client }) => {
+				received = client;
+				return Ok(null);
+			},
 		});
 
-		expectTypeOf(options.throwOnError).toEqualTypeOf<
-			boolean | ((error: SaveError) => boolean) | undefined
-		>();
-	});
-
-	it("resolves Ok values into the TanStack data channel", async () => {
-		const options = resultMutationOptions({
-			mutationKey: ["m"],
-			mutationFn: async (n: number) => Ok(n * 2),
-		});
-
-		const data = await options.mutationFn?.(3);
-		expect(data).toBe(6);
-	});
-
-	it("supports sync Result-returning mutationFn", async () => {
-		const options = resultMutationOptions({
-			mutationKey: ["sync-mutation"],
-			mutationFn: (n: number) => Ok(n * 3),
-		});
-
-		const data = await options.mutationFn?.(3);
-		expect(data).toBe(9);
+		await options.mutationFn?.(undefined, mutationContext(client));
+		expect(received).toBe(client);
 	});
 
 	it("throws Err values into the TanStack error channel", async () => {
+		const client = new QueryClient();
 		const options = resultMutationOptions({
 			mutationKey: ["m-err"],
 			mutationFn: async () => Err("fail"),
 		});
 
-		expect(options.mutationFn?.(undefined)).rejects.toBe("fail");
+		expect(
+			options.mutationFn?.(undefined, mutationContext(client)),
+		).rejects.toBe("fail");
 	});
 });
 
-describe("defineQuery", () => {
-	it("infers literal queryKey tuple without `as const`", () => {
-		const userQuery = defineQuery({
-			queryKey: ["users", "user-123"],
-			queryFn: ({ queryKey }) => {
-				expectTypeOf(queryKey).toEqualTypeOf<readonly ["users", "user-123"]>();
-				return Ok({ id: queryKey[1] });
-			},
+describe("runQuery", () => {
+	it("returns Ok with the data and writes it to the cache", async () => {
+		const client = new QueryClient();
+		const options = resultQueryOptions({
+			queryKey: ["users", "u1"],
+			queryFn: () => Ok({ id: "u1" }),
 		});
 
-		expectTypeOf(userQuery.options.queryKey).toEqualTypeOf<
-			readonly ["users", "user-123"]
+		const { data, error } = await runQuery(client, options);
+		expect(error).toBeNull();
+		expect(data).toEqual({ id: "u1" });
+		const cached = client.getQueryData(options.queryKey);
+		expect(cached).toEqual({ id: "u1" });
+	});
+
+	it("returns Err with the Result's error, typed", async () => {
+		type NotFound = { name: "NotFound"; message: string };
+		const client = new QueryClient();
+		const options = resultQueryOptions({
+			queryKey: ["users", "missing"],
+			queryFn: (): Result<{ id: string }, NotFound> =>
+				Err({ name: "NotFound", message: "No user" }),
+		});
+
+		const result = await runQuery(client, options);
+		expectTypeOf(result).toEqualTypeOf<
+			Result<{ id: string }, NotFound | CancelledError>
 		>();
+		expect(result.error).toEqual({ name: "NotFound", message: "No user" });
 	});
 
-	it("composes through resultQueryOptions: .options matches resultQueryOptions shape", () => {
-		const userQuery = defineQuery({
-			queryKey: ["users", "u1"],
-			queryFn: () => Ok({ id: "u1" }),
-		});
-		const standalone = resultQueryOptions({
-			queryKey: ["users", "u1"],
-			queryFn: () => Ok({ id: "u1" }),
-		});
-
-		expectTypeOf(userQuery.options).toEqualTypeOf(standalone);
-	});
-
-	it("returns Ok from .ensure", async () => {
-		const userQuery = defineQuery({
-			queryKey: ["users", "ensure"],
-			queryFn: () => Ok({ id: "ensure" }),
-		});
-
-		const ensured = await userQuery.ensure();
-		expect(ensured.data).toEqual({ id: "ensure" });
-	});
-
-	it("is not callable so imperative read policy stays explicit", () => {
-		const userQuery = defineQuery({
-			queryKey: ["users", "explicit"],
-			queryFn: () => Ok({ id: "explicit" }),
-		});
-
-		expect(typeof userQuery).toBe("object");
-
-		const assertNotCallable = () => {
-			// @ts-expect-error query definitions require .fetch() or .ensure()
-			userQuery();
-		};
-		expectTypeOf(assertNotCallable).toBeFunction();
-	});
-
-	it("returns Err from .fetch when queryFn errors", async () => {
-		const userQuery = defineQuery({
-			queryKey: ["users", "fail"],
-			queryFn: () => Err("not-found" as const),
-		});
-
-		const { data, error } = await userQuery.fetch();
-		expect(data).toBeNull();
-		expect(error).toBe("not-found");
-	});
-
-	it("uses query options for imperative .fetch", async () => {
-		const localQueryClient = new QueryClient();
-		const { defineQuery: defineLocalQuery } =
-			createQueryFactories(localQueryClient);
+	it("serves fresh cached data without fetching again", async () => {
+		const client = new QueryClient();
 		let calls = 0;
-
-		const userQuery = defineLocalQuery({
-			queryKey: ["users", "fresh-cache"],
-			staleTime: Infinity,
+		const options = resultQueryOptions({
+			queryKey: ["counted"],
 			queryFn: () => {
-				calls += 1;
+				calls++;
 				return Ok(calls);
 			},
+			staleTime: Number.POSITIVE_INFINITY,
 		});
 
-		const first = await userQuery.fetch();
-		const second = await userQuery.fetch();
-
-		expect(first.data).toBe(1);
-		expect(second.data).toBe(1);
+		await runQuery(client, options);
+		const { data } = await runQuery(client, options);
+		expect(data).toBe(1);
 		expect(calls).toBe(1);
 	});
+
+	it("accepts any cached data with staleTime 'static'", async () => {
+		const client = new QueryClient();
+		let calls = 0;
+		const options = resultQueryOptions({
+			queryKey: ["static"],
+			queryFn: () => Ok(++calls),
+		});
+
+		client.setQueryData(options.queryKey, 0);
+		const { data } = await runQuery(client, {
+			...options,
+			staleTime: "static",
+		});
+		expect(data).toBe(0);
+		expect(calls).toBe(0);
+	});
+
+	it("returns Err(CancelledError) when the client is cleared mid-flight", async () => {
+		const client = new QueryClient();
+		const { promise, resolve } = Promise.withResolvers<void>();
+		const options = resultQueryOptions({
+			queryKey: ["slow"],
+			queryFn: async () => {
+				await promise;
+				return Ok("late");
+			},
+		});
+
+		const pending = runQuery(client, options);
+		await Promise.resolve();
+		client.clear();
+		resolve();
+
+		const { error } = await pending;
+		expect(error).toBeInstanceOf(CancelledError);
+		expect(client.getQueryData(options.queryKey)).toBeUndefined();
+	});
 });
 
-describe("defineMutation", () => {
-	it("accepts literal mutationKey tuple without `as const`", () => {
-		const createUser = defineMutation({
-			mutationKey: ["users", "create"],
-			mutationFn: async () => Ok({ id: "u1" }),
+describe("runMutation", () => {
+	it("returns Ok with the data", async () => {
+		const client = new QueryClient();
+		const options = resultMutationOptions({
+			mutationKey: ["double"],
+			mutationFn: (n: number) => Ok(n * 2),
 		});
 
-		expectTypeOf(createUser).toBeFunction();
+		const { data, error } = await runMutation(client, options, 3);
+		expect(error).toBeNull();
+		expect(data).toBe(6);
 	});
 
-	it("returns Ok from callable form", async () => {
-		const create = defineMutation({
-			mutationKey: ["m", "create"],
-			mutationFn: async (input: { name: string }) =>
-				Ok({ id: "u1", name: input.name }),
+	it("returns Err with the Result's error", async () => {
+		const client = new QueryClient();
+		const options = resultMutationOptions({
+			mutationKey: ["fail"],
+			mutationFn: () => Err("fail"),
 		});
 
-		const called = await create({ name: "ada" });
-		expect(called.data).toEqual({ id: "u1", name: "ada" });
-	});
-
-	it("does not expose duplicate .execute helper", () => {
-		const create = defineMutation({
-			mutationKey: ["m", "no-execute"],
-			mutationFn: async () => Ok({ id: "u1" }),
-		});
-
-		expect("execute" in create).toBe(false);
-
-		const assertNoExecute = () => {
-			// @ts-expect-error mutation definitions are callable instead
-			create.execute();
-		};
-		expectTypeOf(assertNoExecute).toBeFunction();
-	});
-
-	it("returns Err from callable form when mutationFn errors", async () => {
-		const create = defineMutation({
-			mutationKey: ["m", "fail"],
-			mutationFn: async () => Err("conflict" as const),
-		});
-
-		const { data, error } = await create();
+		const { data, error } = await runMutation(client, options, undefined);
 		expect(data).toBeNull();
-		expect(error).toBe("conflict");
+		expect(error).toBe("fail");
+	});
+
+	it("runs definition callbacks with the executing client", async () => {
+		const client = new QueryClient();
+		const todos = resultQueryOptions({
+			queryKey: ["todos"],
+			queryFn: () => Ok(["milk"]),
+		});
+		await runQuery(client, todos);
+
+		const addTodo = resultMutationOptions({
+			mutationKey: ["todos", "add"],
+			mutationFn: (title: string) => Ok(title),
+			onSuccess: (_data, _title, _onMutateResult, { client }) =>
+				client.invalidateQueries({ queryKey: ["todos"] }),
+		});
+
+		await runMutation(client, addTodo, "eggs");
+		expect(client.getQueryState(todos.queryKey)?.isInvalidated).toBe(true);
+	});
+
+	it("registers in the mutation cache while running", async () => {
+		const client = new QueryClient();
+		const { promise, resolve } = Promise.withResolvers<void>();
+		const options = resultMutationOptions({
+			mutationKey: ["slow-save"],
+			mutationFn: async () => {
+				await promise;
+				return Ok(null);
+			},
+		});
+
+		const pending = runMutation(client, options, undefined);
+		expect(client.isMutating({ mutationKey: ["slow-save"] })).toBe(1);
+		resolve();
+		await pending;
+		expect(client.isMutating({ mutationKey: ["slow-save"] })).toBe(0);
+	});
+
+	it("lets the finished mutation be garbage collected", async () => {
+		const client = new QueryClient();
+		const options = resultMutationOptions({
+			mutationKey: ["gc"],
+			mutationFn: () => Ok(null),
+			gcTime: 0,
+		});
+
+		await runMutation(client, options, undefined);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(client.getMutationCache().getAll()).toHaveLength(0);
 	});
 });
 
-describe("defineKeys", () => {
-	it("preserves literal tuples for static keys", () => {
-		const keys = defineKeys({
-			all: ["billing"],
-			overview: ["billing", "overview"],
-		});
+describe("key factories", () => {
+	it("keep literal types when spread from a root constant", () => {
+		const todosRoot = ["todos"] as const;
+		const todoKeys = {
+			all: todosRoot,
+			detail: (id: string) => [...todosRoot, "detail", id] as const,
+		};
 
-		expectTypeOf(keys.all).toEqualTypeOf<readonly ["billing"]>();
-		expectTypeOf(keys.overview).toEqualTypeOf<
-			readonly ["billing", "overview"]
+		expectTypeOf(todoKeys.all).toEqualTypeOf<readonly ["todos"]>();
+		expectTypeOf(todoKeys.detail("1")).toEqualTypeOf<
+			readonly ["todos", "detail", string]
 		>();
-	});
-
-	it("preserves factory return tuples when the body uses `as const`", () => {
-		const keys = defineKeys({
-			detail: (id: string) => ["users", id] as const,
-			page: (offset: number, limit: number) =>
-				["users", "page", offset, limit] as const,
-		});
-
-		expectTypeOf(keys.detail("u1")).toEqualTypeOf<readonly ["users", string]>();
-		expectTypeOf(keys.page(0, 10)).toEqualTypeOf<
-			readonly ["users", "page", number, number]
-		>();
-	});
-
-	it("mixes static and factory entries", () => {
-		const keys = defineKeys({
-			all: ["recordings"],
-			byId: (id: string) => ["recordings", id] as const,
-		});
-
-		expectTypeOf(keys.all).toEqualTypeOf<readonly ["recordings"]>();
-		expectTypeOf(keys.byId("r1")).toEqualTypeOf<
-			readonly ["recordings", string]
-		>();
-	});
-
-	it("narrows factory returns to tuple shape WITHOUT `as const`, but widens literals", () => {
-		const keys = defineKeys({
-			detail: (id: string) => ["users", id],
-		});
-
-		expectTypeOf(keys.detail("u1")).toEqualTypeOf<[string, string]>();
-	});
-
-	it("preserves literal positions when factory body uses `as const`", () => {
-		const keys = defineKeys({
-			detail: (id: string) => ["users", id] as const,
-		});
-
-		expectTypeOf(keys.detail("u1")).toEqualTypeOf<readonly ["users", string]>();
 	});
 });

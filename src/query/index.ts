@@ -1,6 +1,6 @@
 export {
-	createQueryFactories,
-	defineKeys,
 	resultMutationOptions,
 	resultQueryOptions,
+	runMutation,
+	runQuery,
 } from "./utils.js";
