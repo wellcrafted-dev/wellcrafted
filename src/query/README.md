@@ -200,6 +200,33 @@ Extract a leaf key into the key factory only when some code needs it without the
 
 If nothing observes the data, call the service directly. A one-off export script that reads every todo does not need a cache entry.
 
+### Awaiting a mutation in a component
+
+`mutation.mutate(vars, { onSuccess, onError })` is the hook path, and its errors are typed. `mutateAsync` rejects, and TypeScript cannot type a rejection, so do not use it with Result definitions. When a handler must wait for the outcome, run the definition and read pending state from the cache:
+
+```svelte
+<script lang="ts">
+  import { useIsMutating, useQueryClient } from '@tanstack/svelte-query';
+  import { runMutation } from 'wellcrafted/query';
+  import { addTodo } from '$lib/query/todos';
+
+  let { title }: { title: string } = $props();
+
+  const queryClient = useQueryClient();
+  const adding = useIsMutating({ mutationKey: addTodo.mutationKey });
+
+  async function submit() {
+    const { error } = await runMutation(queryClient, addTodo, title);
+    if (error) return toast.error(error.message); // typed from the service's Result
+    dialog.close();
+  }
+</script>
+
+<button disabled={adding.current > 0} onclick={submit}>Add</button>
+```
+
+The run goes through the same mutation cache as the hook, so callbacks, invalidation, and devtools behave the same. The differences: `useIsMutating` counts every pending run of the key, not only this component's; the outcome lives in the returned Result rather than on a hook object; and the Result arrives even if the component unmounts, where `mutate`'s per-call callbacks would not fire.
+
 ## Result in, Result out
 
 Services return Results. `resultQueryOptions` and `resultMutationOptions` adapt them for TanStack. `runQuery` and `runMutation` adapt back for workflows. Pass the Result-returning function straight in; do not unwrap first.

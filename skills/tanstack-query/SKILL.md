@@ -125,6 +125,16 @@ const { error: addError } = await runMutation(queryClient, addTodo, todo.title);
 
 If nothing observes the data, call the service directly. Do not route a one-off script through the cache.
 
+In components:
+
+| Need | Call |
+| --- | --- |
+| Fire and forget | `mutation.mutate(vars, { onSuccess, onError })`; `onError` and `mutation.error` are typed |
+| Await the outcome with a typed error | `await runMutation(queryClient, definition, vars)`, with `queryClient` from `useQueryClient()` at component setup and `useIsMutating({ mutationKey: definition.mutationKey })` for the pending flag |
+| Never | `mutation.mutateAsync(vars)`: it rejects, and the rejection is untyped |
+
+`useIsMutating` counts every pending run of the key, not only this component's. A mutation hook's `isPending` tracks only runs that hook started, so it stays `false` during a `runMutation` call. Do not add a Result-returning wrapper around the hook.
+
 ## 6. Result in, Result out
 
 Services return Results. The `result*Options` adapters turn them into TanStack's contract; `runQuery`/`runMutation` turn TanStack back into Results.

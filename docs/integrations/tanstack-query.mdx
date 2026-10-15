@@ -124,6 +124,67 @@ function TodoList({ filter }: { filter: TodoFilter }) {
 
 Everything else in TanStack that accepts options works the same way: `useQueries` and `queryClient.query`. Override any option by spreading: `useQuery({ ...todoQueries.detail(id), enabled: !!id })`.
 
+### Awaiting a mutation
+
+`mutate` returns nothing. Its errors reach `add.error` and `onError`, which are typed. `mutateAsync` returns a promise, and TypeScript cannot type a promise's rejection, so a `catch` around it gets `unknown`. Do not use `mutateAsync` with Result definitions.
+
+When a handler has to wait for the mutation, for example to close a dialog only on success, skip the mutation hook and run the definition with `runMutation`. Take the pending flag from `useIsMutating`:
+
+<Tabs>
+  <Tab title="React">
+
+```tsx
+import { useIsMutating, useQueryClient } from '@tanstack/react-query';
+import { runMutation } from 'wellcrafted/query';
+import { addTodo } from '../lib/query/todos';
+
+function AddTodoButton({ title, onClose }: { title: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const adding = useIsMutating({ mutationKey: addTodo.mutationKey }) > 0;
+
+  async function submit() {
+    const { error } = await runMutation(queryClient, addTodo, title);
+    if (error) return toast.error(error.message); // TodoError
+    onClose();
+  }
+
+  return <button disabled={adding} onClick={submit}>Add</button>;
+}
+```
+
+  </Tab>
+  <Tab title="Svelte 5">
+
+```svelte
+<script lang="ts">
+  import { useIsMutating, useQueryClient } from '@tanstack/svelte-query';
+  import { runMutation } from 'wellcrafted/query';
+  import { addTodo } from '$lib/query/todos';
+
+  let { title, onClose }: { title: string; onClose: () => void } = $props();
+
+  const queryClient = useQueryClient();
+  const adding = useIsMutating({ mutationKey: addTodo.mutationKey });
+
+  async function submit() {
+    const { error } = await runMutation(queryClient, addTodo, title);
+    if (error) return toast.error(error.message); // TodoError
+    onClose();
+  }
+</script>
+
+<button disabled={adding.current > 0} onclick={submit}>Add</button>
+```
+
+  </Tab>
+</Tabs>
+
+This runs the same definition through the same mutation cache as the hook: `onSuccess` invalidates, devtools show the run, and `useIsMutating` counts it. Three things differ from `useMutation`:
+
+- **Pending is shared.** `useIsMutating` counts every pending run of that key, so two forms adding todos at once both disable. If only this component's run should count, keep a local flag around the `await`.
+- **The outcome lives in the Result.** No `add.data` or `add.error` persists after the handler returns; keep what you need in your own state.
+- **Unmounting does not drop the outcome.** Callbacks passed to `mutate(vars, { onSuccess })` do not fire once the component unmounts. The awaited Result still arrives.
+
 ## Keys and option factories
 
 The key factory holds groups: the root and the prefixes you invalidate together. A group belongs to no single query. Option factories own the leaf keys, and build each one by spreading a group.
