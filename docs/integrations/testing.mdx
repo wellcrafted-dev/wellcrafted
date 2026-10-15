@@ -6,7 +6,7 @@ icon: 'test-tube'
 
 # Testing wellcrafted Code
 
-This guide covers how to test functions that return `Result<T, E>`, custom matchers for cleaner assertions, and query layer testing with TanStack Query.
+This guide covers how to test functions that return `Result<T, E>`, custom matchers for cleaner assertions, and testing the TanStack Query layer with `runQuery` and `runMutation`.
 
 ## Testing Services That Return Results
 
@@ -181,14 +181,15 @@ expect(errorResult).toBeErr({
 
 ## Testing the Query Layer
 
-Use a test `QueryClient` with retries disabled to test query and mutation factories:
+Query and mutation definitions take no client, so each test can create its own. Use a fresh `QueryClient` per test with retries off, and drive the definitions with `runQuery` and `runMutation`. Both return Results, so the same assertions you use for services work here, and both go through the cache, so you can assert on what landed there.
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/query-core';
-import { createQueryFactories } from 'wellcrafted/query';
+import { runMutation, runQuery } from 'wellcrafted/query';
 import { Ok, Err } from 'wellcrafted/result';
 import * as userService from '../../services/users';
+import { createUser, userQueries } from '../users';
 
 vi.mock('../../services/users');
 
@@ -201,137 +202,114 @@ function createTestQueryClient() {
   });
 }
 
-describe('User Queries', () => {
+describe('User queries', () => {
   let queryClient: QueryClient;
-  let defineQuery: ReturnType<typeof createQueryFactories>['defineQuery'];
-  let defineMutation: ReturnType<typeof createQueryFactories>['defineMutation'];
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
-    ({ defineQuery, defineMutation } = createQueryFactories(queryClient));
     vi.clearAllMocks();
   });
 
-  it('fetches users successfully', async () => {
-    const mockUsers = [
-      { id: '1', name: 'John', email: 'john@example.com', role: 'user' as const, createdAt: new Date(), updatedAt: new Date() },
-    ];
+  it('fetches users into the cache', async () => {
+    const users = [{ id: '1', name: 'John', email: 'john@example.com' }];
+    vi.mocked(userService.getAllUsers).mockResolvedValue(Ok({ users, total: 1 }));
 
-    vi.mocked(userService.getAllUsers).mockResolvedValue(Ok({
-      users: mockUsers,
-      total: 1,
-    }));
+    const result = await runQuery(queryClient, userQueries.all());
 
-    const userQuery = defineQuery({
-      queryKey: ['users'],
-      queryFn: () => userService.getAllUsers(),
-    });
-
-    const result = await userQuery.fetch();
-
-    expect(result).toEqual(Ok({ users: mockUsers, total: 1 }));
+    expect(result).toEqual(Ok({ users, total: 1 }));
+    expect(queryClient.getQueryData(userQueries.all().queryKey)).toEqual({ users, total: 1 });
   });
 
-  it('handles service errors', async () => {
+  it('returns service errors as Err', async () => {
     const serviceError = {
       name: 'UserServiceError',
       message: 'Database connection failed',
       operation: 'getAllUsers',
     };
-
     vi.mocked(userService.getAllUsers).mockResolvedValue(Err(serviceError));
 
-    const userQuery = defineQuery({
-      queryKey: ['users'],
-      queryFn: () => userService.getAllUsers(),
-    });
-
-    const result = await userQuery.fetch();
+    const result = await runQuery(queryClient, userQueries.all());
 
     expect(result).toEqual(Err(serviceError));
   });
 
-  it('mutation updates cache on success', async () => {
-    const newUser = {
-      id: '3',
-      name: 'Bob',
-      email: 'bob@example.com',
-      role: 'user' as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  it('serves fresh cached data without calling the service', async () => {
+    const cached = { users: [], total: 0 };
+    queryClient.setQueryData(userQueries.all().queryKey, cached);
 
+    const result = await runQuery(queryClient, { ...userQueries.all(), staleTime: 'static' });
+
+    expect(result).toEqual(Ok(cached));
+    expect(userService.getAllUsers).not.toHaveBeenCalled();
+  });
+});
+
+describe('createUser mutation', () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
+    vi.clearAllMocks();
+  });
+
+  it('invalidates user queries on success', async () => {
+    const newUser = { id: '3', name: 'Bob', email: 'bob@example.com' };
     vi.mocked(userService.createUser).mockResolvedValue(Ok(newUser));
+    queryClient.setQueryData(userQueries.all().queryKey, { users: [], total: 0 });
 
-    queryClient.setQueryData(['users'], { users: [], total: 0 });
-
-    const createUserMutation = defineMutation({
-      mutationKey: ['users', 'create'],
-      mutationFn: async (input: any) => {
-        const result = await userService.createUser(input);
-
-        if (result.error) return result;
-
-        queryClient.setQueryData(['users'], (old: any) =>
-          old ? {
-            users: [result.data, ...old.users],
-            total: old.total + 1,
-          } : { users: [result.data], total: 1 }
-        );
-
-        return result;
-      },
-    });
-
-    const result = await createUserMutation({
+    const result = await runMutation(queryClient, createUser, {
       name: 'Bob',
       email: 'bob@example.com',
-      password: 'password123',
     });
 
     expect(result).toEqual(Ok(newUser));
-
-    const cachedData = queryClient.getQueryData(['users']);
-    expect(cachedData).toEqual({ users: [newUser], total: 1 });
+    expect(queryClient.getQueryState(userQueries.all().queryKey)?.isInvalidated).toBe(true);
   });
 
-  it('mutation does not update cache on error', async () => {
+  it('leaves the cache alone on error', async () => {
     const serviceError = {
       name: 'UserServiceError',
       message: 'Email already exists',
       email: 'existing@example.com',
     };
-
     vi.mocked(userService.createUser).mockResolvedValue(Err(serviceError));
+    queryClient.setQueryData(userQueries.all().queryKey, { users: [], total: 0 });
 
-    const initialData = { users: [], total: 0 };
-    queryClient.setQueryData(['users'], initialData);
-
-    const createUserMutation = defineMutation({
-      mutationKey: ['users', 'create'],
-      mutationFn: async (input: any) => {
-        const result = await userService.createUser(input);
-        if (result.error) return result;
-
-        queryClient.setQueryData(['users'], (old: any) =>
-          old ? {
-            users: [result.data, ...old.users],
-            total: old.total + 1,
-          } : { users: [result.data], total: 1 }
-        );
-        return result;
-      },
-    });
-
-    const result = await createUserMutation({
+    const result = await runMutation(queryClient, createUser, {
       name: 'John',
       email: 'existing@example.com',
-      password: 'password123',
     });
 
     expect(result).toEqual(Err(serviceError));
-    expect(queryClient.getQueryData(['users'])).toEqual(initialData);
+    expect(queryClient.getQueryState(userQueries.all().queryKey)?.isInvalidated).toBe(false);
   });
+});
+```
+
+The definitions under test look like this. The mutation invalidates through `context.client`, so it acts on whichever client the test passes in:
+
+```typescript
+// users.ts
+import { resultMutationOptions, resultQueryOptions } from 'wellcrafted/query';
+import * as userService from '../services/users';
+
+const usersRoot = ['users'] as const;
+
+export const userKeys = { all: usersRoot };
+
+export const userQueries = {
+  all: () =>
+    resultQueryOptions({
+      queryKey: [...usersRoot, 'list'],
+      queryFn: () => userService.getAllUsers(),
+    }),
+};
+
+export const createUser = resultMutationOptions({
+  mutationKey: [...usersRoot, 'create'],
+  mutationFn: (input: CreateUserInput) => userService.createUser(input),
+  onSuccess: (_user, _input, _onMutateResult, { client }) =>
+    client.invalidateQueries({ queryKey: userKeys.all }),
 });
 ```
 
