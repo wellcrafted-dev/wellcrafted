@@ -7,11 +7,9 @@ import type { LogSink } from "./types.js";
  * adding `createConsoleSink({ format })` would be ceremony for a pattern
  * the user can trivially replace by writing their own sink.
  *
- * `console[event.level]` routes directly without a detached lookup table.
- * `LogLevel` is a subset of the Console method keys, so TS errors at this
- * access if a future level drifts (e.g. adding `fatal`). Calling the method
- * through `console[...]` preserves the `this` binding — avoids "Illegal
- * invocation" in runtimes that require it.
+ * Trace uses `console.debug`: `console.trace` would add a stack trace to
+ * every event. Other levels use the corresponding console method. Calling
+ * through `console[...]` preserves the receiver binding.
  *
  * `satisfies LogSink` (not `: LogSink`) keeps the inferred callable type
  * precise — `LogSink` is an intersection with optional dispose, and the
@@ -21,21 +19,18 @@ import type { LogSink } from "./types.js";
  *
  * ### CLI authors: stream routing
  *
- * `console[level]` routes by level, not uniformly to stdout:
- * - `console.log` (not used here) is the only method that writes stdout.
- * - `console.info`, `console.debug`, `console.warn`, `console.error`,
- *   `console.trace` all write **stderr** in Node/Bun.
+ * In Node/Bun, info, debug, and trace write to stdout; warn and error
+ * write to stderr. Console rendering is human-readable text, not JSONL.
  *
- * For a CLI that emits structured program output on stdout and diagnostics
- * on stderr, this default is correct — every logger event goes to stderr.
- * Authors who expect `log.info` to print to stdout will be surprised; write
- * a custom sink that routes to `process.stdout` if that's the requirement.
+ * A CLI reserving stdout for program output needs a sink that explicitly
+ * writes every event to stderr.
  */
 export const consoleSink = ((event) => {
 	const prefix = `[${event.source}]`;
+	const method = event.level === "trace" ? "debug" : event.level;
 	if (event.data === undefined) {
-		console[event.level](prefix, event.message);
+		console[method](prefix, event.message);
 	} else {
-		console[event.level](prefix, event.message, event.data);
+		console[method](prefix, event.message, event.data);
 	}
 }) satisfies LogSink;
