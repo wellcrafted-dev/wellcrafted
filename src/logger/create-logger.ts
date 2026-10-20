@@ -1,6 +1,7 @@
 import type { AnyTaggedError } from "../error/types.js";
+import { composeSinks } from "./compose-sinks.js";
 import { consoleSink } from "./console-sink.js";
-import type { LoggableError, LogLevel, Logger, LogSink } from "./types.js";
+import type { LoggableError, Logger, LogLevel, LogSink } from "./types.js";
 
 /** Narrow `LoggableError` to the raw tagged object. See `LoggableError` in `types.ts` for the discriminator rationale. */
 function unwrapLoggable(err: LoggableError): AnyTaggedError {
@@ -20,6 +21,9 @@ function unwrapLoggable(err: LoggableError): AnyTaggedError {
  *   module-level registry. Every consumer takes a `log?: Logger` option
  *   and defaults to `createLogger('<source>')` if omitted. Globals make
  *   test isolation and sink composition painful.
+ * - **Sink failures stay out of application control flow.** Delivery errors
+ *   thrown synchronously are reported directly to the console, with the
+ *   original event. Sinks must complete receipt synchronously.
  * - **Method shorthand in the return object** over higher-order factories.
  *   The five methods differ in two simple ways (error-unary vs free-form,
  *   plus the level string); spelling them out beats an `emitErr("warn")`
@@ -62,8 +66,9 @@ export function createLogger(
 	source: string,
 	sink: LogSink = consoleSink,
 ): Logger {
+	const deliver = composeSinks(sink);
 	const emit = (level: LogLevel, message: string, data?: unknown): void => {
-		sink({ ts: Date.now(), level, source, message, data });
+		deliver({ ts: Date.now(), level, source, message, data });
 	};
 	return {
 		error(err) {

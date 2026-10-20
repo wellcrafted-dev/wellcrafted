@@ -233,11 +233,30 @@ In exchange, the whole API is `{ data, error }`, `async/await`, and `switch`: no
 Each lives behind its own subpath import, so you pay for only what you use.
 
 - `wellcrafted/brand`: `Brand<T>` makes distinct types from primitives (`type UserId = string & Brand<"UserId">`) so the compiler catches mix-ups. Zero runtime.
-- `wellcrafted/logger`: a small DI-based structured logger keyed on log level, built to take your `defineErrors` types directly. No global singleton.
+- `wellcrafted/logger`: a small DI-based structured logger keyed on log level, built to take your `defineErrors` types directly. No global singleton. See [Logging errors](#logging-errors).
 - `wellcrafted/testing`: `expectOk` / `expectErr` unwrap a `Result` in a test, or throw with a readable message.
 - `wellcrafted/json`: `parseJson` is `JSON.parse` that returns a `Result` instead of throwing.
 - `wellcrafted/query`: TanStack Query adapters for Result-returning functions. `resultQueryOptions` and `resultMutationOptions` produce plain TanStack options that hooks take directly; `runQuery` and `runMutation` run them through a `QueryClient` and return a `Result`.
 - `wellcrafted/standard-schema`: wrap a `Result` as a [Standard Schema](https://github.com/standard-schema/standard-schema) for validators that speak the spec.
+
+### Logging errors
+
+`warn` and `error` take the error itself: either the `Err` a `defineErrors` factory returns, or `result.error` after narrowing. Both log the same underlying error object. `info`, `debug`, and `trace` take a message and optional data. You choose the level at the place that decides to report the failure, not at every layer that passes it along.
+
+```typescript
+import { createLogger } from "wellcrafted/logger";
+
+const log = createLogger("app/transcription"); // writes to the console by default
+
+const { data, error } = await transcribe(audio, apiKey);
+if (error) {
+  log.error(error); // event.message is error.message; event.data is error
+} else {
+  log.info("Transcribed audio", { characters: data.length });
+}
+```
+
+A sink is a synchronous function that receives each event. Pass one as the second argument to `createLogger`, or fan out to several with `composeSinks`. A sink that throws is reported to the console without interrupting your code or the other sinks. See the [logger guide](https://github.com/wellcrafted-dev/wellcrafted/blob/main/docs/core/logger.mdx) for writing sinks, testing with `memorySink`, and framework adapters.
 
 ## How it compares
 
