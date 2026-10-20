@@ -13,9 +13,8 @@ export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 /**
  * The normalized event every sink receives.
  *
- * - `ts` is epoch millis (not a `Date`) — cheap to create, easy to serialize,
- *   trivially monotonic for ordering. Sinks that want ISO-8601 on the wire
- *   convert at serialization time.
+ * - `ts` is epoch millis (not a `Date`). It is wall-clock time, not a
+ *   monotonic sequence. Sinks can convert it to ISO-8601 when serializing.
  * - `source` is the logger's namespace, stamped once at `createLogger` and
  *   carried on every event. Analogous to `tracing`'s `target`.
  * - `message` is human text. For `warn`/`error` it's copied from the
@@ -41,10 +40,19 @@ export type LogEvent = {
  *
  * The intersection with `Partial<AsyncDisposable>` lets the same type cover
  * both pure functions (no-op dispose) and stateful sinks (file writers,
- * network sockets). Callers who need guaranteed cleanup narrow to a
- * `LogSink & AsyncDisposable` return type or bind with `await using`.
+ * network sockets). Callers who need guaranteed cleanup retain the owning
+ * resource's concrete `LogSink & AsyncDisposable` type for `await using`.
+ *
+ * Receivers run synchronously and return `undefined`. Async receivers and
+ * returned promises are unsupported. A sink can enqueue background work,
+ * but owns that work's failures and completion. Non-TypeScript callers
+ * must honor the same contract; returned values are not inspected.
+ *
+ * `createLogger` and `composeSinks` contain synchronous throws. Their
+ * emergency console report is best-effort too.
  */
-export type LogSink = ((event: LogEvent) => void) & Partial<AsyncDisposable>;
+export type LogSink = ((event: LogEvent) => undefined) &
+	Partial<AsyncDisposable>;
 
 /**
  * Accepted by `log.warn` / `log.error`. Union of two shapes:
@@ -93,6 +101,10 @@ export type LoggableError = AnyTaggedError | Err<AnyTaggedError>;
  *   data both live on the variant, level is chosen at the call site.
  * - `trace`/`debug`/`info` are free-form — diagnostic events don't need
  *   enumeration and often don't have a useful "name" to dedupe on.
+ *
+ * Put the facts that explain a failure on its error definition so they
+ * remain available to Result callers as well as sinks. Logging does not
+ * consume or recover from the Result; the caller chooses the response.
  *
  * Mirrors Rust's `tracing::warn!(?err)` vs `tracing::info!("msg", ...)`.
  */
