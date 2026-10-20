@@ -34,6 +34,7 @@
 						"pages": [
 							"core/result-pattern",
 							"core/error-system",
+							"core/logger",
 							"core/brand-types"
 						]
 					},
@@ -69,9 +70,7 @@
 					},
 					{
 						"group": "\ud83d\udd04 Migration",
-						"pages": [
-							"migration/from-try-catch"
-						]
+						"pages": ["migration/from-try-catch"]
 					}
 				]
 			}

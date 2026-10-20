@@ -1,0 +1,273 @@
+---
+title: 'Logger'
+description: 'Structured, level-keyed logging that takes defineErrors variants directly'
+icon: 'scroll'
+---
+
+# Logger
+
+`wellcrafted/logger` is a small structured logger built around the errors you already define with `defineErrors`. You create a logger with a source name and a sink, log typed errors with `warn` or `error`, and log free-form diagnostics with `info`, `debug`, or `trace`. There is no global logger and no transport framework; a sink is a function that receives one event.
+
+```typescript
+import { defineErrors } from 'wellcrafted/error';
+import { createLogger } from 'wellcrafted/logger';
+
+const ConfigError = defineErrors({
+  Missing: ({ path }: { path: string }) => ({
+    message: `Config file not found at ${path}`,
+    path,
+  }),
+});
+
+const log = createLogger('app/config');
+
+log.info('Loading config', { path: './config.json' });
+log.warn(ConfigError.Missing({ path: './config.json' }));
+```
+
+With the default sink, the first call becomes `console.info('[app/config]', 'Loading config', { path: './config.json' })`. The second calls `console.warn` with the prefix, the error's message, and the error object.
+
+## Creating a logger
+
+`createLogger(source, sink)` binds a source name and a sink. The sink defaults to `consoleSink`, so `createLogger('app/config')` works with no setup during development.
+
+The `source` is stamped on every event the logger emits. It is a free-form string, but filtering is easier when sources share a shape such as `'<package>/<module>'` or `'<app>/<feature>'`, kept lowercase-kebab.
+
+There is no default logger or registry to configure. Code that can be instantiated more than once with different routing needs should accept a logger as an option and fall back to its own:
+
+```typescript
+import { createLogger, type Logger } from 'wellcrafted/logger';
+
+function createSyncService(options: { log?: Logger } = {}) {
+  const log = options.log ?? createLogger('workspace/sync');
+  // ...
+}
+```
+
+The application decides where events go at the point where it wires services together. For a process-wide module such as a CLI command, a module-scope `const log = createLogger('cli/build')` is fine.
+
+## Logging errors
+
+`warn` and `error` take exactly one argument: the error. The message and structured fields already live on the variant you defined, so there is no separate message parameter to drift away from the error's own wording.
+
+A `defineErrors` factory already returns an `Err`. You can pass that wrapper straight to the logger, or pass `result.error` after narrowing a Result:
+
+```typescript
+import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
+import { createLogger } from 'wellcrafted/logger';
+import { tryAsync } from 'wellcrafted/result';
+
+const UploadError = defineErrors({
+  Failed: ({ fileName, cause }: { fileName: string; cause: unknown }) => ({
+    message: `Upload of ${fileName} failed: ${extractErrorMessage(cause)}`,
+    fileName,
+    cause,
+  }),
+});
+
+const log = createLogger('app/upload');
+
+// The factory's Err wrapper
+log.error(UploadError.Failed({ fileName: 'a.txt', cause: new Error('timeout') }));
+
+// The narrowed error from a Result
+const { error } = await tryAsync({
+  try: () => upload(file),
+  catch: (cause) => UploadError.Failed({ fileName: file.name, cause }),
+});
+if (error) log.error(error);
+```
+
+Both forms produce the same event. The logger unwraps the `Err`, so `event.data` is the tagged error object itself, the same object as `result.error`, and `event.message` is that error's `message`. Don't wrap the error in `Err(...)` again before logging; the factory has already done that, and the logger accepts the raw error too. A native `Error` also works, which helps when replacing `console.warn(error)` in a `catch` block.
+
+The level is chosen where you log, not where the error is defined. The same variant can be a `warn` inside a retry loop and an `error` on the final attempt. Log at the boundary that decides to report a failure, usually the place that handles the Result, rather than at every layer that returns it upward. Logging does not consume or recover from the Result; the caller still decides what to do with it.
+
+`tapErr` is the Result-flow form of the same idea. It takes a log method, logs on the `Err` branch, and returns the Result unchanged:
+
+```typescript
+import { tapErr } from 'wellcrafted/logger';
+
+const result = await tryAsync({
+  try: () => upload(file),
+  catch: (cause) => UploadError.Failed({ fileName: file.name, cause }),
+}).then(tapErr(log.warn));
+```
+
+Logger methods don't use `this`, so passing `log.warn` around detached is safe. `tapErr` is also exported from `wellcrafted/result`.
+
+## Logging diagnostics
+
+`info`, `debug`, and `trace` take a message and optional data. These are free-form events that don't need a defined error variant:
+
+```typescript
+log.info('Sync started', { documentId });
+log.debug('Received update', { bytes: update.byteLength });
+log.trace('Entering reconcile');
+```
+
+There are five levels, `trace`, `debug`, `info`, `warn`, and `error`, and no `fatal`. Ending the process is an application decision, so call `process.exit` yourself where that is the right response.
+
+## Events
+
+Every sink receives a `LogEvent`:
+
+```typescript
+type LogEvent = {
+  ts: number;       // Date.now() when the event was emitted
+  level: LogLevel;  // 'trace' | 'debug' | 'info' | 'warn' | 'error'
+  source: string;   // the logger's source
+  message: string;  // for warn/error, the error's message
+  data?: unknown;   // for warn/error, the tagged error object
+};
+```
+
+For `warn` and `error`, `message` duplicates `data.message` on purpose, so a sink can render every event the same way without checking whether `data` is an error. `ts` is wall-clock time, not a sequence number. Two events can share a timestamp, and the clock can move backward, so don't use it as an ordering key.
+
+## The console sink
+
+`consoleSink` is the default. It writes human-readable output with a `[source]` prefix through the console method for each level. `trace` goes through `console.debug`, because `console.trace` would print a stack trace with every event.
+
+In Bun and Node, `info`, `debug`, and `trace` write to stdout, while `warn` and `error` write to stderr. The output is formatted for people, not machines: redirecting it to a file gives you console text, not JSON Lines.
+
+A CLI that reserves stdout for program output can send every event to stderr with its own sink:
+
+```typescript
+import { createLogger, type LogSink } from 'wellcrafted/logger';
+
+const stderrSink: LogSink = (event) => {
+  const prefix = `[${event.source}]`;
+  if (event.data === undefined) console.error(prefix, event.message);
+  else console.error(prefix, event.message, event.data);
+};
+
+const log = createLogger('cli/build', stderrSink);
+```
+
+## Writing a sink
+
+A `LogSink` is a function that takes a `LogEvent`, receives it synchronously, and returns `undefined`. Writing it as a block body typed as `LogSink` satisfies that:
+
+```typescript
+import type { LogEvent, LogSink } from 'wellcrafted/logger';
+
+const recent: LogEvent[] = [];
+
+const recentSink: LogSink = (event) => {
+  recent.push(event);
+};
+```
+
+Three shapes don't typecheck because their return type isn't `undefined`. The first and third run synchronously and are still rejected; the type enforces the return value, not timing. The async receiver is also a timing problem, since the logger never awaits its promise.
+
+```typescript
+// Expression body: returns push's number
+const a: LogSink = (event) => recent.push(event);
+
+// Async receiver: returns a promise the logger would never await
+const b: LogSink = async (event) => {
+  await upload(event);
+};
+
+// Explicit void return type: void is not assignable to undefined
+function forward(event: LogEvent): void {
+  recent.push(event);
+}
+const c: LogSink = forward;
+```
+
+Wrap expression bodies in braces, and annotate standalone functions as returning `undefined` or type them as `LogSink`. The logger never inspects the return value at runtime, so plain JavaScript callers must follow the same contract.
+
+A sink that needs to do asynchronous work can start it from a synchronous receiver. That work then belongs to the sink: the logger doesn't wait for it, retry it, or see its failures.
+
+```typescript
+const remoteSink: LogSink = (event) => {
+  void fetch('/api/logs', {
+    method: 'POST',
+    body: JSON.stringify(event),
+  }).catch((cause) => console.error('Log upload failed', cause));
+};
+```
+
+When a logging call returns, every sink has been called with the event, but a sink may have thrown instead of finishing. Those throws are reported, not raised. The logger also makes no promise that an event reached disk or a server; a sink that needs durability has to provide it.
+
+## Combining sinks
+
+`composeSinks(...sinks)` returns one sink that delivers each event to every member, in the order you list them:
+
+```typescript
+import { composeSinks, consoleSink, createLogger } from 'wellcrafted/logger';
+
+const sink = composeSinks(consoleSink, recentSink, remoteSink);
+
+const syncLog = createLogger('workspace/sync', sink);
+const authLog = createLogger('workspace/auth', sink);
+```
+
+If a sink throws, the failure is contained. The logger reports the thrown value and the original event through `console.error` with a `[wellcrafted/logger] Sink failed` prefix, then continues with the next sink. The logging call returns normally, so a broken sink can't interrupt your code or replace the Result passing through `tapErr`. `createLogger` uses the same guard for a single sink. The emergency report is best-effort; if `console.error` itself throws, that is swallowed too.
+
+A sink can also implement `Symbol.asyncDispose` to flush and close a resource it owns. The composed sink's dispose awaits each member's dispose in order and skips members that don't have one; if a member's dispose throws, later members are not disposed. Sinks without resources, like `consoleSink`, don't need it.
+
+## Testing with memorySink
+
+`memorySink()` returns a sink and the plain array it pushes events into. Each call creates a new array, so tests don't share state:
+
+```typescript
+import { expect, test } from 'bun:test';
+import { createLogger, memorySink } from 'wellcrafted/logger';
+import { ConfigError } from './config-errors';
+
+test('reports a missing config file', () => {
+  const { sink, events } = memorySink();
+  const log = createLogger('app/config', sink);
+
+  const missing = ConfigError.Missing({ path: './config.json' });
+  log.warn(missing);
+
+  expect(events).toHaveLength(1);
+  expect(events[0]).toMatchObject({ level: 'warn', source: 'app/config' });
+  expect(events[0]?.data).toBe(missing.error);
+});
+```
+
+`events` is an ordinary array for assertions. It has no subscription API and isn't reactive in any UI framework.
+
+## Framework adapters
+
+The logger core doesn't depend on any framework. Showing log history in a UI, writing JSON Lines to a file, or shipping events to a server are application sinks you write against `LogSink`.
+
+For example, a Svelte app can keep recent events in reactive state from a `.svelte.ts` module:
+
+```typescript
+// log-history.svelte.ts
+import { untrack } from 'svelte';
+import type { LogEvent, LogSink } from 'wellcrafted/logger';
+
+export function createLogHistory() {
+  let events = $state.raw<readonly LogEvent[]>([]);
+
+  const sink: LogSink = (event) => {
+    const previous = untrack(() => events);
+    events = [...previous, event].slice(-500);
+  };
+
+  return {
+    sink,
+    get events() {
+      return events;
+    },
+  };
+}
+```
+
+Pass `history.sink` to `createLogger` or `composeSinks`, and have components read `history.events`. Reading through `untrack` keeps a logging call made inside a caller's `$effect` from making that effect depend on the history; the assignment still updates any component that reads `history.events`. The history is for display. Don't derive new log calls or toasts by replaying it.
+
+## API reference
+
+All exports come from `wellcrafted/logger`:
+
+- `createLogger(source, sink?)`: create a `Logger` bound to a source; `sink` defaults to `consoleSink`
+- `consoleSink`: the default human-readable console sink
+- `composeSinks(...sinks)`: deliver each event to several sinks in order, containing failures
+- `memorySink()`: return `{ sink, events }` for tests
+- `tapErr(logFn)`: log a Result's error and return the Result unchanged
+- Types: `Logger`, `LogSink`, `LogEvent`, `LogLevel`, `LoggableError`
