@@ -1,12 +1,14 @@
 ---
 name: tanstack-query
-description: TanStack Query with wellcrafted/query, resultQueryOptions, resultMutationOptions, runQuery, and runMutation. Use when wiring Result-returning services into TanStack Query, organizing query keys and option factories, invalidating from mutations, or running queries and mutations imperatively.
+description: Compose Result-returning services into native TanStack Query options. Use when defining service query/mutation namespaces, custom options, cache invalidation, or imperative Result workflows.
 ---
 
 # TanStack Query with wellcrafted
 
 ```typescript
 import {
+	createMutations,
+	createQueries,
 	resultMutationOptions,
 	resultQueryOptions,
 	runMutation,
@@ -14,9 +16,47 @@ import {
 } from 'wellcrafted/query';
 ```
 
-Ground behavior claims in `src/query/utils.ts` for the installed version. The module exports exactly these four functions and requires `@tanstack/query-core` 5.102 or later (optional peer dependency).
+Ground behavior claims in `src/query/{namespaces,utils}.ts` for the installed version. The module exports these six functions and requires `@tanstack/query-core` 5.102 or later (optional peer dependency).
 
 `createQueryFactories`, `defineQuery`, `defineMutation`, `defineKeys`, `.options`, `.fetch()`, `.ensure()`, and callable mutations no longer exist. If you see them in a codebase on 0.45 or later, migrate them (table at the end).
+
+## Service namespaces
+
+Select reads and mutations directly where their service instance exists. No per-domain wrapper factory is required:
+
+```typescript
+const usersKey = ['users'] as const;
+const userQueries = createQueries(usersKey, {
+	getUser: userService.getUser,
+	listUsers: { queryFn: userService.listUsers, staleTime: 30_000 },
+});
+const userMutations = createMutations(usersKey, {
+	updateUser: {
+		mutationFn: userService.updateUser,
+		onSuccess: async (_saved, input, _rollback, { client }) => {
+			await Promise.all([
+				client.invalidateQueries({ queryKey: userQueries.getUser(input.id).queryKey, exact: true }),
+				client.invalidateQueries({ queryKey: userQueries.listUsers.key }),
+			]);
+		},
+	},
+});
+
+const user = createQuery(() => userQueries.getUser(userId));
+const update = createMutation(() => userMutations.updateUser());
+update.mutate({ id: userId, name: 'Ada' });
+```
+
+- Query factories take service arguments and return native options. Keys are `[...namespace, method, args]` with one final argument tuple, including `[]` for zero arguments. `.key` on the factory is an untagged prefix; `.queryKey` on returned options tags the original cached data/error, before `select`.
+- Mutation factories take no arguments and return native options; variables go to `mutate` or `runMutation`. Services take zero or one variables parameter. Adapt multiple arguments to one object; native execution context is forwarded only to callbacks.
+- Definitions accept native options except generated keys and fixed `queryHash`. Shared cache policy belongs in definition callbacks; per-call callbacks own local effects and may disappear on departure. Returning invalidation includes it in pending state. Spreading and replacing a callback replaces shared policy.
+- Use a plain object's own enumerable string entries. Numeric names become strings; symbols and non-enumerable properties are not mapped. Select class/prototype methods individually, bind receivers, and annotate parameters of new service wrappers.
+- Read inputs must be stable and JSON-serializable. Do not trim arguments automatically: omitted/default-equivalent calls may occupy different entries, while native hashing can equate `undefined` and `null` array elements. Normalize before the factory or use explicit keys. Generic/overloaded signatures and query-context/signal forwarding may need explicit adapters.
+- An optimistic namespace `onMutate` needs annotations on every parameter it declares to infer rollback data across callbacks. Otherwise rollback stays `unknown`; `resultMutationOptions` keeps full unannotated optimistic inference. Optional mutation inputs use `T | void`, allowing native `mutate()` without variables. `runMutation` still requires its third argument; pass `undefined` when appropriate.
+- Reuse one generated read's options and add `select` at the call site for another view of the same cached entry. A second map entry has a separate identity even when it calls the same service.
+- Namespace helpers add observation and identity, not application lifetime or resource state. Keep services independent of TanStack; direct calls remain Results and bypass adapter cache policy.
+
+The following explicit adapters remain useful for individual/custom definitions.
 
 ## 1. Definitions are plain TanStack options
 

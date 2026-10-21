@@ -6,10 +6,12 @@ icon: 'database'
 
 # TanStack Query Integration
 
-`wellcrafted/query` adapts Result-returning services for TanStack Query, and adapts TanStack back to Results for workflows. It exports four functions:
+`wellcrafted/query` adapts Result-returning services for TanStack Query, and adapts TanStack back to Results for workflows:
 
 | Function | Direction | What it does |
 | --- | --- | --- |
+| `createQueries(namespace, methods)` | Service methods to factories | Derives keys and native query options from selected Result-returning reads. |
+| `createMutations(namespace, methods)` | Service methods to factories | Derives operation keys and native mutation options, including shared lifecycle policy. |
 | `resultQueryOptions(input)` | Result to TanStack | Turns a Result-returning `queryFn` into plain query options. `Ok` resolves, `Err` throws into the error channel. |
 | `resultMutationOptions(input)` | Result to TanStack | The same for a `mutationFn`. Callbacks receive TanStack's mutation context, including `client`. |
 | `runQuery(client, options)` | TanStack to Result | Reads through the cache with `client.query` and returns a Result. |
@@ -18,6 +20,52 @@ icon: 'database'
 Install TanStack Query 5.102 or later. `@tanstack/query-core` is an optional peer dependency, and every framework adapter already depends on it.
 
 ## Quick start
+
+For a service namespace, select reads and mutations directly:
+
+```typescript
+import { createMutations, createQueries } from 'wellcrafted/query';
+
+const usersKey = ['users'] as const;
+const userQueries = createQueries(usersKey, {
+  getUser: userService.getUser,
+  listUsers: { queryFn: userService.listUsers, staleTime: 30_000 },
+});
+const userMutations = createMutations(usersKey, {
+  updateUser: {
+    mutationFn: userService.updateUser,
+    onSuccess: async (_saved, input, _rollback, { client }) => {
+      await Promise.all([
+        client.invalidateQueries({
+          queryKey: userQueries.getUser(input.id).queryKey, exact: true,
+        }),
+        client.invalidateQueries({ queryKey: userQueries.listUsers.key }),
+      ]);
+    },
+  },
+});
+
+// Svelte 5:
+const user = createQuery(() => userQueries.getUser(userId));
+const update = createMutation(() => userMutations.updateUser());
+update.mutate({ id: userId, name: 'Ada' });
+// React: useQuery(userQueries.getUser(userId));
+// React: useMutation(userMutations.updateUser());
+```
+
+No service runs during namespace or options construction. Query factories take the original service arguments; mutation factories take no arguments, with variables supplied at execution. Both forms return ordinary options usable with framework hooks and `runQuery`/`runMutation`.
+
+`userQueries.getUser(id).queryKey` is `['users', 'getUser', [id]]`; a zero-argument read ends in `[]`. `userQueries.getUser.key` is the untagged prefix `['users', 'getUser']`. Mutation keys use the namespace and method name without variables. Use full `.queryKey` for exact cache reads/writes and `.key` for prefix filters, which can also match nested namespaces.
+
+Descriptors accept native options, including `select` and callbacks, except generated keys and fixed `queryHash`. Each entry has its own identity. For another view of the same cached read, spread its existing options and add `select` at the call site.
+
+<Note>
+Mutation services accept zero or one variables argument; adapt multiple arguments to one object. Services receive only variables, while lifecycle callbacks receive native context. For optimistic rollback inference across namespace callbacks, annotate every parameter declared by `onMutate`, or use `resultMutationOptions` for full unannotated inference. Optional mutation inputs use `T | void` so `mutate()` can omit them.
+</Note>
+
+Namespaces are string arrays. Mapping uses a plain object's own enumerable string properties; numeric names become strings, while symbols and non-enumerable properties are not mapped. Bind or wrap receiver-dependent methods and select prototype methods individually. Annotate parameters in new wrappers. Query arguments must be stable, JSON-serializable inputs; normalization belongs before the factory. Custom query context/signals, keys, and unsupported generic/overloaded signatures use explicit adapters below.
+
+## Explicit adapters
 
 Create the client once:
 

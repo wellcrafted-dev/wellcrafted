@@ -47,7 +47,7 @@ type ResultQueryOptionsInput<
  * `queryOptions()` does. The tag lets `queryClient.getQueryData(options.queryKey)`
  * and `setQueryData` infer the cached type without a cast.
  */
-type ResultQueryOptions<
+export type ResultQueryOptions<
 	TQueryFnData = unknown,
 	TError = DefaultError,
 	TData = TQueryFnData,
