@@ -324,3 +324,8 @@ Because the client is an argument, tests never share cache state and never mock 
 | `defineKeys(...)` | A plain `as const` key factory for groups; leaf keys inside the option factories (see [Keys and option factories](#keys-and-option-factories)). |
 
 Upgrade `@tanstack/query-core` (or your framework adapter) to `5.102.0` or later; `runQuery` calls `client.query`.
+
+## Design proposals
+
+For the proposed namespace helpers over these adapters, see
+[Result namespaces produce native TanStack options](../../docs/adr/0001-result-namespaces-produce-native-tanstack-options.md).
