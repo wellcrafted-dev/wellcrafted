@@ -89,21 +89,30 @@ the helper supplies the key. Other options keep their TanStack meaning.
 
 | Expression | Meaning |
 | --- | --- |
-| `userQueries.getUser(id)` | Query options with `queryKey: [...usersKey, 'getUser', id]` and a Result-adapting `queryFn` |
+| `userQueries.getUser(id)` | Query options with `queryKey: [...usersKey, 'getUser', [id]]` and a Result-adapting `queryFn` |
 | `userQueries.listUsers.key` | Untagged prefix `[...usersKey, 'listUsers']`, matching every argument variant |
 | `userQueries.getUser(id).queryKey` | Native query key tagged with the cached success type and service error type |
 | `userMutations.updateUser()` | Mutation options with `mutationKey: [...usersKey, 'updateUser']`, a Result-adapting `mutationFn`, and configured callbacks |
 | `userMutations.updateUser.key` | Operation prefix `[...usersKey, 'updateUser']` |
 
-Query keys use `[...namespace, methodName, ...args]`. Mutation keys use
+Namespaces are readonly arrays of strings. Query keys use
+`[...namespace, methodName, args]`, with one final tuple containing every
+supplied argument, including `[]` for a zero-argument read. Mutation keys use
 `[...namespace, methodName]`; mutation variables are supplied later. `.key` is
 custom data on each generated factory, not a field added to the returned
 options. `.queryKey` and `.mutationKey` retain their native TanStack names.
 Keep the namespace prefix in an ordinary constant when it is needed separately.
 
+The tuple separates arguments from namespace paths. Flattening would give both
+`getUser('list')` under `['users']` and `list()` under `['users', 'getUser']`
+the same key. Their bounded keys are `['users', 'getUser', ['list']]` and
+`['users', 'getUser', 'list', []]`.
+
 The query's key tag describes cached data before `select`. Prefixes carry no
-claim about one cached value's type. The helper preserves each method's
-argument, success, and error types, including the contextual types of mutation
+claim about one cached value's type and can also match nested namespaces. Use
+the full generated `.queryKey` for exact cache updates or filters, including
+zero-argument reads; a factory's `.key` is only a prefix. The helper preserves
+each method's argument, success, and error types, including the contextual types of mutation
 callbacks. Calling a factory returns options directly, without an `.options`
 property, `.fetch()`, or `.ensure()`.
 
@@ -130,8 +139,12 @@ contract; the Result-returning runners consume either form.
 behavior or reflecting over arbitrary clients.** Read arguments must be stable,
 JSON-serializable cache inputs. Keys describe supplied arguments; `events()`
 and `events({})` can occupy different entries. If those calls must share an
-entry, normalize them in an explicit adapter. The mapper does not inspect
-default parameters or invent a serializer for signals, callbacks, or streams.
+entry, normalize before calling the generated factory or use an explicit
+`resultQueryOptions` adapter. Exact-entry writes use the same canonical inputs
+as reads. TanStack's JSON hashing can equate values such as array elements
+`undefined` and `null`; a service that distinguishes them needs an explicit
+cache-input representation. The mapper does not trim arguments, inspect default
+parameters, or invent a serializer for signals, callbacks, or streams.
 
 Mutation functions accept zero arguments or one variables argument, including
 an optional argument. Adapt a service with several arguments to one object
@@ -175,6 +188,9 @@ policy must not cause mutation retries to repeat a completed service operation.
   persisted query cache needs a corresponding invalidation or version policy.
 - The library takes on mapped-type inference, precise options types, and two
   construction helpers. Explicit adapters remain necessary for exceptions.
+- An inferred service error type describes expected service failures. Callback
+  and programming exceptions retain the existing TanStack and runner behavior;
+  a namespace helper does not establish an exhaustive error model for them.
 - Implementation must verify heterogeneous method inference, optional inputs,
   `select`, typed cache reads, callback context, mutation variable rejection,
   key layout, and Result conversion against the supported TanStack versions.
