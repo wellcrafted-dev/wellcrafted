@@ -236,7 +236,7 @@ Each lives behind its own subpath import, so you pay for only what you use.
 - `wellcrafted/logger`: a small DI-based structured logger keyed on log level, built to take your `defineErrors` types directly. No global singleton. See [Logging errors](#logging-errors).
 - `wellcrafted/testing`: `expectOk` / `expectErr` unwrap a `Result` in a test, or throw with a readable message.
 - `wellcrafted/json`: `parseJson` is `JSON.parse` that returns a `Result` instead of throwing.
-- `wellcrafted/query`: TanStack Query adapters for Result-returning functions. `resultQueryOptions` and `resultMutationOptions` produce plain TanStack options that hooks take directly; `runQuery` and `runMutation` run them through a `QueryClient` and return a `Result`.
+- `wellcrafted/query`: `createQueries` and `createMutations` derive native TanStack options factories from selected Result-returning service methods. `resultQueryOptions` and `resultMutationOptions` support custom definitions; `runQuery` and `runMutation` execute either form through a `QueryClient` and return a `Result`.
 - `wellcrafted/standard-schema`: wrap a `Result` as a [Standard Schema](https://github.com/standard-schema/standard-schema) for validators that speak the spec.
 
 ### Logging errors

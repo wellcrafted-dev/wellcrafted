@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-10-21
-- **Unbuilt:** `createQueries` and `createMutations` in `wellcrafted/query`, including generated method keys, descriptor inference, and contract tests.
+- **Implementation:** `createQueries` and `createMutations` in `wellcrafted/query`, including generated method keys, descriptor inference, and contract tests.
 - **Relates:** [Epicenter](https://github.com/EpicenterHQ/epicenter), `docs/adr/0661-apps-compose-result-services-through-wellcrafted-option-namespaces.md`, for application composition and cache policy.
 
 ## Context
@@ -32,8 +32,7 @@ exports belong to `wellcrafted/query`. Neither takes a `QueryClient`, creates
 an observer, executes a service method during options construction, or adds
 client-bound execution methods to its output.
 
-The examples use the proposed exports; they are not an available API until
-implemented.
+The exports build on the existing Result options adapters.
 
 ```ts
 import { createMutations, createQueries } from 'wellcrafted/query';
@@ -83,7 +82,8 @@ const mutations = createMutations(['billing'], {
 ```
 
 The descriptor's `queryFn` or `mutationFn` supplies the service function;
-the helper supplies the key. Other options keep their TanStack meaning.
+the helper supplies the key. Descriptors cannot set a fixed `queryHash` or
+replace generated keys. Other options keep their TanStack meaning.
 `queryFn` in a query descriptor receives service arguments, not TanStack's
 `QueryFunctionContext`.
 
@@ -112,8 +112,12 @@ The query's key tag describes cached data before `select`. Prefixes carry no
 claim about one cached value's type and can also match nested namespaces. Use
 the full generated `.queryKey` for exact cache updates or filters, including
 zero-argument reads; a factory's `.key` is only a prefix. The helper preserves
-each method's argument, success, and error types, including the contextual types of mutation
-callbacks. Calling a factory returns options directly, without an `.options`
+each method's argument, success, and error types, including the contextual
+input types of mutation callbacks. Inferring an optimistic rollback result
+across callbacks requires annotating every parameter declared by `onMutate`;
+otherwise the rollback type remains `unknown`. The explicit
+`resultMutationOptions` adapter retains full unannotated optimistic inference.
+Calling a factory returns options directly, without an `.options`
 property, `.fetch()`, or `.ensure()`.
 
 ```ts
@@ -153,7 +157,10 @@ cannot accidentally become a service's transport-options argument. Lifecycle
 callbacks still receive the native context, including its executing `client`.
 
 Selected functions must be callable without an implicit receiver. Bind or wrap
-a receiver-dependent method before selecting it. Generic or overloaded methods
+a receiver-dependent method before selecting it, annotating a new wrapper's
+parameters. Mapping covers own enumerable string properties; numeric names
+become strings, while symbols and non-enumerable properties are not mapped.
+Select class/prototype methods individually. Generic or overloaded methods
 need an explicit adapter when their argument-to-result relationship cannot be
 preserved. Recursive namespaces, proxies, infinite queries, and streaming
 adapters are outside these helpers' contract.
@@ -194,7 +201,8 @@ policy must not cause mutation retries to repeat a completed service operation.
 - Implementation must verify heterogeneous method inference, optional inputs,
   `select`, typed cache reads, callback context, mutation variable rejection,
   key layout, and Result conversion against the supported TanStack versions.
-  Declaration experiments establish feasibility, not a shipped implementation.
+  Tests establish these behaviors against the supported TanStack API; the
+  optimistic annotation requirement remains an explicit inference limit.
 
 ## Considered alternatives
 

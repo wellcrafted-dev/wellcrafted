@@ -1,3 +1,4 @@
+export { createMutations, createQueries } from "./namespaces.js";
 export {
 	resultMutationOptions,
 	resultQueryOptions,
