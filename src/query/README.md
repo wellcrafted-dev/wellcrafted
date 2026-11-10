@@ -4,11 +4,11 @@ Adapters between Result-returning services and TanStack Query.
 
 Your services return `Result<T, E>`. TanStack Query expects a `queryFn` that resolves with data or throws an error. `wellcrafted/query` converts in both directions:
 
-- `createQueries` and `createMutations` turn selected service methods into native options factories, deriving keys from a namespace and method names.
-- `resultQueryOptions` and `resultMutationOptions` turn a Result-returning function into plain TanStack options. `Ok` resolves, `Err` throws into TanStack's error channel, and the error type comes from the Result.
+- `resultQueries` and `resultMutations` turn selected service methods into native options, deriving keys from a namespace and the method names.
+- `resultQueryOptions` and `resultMutationOptions` turn one Result-returning function into plain TanStack options. `Ok` resolves, `Err` throws into TanStack's error channel, and the error type comes from the Result.
 - `runQuery` and `runMutation` run those options through a `QueryClient` and hand you a Result again, for workflows and event handlers.
 
-The factories use the explicit adapters underneath. Execution, observation, and cache policy use TanStack's existing APIs.
+Everything else is TanStack's own: you add options by spreading, and set policy on the `QueryClient` by key.
 
 ```sh
 bun add wellcrafted @tanstack/query-core
@@ -18,84 +18,123 @@ bun add wellcrafted @tanstack/query-core
 
 ## Quick start
 
-Compose reads and mutations directly where the service instance is available:
+List the methods to read and the methods to write, under one namespace:
 
 ```ts
-import { createMutations, createQueries } from 'wellcrafted/query';
+import { resultMutations, resultQueries } from 'wellcrafted/query';
 
-const usersKey = ['users'] as const;
-
-export const userQueries = createQueries(usersKey, {
-  getUser: userService.getUser,
-  listUsers: { queryFn: userService.listUsers, staleTime: 30_000 },
+export const users = resultQueries(['users'], {
+  get: userService.get,
+  list: userService.list,
 });
 
-export const userMutations = createMutations(usersKey, {
-  updateUser: {
-    mutationFn: userService.updateUser,
-    onSuccess: async (_saved, input, _rollback, { client }) => {
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: userQueries.getUser(input.id).queryKey,
-          exact: true,
-        }),
-        client.invalidateQueries({ queryKey: userQueries.listUsers.key }),
-      ]);
+export const userWrites = resultMutations(['users'], {
+  update: userService.update,
+  remove: userService.remove,
+});
+```
+
+A query entry is a function that takes the method's arguments and returns query options. A mutation entry is the mutation options itself:
+
+```ts
+// Svelte: import createQuery/createMutation from @tanstack/svelte-query.
+const user = createQuery(() => users.get(userId));
+const update = createMutation(() => userWrites.update);
+update.mutate({ id: userId, name: 'Ada' });
+
+// React: useQuery(users.get(userId)); useMutation(userWrites.update);
+
+await runQuery(queryClient, users.get(userId));
+await runMutation(queryClient, userWrites.update, { id: userId, name: 'Ada' });
+```
+
+Building the entries never calls a service. Methods may return a Result or a promise of one; no client is captured and the service API does not change.
+
+### Keys
+
+| Expression | Value |
+| --- | --- |
+| `users.get(id).queryKey` | `['users', 'get', [id]]`, tagged with the cached data and error types |
+| `users.list().queryKey` | `['users', 'list', []]` |
+| `users.get.key` | `['users', 'get']`, the prefix of every argument variant |
+| `userWrites.update.mutationKey` | `['users', 'update']` |
+
+The arguments sit in one final tuple, so `users.get('list')` and a nested namespace's `list()` cannot share an entry. Use the full `.queryKey` for exact cache reads and writes; use a prefix (`users.get.key`, or the namespace itself) for invalidation and defaults.
+
+## Composing
+
+The entries carry identity and the Result conversion, nothing else. Behavior goes in one of three places, chosen by its scope.
+
+### For one use: spread
+
+Spread an entry into the options a hook takes. TanStack infers what you add, including `select`:
+
+```ts
+const names = createQuery(() => ({
+  ...users.list(),
+  select: (all) => all.map((u) => u.name), // string[]
+  refetchInterval: 15_000,
+}));
+```
+
+`select` changes what this observer sees; the cache entry and its key's type still hold the unselected data.
+
+### For a method or a namespace: the client, by key
+
+`setQueryDefaults` and `setMutationDefaults` apply options to every key under a prefix:
+
+```ts
+queryClient.setQueryDefaults(['users'], { staleTime: 30_000 });
+queryClient.setQueryDefaults(users.list.key, { refetchOnWindowFocus: 'always' });
+```
+
+Matching defaults merge in the order they were registered, not most specific first, so register the broad prefix before the narrow one.
+
+A rule every write should follow goes in the client's `MutationCache`. This one makes a write invalidate every read in its namespace:
+
+```ts
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled: (_data, _error, _variables, _rollback, mutation, { client }) => {
+      const key = mutation.options.mutationKey;
+      if (key) return client.invalidateQueries({ queryKey: key.slice(0, -1) });
     },
+  }),
+});
+```
+
+`key.slice(0, -1)` drops the method name: `['users', 'update']` invalidates everything under `['users']`. It runs on `onSettled`, so a failed write still refreshes what is really stored, and returning the promise keeps the write pending until the refresh finishes. The `MutationCache` runs this in addition to an entry's own callbacks, so spreading an entry cannot drop it. The rule assumes `[...namespace, method]` mutation keys; a mutation without a key is skipped, and a one-segment key would invalidate everything.
+
+### For a named variant: spread into a definition
+
+When several components share a behavior on top of a method, such as writing the answer into the cache or an optimistic update, name it once. Use your adapter's `mutationOptions` (or `queryOptions`), which infers the callbacks without annotations:
+
+```ts
+import { mutationOptions } from '@tanstack/svelte-query'; // or @tanstack/react-query
+
+export const updateUser = mutationOptions({
+  ...userWrites.update,
+  onMutate: async (input, { client }) => {
+    const key = users.get(input.id).queryKey;
+    await client.cancelQueries({ queryKey: key });
+    const before = client.getQueryData(key); // User | undefined
+    client.setQueryData(key, input);
+    return { key, before };
+  },
+  onError: (_error, _input, rollback, { client }) => {
+    if (rollback) client.setQueryData(rollback.key, rollback.before);
   },
 });
 ```
 
-Query factories take service arguments. Mutation factories take no arguments; variables go to `mutate` or `runMutation`:
-
-```ts
-// Svelte: import createQuery/createMutation from @tanstack/svelte-query.
-const user = createQuery(() => userQueries.getUser(userId));
-const update = createMutation(() => userMutations.updateUser());
-update.mutate({ id: userId, name: 'Ada' });
-
-// React: useQuery(userQueries.getUser(userId));
-// React: useMutation(userMutations.updateUser());
-
-await runQuery(queryClient, userQueries.getUser(userId));
-await runMutation(queryClient, userMutations.updateUser(), {
-  id: userId, name: 'Ada',
-});
-```
-
-Building a namespace or calling a factory never executes the service. Both helpers accept synchronous Results or promises of Results, without capturing a client or changing the service API.
-
-### Generated keys and native options
-
-| Expression | Value or purpose |
-| --- | --- |
-| `userQueries.getUser(id).queryKey` | `['users', 'getUser', [id]]`, tagged with cached data and service error types |
-| `userQueries.listUsers().queryKey` | `['users', 'listUsers', []]` for a zero-argument service |
-| `userQueries.getUser.key` | Untagged prefix `['users', 'getUser']` for every argument variant |
-| `userMutations.updateUser().mutationKey` | `['users', 'updateUser']` |
-| `userMutations.updateUser.key` | The same mutation operation prefix |
-
-The final argument tuple separates service inputs from namespace paths. `.key` belongs to the generated function; returned options use native `.queryKey` and `.mutationKey`. Prefixes can also match nested namespaces. Use the full `.queryKey` for exact filters and typed cache reads/writes.
-
-Descriptors accept native options such as `enabled`, `retry`, `select`, and lifecycle callbacks. They cannot replace generated keys or set a fixed `queryHash`. Shared invalidation belongs in definition callbacks; per-call callbacks handle local effects and may be skipped after observer departure. Return an invalidation promise to include that refresh in pending state.
-
-Each map entry names a distinct cache identity, even if two entries use the same service function. To select another view of the same cached read, reuse its options:
-
-```ts
-const name = createQuery(() => ({
-  ...userQueries.getUser(userId),
-  select: (user) => user.name,
-}));
-```
+Options callbacks such as these run for every execution. The callbacks passed to `mutate(variables, { onSuccess })` are the component's own and are skipped once the component's observer is gone.
 
 ### Service signatures and inference limits
 
-- Query services keep zero, optional, or multiple arguments. Mutation services take zero arguments or one variables argument, including an optional argument. Adapt multiple mutation arguments to one object explicitly. Only variables reach a mutation service; its callbacks still receive native execution context.
-- Map own enumerable string properties of a plain object. Numeric names become strings, as in JavaScript objects; symbols and non-enumerable properties are not mapped. Select and bind class/prototype methods individually. Annotate parameters when defining a new service wrapper.
-- Query inputs must be stable and JSON-serializable. Supplied arguments determine identity: omitted/default-equivalent inputs can occupy different entries, and TanStack hashing can equate array entries such as `undefined` and `null`. Normalize before calling the factory when necessary. Use `resultQueryOptions` for custom identity, query context/signals, or unsupported generic/overloaded signatures.
-- To infer an optimistic rollback value across namespace mutation callbacks, annotate every parameter declared by `onMutate`. Otherwise its inputs are contextually typed but its rollback result remains `unknown`. Use `resultMutationOptions` when you want full unannotated optimistic inference. Optional mutation inputs use `T | void` so native `mutate()` may omit them.
-
-`runMutation` still requires a third argument; pass `undefined` for a void mutation or an omitted optional input.
+- Query methods keep zero, optional, or several arguments. Mutation methods take zero arguments or one variables argument; adapt several arguments to one object. Only the variables reach the method. Optional inputs become `T | void`, so `mutate()` may omit them; `runMutation` still takes a third argument, `undefined`.
+- Entries come from a plain object's own enumerable string properties. Numeric names become strings; symbols are skipped. Methods are called without a receiver, so pass bound methods or closures, and annotate the parameters of a new wrapper.
+- Query arguments become the key, so they must be stable and JSON-serializable. `get()` and `get(undefined)` are different entries; normalize before calling the factory if they should share one.
+- The method receives only its arguments, not TanStack's query context, so it cannot see the abort signal. Use `resultQueryOptions` when a query needs the signal, a custom key, or a generic or overloaded signature.
 
 ## Explicit adapters
 

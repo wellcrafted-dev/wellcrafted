@@ -1,8 +1,8 @@
 # 0001. Result namespaces produce native TanStack options
 
 - **Status:** Proposed
-- **Date:** 2026-10-21
-- **Implementation:** `createQueries` and `createMutations` in `wellcrafted/query`, including generated method keys, descriptor inference, and contract tests.
+- **Date:** 2026-10-21; revised 2026-11-11 to take functions only
+- **Implementation:** `resultQueries` and `resultMutations` in `wellcrafted/query` (`src/query/namespaces.ts`), with contract tests.
 - **Relates:** [Epicenter](https://github.com/EpicenterHQ/epicenter), `docs/adr/0661-apps-compose-result-services-through-wellcrafted-option-namespaces.md`, for application composition and cache policy.
 
 ## Context
@@ -13,215 +13,160 @@ options. `runQuery` and `runMutation` execute those options through an explicitl
 supplied client and return Results. Query keys already carry TanStack's `DataTag`.
 
 A service namespace repeats its method names and arguments when it becomes a
-query namespace. A `getUser(id)` read needs a matching key, a forwarding
+query namespace. A `get(id)` read needs a matching key, a forwarding
 `queryFn`, and a place in the exported query object. A separate key map repeats
 that identity again. Most of those choices follow one convention:
 namespace, method name, and supplied arguments.
 
-Mutation policy carries information that a Result signature cannot supply.
-The application chooses how to observe an operation and which cached reads its
-success affects. A plan preview can use mutation state even though it reads
-data. The library can derive wiring without trying to infer that policy.
+Policy is different. Which reads a write affects, how fresh a read must be, and
+whether an update is optimistic are application decisions a Result signature
+cannot supply. TanStack already has places for each: options spread at a use
+site, defaults registered on the client by key prefix, and the client's
+`MutationCache`. The first version of this decision also let each map entry
+carry options and callbacks as a descriptor. Typing callbacks written inside a
+map needed two extra inferred type maps, still could not infer an optimistic
+rollback without annotations, and gave policy a third home.
 
 ## Decision
 
-**`createQueries(namespace, definitions)` and
-`createMutations(namespace, definitions)` convert explicitly selected
-Result-returning functions into namespaces of native options factories.** Both
-exports belong to `wellcrafted/query`. Neither takes a `QueryClient`, creates
-an observer, executes a service method during options construction, or adds
-client-bound execution methods to its output.
-
-The exports build on the existing Result options adapters.
+**`resultQueries(namespace, methods)` and `resultMutations(namespace, methods)`
+take a map of Result-returning functions and return native TanStack options
+keyed by namespace and method name. They take functions only.** Neither takes a
+`QueryClient`, creates an observer, or calls a method while building options.
 
 ```ts
-import { createMutations, createQueries } from 'wellcrafted/query';
+import { resultMutations, resultQueries } from 'wellcrafted/query';
 
-const usersKey = ['users'] as const;
-
-const userQueries = createQueries(usersKey, {
-  getUser: userService.getUser,
-  listUsers: userService.listUsers,
+const users = resultQueries(['users'], {
+  get: userService.get,
+  list: userService.list,
 });
 
-const userMutations = createMutations(usersKey, {
-  updateUser: {
-    mutationFn: userService.updateUser,
-    onSuccess: async (_saved, input, _rollback, { client }) => {
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: userQueries.getUser(input.id).queryKey,
-          exact: true,
-        }),
-        client.invalidateQueries({ queryKey: userQueries.listUsers.key }),
-      ]);
-    },
-  },
+const userWrites = resultMutations(['users'], {
+  update: userService.update,
 });
+
+const user = createQuery(() => users.get(userId));
+const update = createMutation(() => userWrites.update);
 ```
 
-### Factory inputs and outputs
-
-**A query factory accepts its service function's arguments; a mutation factory
-leaves variables to TanStack's mutation execution.** Both support synchronous
-Results and promises of Results. Each entry accepts a function shorthand or a
-descriptor with the corresponding Result-returning function and native options:
-
-```ts
-const queries = createQueries(['billing'], {
-  overview: {
-    queryFn: billingApi.overview,
-    refetchOnWindowFocus: 'always',
-  },
-  plans: billingApi.plans,
-});
-
-const mutations = createMutations(['billing'], {
-  previewPlanChange: billingApi.previewPlanChange,
-});
-```
-
-The descriptor's `queryFn` or `mutationFn` supplies the service function;
-the helper supplies the key. Descriptors cannot set a fixed `queryHash` or
-replace generated keys. Other options keep their TanStack meaning.
-`queryFn` in a query descriptor receives service arguments, not TanStack's
-`QueryFunctionContext`.
+### Entries and keys
 
 | Expression | Meaning |
 | --- | --- |
-| `userQueries.getUser(id)` | Query options with `queryKey: [...usersKey, 'getUser', [id]]` and a Result-adapting `queryFn` |
-| `userQueries.listUsers.key` | Untagged prefix `[...usersKey, 'listUsers']`, matching every argument variant |
-| `userQueries.getUser(id).queryKey` | Native query key tagged with the cached success type and service error type |
-| `userMutations.updateUser()` | Mutation options with `mutationKey: [...usersKey, 'updateUser']`, a Result-adapting `mutationFn`, and configured callbacks |
-| `userMutations.updateUser.key` | Operation prefix `[...usersKey, 'updateUser']` |
+| `users.get(id)` | Query options with `queryKey: ['users', 'get', [id]]` and a Result-adapting `queryFn` |
+| `users.get(id).queryKey` | The native key, tagged with the cached data and error types |
+| `users.get.key` | Untagged prefix `['users', 'get']`, matching every argument variant |
+| `userWrites.update` | Mutation options with `mutationKey: ['users', 'update']` and a Result-adapting `mutationFn` |
 
-Namespaces are readonly arrays of strings. Query keys use
-`[...namespace, methodName, args]`, with one final tuple containing every
-supplied argument, including `[]` for a zero-argument read. Mutation keys use
-`[...namespace, methodName]`; mutation variables are supplied later. `.key` is
-custom data on each generated factory, not a field added to the returned
-options. `.queryKey` and `.mutationKey` retain their native TanStack names.
-Keep the namespace prefix in an ordinary constant when it is needed separately.
+A query entry is a function because its key depends on arguments. A mutation
+entry is the options object itself because its variables arrive at execution;
+a function returning the same object each time would add a call and a second
+name for its key.
 
-The tuple separates arguments from namespace paths. Flattening would give both
-`getUser('list')` under `['users']` and `list()` under `['users', 'getUser']`
-the same key. Their bounded keys are `['users', 'getUser', ['list']]` and
-`['users', 'getUser', 'list', []]`.
+Query keys are `[...namespace, method, args]`, with every supplied argument in
+one final tuple, `[]` for none. The tuple separates arguments from namespace
+paths: `get('list')` under `['users']` is `['users', 'get', ['list']]`, while
+`list()` under `['users', 'get']` is `['users', 'get', 'list', []]`. Mutation
+keys are `[...namespace, method]`.
 
-The query's key tag describes cached data before `select`. Prefixes carry no
-claim about one cached value's type and can also match nested namespaces. Use
-the full generated `.queryKey` for exact cache updates or filters, including
-zero-argument reads; a factory's `.key` is only a prefix. The helper preserves
-each method's argument, success, and error types, including the contextual
-input types of mutation callbacks. Inferring an optimistic rollback result
-across callbacks requires annotating every parameter declared by `onMutate`;
-otherwise the rollback type remains `unknown`. The explicit
-`resultMutationOptions` adapter retains full unannotated optimistic inference.
-Calling a factory returns options directly, without an `.options`
-property, `.fetch()`, or `.ensure()`.
+The key's tag describes cached data before `select`. A prefix carries no claim
+about one value's type and can also match nested namespaces. Use the full
+`.queryKey` for exact cache reads, writes, and filters.
 
-```ts
-const user = createQuery(() => userQueries.getUser(userId));
-const updateUser = createMutation(() => userMutations.updateUser());
-updateUser.mutate({ id: userId, name });
+### Where behavior goes
 
-const cached = queryClient.getQueryData(userQueries.getUser(userId).queryKey);
-// User | undefined
+**Entries carry identity and the Result conversion. Behavior goes where its
+scope is, using TanStack's existing mechanisms.**
 
-await runQuery(queryClient, userQueries.getUser(userId));
-await runMutation(queryClient, userMutations.updateUser(), { id: userId, name });
-```
+- **One use:** spread the entry into the hook's options.
+  `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`.
+  TanStack infers what is added.
+- **A method or namespace:** register defaults on the client by prefix,
+  `client.setQueryDefaults(users.list.key, { staleTime: 30_000 })` or
+  `setMutationDefaults`. A rule for every write goes in the client's
+  `MutationCache`; the documented one invalidates
+  `mutationKey.slice(0, -1)`, the writing method's namespace, `onSettled`.
+- **A shared variant:** spread the entry into the adapter's `mutationOptions`
+  or `queryOptions` and export the result. These infer callback types,
+  including an optimistic rollback, without annotations.
 
-`resultQueryOptions` and `resultMutationOptions` remain the Result-conversion
-boundary. The namespace helpers build on them. The explicit adapters remain
-available for custom keys, query context, or signatures outside the namespace
-contract; the Result-returning runners consume either form.
+A `MutationCache` rule runs in addition to an entry's own callbacks, so a
+component spreading an entry cannot drop it. Returning its invalidation promise
+keeps the mutation pending until the refresh finishes. The library ships the
+rule as a documented recipe, not an export, because it depends on the
+application's key layout: it assumes `[...namespace, method]` keys, skips
+mutations without a key, and would invalidate everything for a one-segment key.
+
+Matching defaults merge in registration order, not by specificity, so the
+broad prefix is registered first. Defaults are not typed by a query's data;
+anything that needs the data's type, such as `select` or a cache update, is
+spread where the type is known.
 
 ### Scope of automatic mapping
 
-**Namespace helpers map plain function objects without classifying service
-behavior or reflecting over arbitrary clients.** Read arguments must be stable,
-JSON-serializable cache inputs. Keys describe supplied arguments; `events()`
-and `events({})` can occupy different entries. If those calls must share an
-entry, normalize before calling the generated factory or use an explicit
-`resultQueryOptions` adapter. Exact-entry writes use the same canonical inputs
-as reads. TanStack's JSON hashing can equate values such as array elements
-`undefined` and `null`; a service that distinguishes them needs an explicit
-cache-input representation. The mapper does not trim arguments, inspect default
-parameters, or invent a serializer for signals, callbacks, or streams.
+**The helpers map plain objects of functions without classifying service
+behavior or reflecting over arbitrary clients.** Mapping covers own enumerable
+string properties; numeric names become strings and symbols are skipped. Methods
+are called without a receiver, so callers pass bound methods or closures, and
+annotate the parameters of new wrappers.
 
-Mutation functions accept zero arguments or one variables argument, including
-an optional argument. Adapt a service with several arguments to one object
-explicitly. Forward only the service variables, so TanStack's execution context
-cannot accidentally become a service's transport-options argument. Lifecycle
-callbacks still receive the native context, including its executing `client`.
+Query arguments must be stable, JSON-serializable cache inputs. Keys describe
+supplied arguments: `get()` and `get(undefined)` are different entries. The
+helpers do not trim arguments, inspect defaults, or serialize signals,
+callbacks, or streams. A method receives only its arguments, not TanStack's
+query context, so it cannot see the abort signal.
 
-Selected functions must be callable without an implicit receiver. Bind or wrap
-a receiver-dependent method before selecting it, annotating a new wrapper's
-parameters. Mapping covers own enumerable string properties; numeric names
-become strings, while symbols and non-enumerable properties are not mapped.
-Select class/prototype methods individually. Generic or overloaded methods
-need an explicit adapter when their argument-to-result relationship cannot be
-preserved. Recursive namespaces, proxies, infinite queries, and streaming
-adapters are outside these helpers' contract.
+Mutation methods accept zero arguments or one variables argument, including an
+optional one; others are a type error. Only the variables reach the method, so
+TanStack's execution context cannot become a service's transport-options
+argument. Callbacks still receive the native context, including its client.
 
-### Shared policy and component effects
-
-**Mutation descriptors own shared lifecycle policy; components add interaction
-effects through native per-call mutation callbacks.** Invalidation uses ordinary
-`onSuccess`, `onSettled`, and client methods. There is no `invalidates` metadata
-language or mandatory global `MutationCache` configuration.
-
-Returning an invalidation promise from the descriptor's `onSuccess` includes
-that refresh in the mutation's pending lifetime. Per-call callbacks remain
-component effects and may be skipped after observer removal or replacement.
-Spreading options and replacing `onSuccess` replaces the shared policy; the
-library does not claim to make ordinary options immutable or unoverrideable.
-The helper adds no callback-merging overload or optimistic rollback protocol.
-
-Direct service calls continue to return Results and bypass query-layer policy.
-Shared invalidation runs when hooks or `runMutation` execute the generated
-mutation options. Invalidation stays outside `mutationFn`: a failure in cache
-policy must not cause mutation retries to repeat a completed service operation.
+`resultQueryOptions` and `resultMutationOptions` remain the Result-conversion
+boundary and the path for custom keys, query context, and generic or
+overloaded signatures. The runners consume either form.
 
 ## Consequences
 
-- Regular service reads lose handwritten key maps, forwarding functions, and
-  repeated parameter types. The key and service arguments come from the same
-  factory invocation.
-- Classification and cache relationships remain explicit. Mutations can refer
-  to query prefixes without a registry or annotations on the original service.
-- Method names become cache identity. Renaming an entry changes its key; any
-  persisted query cache needs a corresponding invalidation or version policy.
-- The library takes on mapped-type inference, precise options types, and two
-  construction helpers. Explicit adapters remain necessary for exceptions.
-- An inferred service error type describes expected service failures. Callback
-  and programming exceptions retain the existing TanStack and runner behavior;
-  a namespace helper does not establish an exhaustive error model for them.
-- Implementation must verify heterogeneous method inference, optional inputs,
-  `select`, typed cache reads, callback context, mutation variable rejection,
-  key layout, and Result conversion against the supported TanStack versions.
-  Tests establish these behaviors against the supported TanStack API; the
-  optimistic annotation requirement remains an explicit inference limit.
+- Service reads and writes lose handwritten key maps, forwarding functions, and
+  repeated parameter types. A whole service's query layer is two calls.
+- Policy has two homes: the client, by key, and the use site, by spread. A
+  shared variant is an ordinary exported options object.
+- Method names become cache identity. Renaming a method changes its key; a
+  persisted query cache needs an invalidation or version policy.
+- Per-method options move out of the definition. A setting that one map entry
+  once carried is now a `setQueryDefaults` line beside the client or a spread.
+- Services cannot cancel their own requests from these entries. That suits
+  local and short calls; a cancellable request uses `resultQueryOptions`.
+- The inferred error type describes expected service failures. Callback and
+  programming exceptions keep the existing TanStack and runner behavior.
 
 ## Considered alternatives
 
-- **Keep only explicit adapters.** They give every key and argument transform
-  an independent definition, but regular namespaces repeat derivable identity
-  and forwarding. They remain the path for exceptional operations.
-- **One grouped query-and-mutation factory.** It bundles two maps while making
-  mutation callbacks refer back into a result still under construction. Two
-  declarations express that dependency without self-reference.
+- **Keep only explicit adapters.** Every key is independent, but regular
+  namespaces repeat derivable identity and forwarding. They remain the path for
+  exceptions.
+- **Descriptors in the map** (`{ queryFn, staleTime, select }`, the first
+  version of this decision). Typing them took two extra inferred type maps, an
+  optimistic `onMutate` still needed every parameter annotated, and a setting
+  could live in the definition, the client, or the use site. Spreading and
+  client defaults cover the same cases with TanStack's own inference.
+- **Mutation entries as functions** (`writes.update()`). The call returns the
+  same options every time and needs a separate `.key` beside `.mutationKey`.
+- **One grouped query-and-mutation factory.** Mutation callbacks would refer
+  back into a result still under construction.
 - **Annotate original services or expose both modes on every method.** This
-  couples services to one observation policy or leaves classification to every
-  component. The selected maps state that choice once at the consuming edge.
-- **A recursive proxy.** Plain selected functions already exist at runtime;
-  eager wrappers do not need dynamic path interception.
-- **Global invalidation metadata.** It adds client installation and dispatch
-  machinery for relationships that native typed callbacks already express.
+  couples services to one observation policy. The selected maps state that
+  choice once at the consuming edge.
+- **A recursive proxy.** Plain selected functions already exist at runtime.
+- **An `invalidates` metadata language.** It needs a dispatcher for
+  relationships the key layout and a `MutationCache` rule already express. The
+  first version rejected global configuration altogether; the rule is now a
+  recommendation, not a requirement, and needs no library machinery.
 
 ## References
 
 - [TanStack mutation callbacks](https://tanstack.com/query/latest/docs/framework/react/guides/mutations)
 - [Invalidation from mutations](https://tanstack.com/query/latest/docs/framework/react/guides/invalidations-from-mutations)
+- [Query defaults](https://tanstack.com/query/latest/docs/reference/QueryClient#queryclientsetquerydefaults)
 - [tRPC's native options integration](https://trpc.io/blog/introducing-tanstack-react-query-client)

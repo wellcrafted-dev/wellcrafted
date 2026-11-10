@@ -1,10 +1,10 @@
-/** Verifies native options, per-method inference, generated identity, and shared mutation policy. */
+/** Verifies generated identity, per-method inference, and composition by spread and by client policy. */
 import { describe, expect, expectTypeOf, it } from "bun:test";
 import {
 	type CancelledError,
 	type DataTag,
 	type dataTagErrorSymbol,
-	type MutationFunctionContext,
+	MutationCache,
 	type MutationKey,
 	MutationObserver,
 	QueryClient,
@@ -12,8 +12,8 @@ import {
 } from "@tanstack/query-core";
 import { Err, Ok, type Result } from "../result/index.js";
 import {
-	createMutations,
-	createQueries,
+	resultMutations,
+	resultQueries,
 	runMutation,
 	runQuery,
 } from "./index.js";
@@ -36,11 +36,11 @@ const logout = (): Result<null, never> => Ok(null);
 const rename = (input?: { name: string }): Result<string, never> =>
 	Ok(input?.name ?? "anonymous");
 
-describe("createQueries", () => {
-	it("heterogeneous factories preserve arguments, literal keys, and cache tags", () => {
-		const queries = createQueries(["users"], {
+describe("resultQueries", () => {
+	it("factories preserve arguments, literal keys, and cache tags", () => {
+		const queries = resultQueries(["users"], {
 			getUser,
-			listUsers: { queryFn: listUsers },
+			listUsers,
 			search,
 			events,
 		});
@@ -90,32 +90,23 @@ describe("createQueries", () => {
 		queries.getUser();
 	});
 
-	it("construction and factory calls never execute services or mutate definitions", () => {
+	it("construction and factory calls never execute services", () => {
 		let calls = 0;
 		const service = () => {
 			calls++;
 			return Ok(null);
 		};
 		const namespace = Object.freeze(["users"] as const);
-		const descriptor = Object.freeze({ queryFn: service, staleTime: 100 });
-		const queries = createQueries(
-			namespace,
-			Object.freeze({ read: descriptor }),
-		);
-		const mutations = createMutations(
-			namespace,
-			Object.freeze({ write: service }),
-		);
+		const queries = resultQueries(namespace, Object.freeze({ read: service }));
+		resultMutations(namespace, Object.freeze({ write: service }));
 		queries.read();
-		mutations.write();
 		expect(calls).toBe(0);
-		expect(descriptor).toEqual({ queryFn: service, staleTime: 100 });
 	});
 
 	it("argument tuples prevent path collisions and preserve omitted optional arguments", async () => {
 		const client = new QueryClient();
-		const queries = createQueries(["users"], { getUser, events });
-		const nested = createQueries(["users", "getUser"], { list: listUsers });
+		const queries = resultQueries(["users"], { getUser, events });
+		const nested = resultQueries(["users", "getUser"], { list: listUsers });
 		await runQuery(client, queries.getUser("list"));
 		await runQuery(client, nested.list());
 		await runQuery(client, queries.events());
@@ -127,24 +118,10 @@ describe("createQueries", () => {
 		expect(client.getQueryCache().getAll()).toHaveLength(4);
 	});
 
-	it("generated identity ignores hidden descriptor keys and hashes", async () => {
-		const descriptor = {
-			queryFn: (id: string) => Ok(id),
-			staleTime: Infinity,
-		};
-		// JavaScript callers can supply fields absent from a TypeScript annotation.
-		Object.assign(descriptor, { queryKey: ["override"], queryHash: "fixed" });
-		const queries = createQueries(["users"], { get: descriptor });
-		const client = new QueryClient();
-		expect(await runQuery(client, queries.get("u1"))).toEqual(Ok("u1"));
-		expect(await runQuery(client, queries.get("u2"))).toEqual(Ok("u2"));
-		expect(client.getQueryCache().getAll()).toHaveLength(2);
-	});
-
-	it("computed prototype names remain ordinary own factories", async () => {
-		const definitions = { ["__proto__"]: () => Ok("own") };
-		const queries = createQueries(["users"], definitions);
-		const mutations = createMutations(["users"], definitions);
+	it("computed prototype names remain ordinary own entries", async () => {
+		const methods = { ["__proto__"]: () => Ok("own") };
+		const queries = resultQueries(["users"], methods);
+		const mutations = resultMutations(["users"], methods);
 		const client = new QueryClient();
 		for (const namespace of [queries, mutations]) {
 			expect(Object.hasOwn(namespace, "__proto__")).toBe(true);
@@ -152,44 +129,29 @@ describe("createQueries", () => {
 			expect(Object.getPrototypeOf(namespace)).toBe(Object.prototype);
 		}
 		expect(await runQuery(client, queries.__proto__())).toEqual(Ok("own"));
-		expect(await runMutation(client, mutations.__proto__(), undefined)).toEqual(
+		expect(await runMutation(client, mutations.__proto__, undefined)).toEqual(
 			Ok("own"),
 		);
 	});
 
 	it("numeric names use JavaScript string keys while symbol entries are not mapped", async () => {
 		const hidden = Symbol("hidden");
-		const queries = createQueries(["users"], {
-			0: { queryFn: getUser, select: (value) => value.name },
-			1: getUser,
-			[hidden]: getUser,
-		});
-		const mutations = createMutations(["users"], {
-			0: {
-				mutationFn: updateUser,
-				onMutate: (input: User) => ({ previous: input }),
-				onSuccess: (_saved, _input, rollback) => {
-					expectTypeOf(rollback).toEqualTypeOf<{ previous: User }>();
-				},
-			},
-			1: updateUser,
+		const queries = resultQueries(["users"], { 0: getUser, [hidden]: getUser });
+		const mutations = resultMutations(["users"], {
+			0: updateUser,
 			[hidden]: updateUser,
 		});
 		expectTypeOf(queries[0].key).toEqualTypeOf<readonly ["users", "0"]>();
-		expectTypeOf(mutations[0].key).toEqualTypeOf<readonly ["users", "0"]>();
+		expectTypeOf(mutations[0].mutationKey).toEqualTypeOf<
+			MutationKey & readonly ["users", "0"]
+		>();
 		expect(queries[0].key).toEqual(["users", "0"]);
-		expect(mutations[0]().mutationKey).toEqual(["users", "0"]);
+		expect(mutations[0].mutationKey).toEqual(["users", "0"]);
 		expect(Object.getOwnPropertySymbols(queries)).toHaveLength(0);
 		expect(Object.getOwnPropertySymbols(mutations)).toHaveLength(0);
 		const client = new QueryClient();
-		const selected = await runQuery(client, queries[0]("u1"));
-		expectTypeOf(selected).toEqualTypeOf<
-			Result<string, NotFound | CancelledError>
-		>();
-		expect(selected).toEqual(Ok("Ada"));
-		expect(await runQuery(client, queries[1]("u1"))).toEqual(Ok(user));
-		expect(await runMutation(client, mutations[0](), user)).toEqual(Ok(user));
-		expect(await runMutation(client, mutations[1](), user)).toEqual(Ok(user));
+		expect(await runQuery(client, queries[0]("u1"))).toEqual(Ok(user));
+		expect(await runMutation(client, mutations[0], user)).toEqual(Ok(user));
 	});
 
 	it("query execution forwards supplied arguments without a receiver or query context", async () => {
@@ -203,7 +165,7 @@ describe("createQueries", () => {
 				return Ok(args[0] ?? "empty");
 			},
 		};
-		const queries = createQueries(["users"], { read: service.read });
+		const queries = resultQueries(["users"], { read: service.read });
 		await runQuery(client, queries.read());
 		expect(received).toEqual([]);
 		expect(receiver).toBeUndefined();
@@ -211,9 +173,9 @@ describe("createQueries", () => {
 		expect(received).toEqual(["u1"]);
 	});
 
-	it("factory prefixes invalidate every argument variant of one operation", async () => {
+	it("factory prefixes invalidate every argument variant of one method", async () => {
 		const client = new QueryClient();
-		const queries = createQueries(["users"], { search, getUser });
+		const queries = resultQueries(["users"], { search, getUser });
 		await runQuery(client, queries.search("Ada"));
 		await runQuery(client, queries.search("Grace", 2));
 		await runQuery(client, queries.getUser("u1"));
@@ -231,108 +193,69 @@ describe("createQueries", () => {
 
 	it("sync and async Results convert through runners and preserve error identity", async () => {
 		const client = new QueryClient();
-		const queries = createQueries(["users"], {
-			getUser: { queryFn: getUser, retry: false },
-			listUsers,
-		});
+		const queries = resultQueries(["users"], { getUser, listUsers });
 		expect(await runQuery(client, queries.getUser("u1"))).toEqual(Ok(user));
 		expect(await runQuery(client, queries.listUsers())).toEqual(Ok([user]));
-		const result = await runQuery(client, queries.getUser("missing"));
+		const result = await runQuery(client, {
+			...queries.getUser("missing"),
+			retry: false,
+		});
 		expectTypeOf(result).toEqualTypeOf<
 			Result<User, NotFound | CancelledError>
 		>();
 		expect(result.error).toBe(missing);
-		expect(getUser("missing")).toEqual(Err(missing));
 	});
 
-	it("mixed entries isolate selected data while retaining original cache tags", async () => {
+	it("options spread at the use site are inferred, and select leaves the cache tag alone", async () => {
 		const client = new QueryClient();
-		const queries = createQueries(["users"], {
-			getUser,
-			userName: { queryFn: getUser, select: (u) => u.name },
-			userCount: { queryFn: listUsers, select: (users) => users.length },
-			plain: { queryFn: listUsers },
+		const queries = resultQueries(["users"], { getUser, listUsers });
+		const count = await runQuery(client, {
+			...queries.listUsers(),
+			select: (users) => users.length,
 		});
-		const original = await runQuery(client, queries.getUser("u1"));
-		const selected = await runQuery(client, queries.userName("u1"));
-		const count = await runQuery(client, queries.userCount());
-		const plain = await runQuery(client, queries.plain());
-		expectTypeOf(original).toEqualTypeOf<
-			Result<User, NotFound | CancelledError>
-		>();
-		expectTypeOf(selected).toEqualTypeOf<
-			Result<string, NotFound | CancelledError>
-		>();
 		expectTypeOf(count).toEqualTypeOf<Result<number, CancelledError>>();
-		expectTypeOf(plain).toEqualTypeOf<Result<User[], CancelledError>>();
-		expect(original).toEqual(Ok(user));
-		expect(selected).toEqual(Ok("Ada"));
 		expect(count).toEqual(Ok(1));
-		expect(plain).toEqual(Ok([user]));
-		const options = queries.userName("u1");
-		const observer = new QueryObserver(client, options);
+		const name = {
+			...queries.getUser("u1"),
+			select: (u: User) => u.name,
+			retry: (_count: number, error: NotFound) => {
+				expectTypeOf(error).toEqualTypeOf<NotFound>();
+				return false;
+			},
+		};
+		await runQuery(client, name);
+		const observer = new QueryObserver(client, name);
 		expectTypeOf(observer.getCurrentResult().data).toEqualTypeOf<
 			string | undefined
 		>();
 		expect(observer.getCurrentResult().data).toBe("Ada");
-		const originalCached = client.getQueryData(queries.getUser("u1").queryKey);
-		const nameCached = client.getQueryData(options.queryKey);
-		const countCached = client.getQueryData(queries.userCount().queryKey);
-		expectTypeOf(originalCached).toEqualTypeOf<User | undefined>();
-		expectTypeOf(nameCached).toEqualTypeOf<User | undefined>();
-		expectTypeOf(countCached).toEqualTypeOf<User[] | undefined>();
-		expect(nameCached).toEqual(user);
+		const cached = client.getQueryData(name.queryKey);
+		expectTypeOf(cached).toEqualTypeOf<User | undefined>();
+		expect(cached).toEqual(user);
 	});
 
-	it("native callbacks infer service types and staleTime prevents a fresh refetch", async () => {
+	it("query defaults set by a factory's key apply to every argument variant", async () => {
 		let calls = 0;
-		const client = new QueryClient();
-		const queries = createQueries(["users"], {
-			getUser: {
-				queryFn: (id: string): Result<User, NotFound> => {
-					calls++;
-					return getUser(id);
-				},
-				staleTime: Infinity,
-				retry: (count, error) => {
-					expectTypeOf(count).toEqualTypeOf<number>();
-					expectTypeOf(error).toEqualTypeOf<NotFound>();
-					return false;
-				},
-				throwOnError: (error) => {
-					expectTypeOf(error).toEqualTypeOf<NotFound>();
-					return false;
-				},
-				placeholderData: (previous) => {
-					expectTypeOf(previous).toEqualTypeOf<User | undefined>();
-					return previous;
-				},
-				initialData: () => undefined,
-				enabled: (query) => {
-					expectTypeOf(query.queryKey).toEqualTypeOf<
-						readonly ["users", "getUser", [id: string]]
-					>();
-					return true;
-				},
-				refetchInterval: (query) => {
-					expectTypeOf(query.state.data).toEqualTypeOf<User | undefined>();
-					return false;
-				},
+		const queries = resultQueries(["users"], {
+			getUser: (id: string): Result<User, NotFound> => {
+				calls++;
+				return getUser(id);
 			},
-			seeded: { queryFn: getUser, initialData: user },
 		});
+		const client = new QueryClient();
+		client.setQueryDefaults(queries.getUser.key, { staleTime: Infinity });
 		await runQuery(client, queries.getUser("u1"));
 		await runQuery(client, queries.getUser("u1"));
-		expect(calls).toBe(1);
-		expect(queries.seeded("u1").initialData).toBe(user);
+		await runQuery(client, queries.getUser("u2"));
+		expect(calls).toBe(2);
 	});
 });
 
-describe("createMutations", () => {
-	it("mutations infer required, optional, and void variables and forward only variables", async () => {
+describe("resultMutations", () => {
+	it("entries are options; variables are inferred and only they reach the method", async () => {
 		const client = new QueryClient();
 		let received: unknown[] = [];
-		const mutations = createMutations(["users"], {
+		const mutations = resultMutations(["users"], {
 			updateUser,
 			logout,
 			rename,
@@ -341,10 +264,10 @@ describe("createMutations", () => {
 				return Ok(null);
 			},
 		});
-		const logoutObserver = new MutationObserver(client, mutations.logout());
-		const renameObserver = new MutationObserver(client, mutations.rename());
-		const updateObserver = new MutationObserver(client, mutations.updateUser());
-		const recordObserver = new MutationObserver(client, mutations.record());
+		const logoutObserver = new MutationObserver(client, mutations.logout);
+		const renameObserver = new MutationObserver(client, mutations.rename);
+		const updateObserver = new MutationObserver(client, mutations.updateUser);
+		const recordObserver = new MutationObserver(client, mutations.record);
 		expectTypeOf<Parameters<typeof logoutObserver.mutate>[0]>().toEqualTypeOf<
 			// biome-ignore lint/suspicious/noConfusingVoidType: Assert the native optional parameter type exactly.
 			void | undefined
@@ -356,31 +279,21 @@ describe("createMutations", () => {
 		expectTypeOf<
 			Parameters<typeof updateObserver.mutate>[0]
 		>().toEqualTypeOf<User>();
-		expectTypeOf<Parameters<typeof recordObserver.mutate>[0]>().toEqualTypeOf<
-			// biome-ignore lint/suspicious/noConfusingVoidType: Assert the native optional parameter type exactly.
-			{ name: string } | void | undefined
-		>();
 		// Native mutationKey intersects the general MutationKey with our literal key.
-		expectTypeOf(mutations.updateUser().mutationKey).toEqualTypeOf<
+		expectTypeOf(mutations.updateUser.mutationKey).toEqualTypeOf<
 			MutationKey & readonly ["users", "updateUser"]
 		>();
-		expectTypeOf(mutations.updateUser.key).toEqualTypeOf<
-			readonly ["users", "updateUser"]
-		>();
-		expect(mutations.updateUser().mutationKey).toEqual(
-			mutations.updateUser.key,
-		);
-		expect(mutations.updateUser.key).toEqual(["users", "updateUser"]);
-		expect(await runMutation(client, mutations.logout(), undefined)).toEqual(
+		expect(mutations.updateUser.mutationKey).toEqual(["users", "updateUser"]);
+		expect(await runMutation(client, mutations.logout, undefined)).toEqual(
 			Ok(null),
 		);
-		expect(await runMutation(client, mutations.rename(), undefined)).toEqual(
+		expect(await runMutation(client, mutations.rename, undefined)).toEqual(
 			Ok("anonymous"),
 		);
 		expect(
-			await runMutation(client, mutations.rename(), { name: "Ada" }),
+			await runMutation(client, mutations.rename, { name: "Ada" }),
 		).toEqual(Ok("Ada"));
-		expect(await runMutation(client, mutations.updateUser(), user)).toEqual(
+		expect(await runMutation(client, mutations.updateUser, user)).toEqual(
 			Ok(user),
 		);
 		expect(await logoutObserver.mutate()).toBeNull();
@@ -389,173 +302,100 @@ describe("createMutations", () => {
 		expect(received).toEqual([undefined]);
 	});
 
-	it("mixed mutations isolate annotated rollback types in definition and per-call callbacks", async () => {
+	it("callbacks spread onto an entry infer rollback without annotations and roll back on Err", async () => {
 		const client = new QueryClient();
-		const mutations = createMutations(["users"], {
-			updateUser: {
-				mutationFn: updateUser,
-				onMutate: (input: User, ctx: MutationFunctionContext) => {
-					expectTypeOf(ctx.client).toEqualTypeOf<QueryClient>();
-					return { previous: input };
-				},
-				onSuccess: async (saved, input, rollback, { client }) => {
-					expectTypeOf(saved).toEqualTypeOf<User>();
-					expectTypeOf(input).toEqualTypeOf<User>();
-					expectTypeOf(rollback).toEqualTypeOf<{ previous: User }>();
-					expectTypeOf(client).toEqualTypeOf<QueryClient>();
-				},
-				onError: (error, input, rollback) => {
-					expectTypeOf(error).toEqualTypeOf<SaveError>();
-					expectTypeOf(input).toEqualTypeOf<User>();
-					expectTypeOf(rollback).toEqualTypeOf<
-						{ previous: User } | undefined
-					>();
-				},
-			},
-			rename: {
-				mutationFn: rename,
-				onMutate: (
-					// biome-ignore lint/suspicious/noConfusingVoidType: Match the optional service variables type.
-					input: { name: string } | void,
-					_context: MutationFunctionContext,
-				) => ({ before: input?.name ?? "anonymous" }),
-				onSuccess: (_saved, _input, rollback) => {
-					expectTypeOf(rollback).toEqualTypeOf<{ before: string }>();
-				},
-			},
-			logout,
+		const queries = resultQueries(["users"], { getUser });
+		const saves = resultMutations(["users"], { updateUser });
+		const fails = resultMutations(["users"], {
+			updateUser: async (_input: User): Promise<Result<User, SaveError>> =>
+				Err({ name: "SaveError", message: "disk full" }),
 		});
-		expectTypeOf<
-			Parameters<
-				NonNullable<ReturnType<typeof mutations.logout>["onSuccess"]>
-			>[2]
-		>().toEqualTypeOf<unknown>();
-		const observer = new MutationObserver(client, mutations.rename());
-		const unsubscribe = observer.subscribe(() => {});
-		let perCall = false;
-		expect(
-			await observer.mutate(
-				{ name: "Grace" },
-				{
-					onSuccess: (_data, _variables, rollback) => {
-						expectTypeOf(rollback).toEqualTypeOf<
-							{ before: string } | undefined
-						>();
-						perCall = true;
-					},
-				},
-			),
-		).toBe("Grace");
-		unsubscribe();
-		expect(perCall).toBe(true);
-		expect(await runMutation(client, mutations.updateUser(), user)).toEqual(
-			Ok(user),
-		);
-	});
-
-	it("types unannotated onMutate inputs; its rollback stays unknown", async () => {
-		const client = new QueryClient();
-		const mutations = createMutations(["users"], {
-			updateUser: {
-				mutationFn: updateUser,
-				onMutate: (input, context) => {
-					expectTypeOf(input).toEqualTypeOf<User>();
-					expectTypeOf(context).toEqualTypeOf<MutationFunctionContext>();
-					return { previous: input };
-				},
-				onSuccess: (_saved, _input, rollback) => {
-					expectTypeOf(rollback).toEqualTypeOf<unknown>();
-				},
-			},
-		});
-		expect(await runMutation(client, mutations.updateUser(), user)).toEqual(
-			Ok(user),
-		);
-	});
-
-	it("definition policy uses the executing client and invalidates selected reads", async () => {
-		const client = new QueryClient();
-		const queries = createQueries(["users"], { getUser, listUsers });
 		await runQuery(client, queries.getUser("u1"));
-		await runQuery(client, queries.getUser("u2"));
-		await runQuery(client, queries.listUsers());
-		let executing: QueryClient | undefined;
-		const mutations = createMutations(["users"], {
-			updateUser: {
-				mutationFn: updateUser,
-				onSuccess: async (saved, input, _rollback, { client }) => {
-					expectTypeOf(saved).toEqualTypeOf<User>();
-					expectTypeOf(input).toEqualTypeOf<User>();
-					executing = client;
-					await Promise.all([
-						client.invalidateQueries({
-							queryKey: queries.getUser(input.id).queryKey,
-							exact: true,
-						}),
-						client.invalidateQueries({ queryKey: queries.listUsers.key }),
-					]);
+		const optimistic = (entry: typeof saves.updateUser) =>
+			new MutationObserver(client, {
+				...entry,
+				onMutate: (input, { client }) => {
+					const key = queries.getUser(input.id).queryKey;
+					const before = client.getQueryData(key);
+					client.setQueryData(key, input);
+					return { key, before };
 				},
-			},
-		});
-		await runMutation(client, mutations.updateUser(), user);
-		expect(executing).toBe(client);
-		expect(
-			client.getQueryState(queries.getUser("u1").queryKey)?.isInvalidated,
-		).toBe(true);
-		expect(
-			client.getQueryState(queries.getUser("u2").queryKey)?.isInvalidated,
-		).toBe(false);
-		expect(
-			client.getQueryState(queries.listUsers().queryKey)?.isInvalidated,
-		).toBe(true);
+				onError: (error, _input, rollback, { client }) => {
+					expectTypeOf(error).toEqualTypeOf<SaveError>();
+					expectTypeOf(rollback?.before).toEqualTypeOf<User | undefined>();
+					if (rollback) client.setQueryData(rollback.key, rollback.before);
+				},
+			});
+		const renamed = { ...user, name: "Grace" };
+		await optimistic(saves.updateUser).mutate(renamed);
+		expect<unknown>(
+			client.getQueryData(queries.getUser("u1").queryKey),
+		).toEqual(renamed);
+		await optimistic(fails.updateUser)
+			.mutate({ ...user, name: "Lost" })
+			.catch(() => {});
+		expect<unknown>(
+			client.getQueryData(queries.getUser("u1").queryKey),
+		).toEqual(renamed);
 	});
 
-	it("awaited definition policy keeps mutation pending until it completes", async () => {
-		const client = new QueryClient();
-		const entered = Promise.withResolvers<void>();
+	it("a MutationCache rule invalidates the writing namespace and keeps the write pending until it settles", async () => {
 		const gate = Promise.withResolvers<void>();
-		const mutations = createMutations(["users"], {
-			updateUser: {
-				mutationFn: updateUser,
-				onSuccess: () => {
-					entered.resolve();
-					return gate.promise;
+		const client = new QueryClient({
+			mutationCache: new MutationCache({
+				onSettled: async (
+					_data,
+					_error,
+					_variables,
+					_rollback,
+					mutation,
+					{ client },
+				) => {
+					const key = mutation.options.mutationKey;
+					if (!key) return;
+					await gate.promise;
+					await client.invalidateQueries({ queryKey: key.slice(0, -1) });
 				},
-			},
+			}),
 		});
-		let resolved = false;
-		const pending = runMutation(client, mutations.updateUser(), user).then(
-			(result) => {
-				resolved = true;
-				return result;
-			},
-		);
-		await entered.promise;
-		expect(client.isMutating({ mutationKey: mutations.updateUser.key })).toBe(
-			1,
-		);
-		expect(resolved).toBe(false);
+		const users = resultQueries(["users"], { getUser, listUsers });
+		const write = resultMutations(["users"], { updateUser });
+		const teams = resultQueries(["teams"], { list: listUsers });
+		await runQuery(client, users.getUser("u1"));
+		await runQuery(client, users.listUsers());
+		await runQuery(client, teams.list());
+		const pending = runMutation(client, write.updateUser, user);
+		await Bun.sleep(0);
+		expect(
+			client.isMutating({ mutationKey: write.updateUser.mutationKey }),
+		).toBe(1);
 		gate.resolve();
 		expect(await pending).toEqual(Ok(user));
-		expect(client.isMutating({ mutationKey: mutations.updateUser.key })).toBe(
-			0,
+		expect(
+			client.getQueryState(users.getUser("u1").queryKey)?.isInvalidated,
+		).toBe(true);
+		expect(
+			client.getQueryState(users.listUsers().queryKey)?.isInvalidated,
+		).toBe(true);
+		expect(client.getQueryState(teams.list().queryKey)?.isInvalidated).toBe(
+			false,
 		);
 	});
 
-	it("definition policy survives observer reset while per-call callbacks depart", async () => {
+	it("options callbacks survive observer reset while per-call callbacks depart", async () => {
 		const client = new QueryClient();
 		const gate = Promise.withResolvers<Result<User, SaveError>>();
-		let sharedCalls = 0;
+		let shared = 0;
 		let perCall = 0;
-		const mutations = createMutations(["users"], {
-			updateUser: {
-				mutationFn: (_input: User) => gate.promise,
-				onSuccess: () => {
-					sharedCalls++;
-				},
+		const mutations = resultMutations(["users"], {
+			updateUser: (_input: User) => gate.promise,
+		});
+		const observer = new MutationObserver(client, {
+			...mutations.updateUser,
+			onSuccess: () => {
+				shared++;
 			},
 		});
-		const observer = new MutationObserver(client, mutations.updateUser());
 		const unsubscribe = observer.subscribe(() => {});
 		const pending = observer.mutate(user, {
 			onSuccess: () => {
@@ -566,68 +406,40 @@ describe("createMutations", () => {
 		gate.resolve(Ok(user));
 		await pending;
 		unsubscribe();
-		expect(sharedCalls).toBe(1);
+		expect(shared).toBe(1);
 		expect(perCall).toBe(0);
 	});
 });
 
 describe("type errors", () => {
 	it("rejects untyped service wrappers", () => {
-		const queries = createQueries(["users"], { get: (id) => getUser(id) });
+		const queries = resultQueries(["users"], { get: (id) => getUser(id) });
 		expectTypeOf(queries.get).parameters.toEqualTypeOf<[id: never]>();
 		// @ts-expect-error — an unannotated wrapper cannot silently accept any input
 		queries.get(123);
 		// @ts-expect-error — annotate the input of a newly defined service wrapper
-		createMutations(["users"], { update: (input) => updateUser(input) });
+		resultMutations(["users"], { update: (input) => updateUser(input) });
 	});
 
-	it("rejects generated keys, misspelled options, and multi-argument mutations", () => {
-		createQueries(["users"], {
-			// @ts-expect-error — query keys are generated
-			getUser: { queryFn: getUser, queryKey: ["override"] },
-		});
-		createQueries(["users"], {
-			// @ts-expect-error — misspelled native option
-			getUser: { queryFn: getUser, staleTim: 100 },
-		});
-		const fixedHash = { queryFn: getUser, queryHash: "fixed" };
-		// @ts-expect-error — hashes cannot override generated identity, including in variable descriptors
-		createQueries(["users"], { getUser: fixedHash });
-		const fixedKey = { queryFn: getUser, queryKey: ["override"] };
-		// @ts-expect-error — keys cannot override generated identity, including in variable descriptors
-		createQueries(["users"], { getUser: fixedKey });
-		createMutations(["users"], {
-			// @ts-expect-error — mutation keys are generated
-			updateUser: { mutationFn: updateUser, mutationKey: ["override"] },
-		});
-		const fixedMutationKey = {
-			mutationFn: updateUser,
-			mutationKey: ["override"],
-		};
-		// @ts-expect-error — variable descriptors cannot supply a mutation key either
-		createMutations(["users"], { updateUser: fixedMutationKey });
-		createMutations(["users"], {
-			// @ts-expect-error — misspelled native option
-			updateUser: { mutationFn: updateUser, onSucces: () => {} },
-		});
-		createMutations(["users"], {
+	it("rejects multi-argument mutations and wrong variables", () => {
+		resultMutations(["users"], {
 			// @ts-expect-error — adapt two arguments to one object
 			bad: (_id: string, _name: string) => Ok(null),
 		});
-		createMutations(["users"], {
+		resultMutations(["users"], {
 			// @ts-expect-error — optional second arguments are also rejected
 			bad: (_id: string, _options?: { force: boolean }) => Ok(null),
 		});
-		createMutations(["users"], {
+		resultMutations(["users"], {
 			// @ts-expect-error — unbounded rest arguments are rejected
 			bad: (..._args: string[]) => Ok(null),
 		});
-		const mutations = createMutations(["users"], { updateUser });
+		const mutations = resultMutations(["users"], { updateUser });
 		void (() => {
 			// @ts-expect-error — unary service variables are required
-			new MutationObserver(new QueryClient(), mutations.updateUser()).mutate();
+			new MutationObserver(new QueryClient(), mutations.updateUser).mutate();
 			// @ts-expect-error — unary service variables retain their type
-			runMutation(new QueryClient(), mutations.updateUser(), { id: 1 });
+			runMutation(new QueryClient(), mutations.updateUser, { id: 1 });
 		});
 	});
 });

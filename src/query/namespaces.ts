@@ -1,7 +1,4 @@
-import type {
-	MutationObserverOptions,
-	QueryObserverOptions,
-} from "@tanstack/query-core";
+import type { MutationObserverOptions } from "@tanstack/query-core";
 import type { Result } from "../result/index.js";
 import {
 	type ResultQueryOptions,
@@ -27,111 +24,57 @@ type ResultError<R> = R extends { error: null }
 type ServiceData<F extends ResultFn> = ResultData<Awaited<ReturnType<F>>>;
 type ServiceError<F extends ResultFn> = ResultError<Awaited<ReturnType<F>>>;
 type MethodName<K> = `${K & (string | number)}`;
-type QueryKeyFor<
+
+/** A query factory: the method's arguments in, native query options out. `.key` is the prefix shared by every argument variant. */
+export type ResultQuery<
 	N extends readonly string[],
 	K extends string,
 	F extends ResultFn,
-> = readonly [...N, K, Parameters<F>];
-type SelectedData<S, D> = S extends (...args: never[]) => infer R ? R : D;
-type QueryDefinition<
-	N extends readonly string[],
-	K extends string,
-	F extends ResultFn,
-> =
-	| F
-	| (Omit<
-			QueryObserverOptions<
-				ServiceData<F>,
-				ServiceError<F>,
-				unknown,
-				ServiceData<F>,
-				QueryKeyFor<N, K, F>
-			>,
-			"queryKey" | "queryHash" | "queryFn"
-	  > & { queryFn: F; queryKey?: never; queryHash?: never });
-type QueryFactory<
-	N extends readonly string[],
-	K extends string,
-	F extends ResultFn,
-	TData,
 > = ((
 	...args: Parameters<F>
 ) => ResultQueryOptions<
 	ServiceData<F>,
 	ServiceError<F>,
-	TData,
 	ServiceData<F>,
-	QueryKeyFor<N, K, F>
->) & {
-	key: readonly [...N, K];
-};
+	ServiceData<F>,
+	readonly [...N, K, Parameters<F>]
+>) & { key: readonly [...N, K] };
 
 /**
- * Select service reads to share native query options and cache keys.
- * Maps own enumerable string properties; numeric property names become strings.
- * Pass bound methods or closures, and annotate parameters of new service wrappers.
+ * Turn Result-returning reads into query option factories keyed by
+ * `[...namespace, method, args]`.
+ *
+ * Each factory takes the method's own arguments and returns plain TanStack
+ * options. Add options for one use by spreading them, and policy for a method
+ * or namespace with `client.setQueryDefaults(prefix, ...)`.
+ * Maps own enumerable string properties; numeric names become strings.
+ * Pass bound methods or closures, and annotate parameters of new wrappers.
  *
  * @example
  * ```ts
- * const queries = createQueries(['users'], { getUser: service.getUser });
- * await runQuery(client, queries.getUser('u1'));
+ * const users = resultQueries(['users'], { get: service.get, list: service.list });
+ * createQuery(() => users.get('u1'));
+ * createQuery(() => ({ ...users.list(), select: (all) => all.length }));
  * ```
  */
-export function createQueries<
-	const TNamespace extends readonly string[],
-	TServices extends Record<string, ResultFn>,
-	TSelect extends Record<string, unknown>,
+export function resultQueries<
+	const N extends readonly string[],
+	M extends Record<string, ResultFn>,
 >(
-	namespace: TNamespace,
-	definitions: {
-		[K in keyof TServices]: QueryDefinition<
-			TNamespace,
-			MethodName<K>,
-			TServices[K]
-		>;
-	} & {
-		[K in keyof TSelect]: { queryFn: ResultFn; select?: TSelect[K] } | ResultFn;
-	},
-): {
-	[K in keyof TServices & (string | number)]: QueryFactory<
-		TNamespace,
-		MethodName<K>,
-		TServices[K],
-		SelectedData<TSelect[MethodName<K>], ServiceData<TServices[K]>>
-	>;
-} {
-	const entries = definitions as Record<
-		string,
-		ResultFn | ({ queryFn: ResultFn } & Record<string, unknown>)
-	>;
-	return Object.fromEntries<unknown>(
-		Object.entries(entries).map(([name, definition]) => {
-			const { queryFn: service, ...options } =
-				typeof definition === "function" ? { queryFn: definition } : definition;
+	namespace: N,
+	methods: M,
+): { [K in keyof M & (string | number)]: ResultQuery<N, MethodName<K>, M[K]> } {
+	return Object.fromEntries(
+		Object.entries(methods).map(([name, method]) => {
 			const key = [...namespace, name];
-			return [
-				name,
-				Object.assign(
-					(...args: unknown[]) =>
-						resultQueryOptions({
-							...options,
-							queryKey: [...key, args],
-							// Identity always comes from the generated key, including for JavaScript callers.
-							queryHash: undefined,
-							queryFn: () => service(...(args as never[])),
-						}),
-					{ key },
-				),
-			];
+			const factory = (...args: never[]) =>
+				resultQueryOptions({
+					queryKey: [...key, args],
+					queryFn: () => method(...args),
+				});
+			return [name, Object.assign(factory, { key })];
 		}),
-	) as {
-		[K in keyof TServices & (string | number)]: QueryFactory<
-			TNamespace,
-			MethodName<K>,
-			TServices[K],
-			SelectedData<TSelect[MethodName<K>], ServiceData<TServices[K]>>
-		>;
-	};
+	) as never;
 }
 
 type Variables<F extends ResultFn> = Parameters<F> extends []
@@ -143,102 +86,55 @@ type Variables<F extends ResultFn> = Parameters<F> extends []
 			? // biome-ignore lint/suspicious/noConfusingVoidType: Optional service inputs use TanStack void variables.
 				V | void
 			: never;
-type OnMutateResult<M> = M extends (...args: never[]) => infer R
-	? Awaited<R>
-	: unknown;
-type MutationDefinition<F extends ResultFn, R> = [Variables<F>] extends [never]
-	? "createMutations: a mutation service takes zero or one variables argument; adapt it to one object explicitly"
-	:
-			| F
-			| (Omit<
-					MutationObserverOptions<
-						ServiceData<F>,
-						ServiceError<F>,
-						Variables<F>,
-						R
-					>,
-					"mutationFn" | "mutationKey"
-			  > & { mutationFn: F; mutationKey?: never });
-type MutationFactory<
+type OneVariable<F extends ResultFn> = [Variables<F>] extends [never]
+	? "resultMutations: a mutation takes zero or one variables argument; adapt it to one object"
+	: F;
+
+/** Native mutation options for one method, keyed `[...namespace, method]`. */
+export type ResultMutation<
 	N extends readonly string[],
 	K extends string,
 	F extends ResultFn,
-	R,
-> = (() => MutationObserverOptions<
+> = MutationObserverOptions<
 	ServiceData<F>,
 	ServiceError<F>,
 	Variables<F>,
-	R
-> & {
-	mutationKey: readonly [...N, K];
-}) & { key: readonly [...N, K] };
+	unknown
+> & { mutationKey: readonly [...N, K] };
 
 /**
- * Select service writes to share native mutation options and lifecycle policy.
- * Maps own enumerable string properties; numeric property names become strings.
- * To infer rollback data across callbacks, annotate every parameter declared by
- * `onMutate`, or use `resultMutationOptions` for full contextual inference.
+ * Turn Result-returning writes into plain mutation options keyed by
+ * `[...namespace, method]`.
+ *
+ * Each entry is the options object itself. Spread it to add callbacks, or put
+ * policy in the client with `setMutationDefaults(prefix, ...)` or a
+ * `MutationCache` rule. Only the variables reach the method.
  *
  * @example
  * ```ts
- * const mutations = createMutations(['users'], { update: service.update });
- * await runMutation(client, mutations.update(), { id: 'u1', name: 'Ada' });
+ * const write = resultMutations(['users'], { update: service.update });
+ * createMutation(() => write.update);
+ * await runMutation(client, write.update, { id: 'u1', name: 'Ada' });
  * ```
  */
-export function createMutations<
-	const TNamespace extends readonly string[],
-	TServices extends Record<string, ResultFn>,
-	TOnMutate extends Record<string, unknown>,
+export function resultMutations<
+	const N extends readonly string[],
+	M extends Record<string, ResultFn>,
 >(
-	namespace: TNamespace,
-	definitions: {
-		[K in keyof TServices]: MutationDefinition<
-			TServices[K],
-			OnMutateResult<TOnMutate[MethodName<K>]>
-		>;
-	} & {
-		[K in keyof TOnMutate]:
-			| { mutationFn: ResultFn; onMutate?: TOnMutate[K] }
-			| ResultFn;
-	},
+	namespace: N,
+	methods: M & { [K in keyof M]: OneVariable<M[K]> },
 ): {
-	[K in keyof TServices & (string | number)]: MutationFactory<
-		TNamespace,
-		MethodName<K>,
-		TServices[K],
-		OnMutateResult<TOnMutate[MethodName<K>]>
-	>;
+	[K in keyof M & (string | number)]: ResultMutation<N, MethodName<K>, M[K]>;
 } {
-	const entries = definitions as Record<
-		string,
-		ResultFn | ({ mutationFn: ResultFn } & Record<string, unknown>)
-	>;
-	return Object.fromEntries<unknown>(
-		Object.entries(entries).map(([name, definition]) => {
-			const { mutationFn: service, ...options } =
-				typeof definition === "function"
-					? { mutationFn: definition }
-					: definition;
-			const mutationKey = [...namespace, name];
-			return [
+	return Object.fromEntries(
+		Object.entries(methods as Record<string, ResultFn>).map(
+			([name, method]) => [
 				name,
-				Object.assign(
-					() =>
-						resultMutationOptions({
-							...options,
-							mutationKey,
-							mutationFn: (variables: unknown) => service(variables as never),
-						}),
-					{ key: mutationKey },
-				),
-			];
-		}),
-	) as {
-		[K in keyof TServices & (string | number)]: MutationFactory<
-			TNamespace,
-			MethodName<K>,
-			TServices[K],
-			OnMutateResult<TOnMutate[MethodName<K>]>
-		>;
-	};
+				resultMutationOptions({
+					mutationKey: [...namespace, name],
+					mutationFn: (variables: unknown) => method(variables as never),
+				}),
+			],
+		),
+	) as never;
 }
