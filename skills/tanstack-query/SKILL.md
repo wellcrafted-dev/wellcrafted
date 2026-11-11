@@ -1,6 +1,6 @@
 ---
 name: tanstack-query
-description: TanStack Query with wellcrafted/query, resultQueryOptions, resultMutationOptions, runQuery, and runMutation. Use when wiring Result-returning services into TanStack Query, organizing query keys and option factories, invalidating from mutations, or running queries and mutations imperatively.
+description: Compose Result-returning services into native TanStack Query options. Use when defining service query/mutation namespaces, custom options, cache invalidation, or imperative Result workflows.
 ---
 
 # TanStack Query with wellcrafted
@@ -8,15 +8,46 @@ description: TanStack Query with wellcrafted/query, resultQueryOptions, resultMu
 ```typescript
 import {
 	resultMutationOptions,
+	resultMutations,
+	resultQueries,
 	resultQueryOptions,
 	runMutation,
 	runQuery,
 } from 'wellcrafted/query';
 ```
 
-Ground behavior claims in `src/query/utils.ts` for the installed version. The module exports exactly these four functions and requires `@tanstack/query-core` 5.102 or later (optional peer dependency).
+Ground behavior claims in `src/query/{namespaces,utils}.ts` for the installed version. The module exports these six functions and requires `@tanstack/query-core` 5.102 or later (optional peer dependency).
 
 `createQueryFactories`, `defineQuery`, `defineMutation`, `defineKeys`, `.options`, `.fetch()`, `.ensure()`, and callable mutations no longer exist. If you see them in a codebase on 0.45 or later, migrate them (table at the end).
+
+## Service namespaces
+
+List a service's reads and writes under one namespace, where the service instance exists:
+
+```typescript
+const users = resultQueries(['users'], { get: userService.get, list: userService.list });
+const userWrites = resultMutations(['users'], { update: userService.update });
+
+const user = createQuery(() => users.get(userId));
+const update = createMutation(() => userWrites.update);
+update.mutate({ id: userId, name: 'Ada' });
+```
+
+- A query entry takes the method's arguments and returns native options keyed `[...namespace, method, args]`, with the arguments in one final tuple (`[]` for none). `users.get.key` is the prefix of every argument variant; `.queryKey` is tagged with the cached data and error, before `select`.
+- A mutation entry is the options object itself, keyed `[...namespace, method]`. Methods take zero or one variables argument; adapt several to one object. Only the variables reach the method.
+- Every write refreshes reads through one client rule: a `MutationCache` whose `onSettled` returns `client.invalidateQueries()`. Only observed queries refetch now, the rest when next used, and `staleTime: 'static'` queries never. It reads nothing from the write's key, so it cannot miss a read in another namespace, and a spread cannot drop it. Do not derive scope by slicing mutation keys.
+- When one write should refresh less, list the keys it affects in `meta: { invalidates: [...] }` (typed through `Register`'s `mutationMeta`) and have the rule's `predicate` match them with `matchQuery`; a write without `meta` still refreshes everything. Use this for a measured cost, not by default.
+- The helpers take functions only. Put other behavior where its scope is:
+  - one use: spread, `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`;
+  - a method or namespace: client defaults by key, `client.setQueryDefaults(users.list.key, {...})` or `setMutationDefaults`;
+  - a variant several components share: spread into the adapter's `mutationOptions`/`queryOptions`, which infers callbacks without annotations, and reach the cache through query keys: `onSuccess: (saved, _in, _r, { client }) => client.setQueryData(users.get(saved.id).queryKey, saved)`. Define query factories first; writes refer to reads, never the reverse.
+- For an optimistic update shown in one place, render `mutation.variables` while pending and leave the cache alone. Update the cache in `onMutate`, with rollback in `onError`, only when several places must show it.
+- Matching defaults merge in registration order, not by specificity: register the broad prefix first.
+- Use a plain object's own enumerable string entries. Numeric names become strings; symbols are skipped. Methods are called without a receiver: bind them, and annotate the parameters of new wrappers.
+- Query arguments are the key: keep them stable and JSON-serializable, and normalize before the factory when `get()` and `get(undefined)` should share an entry. Methods do not receive the abort signal; use `resultQueryOptions` for signals, custom keys, or generic/overloaded signatures.
+- Keep services independent of TanStack; direct calls remain Results and bypass the cache.
+
+The following explicit adapters remain useful for individual or custom definitions.
 
 ## 1. Definitions are plain TanStack options
 
