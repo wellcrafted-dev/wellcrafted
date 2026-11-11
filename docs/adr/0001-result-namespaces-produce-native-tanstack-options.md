@@ -76,27 +76,34 @@ about one value's type and can also match nested namespaces. Use the full
 
 ### Where behavior goes
 
-**Entries carry identity and the Result conversion. Behavior goes where its
-scope is, using TanStack's existing mechanisms.**
+**Entries carry identity and the Result conversion. One client rule refreshes
+reads after every write; other behavior goes where its scope is, using
+TanStack's existing mechanisms.**
+
+The rule is a `MutationCache` whose `onSettled` returns
+`client.invalidateQueries()` with no filter. Every query is marked stale; only
+observed queries refetch now, the rest when next used, and `staleTime: 'static'`
+queries never. The rule reads nothing from the write's key, so it cannot miss
+a read in another namespace and does not depend on how keys are built. It runs
+in addition to an entry's own callbacks, so a component spreading an entry
+cannot drop it, and returning its promise keeps the write pending until what is
+on screen is fresh. A write that should refresh less lists the keys it affects
+in `meta.invalidates`, typed through TanStack's `Register`, and the rule's
+predicate matches them; a write without `meta` still refreshes everything. The
+library documents the rule rather than exporting it: it is one call, and the
+`meta` shape belongs to the application.
 
 - **One use:** spread the entry into the hook's options.
   `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`.
   TanStack infers what is added.
 - **A method or namespace:** register defaults on the client by prefix,
   `client.setQueryDefaults(users.list.key, { staleTime: 30_000 })` or
-  `setMutationDefaults`. A rule for every write goes in the client's
-  `MutationCache`; the documented one invalidates
-  `mutationKey.slice(0, -1)`, the writing method's namespace, `onSettled`.
+  `setMutationDefaults`.
 - **A shared variant:** spread the entry into the adapter's `mutationOptions`
   or `queryOptions` and export the result. These infer callback types,
-  including an optimistic rollback, without annotations.
-
-A `MutationCache` rule runs in addition to an entry's own callbacks, so a
-component spreading an entry cannot drop it. Returning its invalidation promise
-keeps the mutation pending until the refresh finishes. The library ships the
-rule as a documented recipe, not an export, because it depends on the
-application's key layout: it assumes `[...namespace, method]` keys, skips
-mutations without a key, and would invalidate everything for a one-segment key.
+  including an optimistic rollback, without annotations. The variant reaches
+  the cache through the query factories' keys, so query factories are defined
+  first; writes refer to reads, never the reverse.
 
 Matching defaults merge in registration order, not by specificity, so the
 broad prefix is registered first. Defaults are not typed by a query's data;
@@ -130,8 +137,9 @@ overloaded signatures. The runners consume either form.
 
 - Service reads and writes lose handwritten key maps, forwarding functions, and
   repeated parameter types. A whole service's query layer is two calls.
-- Policy has two homes: the client, by key, and the use site, by spread. A
-  shared variant is an ordinary exported options object.
+- Invalidation has one default: every write refreshes what is on screen.
+  Other policy has two homes: the client, by key, and the use site, by
+  spread. A shared variant is an ordinary exported options object.
 - Method names become cache identity. Renaming a method changes its key; a
   persisted query cache needs an invalidation or version policy.
 - Per-method options move out of the definition. A setting that one map entry
@@ -159,14 +167,22 @@ overloaded signatures. The runners consume either form.
   couples services to one observation policy. The selected maps state that
   choice once at the consuming edge.
 - **A recursive proxy.** Plain selected functions already exist at runtime.
-- **An `invalidates` metadata language.** It needs a dispatcher for
-  relationships the key layout and a `MutationCache` rule already express. The
-  first version rejected global configuration altogether; the rule is now a
-  recommendation, not a requirement, and needs no library machinery.
+- **Derive scope from the mutation key**, such as invalidating
+  `mutationKey.slice(0, -1)`. It guesses what a write affects from how keys are
+  built: it misses reads in other namespaces silently, gives a hand-written key
+  the wrong scope, and turns a one-segment key into "everything". Invalidating
+  everything costs only the refetch of observed queries and cannot miss one.
+- **Precise invalidation by default**, through callbacks or `meta` on every
+  write. A precise list goes stale silently when a new read starts depending on
+  a write. `meta.invalidates` stays available for a write whose refresh is
+  measurably expensive.
+- **No global rule**, which the first version chose. Every write would carry its
+  own invalidation, and a spread that replaced `onSuccess` would drop it.
 
 ## References
 
 - [TanStack mutation callbacks](https://tanstack.com/query/latest/docs/framework/react/guides/mutations)
 - [Invalidation from mutations](https://tanstack.com/query/latest/docs/framework/react/guides/invalidations-from-mutations)
 - [Query defaults](https://tanstack.com/query/latest/docs/reference/QueryClient#queryclientsetquerydefaults)
+- [Automatic query invalidation after mutations](https://tkdodo.eu/blog/automatic-query-invalidation-after-mutations)
 - [tRPC's native options integration](https://trpc.io/blog/introducing-tanstack-react-query-client)

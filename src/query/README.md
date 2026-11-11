@@ -8,7 +8,7 @@ Your services return `Result<T, E>`. TanStack Query expects a `queryFn` that res
 - `resultQueryOptions` and `resultMutationOptions` turn one Result-returning function into plain TanStack options. `Ok` resolves, `Err` throws into TanStack's error channel, and the error type comes from the Result.
 - `runQuery` and `runMutation` run those options through a `QueryClient` and hand you a Result again, for workflows and event handlers.
 
-Everything else is TanStack's own: you add options by spreading, and set policy on the `QueryClient` by key.
+Everything else is TanStack's own: one `MutationCache` rule refreshes reads after every write, you add options by spreading an entry, and you set defaults on the `QueryClient` by key.
 
 ```sh
 bun add wellcrafted @tanstack/query-core
@@ -63,7 +63,51 @@ The arguments sit in one final tuple, so `users.get('list')` and a nested namesp
 
 ## Composing
 
-The entries carry identity and the Result conversion, nothing else. Behavior goes in one of three places, chosen by its scope.
+The entries carry identity and the Result conversion, nothing else. Start with one rule for every write, then add behavior where its scope is.
+
+### Every write: refresh what is on screen
+
+Give the client one `MutationCache` rule:
+
+```ts
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled: (_data, _error, _variables, _rollback, _mutation, { client }) =>
+      client.invalidateQueries(),
+  }),
+});
+```
+
+After any write, finished or failed, every query is marked stale. Only the queries something is observing refetch now; the rest refetch when next used, and a query with `staleTime: 'static'` never does. The rule reads nothing from the write's key, so it cannot miss a read in another namespace or depend on how keys are built. Returning the promise keeps the write pending until what is on screen is fresh. The `MutationCache` runs it in addition to an entry's own callbacks, so spreading an entry cannot drop it.
+
+When a write should refresh less, list what it affects in `meta` and let the rule honor that list:
+
+```ts
+import { matchQuery, type QueryKey } from '@tanstack/query-core';
+
+declare module '@tanstack/query-core' { // or your adapter's module
+  interface Register {
+    mutationMeta: { invalidates?: QueryKey[] };
+  }
+}
+
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled: (_data, _error, _variables, _rollback, mutation, { client }) =>
+      client.invalidateQueries({
+        predicate: (query) =>
+          mutation.meta?.invalidates?.some((queryKey) => matchQuery({ queryKey }, query)) ?? true,
+      }),
+  }),
+});
+
+export const removeUser = mutationOptions({
+  ...userWrites.remove,
+  meta: { invalidates: [users.list.key, users.get.key] },
+});
+```
+
+A write without `meta` still refreshes everything. Reach for this when a refetch is measurably expensive, not by default: a precise list goes stale silently when a new read starts depending on the write.
 
 ### For one use: spread
 
@@ -79,7 +123,7 @@ const names = createQuery(() => ({
 
 `select` changes what this observer sees; the cache entry and its key's type still hold the unselected data.
 
-### For a method or a namespace: the client, by key
+### For a method or a namespace: defaults by key
 
 `setQueryDefaults` and `setMutationDefaults` apply options to every key under a prefix:
 
@@ -90,29 +134,26 @@ queryClient.setQueryDefaults(users.list.key, { refetchOnWindowFocus: 'always' })
 
 Matching defaults merge in the order they were registered, not most specific first, so register the broad prefix before the narrow one.
 
-A rule every write should follow goes in the client's `MutationCache`. This one makes a write invalidate every read in its namespace:
-
-```ts
-const queryClient = new QueryClient({
-  mutationCache: new MutationCache({
-    onSettled: (_data, _error, _variables, _rollback, mutation, { client }) => {
-      const key = mutation.options.mutationKey;
-      if (key) return client.invalidateQueries({ queryKey: key.slice(0, -1) });
-    },
-  }),
-});
-```
-
-`key.slice(0, -1)` drops the method name: `['users', 'update']` invalidates everything under `['users']`. It runs on `onSettled`, so a failed write still refreshes what is really stored, and returning the promise keeps the write pending until the refresh finishes. The `MutationCache` runs this in addition to an entry's own callbacks, so spreading an entry cannot drop it. The rule assumes `[...namespace, method]` mutation keys; a mutation without a key is skipped, and a one-segment key would invalidate everything.
-
 ### For a named variant: spread into a definition
 
-When several components share a behavior on top of a method, such as writing the answer into the cache or an optimistic update, name it once. Use your adapter's `mutationOptions` (or `queryOptions`), which infers the callbacks without annotations:
+When several components share a behavior on top of a method, name it once. Spread the entry into your adapter's `mutationOptions` (or `queryOptions`), which infers the callbacks without annotations, and reach the cache through the query factories' keys. Define the query factories first, at module level; writes refer to reads, never the other way round.
+
+Writing the answer into the cache saves a refetch of a record the write already returned:
 
 ```ts
 import { mutationOptions } from '@tanstack/svelte-query'; // or @tanstack/react-query
 
 export const updateUser = mutationOptions({
+  ...userWrites.update,
+  onSuccess: (saved, _input, _rollback, { client }) =>
+    client.setQueryData(users.get(saved.id).queryKey, saved),
+});
+```
+
+An optimistic update shows the change before the write finishes. If one place shows it, render `mutation.variables` while the mutation is pending: nothing touches the cache, so there is nothing to roll back. If several places must show it, update the cache and roll back on error:
+
+```ts
+export const updateUserOptimistically = mutationOptions({
   ...userWrites.update,
   onMutate: async (input, { client }) => {
     const key = users.get(input.id).queryKey;

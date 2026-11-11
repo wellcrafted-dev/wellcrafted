@@ -49,26 +49,26 @@ The helpers take functions only. Add behavior where its scope is:
 // One use: spread. TanStack infers select.
 const names = createQuery(() => ({ ...users.list(), select: (all) => all.map((u) => u.name) }));
 
-// Every write: refresh its namespace's reads.
+// Every write: refresh what is on screen. Only observed queries refetch now.
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
-    onSettled: (_data, _error, _variables, _rollback, mutation, { client }) => {
-      const key = mutation.options.mutationKey;
-      if (key) return client.invalidateQueries({ queryKey: key.slice(0, -1) });
-    },
+    onSettled: (_data, _error, _variables, _rollback, _mutation, { client }) =>
+      client.invalidateQueries(),
   }),
 });
 
 // A method or namespace: client defaults, by key prefix.
 queryClient.setQueryDefaults(users.list.key, { staleTime: 30_000 });
 
-// A shared variant: spread into your adapter's mutationOptions, which infers rollback.
+// A shared variant: spread into your adapter's mutationOptions and reach the cache through query keys.
 export const updateUser = mutationOptions({
   ...userWrites.update,
   onSuccess: (saved, _input, _rollback, { client }) =>
     client.setQueryData(users.get(saved.id).queryKey, saved),
 });
 ```
+
+The invalidation rule reads nothing from the write's key, so it cannot miss a read in another namespace. When one write should refresh less, list the keys it affects in `meta.invalidates` and have the rule honor them; the [query README](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/query/README.md#composing) shows the typed version.
 
 <Note>
 Mutation methods take zero or one variables argument; adapt several to one object. Query arguments become the key, so keep them stable and JSON-serializable. Methods are called without a receiver and without TanStack's query context; use the explicit adapters below for abort signals, custom keys, or generic and overloaded signatures.

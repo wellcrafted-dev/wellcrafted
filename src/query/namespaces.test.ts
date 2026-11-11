@@ -7,7 +7,9 @@ import {
 	MutationCache,
 	type MutationKey,
 	MutationObserver,
+	matchQuery,
 	QueryClient,
+	type QueryKey,
 	QueryObserver,
 } from "@tanstack/query-core";
 import { Err, Ok, type Result } from "../result/index.js";
@@ -339,7 +341,7 @@ describe("resultMutations", () => {
 		).toEqual(renamed);
 	});
 
-	it("a MutationCache rule invalidates the writing namespace and keeps the write pending until it settles", async () => {
+	it("one MutationCache rule invalidates every read after any write and keeps the write pending until it settles", async () => {
 		const gate = Promise.withResolvers<void>();
 		const client = new QueryClient({
 			mutationCache: new MutationCache({
@@ -348,21 +350,18 @@ describe("resultMutations", () => {
 					_error,
 					_variables,
 					_rollback,
-					mutation,
+					_mutation,
 					{ client },
 				) => {
-					const key = mutation.options.mutationKey;
-					if (!key) return;
 					await gate.promise;
-					await client.invalidateQueries({ queryKey: key.slice(0, -1) });
+					await client.invalidateQueries();
 				},
 			}),
 		});
-		const users = resultQueries(["users"], { getUser, listUsers });
-		const write = resultMutations(["users"], { updateUser });
+		const users = resultQueries(["users"], { getUser });
 		const teams = resultQueries(["teams"], { list: listUsers });
+		const write = resultMutations(["users"], { updateUser });
 		await runQuery(client, users.getUser("u1"));
-		await runQuery(client, users.listUsers());
 		await runQuery(client, teams.list());
 		const pending = runMutation(client, write.updateUser, user);
 		await Bun.sleep(0);
@@ -374,12 +373,49 @@ describe("resultMutations", () => {
 		expect(
 			client.getQueryState(users.getUser("u1").queryKey)?.isInvalidated,
 		).toBe(true);
+		expect(client.getQueryState(teams.list().queryKey)?.isInvalidated).toBe(
+			true,
+		);
+	});
+
+	it("a write's meta.invalidates narrows the rule to the keys it lists", async () => {
+		const client = new QueryClient({
+			mutationCache: new MutationCache({
+				onSettled: (
+					_data,
+					_error,
+					_variables,
+					_rollback,
+					mutation,
+					{ client },
+				) =>
+					client.invalidateQueries({
+						predicate: (query) =>
+							(mutation.meta?.invalidates as QueryKey[] | undefined)?.some(
+								(queryKey) => matchQuery({ queryKey }, query),
+							) ?? true,
+					}),
+			}),
+		});
+		const users = resultQueries(["users"], { getUser, listUsers });
+		const write = resultMutations(["users"], { updateUser });
+		await runQuery(client, users.getUser("u1"));
+		await runQuery(client, users.listUsers());
+		await runMutation(
+			client,
+			{ ...write.updateUser, meta: { invalidates: [users.listUsers.key] } },
+			user,
+		);
 		expect(
 			client.getQueryState(users.listUsers().queryKey)?.isInvalidated,
 		).toBe(true);
-		expect(client.getQueryState(teams.list().queryKey)?.isInvalidated).toBe(
-			false,
-		);
+		expect(
+			client.getQueryState(users.getUser("u1").queryKey)?.isInvalidated,
+		).toBe(false);
+		await runMutation(client, write.updateUser, user);
+		expect(
+			client.getQueryState(users.getUser("u1").queryKey)?.isInvalidated,
+		).toBe(true);
 	});
 
 	it("options callbacks survive observer reset while per-call callbacks depart", async () => {

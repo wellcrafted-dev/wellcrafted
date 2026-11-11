@@ -35,11 +35,13 @@ update.mutate({ id: userId, name: 'Ada' });
 
 - A query entry takes the method's arguments and returns native options keyed `[...namespace, method, args]`, with the arguments in one final tuple (`[]` for none). `users.get.key` is the prefix of every argument variant; `.queryKey` is tagged with the cached data and error, before `select`.
 - A mutation entry is the options object itself, keyed `[...namespace, method]`. Methods take zero or one variables argument; adapt several to one object. Only the variables reach the method.
-- The helpers take functions only. Put behavior where its scope is:
+- Every write refreshes reads through one client rule: a `MutationCache` whose `onSettled` returns `client.invalidateQueries()`. Only observed queries refetch now, the rest when next used, and `staleTime: 'static'` queries never. It reads nothing from the write's key, so it cannot miss a read in another namespace, and a spread cannot drop it. Do not derive scope by slicing mutation keys.
+- When one write should refresh less, list the keys it affects in `meta: { invalidates: [...] }` (typed through `Register`'s `mutationMeta`) and have the rule's `predicate` match them with `matchQuery`; a write without `meta` still refreshes everything. Use this for a measured cost, not by default.
+- The helpers take functions only. Put other behavior where its scope is:
   - one use: spread, `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`;
-  - a method or namespace: the client by key, `client.setQueryDefaults(users.list.key, {...})`, `setMutationDefaults`, or a `MutationCache` rule (below);
-  - a variant several components share: spread into the adapter's `mutationOptions`/`queryOptions`, which infers optimistic rollback without annotations.
-- To make every write refresh its namespace, give the `QueryClient` a `MutationCache` whose `onSettled` returns `client.invalidateQueries({ queryKey: mutation.options.mutationKey.slice(0, -1) })` when the key exists. It runs alongside an entry's own callbacks, so a spread cannot drop it.
+  - a method or namespace: client defaults by key, `client.setQueryDefaults(users.list.key, {...})` or `setMutationDefaults`;
+  - a variant several components share: spread into the adapter's `mutationOptions`/`queryOptions`, which infers callbacks without annotations, and reach the cache through query keys: `onSuccess: (saved, _in, _r, { client }) => client.setQueryData(users.get(saved.id).queryKey, saved)`. Define query factories first; writes refer to reads, never the reverse.
+- For an optimistic update shown in one place, render `mutation.variables` while pending and leave the cache alone. Update the cache in `onMutate`, with rollback in `onError`, only when several places must show it.
 - Matching defaults merge in registration order, not by specificity: register the broad prefix first.
 - Use a plain object's own enumerable string entries. Numeric names become strings; symbols are skipped. Methods are called without a receiver: bind them, and annotate the parameters of new wrappers.
 - Query arguments are the key: keep them stable and JSON-serializable, and normalize before the factory when `get()` and `get(undefined)` should share an entry. Methods do not receive the abort signal; use `resultQueryOptions` for signals, custom keys, or generic/overloaded signatures.
