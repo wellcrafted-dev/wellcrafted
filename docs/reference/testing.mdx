@@ -28,6 +28,8 @@ function expectErr<E>(result: Result<unknown, E>): E;
 
 The returned value is narrowed, so tests do not need casts or optional access.
 
+For service success, domain failure, infrastructure failure, and side-effect assertions, follow [Test Result-returning services](/guides/testing-results).
+
 ```typescript
 const user = expectOk(loadUser("user-1"));
 expect(user.name).toBe("Ada");
@@ -39,3 +41,9 @@ expect(error.name).toBe("NotFound");
 These helpers intentionally throw on the opposite branch. They use plain `Error`, so they work with Bun's test runner and other runners that report thrown exceptions as failures.
 
 They follow the same `error === null` discriminator as `isOk` and `isErr`. The `Err(null)` structural collision therefore applies: `expectErr(Err(null))` throws as though it received Ok, while `expectOk(Err(null))` returns the `null` data slot. Keep Err values non-null and meaningful.
+
+## Test a Query boundary
+
+Create a fresh `QueryClient` per test with retries disabled. Use `runQuery` and `runMutation` to exercise the same options as application hooks, then use these helpers to assert the returned Result. Query tests can also inspect cached values and invalidation; dispose of the client with `client.clear()` when the test finishes.
+
+The [TanStack Query integration](/integrations/tanstack-query#testing) owns the worked cache and mutation-lifecycle examples. Assertions on a returned Result alone do not establish that invalidation callbacks ran.

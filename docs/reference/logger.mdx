@@ -26,14 +26,14 @@ import { createLogger, memorySink } from "wellcrafted/logger";
 
 | Export | Kind | Contract |
 | --- | --- | --- |
-| `consoleSink` | Value | Sends each event to the matching `console[event.level]` method with a source prefix. |
+| `consoleSink` | Value | Sends events to their console level with a source prefix; `trace` uses `console.debug`. |
 | `createLogger` | Value | Creates a source-bound logger using an injected sink or `consoleSink`. |
 | `memorySink` | Value | Returns an isolated `{ sink, events }` pair for tests. |
 | `composeSinks` | Value | Fans events and async disposal out to sinks sequentially. |
 | `tapErr` | Value | Re-export of the Result error-tap helper. |
 | `LogEvent` | Type | Normalized `{ ts, level, source, message, data? }` event. |
 | `LogLevel` | Type | `"trace" \| "debug" \| "info" \| "warn" \| "error"`. |
-| `LogSink` | Type | Event callback intersected with `Partial<AsyncDisposable>`. |
+| `LogSink` | Type | Synchronous event callback returning `undefined`, intersected with `Partial<AsyncDisposable>`. |
 | `Logger` | Type | Five logging methods with typed warn/error inputs. |
 | `LoggableError` | Type | A raw tagged error or its Err wrapper. |
 
@@ -57,12 +57,14 @@ function createLogger(source: string, sink?: LogSink): Logger;
 
 `warn` and `error` accept a raw `{ name, message, ...fields }` error or the Err wrapper returned by `defineErrors`; native `Error` is structurally accepted because it has string `name` and `message` fields. These methods copy the error message into the event and put the tagged error in `data`. `trace`, `debug`, and `info` accept free-form message and data arguments.
 
-Sink exceptions are not caught. If a sink throws, the logger call throws.
+Sinks receive events synchronously and return `undefined`. Async receivers and returned promises are unsupported; the logger does not await or inspect returned values. A sink can enqueue background work, but owns its completion and failures.
+
+`createLogger` contains synchronous sink exceptions and reports the cause and original event through a best-effort emergency `console.error` call. Failure of that emergency report is also contained. This protects the application from sink-delivery failures; it does not promise durable delivery to a file or remote server.
 
 ## Built-in sinks
 
 ```typescript
-const consoleSink: (event: LogEvent) => void;
+const consoleSink: LogSink;
 
 function memorySink(): {
   sink: LogSink;
@@ -70,7 +72,7 @@ function memorySink(): {
 };
 ```
 
-`consoleSink` delegates to the matching console method. stdout and stderr routing is runtime-defined; use a custom sink when a CLI needs an exact stream contract.
+`consoleSink` delegates to the matching console method, except that `trace` uses `console.debug` to avoid printing a stack trace. stdout and stderr routing is runtime-defined; use a custom sink when a CLI needs an exact stream contract.
 
 `memorySink` stores the same event objects it receives in a mutable array. Each call creates independent state.
 
@@ -84,6 +86,10 @@ function tapErr<T, E>(
 ): (result: Result<T, E>) => Result<T, E>;
 ```
 
-`composeSinks` emits in argument order. If one sink throws, later sinks do not run. Its async-dispose method also awaits members in order and stops if one disposal throws. The runtime return value always has `[Symbol.asyncDispose]`, but the public `LogSink` return type exposes cleanup as optional, so callers may need to narrow or use optional access.
+`composeSinks` delivers synchronously in argument order. It contains each member's synchronous delivery exception, reports it through the same best-effort emergency console path, and continues with later members. This guard also applies when composing one sink.
 
-`tapErr` calls the supplied method only for Err and returns the same Result reference. A throwing logger method escapes.
+Disposal has a different contract: its async-dispose method awaits members in order, skips members without cleanup, and stops if one disposal throws. The runtime return value always has `[Symbol.asyncDispose]`, but the public `LogSink` return type exposes cleanup as optional, so callers may need to narrow or use optional access.
+
+`tapErr` calls the supplied method only for Err and returns the same Result reference. A custom callback that throws still escapes; logger methods contain sink-delivery exceptions as described above.
+
+For custom stderr sinks, background delivery, reporting ownership, memory-sink tests, and reactive UI history, see the [logging guide](/core/logger).

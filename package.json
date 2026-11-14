@@ -59,6 +59,7 @@
 		"docs:dev": "cd docs && mint dev",
 		"docs:validate": "cd docs && mint validate",
 		"docs:links": "cd docs && mint broken-links",
+		"docs:redirects": "bun scripts/check-doc-redirects.ts",
 		"docs:exports": "bun run build && bun scripts/check-doc-exports.ts",
 		"docs:claims": "bun scripts/check-doc-claims.ts",
 		"docs:snippets": "bun scripts/check-doc-snippets.ts",

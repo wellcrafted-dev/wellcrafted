@@ -10,14 +10,18 @@
 The maintainer authorized updating draft PR #138 against `origin/main` at `15d869c` (wellcrafted 0.47.0), preserving newer guidance, repeating the deletion audit, adding redirects, running every check, and pushing the result while keeping the PR in draft. That authorization supersedes this document's original local-only publication boundary. July API inventories, dependency observations, and verification counts below are dated history; the refreshed reference and verification record govern the current PR.
 
 - [x] Integrate current main while preserving its runtime implementation, exports, signatures, release version, optional Query peer dependency, ADR, and current skills.
-- [ ] Refresh Query, Result, Logger, installation, examples, compatibility fixtures, and package proof for 0.47.0.
-- [ ] Reaudit every removed owner against current main, migrate newer Query/testing/logger material, and map every retired public route to a current destination.
+- [x] Refresh Query, Result, Logger, installation, examples, compatibility fixtures, and package proof for 0.47.0.
+- [x] Reaudit every removed owner against current main, migrate newer Query/testing/logger material, and map every retired public route to a current destination.
 - [ ] Run all repository, documentation, package, compatibility, runtime, export, claims, snippet, redirect, and rendered-site checks.
 - [ ] Review the final diff, update the comprehensive PR audit, push without rewriting history, and verify draft status and CI.
 
 The refresh uses three checkpoints: integration; content and migration reconciliation; final proof and review. Implementation tasks are delegated under the spec-execution workflow. No library API or runtime behavior change is authorized by this refresh.
 
 Integration checkpoint: resolved all 12 conflict paths against main `15d869c`, retained version 0.47.0 and optional Query peer `^5.102.0`, and kept main's resolved Query core 5.104.2 lock entry. Newer Query/testing source owners remain temporarily for migration verification. `bun run typecheck`, `bun run build`, and `bun test` passed (211 tests, zero failures) under Bun 1.4.3. Documentation gates intentionally run after the API/content reconciliation checkpoint.
+
+Content checkpoint: current Query namespace/options/run APIs, Result removal of `resolve`, synchronous Logger delivery and optional Query peer metadata are reflected in canonical docs, examples and isolated fixtures. The newer Logger guide and Query ADR remain; a focused service-testing guide preserves workflows beyond assertion-function reference. The refreshed [deletion audit](20261114T000000-documentation-refresh-deletion-audit.md) reviews all 23 original owners against current main and records one additional compatibility-notice removal: Hono's old MDX notice must leave its route so the configured redirect takes effect. All 21 retired site routes have explicit permanent redirect configuration and a CI coverage/destination gate. The two changed legacy owners remain on disk through the following proof checkpoint.
+
+Pre-deletion proof on 2026-11-14: frozen install, format, lint (one existing unused-suppression warning), typecheck, build, all 224 repository tests, canonical examples/snippets, packed-consumer proof, both type configurations, Bun runtime, 82 export tuples across nine reference owners, 45 public claim files without exclusions, 21 redirect definitions, Node 24 Mint validation/links, Node 22.23.5 and Node 24.22.1 runtime fixtures, and workflow YAML parse passed. Bun 1.3.1 also passed all 224 tests. The exact documentation test fences were executed separately (five service tests and four Query tests). A TypeScript-printer comparison of all 41 source/test files with comments removed confirms their ASTs still match main. An independent content reviewer verified the new owners and approved retiring only the two temporarily restored legacy files after this proof.
 
 ## Overview
 

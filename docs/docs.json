@@ -12,6 +12,113 @@
 		"source": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 	},
 	"favicon": "/favicon.svg",
+	"redirects": [
+		{
+			"source": "/getting-started/installation",
+			"destination": "/start/installation",
+			"permanent": true
+		},
+		{
+			"source": "/getting-started/quick-start",
+			"destination": "/start/quick-start",
+			"permanent": true
+		},
+		{
+			"source": "/migration/from-try-catch",
+			"destination": "/start/migrating-from-try-catch",
+			"permanent": true
+		},
+		{
+			"source": "/core/result-pattern",
+			"destination": "/guides/composing-results",
+			"permanent": true
+		},
+		{
+			"source": "/core/error-system",
+			"destination": "/guides/defining-error-vocabularies",
+			"permanent": true
+		},
+		{
+			"source": "/core/brand-types",
+			"destination": "/reference/brand",
+			"permanent": true
+		},
+		{
+			"source": "/patterns/optional-keys",
+			"destination": "/guides/defining-error-vocabularies",
+			"permanent": true
+		},
+		{
+			"source": "/patterns/real-world",
+			"destination": "/guides/service-boundaries",
+			"permanent": true
+		},
+		{
+			"source": "/patterns/service-layer",
+			"destination": "/guides/service-boundaries",
+			"permanent": true
+		},
+		{
+			"source": "/integrations/testing",
+			"destination": "/guides/testing-results",
+			"permanent": true
+		},
+		{
+			"source": "/integrations/hono-serialization",
+			"destination": "/integrations/hono",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/err-null-is-ok-null",
+			"destination": "/decisions/result-shape",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/error-api-evolution",
+			"destination": "/decisions/error-contract",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/rust-inspiration",
+			"destination": "/decisions/error-contract",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/why-name-and-message",
+			"destination": "/decisions/error-contract",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/brand-implementation",
+			"destination": "/decisions/brand-representation",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/for-the-pragmatic-fp-developer",
+			"destination": "/decisions/pragmatic-tradeoffs",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/from-effect-to-pragmatic-errors",
+			"destination": "/decisions/pragmatic-tradeoffs",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/production-reliability",
+			"destination": "/guides/service-boundaries",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/developer-experience",
+			"destination": "/guides/composing-results",
+			"permanent": true
+		},
+		{
+			"source": "/philosophy/design-principles",
+			"destination": "/decisions/pragmatic-tradeoffs",
+			"permanent": true
+		}
+	],
 	"navigation": {
 		"tabs": [
 			{
@@ -32,7 +139,9 @@
 							"guides/defining-error-vocabularies",
 							"guides/composing-results",
 							"guides/service-boundaries",
-							"guides/serialization-boundaries"
+							"guides/serialization-boundaries",
+							"core/logger",
+							"guides/testing-results"
 						]
 					},
 					{

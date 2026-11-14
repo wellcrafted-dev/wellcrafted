@@ -1,11 +1,13 @@
 // docs:snippet tanstack-query:start
-import { QueryClient } from "@tanstack/query-core";
+import { MutationCache, QueryClient } from "@tanstack/query-core";
 import { defineErrors } from "wellcrafted/error";
 import {
-	createQueryFactories,
-	defineKeys,
+	resultMutations,
+	resultQueries,
 	resultMutationOptions,
 	resultQueryOptions,
+	runMutation,
+	runQuery,
 } from "wellcrafted/query";
 import { Ok } from "wellcrafted/result";
 
@@ -15,41 +17,46 @@ const TodoError = defineErrors({
 		todoId,
 	}),
 });
+const service = {
+	get: (todoId: string) =>
+		todoId === "missing"
+			? TodoError.NotFound({ todoId })
+			: Ok({ id: todoId, title: "Write docs" }),
+	rename: ({ todoId, title }: { todoId: string; title: string }) =>
+		Ok({ id: todoId, title }),
+};
 
-const todoKeys = defineKeys({
-	all: ["todos"],
-	detail: (todoId: string) => ["todos", todoId] as const,
+const todos = resultQueries(["todos"], { get: service.get });
+const writes = resultMutations(["todos"], { rename: service.rename });
+const client = new QueryClient({
+	defaultOptions: {
+		queries: { retry: false, gcTime: 0 },
+		mutations: { gcTime: 0 },
+	},
+	mutationCache: new MutationCache({
+		onSettled: (_data, _error, _variables, _rollback, _mutation, { client }) =>
+			client.invalidateQueries(),
+	}),
 });
 
 const directQuery = resultQueryOptions({
-	queryKey: todoKeys.detail("todo-1"),
-	queryFn: () => Ok({ id: "todo-1", title: "Write docs" }),
+	queryKey: ["todo-detail", "todo-1"],
+	queryFn: () => service.get("todo-1"),
 });
-
 const directMutation = resultMutationOptions({
-	mutationKey: ["todos", "rename"],
-	mutationFn: ({ todoId, title }: { todoId: string; title: string }) =>
-		Ok({ id: todoId, title }),
+	mutationKey: ["todo-rename"],
+	mutationFn: service.rename,
+});
+const loaded = await runQuery(client, todos.get("todo-1"));
+if (loaded.error !== null) throw loaded.error;
+await runMutation(client, writes.rename, {
+	todoId: loaded.data.id,
+	title: "Ship docs",
 });
 
-const { defineMutation, defineQuery } = createQueryFactories(new QueryClient());
-const todoQuery = defineQuery({
-	queryKey: todoKeys.detail("todo-1"),
-	queryFn: () => Ok({ id: "todo-1", title: "Write docs" }),
-});
-const renameTodo = defineMutation({
-	mutationKey: ["todos", "rename"],
-	mutationFn: ({ todoId, title }: { todoId: string; title: string }) => {
-		if (todoId === "missing") return TodoError.NotFound({ todoId });
-		return Ok({ id: todoId, title });
-	},
-});
-
+todos.get.key; // ["todos", "get"]
+todos.get("todo-1").queryKey; // ["todos", "get", ["todo-1"]]
 directQuery.queryKey;
 directMutation.mutationKey;
-todoQuery.options;
-todoQuery.fetch;
-todoQuery.ensure;
-renameTodo.options;
-renameTodo({ todoId: "todo-1", title: "Ship docs" });
+client.clear();
 // docs:snippet tanstack-query:end

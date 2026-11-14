@@ -193,3 +193,119 @@ if (result.error) return result;
 		).toBe(true);
 	});
 });
+
+describe("TanStack imports and example scope", () => {
+	test("allows native named imports and aliased calls", () => {
+		const content = `
+import { queryOptions, mutationOptions as nativeMutation } from "@tanstack/react-query";
+queryOptions({ queryKey: ["users"] });
+nativeMutation({ mutationFn: saveUser });
+`;
+		expect(findClaimFindings("docs/native.mdx", content)).toEqual([]);
+	});
+
+	test("allows native namespace calls", () => {
+		const content = `
+import * as tanstack from "@tanstack/svelte-query";
+tanstack.queryOptions({ queryKey: ["users"] });
+tanstack.mutationOptions({ mutationFn: saveUser });
+`;
+		expect(findClaimFindings("examples/native.ts", content)).toEqual([]);
+	});
+
+	test("does not let a native import in another fence hide a retired import", () => {
+		const content = [
+			"```typescript",
+			'import { queryOptions as options } from "@tanstack/react-query";',
+			"options({});",
+			"```",
+			"```typescript",
+			'import { queryOptions as options } from "wellcrafted/query";',
+			"options({});",
+			"```",
+		].join("\n");
+		const findings = findClaimFindings("docs/scope.mdx", content);
+
+		expect(
+			findings
+				.filter((finding) => finding.rule === "retired-api")
+				.map((finding) => finding.line),
+		).toEqual([6, 7]);
+	});
+
+	test("does not let a native import in another fence hide an unimported call", () => {
+		const content = [
+			"~~~typescript",
+			'import { queryOptions } from "@tanstack/query-core";',
+			"queryOptions({});",
+			"~~~",
+			"~~~typescript",
+			"queryOptions({});",
+			"~~~",
+		].join("\n");
+		const findings = findClaimFindings("docs/scope.mdx", content);
+
+		expect(
+			findings
+				.filter((finding) => finding.rule === "retired-api")
+				.map((finding) => finding.line),
+		).toEqual([6]);
+	});
+
+	test("rejects old options from unrelated modules instead of assuming TanStack", () => {
+		const findings = findClaimFindings(
+			"examples/options.ts",
+			'import { queryOptions } from "some-library";\nqueryOptions({});',
+		);
+
+		expect(findings.some((finding) => finding.rule === "retired-api")).toBe(
+			true,
+		);
+	});
+
+	for (const symbol of [
+		"createQueryFactories",
+		"defineKeys",
+		"defineQuery",
+		"defineMutation",
+		"resolve",
+	]) {
+		test(`rejects removed wellcrafted ${symbol} imports including aliases`, () => {
+			const findings = findClaimFindings(
+				"examples/old.ts",
+				`import { ${symbol} as old } from "wellcrafted/query";\nold({});`,
+			);
+
+			expect(findings.some((finding) => finding.rule === "retired-api")).toBe(
+				true,
+			);
+		});
+	}
+
+	test("rejects removed members on a wellcrafted namespace", () => {
+		const findings = findClaimFindings(
+			"examples/old.ts",
+			'import * as query from "wellcrafted/query";\nquery.createQueryFactories(client);',
+		);
+
+		expect(findings.some((finding) => finding.rule === "retired-api")).toBe(
+			true,
+		);
+	});
+
+	test("allows unrelated resolve imports and historical migration prose", () => {
+		const content =
+			'import { resolve } from "node:path";\nresolve("docs");\n| `createQueryFactories(client)` | Delete it. |\n| `defineKeys(...)` | Use group keys. |';
+
+		expect(findClaimFindings("docs/migration.mdx", content)).toEqual([]);
+	});
+
+	test("allows native option names in attributed prose", () => {
+		expect(
+			findClaimFindings(
+				"docs/adr/native.md",
+				"Use TanStack's own `queryOptions()` or `mutationOptions` for shared variants.",
+			),
+		).toEqual([]);
+	});
+});

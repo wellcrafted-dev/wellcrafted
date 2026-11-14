@@ -29,7 +29,7 @@ That visibility is both the benefit and the cost. wellcrafted does not add a `?`
 | Typed dependency graphs, coordinated cancellation or concurrency, scoped resources, scheduled retries, or automatic propagation across many layers | Effect or another effect system |
 | Programmer bugs, violated invariants, or integration with an external API that explicitly expects throwing control flow | Raw exceptions or a deliberate throwing adapter |
 
-Results are not a rule that every thrown value must disappear. `trySync` and `tryAsync` convert narrow external operations into expected domain failures. In the other direction, `unwrap`, `resolve`, testing assertions, and query adapters deliberately throw because their consumers use throwing contracts.
+Results are not a rule that every thrown value must disappear. `trySync` and `tryAsync` convert narrow external operations into expected domain failures. In the other direction, `unwrap`, testing assertions, and query adapters deliberately throw because their consumers use throwing contracts.
 
 ## Stopping rule
 

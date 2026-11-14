@@ -11,7 +11,7 @@ const RUNTIME_FIXTURE = join(
 	"all-subpaths.mjs",
 );
 const TSC = join(REPOSITORY_ROOT, "node_modules", "typescript", "bin", "tsc");
-const TANSTACK_QUERY_VERSION = "5.82.0";
+const TANSTACK_QUERY_VERSION = "5.104.2";
 
 type CommandResult = {
 	exitCode: number;
@@ -119,6 +119,19 @@ async function main(): Promise<void> {
 			await run(["bun", "add", "--exact", tarball], { cwd: consumerRoot }),
 			"installing the packed package",
 		);
+		const packedManifest = await Bun.file(
+			join(consumerRoot, "node_modules", "wellcrafted", "package.json"),
+		).json();
+		if (
+			packedManifest.peerDependencies?.["@tanstack/query-core"] !==
+				"^5.102.0" ||
+			packedManifest.peerDependenciesMeta?.["@tanstack/query-core"]
+				?.optional !== true
+		) {
+			throw new Error(
+				"Packed package must declare TanStack Query as an optional ^5.102.0 peer",
+			);
+		}
 
 		for (const moduleResolution of ["Bundler", "NodeNext"] as const) {
 			const config = await writeTsconfig({

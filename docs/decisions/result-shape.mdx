@@ -61,6 +61,6 @@ Discriminating on `data` was rejected because successful null data is useful and
 
 Constraining `E` with `NonNullable` was tried and reverted. It blocks direct null literals, but it cannot prevent unchecked values or dishonest casts from producing null at runtime. It also makes `catch (error: unknown)` boundaries awkward and encourages casts that silence the constraint without enforcing the invariant.
 
-This decision does not make a never-throws promise. `unwrap`, `resolve`, testing assertions, and query adapters deliberately enter throwing contracts.
+This decision does not make a never-throws promise. `unwrap`, testing assertions, and query adapters deliberately enter throwing contracts.
 
 For usage, see [Compose Result-returning functions](/guides/composing-results). For exact exports and guard behavior, see the [Result reference](/reference/result).

@@ -9,8 +9,12 @@ import {
 	type LogSink,
 } from "wellcrafted/logger";
 import {
-	createQueryFactories,
-	defineKeys,
+	resultQueries,
+	resultMutations,
+	type ResultQuery,
+	type ResultMutation,
+	runQuery,
+	runMutation,
 	resultMutationOptions,
 	resultQueryOptions,
 } from "wellcrafted/query";
@@ -57,12 +61,22 @@ const stringSchema = {
 } satisfies StandardSchemaV1<string>;
 OkSchema(stringSchema);
 
-const keys = defineKeys({
-	all: ["fixtures"],
-	detail: (id: UserId) => ["fixtures", id] as const,
-});
+const service = {
+	get: (id: UserId): Result<UserId, FixtureError> =>
+		id === "missing" ? FixtureError.Missing({ id }) : Ok(id),
+	save: (id: UserId): Result<UserId, FixtureError> => Ok(id),
+};
+const queries = resultQueries(["fixtures"], { detail: service.get });
+const writes = resultMutations(["fixtures"], { save: service.save });
+const query: ResultQuery<readonly ["fixtures"], "detail", typeof service.get> =
+	queries.detail;
+const mutation: ResultMutation<
+	readonly ["fixtures"],
+	"save",
+	typeof service.save
+> = writes.save;
 resultQueryOptions({
-	queryKey: keys.detail(userId),
+	queryKey: query(userId).queryKey,
 	queryFn: () => result,
 });
 resultMutationOptions({
@@ -70,10 +84,6 @@ resultMutationOptions({
 	mutationFn: (id: UserId) => Ok(id),
 });
 
-declare const queryClient: Parameters<typeof createQueryFactories>[0];
-const factories = createQueryFactories(queryClient);
-factories.defineQuery({ queryKey: keys.all, queryFn: () => result });
-factories.defineMutation({
-	mutationKey: ["fixtures", "save"],
-	mutationFn: (id: UserId) => Ok(id),
-});
+declare const queryClient: Parameters<typeof runQuery>[0];
+runQuery(queryClient, query(userId));
+runMutation(queryClient, mutation, userId);

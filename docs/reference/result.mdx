@@ -13,7 +13,6 @@ description: Current runtime and type exports from wellcrafted/result.
 {/* docs:export subpath="wellcrafted/result" kind="value" symbol="trySync" */}
 {/* docs:export subpath="wellcrafted/result" kind="value" symbol="tryAsync" */}
 {/* docs:export subpath="wellcrafted/result" kind="value" symbol="unwrap" */}
-{/* docs:export subpath="wellcrafted/result" kind="value" symbol="resolve" */}
 {/* docs:export subpath="wellcrafted/result" kind="value" symbol="tapErr" */}
 {/* docs:export subpath="wellcrafted/result" kind="value" symbol="partitionResults" */}
 {/* docs:export subpath="wellcrafted/result" kind="type" symbol="Ok" */}
@@ -43,7 +42,6 @@ import { Ok, isErr, type Result } from "wellcrafted/result";
 | `trySync` | Value | Runs a synchronous callback and delegates a caught value to a Result-returning `catch` callback. |
 | `tryAsync` | Value | Awaits an asynchronous callback and delegates rejection or a thrown value to a Result-returning `catch` callback. |
 | `unwrap` | Value | Returns Ok data or throws the contained Err value. |
-| `resolve` | Value | Returns a plain value or Ok data; throws the contained Err value. |
 | `tapErr` | Value | Calls a function on Err and returns the original Result reference. |
 | `partitionResults` | Value | Groups Result wrappers into `{ oks, errs }` with `Object.groupBy`. |
 
@@ -86,14 +84,13 @@ function tryAsync<T, R extends Ok<T> | Err<any>>(options: {
 
 These helpers catch the `try` callback only. If the `catch` callback itself throws, that thrown value escapes. Keep the wrapped operation narrow so each boundary owns one failure meaning.
 
-## Throwing adapters
+## Throwing adapter
 
 ```typescript
 function unwrap<T, E>(result: Result<T, E>): T;
-function resolve<T, E>(value: T | Result<T, E>): T;
 ```
 
-Both functions deliberately cross from Result flow into a throwing contract. They throw the contained error value exactly as stored; it does not have to be an `Error` instance. `resolve` first uses the shallow `isResult` check, so a plain object with both keys is treated as a Result-shaped value.
+`unwrap` deliberately crosses from Result flow into a throwing contract. It throws the contained error value exactly as stored; the value does not have to be an `Error` instance.
 
 ## Error taps and partitions
 

@@ -10,7 +10,7 @@ import { isErr, isOk, type Result } from "./result/index.js";
  * the `wellcrafted/testing` entry point. Importing from
  * `wellcrafted/testing` in production code is a smell worth linting against.
  * Other entry points also contain deliberate throwing adapters such as
- * `unwrap`, `resolve`, and the TanStack Query helpers.
+ * `unwrap` and the TanStack Query helpers.
  *
  * They are framework-agnostic: they throw a plain `Error` rather than calling
  * into a specific runner, so they work under bun, vitest, jest, or

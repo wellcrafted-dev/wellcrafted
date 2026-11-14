@@ -74,7 +74,7 @@ export type LogSink = ((event: LogEvent) => undefined) &
  * Intentionally **not** checking `err.data === null`: that's also true for
  * `Ok(T)` when `T = null` (see wellcrafted's `Ok(null)`/`Err(null)`
  * structural collision edge — discussed in
- * `docs/articles/ok-null-is-fine-err-null-is-a-lie.md`). Always discriminate
+ * `docs/decisions/result-shape.mdx`). Always discriminate
  * by an invariant non-null property (`name` here), never by null-presence.
  *
  * Native `Error` instances also satisfy `AnyTaggedError` structurally

@@ -1,10 +1,18 @@
 import { strict as assert } from "node:assert";
+import { QueryClient } from "@tanstack/query-core";
 import * as brand from "wellcrafted/brand";
 import { defineErrors } from "wellcrafted/error";
 import { once } from "wellcrafted/function";
 import { parseJson } from "wellcrafted/json";
 import { composeSinks, createLogger, memorySink } from "wellcrafted/logger";
-import { resultQueryOptions } from "wellcrafted/query";
+import {
+	resultQueryOptions,
+	resultMutationOptions,
+	resultQueries,
+	resultMutations,
+	runQuery,
+	runMutation,
+} from "wellcrafted/query";
 import { Err, Ok, partitionResults } from "wellcrafted/result";
 import { OkSchema } from "wellcrafted/standard-schema";
 import { expectErr, expectOk } from "wellcrafted/testing";
@@ -40,6 +48,36 @@ const options = resultQueryOptions({
 	queryFn: () => Ok("ready"),
 });
 assert.equal(await options.queryFn({}), "ready");
+
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: { retry: false, gcTime: 0 },
+		mutations: { gcTime: 0 },
+	},
+});
+const service = { get: (id) => Ok(id), save: (value) => Ok(value) };
+const reads = resultQueries(["runtime"], { get: service.get });
+const writes = resultMutations(["runtime"], { save: service.save });
+assert.deepEqual(reads.get("ready").queryKey, ["runtime", "get", ["ready"]]);
+assert.deepEqual(reads.get.key, ["runtime", "get"]);
+assert.deepEqual(writes.save.mutationKey, ["runtime", "save"]);
+assert.equal(
+	expectOk(await runQuery(queryClient, reads.get("ready"))),
+	"ready",
+);
+assert.equal(
+	expectOk(await runMutation(queryClient, writes.save, "saved")),
+	"saved",
+);
+const directWrite = resultMutationOptions({
+	mutationKey: ["runtime", "direct"],
+	mutationFn: service.save,
+});
+assert.equal(
+	expectOk(await runMutation(queryClient, directWrite, "direct")),
+	"direct",
+);
+queryClient.clear();
 
 const { oks, errs } = partitionResults([Ok(1), Err("failure"), Ok(2)]);
 assert.deepEqual(

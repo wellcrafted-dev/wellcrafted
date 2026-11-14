@@ -111,9 +111,8 @@ const CLAIM_RULES: readonly ClaimRule[] = [
 		name: "retired-api",
 		message: "Current guidance uses a retired API name.",
 		patterns: [
-			/\b(?:createTaggedError(?:Group|s)?|mutationOptions|queryOptions)\s*\(/,
-			/import\s*\{[^}]*\b(?:createTaggedError(?:Group|s)?|mutationOptions|queryOptions)\b/,
-			/`(?:createTaggedError(?:Group|s)?|mutationOptions|queryOptions)`/,
+			/`createTaggedError(?:Group|s)?`/,
+			/\b(?:former|retired)\b[^`\n]*`(?:queryOptions|mutationOptions)`/i,
 			/\.execute\s*\(/,
 		],
 		shouldReport: ({ line, match }) =>
@@ -426,44 +425,110 @@ function collectRetiredApiMatches(
 	content: string,
 ): Array<{ index: number; text: string }> {
 	const matches: Array<{ index: number; text: string }> = [];
-	const localNames = new Set<string>();
-	const importPattern = /\bimport\s*\{([\s\S]*?)\}\s*from\s*["'][^"']+["']/g;
-	const directCallPattern =
-		/\b(?:createTaggedError(?:Group|s)?|mutationOptions|queryOptions)\s*\(/g;
-
-	for (const callMatch of content.matchAll(directCallPattern)) {
-		matches.push({ index: callMatch.index, text: callMatch[0] });
-	}
-
-	for (const importMatch of content.matchAll(importPattern)) {
-		const specifiers = importMatch[1] ?? "";
-		for (const specifier of specifiers.split(",")) {
-			const retiredMatch = specifier
-				.trim()
-				.match(
-					/^(createTaggedError(?:Group|s)?|mutationOptions|queryOptions)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/,
+	// Imports belong to one example. A native import in another code fence
+	// must not make a retired wellcrafted call appear supported.
+	for (const region of claimRegions(content)) {
+		const retiredNames = new Set<string>();
+		const nativeNames = new Set<string>();
+		const nativeNamespaces = new Set<string>();
+		const wellcraftedNamespaces = new Set<string>();
+		const retiredSymbol =
+			/^(?:createTaggedError(?:Group|s)?|createQueryFactories|defineKeys|defineQuery|defineMutation|resolve|mutationOptions|queryOptions)$/;
+		const imports =
+			/\bimport\s+(?:type\s+)?(?:\{([\s\S]*?)\}|\*\s+as\s+([A-Za-z_$][\w$]*))\s*from\s*["']([^"']+)["']/g;
+		for (const imported of region.text.matchAll(imports)) {
+			const module = imported[3] ?? "";
+			const native =
+				/^@tanstack\/(?:query-core|[\w-]+-query(?:-experimental)?)$/.test(
+					module,
 				);
-			if (retiredMatch === null) continue;
-
-			localNames.add(retiredMatch[2] ?? retiredMatch[1]);
-			matches.push({
-				index: importMatch.index,
-				text: importMatch[0],
-			});
+			if (native && imported[2]) nativeNamespaces.add(imported[2]);
+			if (/^wellcrafted\//.test(module) && imported[2])
+				wellcraftedNamespaces.add(imported[2]);
+			for (const raw of (imported[1] ?? "").split(",")) {
+				const specifier = raw
+					.trim()
+					.match(
+						/^(?:type\s+)?([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/,
+					);
+				if (!specifier) continue;
+				const name = specifier[1] ?? "";
+				const local = specifier[2] ?? name;
+				if (native && /^(?:queryOptions|mutationOptions)$/.test(name))
+					nativeNames.add(local);
+				if (/^wellcrafted\//.test(module) && retiredSymbol.test(name)) {
+					retiredNames.add(local);
+					matches.push({
+						index: region.index + imported.index,
+						text: imported[0],
+					});
+				}
+			}
 		}
-	}
-
-	for (const localName of localNames) {
-		const callPattern = new RegExp(
-			String.raw`\b${localName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\s*\(`,
-			"g",
-		);
-		for (const callMatch of content.matchAll(callPattern)) {
-			matches.push({ index: callMatch.index, text: callMatch[0] });
+		const calls = /\b(?:([A-Za-z_$][\w$]*)\.)?([A-Za-z_$][\w$]*)\s*\(/g;
+		for (const call of region.text.matchAll(calls)) {
+			const receiver = call[1];
+			const name = call[2] ?? "";
+			const oldOption = /^(?:queryOptions|mutationOptions)$/.test(name);
+			const oldError = /^createTaggedError(?:Group|s)?$/.test(name);
+			const nativeCall =
+				oldOption &&
+				(receiver ? nativeNamespaces.has(receiver) : nativeNames.has(name));
+			const nativeProse =
+				!region.code &&
+				/\b(?:TanStack|adapter)[^\n]*$/.test(
+					region.text.slice(Math.max(0, call.index - 100), call.index),
+				);
+			if (
+				retiredNames.has(name) ||
+				(receiver &&
+					wellcraftedNamespaces.has(receiver) &&
+					retiredSymbol.test(name)) ||
+				oldError ||
+				(oldOption && !nativeCall && !nativeProse)
+			) {
+				matches.push({ index: region.index + call.index, text: call[0] });
+			}
 		}
 	}
 
 	return matches;
+}
+
+function claimRegions(
+	content: string,
+): Array<{ code: boolean; index: number; text: string }> {
+	const regions: Array<{ code: boolean; index: number; text: string }> = [];
+	const fence = /^([ \t]*)(`{3,}|~{3,})[^\n]*\n/gm;
+	let end = 0;
+	for (
+		let opening = fence.exec(content);
+		opening !== null;
+		opening = fence.exec(content)
+	) {
+		const start = opening.index + opening[0].length;
+		const marker = opening[2] ?? "```";
+		const closing = new RegExp(
+			`^[ \\t]*${marker[0]}{${marker.length},}[ \\t]*\\r?$`,
+			"gm",
+		);
+		closing.lastIndex = start;
+		const match = closing.exec(content);
+		regions.push({
+			code: false,
+			index: end,
+			text: content.slice(end, opening.index),
+		});
+		regions.push({
+			code: true,
+			index: start,
+			text: content.slice(start, match?.index ?? content.length),
+		});
+		end = match ? match.index + match[0].length : content.length;
+		fence.lastIndex = end;
+	}
+	regions.push({ code: false, index: end, text: content.slice(end) });
+	return regions;
 }
 
 function scanMultilineClaims(
