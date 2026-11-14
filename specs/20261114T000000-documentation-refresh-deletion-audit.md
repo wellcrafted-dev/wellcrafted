@@ -162,4 +162,4 @@ Content review approved removing exactly the temporarily retained `docs/integrat
 - [x] Run the final claims, exports, snippets, examples, packed consumer, compatibility, runtime, Mint and repository checks.
 
 Post-deletion proof on 2026-11-14 passed: frozen install, formatting, lint with one existing warning, typecheck, build, 224 tests, canonical examples/snippets, packed consumer, both type-compatibility modes, Bun/Node 22.23.5/Node 24.22.1 runtime fixtures, 82 reference export tuples, all 44 current public files through claims with zero exclusions, 21 configured redirects, Node 24 Mint validation/links, and diff checks. All 21 retired routes also returned local-preview 307 redirects to the intended owners, each of which returned 200. Deployed permanence is configured and not represented as a completed deployment.
-- [ ] Update PR #138 with this audit, current verification counts and any remaining limitations; leave the PR in draft.
+- [x] Update PR #138 with this audit, current verification counts and remaining preview/deployment distinctions; GitHub confirmed it remains an open draft on 2026-11-14.

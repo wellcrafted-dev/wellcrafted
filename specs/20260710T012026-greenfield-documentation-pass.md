@@ -13,7 +13,7 @@ The maintainer authorized updating draft PR #138 against `origin/main` at `15d86
 - [x] Refresh Query, Result, Logger, installation, examples, compatibility fixtures, and package proof for 0.47.0.
 - [x] Reaudit every removed owner against current main, migrate newer Query/testing/logger material, and map every retired public route to a current destination.
 - [x] Run all repository, documentation, package, compatibility, runtime, export, claims, snippet, redirect, and rendered-site checks.
-- [ ] Review the final diff, update the comprehensive PR audit, push without rewriting history, and verify draft status and CI.
+- [x] Review the final diff, update the comprehensive PR audit, push without rewriting history, and verify draft status. Remote CI is checked against the final pushed commit before handoff.
 
 The refresh uses three checkpoints: integration; content and migration reconciliation; final proof and review. Implementation tasks are delegated under the spec-execution workflow. No library API or runtime behavior change is authorized by this refresh.
 
@@ -26,6 +26,8 @@ Pre-deletion proof on 2026-11-14: frozen install, format, lint (one existing unu
 Post-deletion proof on 2026-11-14: after content checkpoint `7934dc0`, retired exactly `docs/integrations/testing.mdx` and `src/query/README.md`. Repeated the complete repository/example/package/compatibility/export/claims/snippet/redirect and Node 24 Mint checks successfully: 224 tests, 82 export tuples, 44 current claim files with zero exclusions, 21 redirect mappings. Runtime fixtures also passed Node 22.23.5 and Node 24.22.1 after deletion. Every retired route was requested from the running Mint preview: all 21 returned the intended Location and their destination returned 200. The pinned preview deliberately emits temporary 307 responses; `permanent: true` configures deployed 308 responses, which were not claimed as deployment proof. Desktop (1440px) and narrow (390px) rendered inspections covered the home page, Query integration/reference, retained Logger guide, and new service-testing guide; no page-wide horizontal overflow or rendering blockers were found. Navigation contains 26 unique current routes, including the preserved Logger and new testing guides. Workflow YAML, stale-path sweep, and diff checks passed. The remaining publication step is pushing these commits and updating draft PR #138 without merging or deploying.
 
 The final internal-instruction sweep found one link in `.claude/skills/query-layer/SKILL.md` to the retired source Query README. It now points to the canonical Query reference. This link-only correction passed `git diff --check` and the repeated current-guidance stale-path sweep.
+
+Publication on 2026-11-14: pushed the additive merge/content/audit commits and replaced draft PR #138's description with the comprehensive current-main preservation and deletion audit. GitHub confirmed the PR remains open and draft. No merge, package publication, or site deployment was performed. Remote CI results belong to the final pushed head and are verified separately before handoff.
 
 ## Overview
 
