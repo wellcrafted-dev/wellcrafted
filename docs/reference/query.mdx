@@ -1,0 +1,100 @@
+---
+title: Query reference
+description: Current runtime and type exports from wellcrafted/query.
+---
+
+# `wellcrafted/query`
+
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultQueries" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultMutations" */}
+{/* docs:export subpath="wellcrafted/query" kind="type" symbol="ResultQuery" */}
+{/* docs:export subpath="wellcrafted/query" kind="type" symbol="ResultMutation" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultQueryOptions" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="resultMutationOptions" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="runQuery" */}
+{/* docs:export subpath="wellcrafted/query" kind="value" symbol="runMutation" */}
+
+This subpath turns Result-returning services into native TanStack options and runs those options through a client to return Results again. `@tanstack/query-core` is an optional peer dependency with range `^5.102.0`; the packed-consumer fixture checks version 5.104.2. Install a compatible core or framework adapter when using this subpath. Other wellcrafted subpaths do not require it.
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `resultQueries` | Value | Maps selected reads to query option factories keyed by namespace, method, and argument tuple. |
+| `resultMutations` | Value | Maps selected writes to mutation options keyed by namespace and method. |
+| `ResultQuery` | Type | A query option factory with a `.key` prefix. |
+| `ResultMutation` | Type | Native mutation options with a namespace-derived `mutationKey`. |
+| `resultQueryOptions` | Value | Converts a Result-returning query function into native query options with a typed key. |
+| `resultMutationOptions` | Value | Converts a Result-returning mutation function into native mutation options. |
+| `runQuery` | Value | Executes through `client.query` and returns `Result<TData, TError \| CancelledError>`. |
+| `runMutation` | Value | Executes through a mutation observer and returns `Result<TData, TError>`. |
+
+## Namespace helpers
+
+```typescript
+import { resultMutations, resultQueries } from "wellcrafted/query";
+
+const users = resultQueries(["users"], {
+  get: userService.get,
+  list: userService.list,
+});
+const writes = resultMutations(["users"], { update: userService.update });
+
+users.get("u1").queryKey; // ["users", "get", ["u1"]]
+users.list().queryKey;    // ["users", "list", []]
+users.get.key;           // ["users", "get"]
+writes.update.mutationKey; // ["users", "update"]
+```
+
+For namespace `N`, method name `K`, and Result-returning function `F`, `ResultQuery<N, K, F>` is a callable with `Parameters<F>` that returns native query options and has `.key: readonly [...N, K]`. Its full query key is `readonly [...N, K, Parameters<F>]`, tagged with inferred service data and error types. `ResultMutation<N, K, F>` is a native `MutationObserverOptions` object with `mutationKey: readonly [...N, K]`, inferred data/error/variables, and unknown rollback state.
+
+The namespace is a readonly array of strings. Helpers map own enumerable string properties; numeric method names become strings and symbols are skipped. Building entries does not execute services. Methods may return a synchronous Result or a promise of one. No client is captured and methods receive no `this` receiver, so supply bound methods or closures.
+
+Query methods retain zero, optional, and multiple arguments. Arguments become the final key tuple and must be stable and JSON-serializable. `get()` and `get(undefined)` produce different keys. The helpers pass only those arguments, not TanStack's query context. Use the explicit adapter for abort signals, custom keys, or generic/overloaded signatures whose inference needs an explicit wrapper.
+
+Mutation methods take zero arguments or one variables argument. Adapt multiple parameters to one object. Optional inputs become `T | void`; hooks may omit them, while `runMutation` still needs a third argument, `undefined`. Only variables reach a namespace mutation method; the explicit adapter exposes the mutation context.
+
+## Direct options adapters
+
+```typescript
+import { resultMutationOptions, resultQueryOptions } from "wellcrafted/query";
+
+const user = resultQueryOptions({
+  queryKey: ["users", "get", userId],
+  queryFn: ({ signal }) => userService.get(userId, signal),
+});
+const saveUser = resultMutationOptions({
+  mutationKey: ["users", "save"],
+  mutationFn: (input: SaveUserInput) => userService.save(input),
+  onSuccess: (_saved, _input, _rollback, { client }) =>
+    client.invalidateQueries({ queryKey: ["users"] }),
+});
+```
+
+`resultQueryOptions` accepts TanStack `QueryObserverOptions` with required `queryKey` and a Result-returning `queryFn`. `resultMutationOptions` accepts `MutationObserverOptions` with required `mutationKey` and a Result-returning `mutationFn(variables, context)`. Both preserve other options and replace the function with an async function: Ok resolves with data, and Err throws its contained value into TanStack's error channel.
+
+The query output has a `DataTag` on its key, so `getQueryData` and `setQueryData` infer the original query function's data type. `select` changes the observer's result, not the stored cache value or its key tag. Mutation callbacks receive `{ client, meta, mutationKey }`; use that client for cache work.
+
+The output type `ResultQueryOptions` is used internally in emitted declarations but is not a named export of `wellcrafted/query`. Derive the type from an options factory when needed.
+
+## Imperative execution
+
+```typescript
+import { CancelledError } from "@tanstack/query-core";
+import { runMutation, runQuery } from "wellcrafted/query";
+
+const result = await runQuery(client, users.get("u1"));
+if (result.error instanceof CancelledError) return;
+if (result.error !== null) return report(result.error);
+
+await runQuery(client, { ...users.get("u1"), staleTime: "static" });
+await runMutation(client, writes.update, { id: "u1", name: "Ada" });
+```
+
+`runQuery(client, options)` wraps `client.query(options)`. Fresh cached data returns without a request; missing or stale data is fetched; simultaneous requests for one key share work. `staleTime: "static"` accepts existing cache data and fetches only on a miss. Its Result includes `CancelledError` when the query is cancelled or the client is cleared while it is in flight. Observer selection follows TanStack's `QueryExecuteOptions` contract.
+
+`runMutation(client, options, variables)` creates a public `MutationObserver`, awaits `mutate`, and resets the observer in `finally` so completed mutations can be collected after `gcTime`. Definition callbacks, mutation-cache callbacks, invalidation, mutation scopes, pending counts, and devtools participate in the execution.
+
+Both helpers catch thrown values and cast them to the declared error union; they do not validate thrown values at runtime. A service or callback that throws outside its declared Result contract can therefore violate the inferred error type.
+
+For hook usage, invalidation policy, optimistic updates, testing, client lifetime, and migration, see the [TanStack Query integration guide](/integrations/tanstack-query).

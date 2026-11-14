@@ -18,7 +18,7 @@ import { Err, Ok, type Result, unwrap } from "../result/index.js";
  * Input for `resultQueryOptions`.
  *
  * Mirrors TanStack Query's `QueryObserverOptions` but expects `queryFn` to
- * return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
+ * return a wellcrafted `Result`. The Result is unwrapped into TanStack's
  * throwing data/error contract by `resultQueryOptions`.
  *
  * @template TQueryFnData - The success type produced by `queryFn`
@@ -61,7 +61,7 @@ export type ResultQueryOptions<
  * Input for `resultMutationOptions`.
  *
  * Mirrors TanStack Query's `MutationObserverOptions` but expects `mutationFn`
- * to return a Wellcrafted `Result`. The Result is unwrapped into TanStack's
+ * to return a wellcrafted `Result`. The Result is unwrapped into TanStack's
  * throwing data/error contract by `resultMutationOptions`. Like TanStack's
  * own `mutationFn`, it receives the mutation context, including the
  * `QueryClient` running the mutation.

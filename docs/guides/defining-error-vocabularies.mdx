@@ -1,0 +1,93 @@
+---
+title: Define an error vocabulary
+description: Model expected failures as named plain-object variants with the fields each caller needs.
+---
+
+# Define an error vocabulary
+
+Use one `defineErrors` call to name the expected failures in a domain. Each variant produces a plain error body with a stable `name`, a human-readable `message`, and any fields callers need for branching, logging, transport, or UI.
+
+```typescript
+import {
+  defineErrors,
+  type InferError,
+  type InferErrors,
+} from "wellcrafted/error";
+
+const UploadError = defineErrors({
+  Rejected: ({ fileName, reasons }: {
+    fileName: string;
+    reasons: string[];
+  }) => ({
+    message: `Upload rejected for "${fileName}".`,
+    fileName,
+    reasons,
+  }),
+  StorageUnavailable: ({ region }: { region: string }) => ({
+    message: `Upload storage is unavailable in ${region}.`,
+    region,
+  }),
+});
+
+type UploadError = InferErrors<typeof UploadError>;
+type RejectedError = InferError<typeof UploadError.Rejected>;
+```
+
+The namespace is the domain; each key says what failed. Prefer `UploadError.Rejected` and `UploadError.StorageUnavailable` over a generic `UploadError.Failed` with a second `reason` discriminator.
+
+## Return a variant
+
+Calling a variant returns an `Err` wrapper. The tagged error body lives under `.error`.
+
+```typescript
+const result = UploadError.Rejected({
+  fileName: "report.csv",
+  reasons: ["too large", "unsupported encoding"],
+});
+
+result;
+// {
+//   data: null,
+//   error: {
+//     name: "Rejected",
+//     message: 'Upload rejected for "report.csv".',
+//     fileName: "report.csv",
+//     reasons: ["too large", "unsupported encoding"]
+//   }
+// }
+```
+
+`name` is reserved and stamped from the variant key. `message` must be a string. The remaining fields are inferred from the object returned by that variant, so narrowing on `error.name` also narrows its fields.
+
+Use `InferErrors` when a function can return any variant in the vocabulary. Use `InferError` when a helper or handler accepts exactly one variant, such as `RejectedError` above.
+
+```typescript
+function describe(error: UploadError) {
+  switch (error.name) {
+    case "Rejected":
+      return `${error.fileName}: ${error.reasons.join(", ")}`;
+    case "StorageUnavailable":
+      return `Try another region instead of ${error.region}.`;
+  }
+}
+```
+
+## Design fields for their boundaries
+
+Make a field required when every occurrence of that variant needs it. Use an optional field only when its absence is meaningful for the same failure mode; otherwise split the cases into separate variants with honest required fields. If an optional field is absent at a JSON boundary, omit the key deliberately rather than relying on an `undefined` value that JSON will discard.
+
+The constructor owns message formatting. Callers pass structured inputs such as `fileName`, `reasons`, and `region`; the variant turns them into one consistent message. This keeps wording out of call sites and preserves the original fields for code that should not parse human text.
+
+Use JSON-compatible fields when an error must cross JSON, HTTP, a worker, IPC, logs, or UI without a transformation layer. Strings, booleans, `null`, finite numbers, arrays, and plain objects composed from those values are the predictable case.
+
+`defineErrors` does not type-enforce JSON-compatible fields. It accepts arbitrary fields, including native `Error` objects, functions, and class instances, and those values do not round-trip through JSON perfectly. Treat JSON compatibility as a deliberate field-design rule; use runtime validation separately when a boundary receives untrusted data.
+
+Keep a raw `cause: unknown` when the error stays inside a process and the original value helps debugging. When the vocabulary crosses a serialization boundary, its constructor should normalize that cause into deliberate fields such as `causeMessage`, `operation`, or a stable application code. The constructor owns that choice; callers should pass the raw cause rather than format it differently at every catch site.
+
+Error bodies are shallow-frozen. Their top-level fields cannot be reassigned, but nested arrays and objects are not deeply immutable.
+
+## Keep the vocabulary closed
+
+A useful vocabulary is small enough for a caller to handle exhaustively and specific enough that each variant carries honest fields. Add a variant when callers need to distinguish a new failure mode. Add a field when callers need structured context, not merely to make the error look more detailed.
+
+Next, [compose Results](/guides/composing-results) to propagate these variants through application code.

@@ -203,8 +203,6 @@ const completedResult = Ok(undefined);
   does not validate either payload.
 - `unwrap`: return `data` or throw `error`; reserve it for an intentional
   exception boundary, tests, and scripts.
-- `resolve`: unwrap a Result or pass a plain value through; useful when an
-  adapter accepts either form.
 - `tapErr`: run a side effect for `Err` and return the original Result.
 - `partitionResults`: split Results into `oks` and `errs`; both arrays retain
   the Result wrappers.

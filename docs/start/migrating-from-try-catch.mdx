@@ -1,0 +1,95 @@
+---
+title: 'Migrate from try/catch'
+description: 'Adopt typed expected failures one throwing boundary at a time.'
+icon: 'arrows-rotate'
+---
+
+# Migrate from try/catch
+
+Start with one operation whose expected failures matter to its caller. Do not convert every `throw`: programmer errors and invariants can keep using exceptions, while expected I/O and domain failures become Result data.
+
+## 1. Wrap the narrow throwing operation
+
+Suppose an existing dependency reads configuration text and may throw:
+
+```typescript
+async function loadConfig(read: () => Promise<string>): Promise<string> {
+  return read();
+}
+```
+
+Define the failure the application needs, then wrap only the call that throws:
+
+```typescript
+import {
+  defineErrors,
+  extractErrorMessage,
+  type InferErrors,
+} from "wellcrafted/error";
+import { type Result, tryAsync } from "wellcrafted/result";
+
+const ConfigError = defineErrors({
+  ReadFailed: ({ reason }: { reason: string }) => ({
+    message: `Could not read the configuration: ${reason}`,
+    reason,
+  }),
+});
+type ConfigError = InferErrors<typeof ConfigError>;
+
+async function loadConfig(
+  read: () => Promise<string>,
+): Promise<Result<string, ConfigError>> {
+  return tryAsync({
+    try: read,
+    catch: (cause) =>
+      ConfigError.ReadFailed({ reason: extractErrorMessage(cause) }),
+  });
+}
+```
+
+The raw caught value is `unknown`. This example turns it into a string field that is useful to the caller and compatible with JSON. Keeping a raw `cause: unknown` is also allowed, but `defineErrors` does not make that value serializable.
+
+## 2. Update the direct caller
+
+Handle or propagate the Result with ordinary control flow. This partial caller omits the application's storage, reporting, and startup functions:
+
+```typescript
+const result = await loadConfig(readFromDisk);
+if (result.error !== null) {
+  report(result.error.message);
+  return;
+}
+
+startApplication(result.data);
+```
+
+Move upward one caller at a time. A layer can return the same error, transform it into its own vocabulary, recover with `Ok(fallback)`, or turn it back into a throw where an external contract requires one.
+
+## 3. Keep a compatibility adapter
+
+Callers do not all need to migrate together. Keep the old throwing contract at the edge while new code consumes the Result-returning function:
+
+```typescript
+async function loadConfigOrThrow(
+  read: () => Promise<string>,
+): Promise<string> {
+  const result = await loadConfig(read);
+  if (result.error !== null) {
+    throw new Error(result.error.message, { cause: result.error });
+  }
+
+  return result.data;
+}
+```
+
+This adapter makes the boundary explicit. If the migration needs to roll back, unchanged callers can continue using it while the Result-returning function is removed or revised. Delete the adapter only after its callers have moved.
+
+## 4. Check the cost before continuing
+
+Stop when explicit propagation becomes more ceremony than clarity. wellcrafted does not provide automatic short-circuiting, dependency injection, structured concurrency, or resource management. If the migration needs those capabilities across many layers, an effect system such as [Effect](https://effect.website) may be the better model.
+
+The repository's checked [`service-boundary.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/examples/service-boundary.ts) shows the same incremental pattern in a complete service. It is adapted from [Epicenter's transcription service at commit `4d438c0`](https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/client/src/transcribe.ts).
+
+<Note>
+  A Result-shaped JSON value preserves a container shape only when its fields are JSON-compatible. That does not validate an untrusted response or give `response.json()` an exact static type. Validate at the receiving boundary when the data is not already trusted.
+</Note>

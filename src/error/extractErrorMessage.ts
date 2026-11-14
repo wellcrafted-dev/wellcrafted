@@ -1,5 +1,11 @@
 /**
- * Extracts a readable error message from an unknown error value
+ * Extracts a readable error message from an unknown error value.
+ *
+ * This is a best-effort display helper, not a total serializer. Arrays are
+ * passed directly to `JSON.stringify`, so cyclic arrays or arrays containing
+ * `bigint` throw. Plain-object stringification errors are caught, but a custom
+ * `toJSON()` that returns `undefined` can still produce `undefined` at runtime
+ * despite the current `string` return type.
  *
  * @param error - The unknown error to extract a message from
  * @returns A string representation of the error

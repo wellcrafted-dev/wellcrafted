@@ -1,0 +1,89 @@
+---
+title: Error reference
+description: Current runtime and type exports from wellcrafted/error.
+---
+
+# `wellcrafted/error`
+
+{/* docs:export subpath="wellcrafted/error" kind="value" symbol="defineErrors" */}
+{/* docs:export subpath="wellcrafted/error" kind="value" symbol="extractErrorMessage" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="AnyTaggedError" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="ErrorBody" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="ErrorsConfig" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="ValidatedConfig" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="DefineErrorsReturn" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="InferError" */}
+{/* docs:export subpath="wellcrafted/error" kind="type" symbol="InferErrors" */}
+
+This subpath defines named error variants and a best-effort message extractor.
+
+```typescript
+import {
+  defineErrors,
+  extractErrorMessage,
+  type InferErrors,
+} from "wellcrafted/error";
+```
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `defineErrors` | Value | Converts a variant configuration into factories that return Err wrappers. |
+| `extractErrorMessage` | Value | Produces display text from an unknown value using a fixed precedence. |
+| `AnyTaggedError` | Type | Minimum `{ name: string; message: string }` tagged-error shape. |
+| `ErrorBody` | Type | Low-level constructor body constraint requiring `message: string`. |
+| `ErrorsConfig` | Type | Low-level record of variant constructor functions. |
+| `ValidatedConfig` | Type | Low-level mapped type that reserves `name` for each variant. |
+| `DefineErrorsReturn` | Type | Low-level mapping from a configuration to its Err-returning factories. |
+| `InferError` | Type | Extracts the tagged body from one variant factory. |
+| `InferErrors` | Type | Extracts the union of tagged bodies from a vocabulary. |
+
+The four low-level configuration types are public today and documented here as exported. Their long-term public role is an open API-cleanup question; prefer `defineErrors`, `InferError`, and `InferErrors` in application code.
+
+## `defineErrors`
+
+```typescript
+function defineErrors<const TConfig extends ErrorsConfig>(
+  config: TConfig & ValidatedConfig<TConfig>,
+): DefineErrorsReturn<TConfig>;
+```
+
+Each configuration key becomes a factory. The constructor returns a body with `message`; the factory shallow-copies that body, stamps `name` after the spread, shallow-freezes the result, and returns it inside `Err`.
+
+```typescript
+const AccountError = defineErrors({
+  NotFound: ({ accountId }: { accountId: string }) => ({
+    message: `Account "${accountId}" was not found.`,
+    accountId,
+  }),
+});
+
+const result = AccountError.NotFound({ accountId: "account-1" });
+// { data: null, error: { name: "NotFound", message: "...", accountId: "..." } }
+
+type AccountError = InferErrors<typeof AccountError>;
+type NotFoundError = InferError<typeof AccountError.NotFound>;
+```
+
+The type contract enforces `message: string` and rejects a caller-supplied `name`. Other fields are unconstrained. At runtime, the stamped variant key wins even if an unchecked caller supplies `name` in the body.
+
+Freezing is shallow: nested objects and arrays remain mutable. JSON compatibility is also a convention, not a type guarantee. Errors cross JSON predictably only when every field in the complete value is JSON-compatible. See [Preserve errors across serialization boundaries](/guides/serialization-boundaries).
+
+## `extractErrorMessage`
+
+```typescript
+function extractErrorMessage(error: unknown): string;
+```
+
+The extractor checks values in this order:
+
+1. Native `Error` instances use `.message`.
+2. Strings pass through; numbers, booleans, bigint values, and symbols become strings.
+3. `null` and `undefined` become their literal names.
+4. Arrays use `JSON.stringify`.
+5. Objects use the first string field among `message`, `error`, `description`, `title`, `reason`, and `details`.
+6. Other objects try `JSON.stringify`, then fall back to `String` if stringification throws.
+7. Remaining values use `String`.
+
+This helper is not total despite its current return type. A cyclic array or an array containing bigint throws because the array branch does not catch `JSON.stringify`. A custom object `toJSON()` can return `undefined`, producing `undefined` at runtime. Those behaviors are recorded as deferred API issues rather than changed in this documentation pass.
