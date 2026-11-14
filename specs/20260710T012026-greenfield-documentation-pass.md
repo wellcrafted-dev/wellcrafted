@@ -5,6 +5,20 @@
 **Author**: Maintainer-approved specification
 **Branch**: `codex/docs-greenfield-pass`
 
+## Refresh against current main: 2026-11-14
+
+The maintainer authorized updating draft PR #138 against `origin/main` at `15d869c` (wellcrafted 0.47.0), preserving newer guidance, repeating the deletion audit, adding redirects, running every check, and pushing the result while keeping the PR in draft. That authorization supersedes this document's original local-only publication boundary. July API inventories, dependency observations, and verification counts below are dated history; the refreshed reference and verification record govern the current PR.
+
+- [x] Integrate current main while preserving its runtime implementation, exports, signatures, release version, optional Query peer dependency, ADR, and current skills.
+- [ ] Refresh Query, Result, Logger, installation, examples, compatibility fixtures, and package proof for 0.47.0.
+- [ ] Reaudit every removed owner against current main, migrate newer Query/testing/logger material, and map every retired public route to a current destination.
+- [ ] Run all repository, documentation, package, compatibility, runtime, export, claims, snippet, redirect, and rendered-site checks.
+- [ ] Review the final diff, update the comprehensive PR audit, push without rewriting history, and verify draft status and CI.
+
+The refresh uses three checkpoints: integration; content and migration reconciliation; final proof and review. Implementation tasks are delegated under the spec-execution workflow. No library API or runtime behavior change is authorized by this refresh.
+
+Integration checkpoint: resolved all 12 conflict paths against main `15d869c`, retained version 0.47.0 and optional Query peer `^5.102.0`, and kept main's resolved Query core 5.104.2 lock entry. Newer Query/testing source owners remain temporarily for migration verification. `bun run typecheck`, `bun run build`, and `bun test` passed (211 tests, zero failures) under Bun 1.4.3. Documentation gates intentionally run after the API/content reconciliation checkpoint.
+
 ## Overview
 
 Rebuild wellcrafted's documentation around one accurate product story, one runnable learning path, and one authoritative reference page for every published subpath. This pass changes documentation, examples, contributor guidance, validation, and distributable agent skills. It does not change public APIs, publish packages, deploy the site, push the branch, or open a pull request.

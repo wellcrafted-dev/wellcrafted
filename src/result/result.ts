@@ -33,8 +33,8 @@ export type Err<E> = { error: E; data: null };
  * - `Err<E>`: Represents a failure outcome, containing an `error` field with the error value of type `E`.
  *            In this case, the `data` field is `null`.
  *
- * This type supports explicit error handling by letting callers narrow the
- * variant before using its success value or error.
+ * This type promotes explicit error handling by requiring developers to check
+ * the variant of the `Result` before accessing its potential value or error.
  * It helps avoid runtime errors often associated with implicit error handling (e.g., relying on `try-catch` for all errors).
  *
  * @template T - The type of the success value if the operation is successful (held in `Ok<T>`).
@@ -97,6 +97,8 @@ export const Ok = <T>(data: T): Ok<T> => ({ data, error: null });
  * error rather than passing it through. A `defineErrors` factory like
  * `MyError.Unexpected({ cause: error })` is always non-null by construction,
  * so the discriminator works regardless of what was thrown.
+ *
+ * See `docs/philosophy/err-null-is-ok-null.md` for the full rationale.
  *
  * @template E - The type of the error value.
  * @param error - The error value to wrap. Don't pass `null` or `undefined`.
@@ -379,64 +381,11 @@ export async function tryAsync<T, R extends Ok<T> | Err<any>>({
 }
 
 /**
- * Resolves a value that may or may not be wrapped in a `Result`, returning the final value.
- *
- * This function handles the common pattern where a value might be a `Result<T, E>` or a plain `T`:
- * - If `value` is an `Ok<T>` variant, returns the contained success value.
- * - If `value` is an `Err<E>` variant, throws the contained error value.
- * - If `value` is not a `Result` (i.e., it's already a plain value of type `T`),
- *   returns it as-is.
- *
- * This is useful when working with APIs that might return either direct values or Results,
- * allowing you to normalize them to the actual value or propagate errors via throwing.
- *
- * Use `resolve` when the input might or might not be a Result.
- * Use `unwrap` when you know the input is definitely a Result.
- *
- * @template T - The type of the success value (if `value` is `Ok<T>`) or the type of the plain value.
- * @template E - The type of the error value (if `value` is `Err<E>`).
- * @param value - The value to resolve. Can be a `Result<T, E>` or a plain value of type `T`.
- * @returns The final value of type `T` if `value` is `Ok<T>` or if `value` is already a plain `T`.
- * @throws The error value `E` if `value` is an `Err<E>` variant.
- *
- * @example
- * ```ts
- * // Example with an Ok variant
- * const okResult = Ok("success data");
- * const resolved = resolve(okResult); // "success data"
- *
- * // Example with an Err variant
- * const errResult = Err(new Error("failure"));
- * try {
- *   resolve(errResult);
- * } catch (e) {
- *   console.error(e.message); // "failure"
- * }
- *
- * // Example with a plain value
- * const plainValue = "plain data";
- * const resolved = resolve(plainValue); // "plain data"
- *
- * // Example with a function that might return Result or plain value
- * declare function mightReturnResult(): string | Result<string, Error>;
- * const outcome = mightReturnResult();
- * try {
- *  const finalValue = resolve(outcome); // handles both cases
- *  console.log("Final value:", finalValue);
- * } catch (e) {
- *  console.error("Operation failed:", e);
- * }
- * ```
- */
-/**
  * Unwraps a `Result<T, E>`, returning the success value or throwing the error.
  *
  * This function extracts the data from a `Result`:
  * - If the `Result` is an `Ok<T>` variant, returns the contained success value of type `T`.
  * - If the `Result` is an `Err<E>` variant, throws the contained error value of type `E`.
- *
- * Unlike `resolve`, this function expects the input to always be a `Result` type,
- * making it more direct for cases where you know you're working with a `Result`.
  *
  * @template T - The type of the success value contained in the `Ok<T>` variant.
  * @template E - The type of the error value contained in the `Err<E>` variant.
@@ -477,20 +426,4 @@ export function unwrap<T, E>(result: Result<T, E>): T {
 		return result.data;
 	}
 	throw result.error;
-}
-
-export function resolve<T, E>(value: T | Result<T, E>): T {
-	if (isResult<T, E>(value)) {
-		if (isOk(value)) {
-			return value.data;
-		}
-		// If it's a Result and not Ok, it must be Err.
-		// The type guard isResult<T,E>(value) and isOk(value) already refine the type.
-		// So, 'value' here is known to be Err<E>.
-		throw value.error;
-	}
-
-	// If it's not a Result type, return the value as-is.
-	// 'value' here is known to be of type T.
-	return value;
 }

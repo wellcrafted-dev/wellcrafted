@@ -1,5 +1,129 @@
 # wellcrafted
 
+## 0.47.0
+
+### Minor Changes
+
+- d8249c4: Add `resultQueries` and `resultMutations` to `wellcrafted/query`. They turn selected Result-returning service methods into native TanStack options, with keys derived from a namespace and the method names.
+
+  ```ts
+  const users = resultQueries(["users"], { get: userService.get });
+  const userWrites = resultMutations(["users"], { update: userService.update });
+
+  const user = createQuery(() => users.get(userId));
+  const update = createMutation(() => userWrites.update);
+  update.mutate({ id: userId, name: "Ada" });
+  ```
+
+  Query keys are `[...namespace, method, args]`, with the arguments in one final tuple; each query factory's `.key` is the prefix of every argument variant. A mutation entry is the options object itself, keyed `[...namespace, method]`. The helpers take functions only. The docs recommend one `MutationCache` rule that invalidates every query after any write, which refetches only what is on screen; a write can narrow it with `meta.invalidates`. Add options for one use by spreading an entry, set defaults for a method or namespace with `setQueryDefaults`/`setMutationDefaults`, and name a shared variant by spreading into your adapter's `mutationOptions` or `queryOptions`.
+
+## 0.46.0
+
+### Minor Changes
+
+- 861a017: Contain `wellcrafted/logger` sink failures and require sinks to receive events synchronously.
+
+  **Breaking change.** `LogSink` callbacks now return `undefined` instead of `void`. Async receivers, and receivers that return a promise or any other value, no longer typecheck. The logger never awaited them, so a rejected promise from a sink went unhandled; the type now matches what the logger does at runtime.
+
+  What changed:
+
+  - `createLogger` delivers through the same guard as `composeSinks`. When a sink throws synchronously, the logger reports the thrown value and the original event with `console.error` and returns normally. A sink failure no longer escapes `log.warn(...)` or replaces the Result passing through `tapErr(log.warn)`.
+  - `composeSinks` attempts every member in order. A throwing member no longer stops later members from receiving the event. The emergency console report is best-effort; if it throws, that is swallowed too.
+  - `consoleSink` renders `trace` events with `console.debug`, so trace output no longer includes a stack trace.
+  - The documented console stream routing is corrected: in Bun and Node, `info`, `debug`, and `trace` write to stdout, and `warn` and `error` write to stderr. Console output is human-readable text, not JSON Lines.
+
+  Block-bodied callbacks typed as `LogSink` keep working. Migration is needed for async receivers, expression bodies that return a value, and functions declared with an explicit `void` return type:
+
+  ```diff
+  -const remoteSink: LogSink = async (event) => {
+  -  await fetch("/api/logs", { method: "POST", body: JSON.stringify(event) });
+  -};
+  +const remoteSink: LogSink = (event) => {
+  +  void fetch("/api/logs", { method: "POST", body: JSON.stringify(event) }).catch(
+  +    (cause) => console.error("Log upload failed", cause),
+  +  );
+  +};
+
+  -const recentSink: LogSink = (event) => recent.push(event);
+  +const recentSink: LogSink = (event) => {
+  +  recent.push(event);
+  +};
+
+  -function forward(event: LogEvent): void {
+  +function forward(event: LogEvent): undefined {
+     recent.push(event);
+   }
+  ```
+
+  A sink that starts background work owns that work's completion and failures. The logger attempts receipt synchronously and does not guarantee that an event reaches durable storage.
+
+## 0.45.0
+
+### Minor Changes
+
+- 4d31903: Remove the public `resolve` helper. Use `unwrap` when converting a known `Result` into its success value or a thrown error.
+- 80d3b94: `wellcrafted/query` is now four functions: two adapters that turn Result-returning functions into plain TanStack options, and two helpers that run those options through a `QueryClient` and return Results.
+
+  ```ts
+  import {
+    resultQueryOptions,
+    resultMutationOptions,
+    runQuery,
+    runMutation,
+  } from "wellcrafted/query";
+  ```
+
+  **Breaking change.** `createQueryFactories`, `defineQuery`, `defineMutation`, and `defineKeys` are removed, along with the `.options` property, `.fetch()`, `.ensure()`, and callable mutations.
+
+  Why: hooks never used the client that `createQueryFactories` bound, because they take theirs from the provider. Binding made every query module a factory that needed a client passed in, and put an `.options` hop at every hook call site. Definitions are now plain TanStack options, so they work with every TanStack API and with any client: one singleton, one per request, or one per signed-in session. The client is passed where you run something, not captured where you define it.
+
+  What changed:
+
+  - `resultQueryOptions` tags `queryKey` with the data and error types, as TanStack's `queryOptions()` does. `queryClient.getQueryData(options.queryKey)` and `setQueryData` are typed without a cast.
+  - `resultMutationOptions` passes TanStack's mutation context (`{ client, meta, mutationKey }`) to `mutationFn` and to every lifecycle callback. Invalidate through `context.client` instead of importing a client.
+  - New `runQuery(client, options)` wraps `client.query` and returns `Result<TData, TError | CancelledError>`. Fresh cached data comes back without a request. Pass `staleTime: 'static'` to accept any cached data, which replaces `.ensure()`. A query cancelled mid-flight, including by `client.clear()`, returns `Err` with TanStack's `CancelledError`; check it with `error instanceof CancelledError`.
+  - New `runMutation(client, options, variables)` runs the mutation through a `MutationObserver` and returns `Result<TData, TError>`. Definition callbacks, `useIsMutating`, `useMutationState`, mutation scopes, and devtools all see it.
+  - Keys are plain data. Keep groups such as `['todos']` in an `as const` object and build each query's own key inside its option factory by spreading a group. Read one entry through `options.queryKey`; invalidate a group through the key object.
+
+  `@tanstack/query-core` is now an optional peer dependency at `^5.102.0`, the first release with `client.query`. TanStack deprecated `fetchQuery` and `ensureQueryData` in that release.
+
+  The `query-factories` agent skill is renamed to `tanstack-query`. If you installed it, run `npx skills add wellcrafted-dev/wellcrafted` again.
+
+  Migration:
+
+  ```diff
+  -const { defineQuery, defineMutation } = createQueryFactories(queryClient);
+  -const todoKeys = defineKeys({ all: ["todos"], detail: (id: string) => ["todos", id] });
+  +const todosRoot = ["todos"] as const;
+  +export const todoKeys = { all: todosRoot };
+
+  -const todoQuery = (id: string) =>
+  -  defineQuery({ queryKey: todoKeys.detail(id), queryFn: () => api.getTodo(id) });
+  +const todoQuery = (id: string) =>
+  +  resultQueryOptions({ queryKey: [...todosRoot, "detail", id], queryFn: () => api.getTodo(id) });
+
+  -const addTodo = defineMutation({
+  +const addTodo = resultMutationOptions({
+     mutationKey: ["todos", "add"],
+     mutationFn: (title: string) => api.addTodo(title),
+  -  onSuccess: () => queryClient.invalidateQueries({ queryKey: todoKeys.all }),
+  +  onSuccess: (_todo, _title, _onMutateResult, { client }) =>
+  +    client.invalidateQueries({ queryKey: todoKeys.all }),
+   });
+
+  -createQuery(() => todoQuery(id).options);
+  -createMutation(() => addTodo.options);
+  +createQuery(() => todoQuery(id));
+  +createMutation(() => addTodo);
+
+  -await todoQuery(id).fetch();
+  -await todoQuery(id).ensure();
+  -await addTodo("Buy milk");
+  +await runQuery(queryClient, todoQuery(id));
+  +await runQuery(queryClient, { ...todoQuery(id), staleTime: "static" });
+  +await runMutation(queryClient, addTodo, "Buy milk");
+  ```
+
 ## 0.44.0
 
 ### Minor Changes

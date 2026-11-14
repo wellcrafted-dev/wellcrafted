@@ -9,19 +9,14 @@ import type { LogEvent, LogSink } from "./types.js";
  * network) flush and close. Mix pure and stateful sinks freely — no
  * wrapping required.
  *
- * Fan-out is sequential and unguarded. If a member sink throws on emit,
- * later members do not receive the event — by design, since swallowing
- * sink errors hides real bugs. Wrap individual sinks yourself for
- * best-effort delivery.
+ * Each member completes synchronous receipt in order. A throwing member
+ * is reported directly to the console without skipping later members.
+ * Returned values are ignored; promise-returning receivers are unsupported.
+ * A single member uses the same delivery guard as multiple members.
  *
  * Dispose is sequential and awaits each member. If one throws, later
  * members don't get their chance; callers who want best-effort cleanup
  * should wrap the composed dispose themselves.
- *
- * Built with `Object.assign` + `satisfies LogSink` rather than mutating a
- * pre-typed `const` — avoids the widening that comes with `: LogSink =` and
- * keeps the inferred type precise (callable + definite dispose, not
- * callable + Partial dispose).
  *
  * @example
  * await using file = jsonlFileSink("/tmp/app.jsonl");
@@ -29,8 +24,18 @@ import type { LogEvent, LogSink } from "./types.js";
  * const log = createLogger("source", sink);
  */
 export function composeSinks(...sinks: LogSink[]): LogSink {
-	const emit = (event: LogEvent) => {
-		for (const sink of sinks) sink(event);
+	const emit = (event: LogEvent): undefined => {
+		for (const sink of sinks) {
+			try {
+				sink(event);
+			} catch (cause) {
+				try {
+					console.error("[wellcrafted/logger] Sink failed", cause, event);
+				} catch {
+					// Emergency output must not interrupt application work or later sinks.
+				}
+			}
+		}
 	};
 	const dispose = async (): Promise<void> => {
 		for (const sink of sinks) await sink[Symbol.asyncDispose]?.();

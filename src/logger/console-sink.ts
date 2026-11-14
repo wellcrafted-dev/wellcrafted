@@ -7,11 +7,9 @@ import type { LogSink } from "./types.js";
  * adding `createConsoleSink({ format })` would be ceremony for a pattern
  * the user can trivially replace by writing their own sink.
  *
- * `console[event.level]` routes directly without a detached lookup table.
- * `LogLevel` is a subset of the Console method keys, so TS errors at this
- * access if a future level drifts (e.g. adding `fatal`). Calling the method
- * through `console[...]` preserves the `this` binding — avoids "Illegal
- * invocation" in runtimes that require it.
+ * Trace uses `console.debug`: `console.trace` would add a stack trace to
+ * every event. Other levels use the corresponding console method. Calling
+ * through `console[...]` preserves the receiver binding.
  *
  * `satisfies LogSink` (not `: LogSink`) keeps the inferred callable type
  * precise — `LogSink` is an intersection with optional dispose, and the
@@ -19,15 +17,20 @@ import type { LogSink } from "./types.js";
  *
  * No dispose handler — `console` is not a resource.
  *
- * Stream routing is runtime-defined. The sink delegates each level to the
- * matching `console` method and makes no stdout/stderr guarantee. CLI authors
- * who need an exact stream contract should provide a custom sink.
+ * ### CLI authors: stream routing
+ *
+ * In Node/Bun, info, debug, and trace write to stdout; warn and error
+ * write to stderr. Console rendering is human-readable text, not JSONL.
+ *
+ * A CLI reserving stdout for program output needs a sink that explicitly
+ * writes every event to stderr.
  */
 export const consoleSink = ((event) => {
 	const prefix = `[${event.source}]`;
+	const method = event.level === "trace" ? "debug" : event.level;
 	if (event.data === undefined) {
-		console[event.level](prefix, event.message);
+		console[method](prefix, event.message);
 	} else {
-		console[event.level](prefix, event.message, event.data);
+		console[method](prefix, event.message, event.data);
 	}
 }) satisfies LogSink;

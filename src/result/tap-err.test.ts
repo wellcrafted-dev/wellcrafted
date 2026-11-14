@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test";
+/**
+ * Verifies error observation preserves the original Result and skips successes.
+ * A logger destination failure must not replace the Result being propagated.
+ */
+import { describe, expect, spyOn, test } from "bun:test";
 import { defineErrors, extractErrorMessage } from "../error/index.js";
 import { createLogger } from "../logger/create-logger.js";
 import { memorySink } from "../logger/memory-sink.js";
@@ -28,8 +32,8 @@ describe("tapErr", () => {
 		}).then(tapErr(log.warn));
 		expect(result.error).toBeDefined();
 		expect(events).toHaveLength(1);
-		expect(events[0]!.level).toBe("warn");
-		expect(events[0]!.data).toBe(result.error);
+		expect(events[0]?.level).toBe("warn");
+		expect(events[0]?.data).toBe(result.error);
 	});
 
 	test("passes through Ok without logging", async () => {
@@ -47,6 +51,21 @@ describe("tapErr", () => {
 		const { sink, events } = memorySink();
 		const log = createLogger("s", sink);
 		tapErr(log.error)(TestError.Bad({ path: "/p" }));
-		expect(events[0]!.level).toBe("error");
+		expect(events[0]?.level).toBe("error");
+	});
+
+	test("a logger sink failure preserves the Result being propagated", () => {
+		const output = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const log = createLogger("source", () => {
+				throw new Error("sink failed");
+			});
+			const result = TestError.Bad({ path: "/document" });
+
+			expect(tapErr(log.warn)(result)).toBe(result);
+			expect(output).toHaveBeenCalledTimes(1);
+		} finally {
+			output.mockRestore();
+		}
 	});
 });
