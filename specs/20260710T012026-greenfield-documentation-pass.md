@@ -1,7 +1,7 @@
 # Greenfield Documentation Pass
 
 **Date**: 2026-07-10
-**Status**: In Progress
+**Status**: Implemented; draft PR refresh verified on 2026-11-14
 **Author**: Maintainer-approved specification
 **Branch**: `codex/docs-greenfield-pass`
 
@@ -12,7 +12,7 @@ The maintainer authorized updating draft PR #138 against `origin/main` at `15d86
 - [x] Integrate current main while preserving its runtime implementation, exports, signatures, release version, optional Query peer dependency, ADR, and current skills.
 - [x] Refresh Query, Result, Logger, installation, examples, compatibility fixtures, and package proof for 0.47.0.
 - [x] Reaudit every removed owner against current main, migrate newer Query/testing/logger material, and map every retired public route to a current destination.
-- [ ] Run all repository, documentation, package, compatibility, runtime, export, claims, snippet, redirect, and rendered-site checks.
+- [x] Run all repository, documentation, package, compatibility, runtime, export, claims, snippet, redirect, and rendered-site checks.
 - [ ] Review the final diff, update the comprehensive PR audit, push without rewriting history, and verify draft status and CI.
 
 The refresh uses three checkpoints: integration; content and migration reconciliation; final proof and review. Implementation tasks are delegated under the spec-execution workflow. No library API or runtime behavior change is authorized by this refresh.
@@ -22,6 +22,8 @@ Integration checkpoint: resolved all 12 conflict paths against main `15d869c`, r
 Content checkpoint: current Query namespace/options/run APIs, Result removal of `resolve`, synchronous Logger delivery and optional Query peer metadata are reflected in canonical docs, examples and isolated fixtures. The newer Logger guide and Query ADR remain; a focused service-testing guide preserves workflows beyond assertion-function reference. The refreshed [deletion audit](20261114T000000-documentation-refresh-deletion-audit.md) reviews all 23 original owners against current main and records one additional compatibility-notice removal: Hono's old MDX notice must leave its route so the configured redirect takes effect. All 21 retired site routes have explicit permanent redirect configuration and a CI coverage/destination gate. The two changed legacy owners remain on disk through the following proof checkpoint.
 
 Pre-deletion proof on 2026-11-14: frozen install, format, lint (one existing unused-suppression warning), typecheck, build, all 224 repository tests, canonical examples/snippets, packed-consumer proof, both type configurations, Bun runtime, 82 export tuples across nine reference owners, 45 public claim files without exclusions, 21 redirect definitions, Node 24 Mint validation/links, Node 22.23.5 and Node 24.22.1 runtime fixtures, and workflow YAML parse passed. Bun 1.3.1 also passed all 224 tests. The exact documentation test fences were executed separately (five service tests and four Query tests). A TypeScript-printer comparison of all 41 source/test files with comments removed confirms their ASTs still match main. An independent content reviewer verified the new owners and approved retiring only the two temporarily restored legacy files after this proof.
+
+Post-deletion proof on 2026-11-14: after content checkpoint `7934dc0`, retired exactly `docs/integrations/testing.mdx` and `src/query/README.md`. Repeated the complete repository/example/package/compatibility/export/claims/snippet/redirect and Node 24 Mint checks successfully: 224 tests, 82 export tuples, 44 current claim files with zero exclusions, 21 redirect mappings. Runtime fixtures also passed Node 22.23.5 and Node 24.22.1 after deletion. Every retired route was requested from the running Mint preview: all 21 returned the intended Location and their destination returned 200. The pinned preview deliberately emits temporary 307 responses; `permanent: true` configures deployed 308 responses, which were not claimed as deployment proof. Desktop (1440px) and narrow (390px) rendered inspections covered the home page, Query integration/reference, retained Logger guide, and new service-testing guide; no page-wide horizontal overflow or rendering blockers were found. Navigation contains 26 unique current routes, including the preserved Logger and new testing guides. Workflow YAML, stale-path sweep, and diff checks passed. The remaining publication step is pushing these commits and updating draft PR #138 without merging or deploying.
 
 ## Overview
 
