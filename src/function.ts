@@ -1,7 +1,8 @@
 /**
  * Run-at-most-once wrapper. Wrap `fn` so the first call invokes it and caches the result;
  * every later call is a no-op that returns that same cached result. Arguments passed after
- * the first call are ignored.
+ * the first call are ignored. If the first call throws, later calls rethrow that same value
+ * without invoking `fn` again.
  *
  * Canonical use: an idempotent `[Symbol.dispose]` whose teardown is reachable from more than
  * one path and must not run twice. `once` makes that guarantee declarative instead of a
@@ -32,12 +33,21 @@ export function once<TArgs extends readonly unknown[], TReturn>(
 	fn: (...args: TArgs) => TReturn,
 ): (...args: TArgs) => TReturn {
 	let called = false;
+	let failed = false;
+	let thrown: unknown;
 	let result: TReturn;
 	return (...args: TArgs): TReturn => {
 		if (!called) {
 			called = true;
-			result = fn(...args);
+			try {
+				result = fn(...args);
+			} catch (error) {
+				failed = true;
+				thrown = error;
+				throw error;
+			}
 		}
+		if (failed) throw thrown;
 		return result;
 	};
 }
