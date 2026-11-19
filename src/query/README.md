@@ -59,11 +59,27 @@ Building the entries never calls a service. Methods may return a Result or a pro
 | `users.get.key` | `['users', 'get']`, the prefix of every argument variant |
 | `userWrites.update.mutationKey` | `['users', 'update']` |
 
-The arguments sit in one final tuple, so `users.get('list')` and a nested namespace's `list()` cannot share an entry. Use the full `.queryKey` for exact cache reads and writes; use a prefix (`users.get.key`, or the namespace itself) for invalidation and defaults.
+The arguments stay together in one list at the end, so an argument never reads as a name: `users.get('list')` is `['users', 'get', ['list']]`, while `list()` under the namespace `['users', 'get']` is `['users', 'get', 'list', []]`. Use the full `.queryKey` for exact cache reads and writes; use a prefix (`users.get.key`, or the namespace itself) for invalidation and defaults.
+
+### Grouping maps by resource
+
+A namespace can have more than one part. When a feature holds several kinds of data, give each kind its own map and keep the maps in a plain object. The property names the resource, so each method can be a plain verb:
+
+```ts
+export const folderWrites = {
+  notes: resultMutations(['folder', 'notes'], { set: notes.set, delete: notes.delete }),
+  audio: resultMutations(['folder', 'audio'], { delete: audio.delete }),
+};
+
+folderWrites.notes.delete.mutationKey; // ['folder', 'notes', 'delete']
+const deleteNote = createMutation(() => folderWrites.notes.delete);
+```
+
+The handle adds the noun the method name leaves out. One flat map is still fine when its methods read clearly together.
 
 ## Composing
 
-The entries carry identity and the Result conversion, nothing else. Start with one rule for every write, then add behavior where its scope is.
+The entries carry identity and the Result conversion, nothing else. Start with one rule for every write, then add behavior where it applies.
 
 ### Every write: refresh what is on screen
 
@@ -134,6 +150,14 @@ queryClient.setQueryDefaults(users.list.key, { refetchOnWindowFocus: 'always' })
 
 Matching defaults merge in the order they were registered, not most specific first, so register the broad prefix before the narrow one.
 
+TanStack runs mutations in parallel. To make a group take turns, one at a time in the order they were made, give its prefix a shared [scope](https://tanstack.com/query/latest/docs/framework/react/guides/mutations#mutation-scopes):
+
+```ts
+queryClient.setMutationDefaults(['folder'], { scope: { id: 'folder' } });
+```
+
+Every mutation keyed under `['folder']` now waits for the one before it, and the service is unchanged. The prefix decides who waits, so key a write outside it when it must not hold up the others.
+
 ### For a named variant: spread into a definition
 
 When several components share a behavior on top of a method, name it once. Spread the entry into your adapter's `mutationOptions` (or `queryOptions`), which infers the callbacks without annotations, and reach the cache through the query factories' keys. Define the query factories first, at module level; writes refer to reads, never the other way round.
@@ -179,7 +203,7 @@ Options callbacks such as these run for every execution. The callbacks passed to
 
 ## Explicit adapters
 
-Use the existing adapters for individual operations, custom keys, and context-aware functions:
+Prefer the namespaces above; a one-entry map is fine. Use these adapters when a function needs a key of your own, TanStack's context (such as the abort signal), or a generic or overloaded signature:
 
 ```ts
 // lib/query/client.ts
