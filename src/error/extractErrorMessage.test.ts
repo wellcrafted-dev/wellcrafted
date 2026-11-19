@@ -99,6 +99,6 @@ describe("extractErrorMessage - never throws", () => {
 	it("handles an Error whose message is not a string", () => {
 		const error = new Error("original");
 		(error as { message: unknown }).message = 42;
-		expect(extractErrorMessage(error)).toBeTypeOf("string");
+		expect(extractErrorMessage(error)).toBe("Error: 42");
 	});
 });

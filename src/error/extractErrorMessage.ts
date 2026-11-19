@@ -12,7 +12,8 @@ const MESSAGE_PROPS = [
  *
  * Never throws: callers use it inside `catch` blocks, so a hostile value
  * (a throwing getter, a revoked Proxy, a cyclic array) falls back to
- * JSON, then `String(error)`, then `"[unprintable error]"`.
+ * `String(error)` for an Error, JSON for anything else, then
+ * `String(error)`, then `"[unprintable error]"`.
  *
  * @param error - The unknown error to extract a message from
  * @returns A string representation of the error
@@ -26,6 +27,8 @@ export function extractErrorMessage(error: unknown): string {
 
 	return (
 		attempt(() => readMessage(error)) ??
+		// An Error's own fields are not enumerable, so JSON would give "{}"
+		attempt(() => (error instanceof Error ? String(error) : undefined)) ??
 		attempt(() => JSON.stringify(error)) ??
 		attempt(() => String(error)) ??
 		"[unprintable error]"
