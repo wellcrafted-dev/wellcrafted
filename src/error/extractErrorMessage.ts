@@ -1,57 +1,54 @@
+const MESSAGE_PROPS = [
+	"message",
+	"error",
+	"description",
+	"title",
+	"reason",
+	"details",
+] as const;
+
 /**
  * Extracts a readable error message from an unknown error value
+ *
+ * Never throws: callers use it inside `catch` blocks, so a hostile value
+ * (a throwing getter, a revoked Proxy, a cyclic array) falls back to
+ * JSON, then `String(error)`, then `"[unprintable error]"`.
  *
  * @param error - The unknown error to extract a message from
  * @returns A string representation of the error
  */
 export function extractErrorMessage(error: unknown): string {
-	// Handle Error instances
-	if (error instanceof Error) {
-		return error.message;
-	}
-
-	// Handle primitives
-	if (typeof error === "string") return error;
-	if (
-		typeof error === "number" ||
-		typeof error === "boolean" ||
-		typeof error === "bigint"
-	)
+	// Primitives: String() never throws for these, symbols included
+	if (typeof error !== "object" && typeof error !== "function") {
 		return String(error);
-	if (typeof error === "symbol") return error.toString();
-	if (error === null) return "null";
-	if (error === undefined) return "undefined";
-
-	// Handle arrays
-	if (Array.isArray(error)) return JSON.stringify(error);
-
-	// Handle plain objects
-	if (typeof error === "object") {
-		const errorObj = error as Record<string, unknown>;
-
-		// Check common error properties
-		const messageProps = [
-			"message",
-			"error",
-			"description",
-			"title",
-			"reason",
-			"details",
-		] as const;
-		for (const prop of messageProps) {
-			if (prop in errorObj && typeof errorObj[prop] === "string") {
-				return errorObj[prop];
-			}
-		}
-
-		// Fallback to JSON stringification
-		try {
-			return JSON.stringify(error);
-		} catch {
-			return String(error);
-		}
 	}
+	if (error === null) return "null";
 
-	// Final fallback
-	return String(error);
+	return (
+		attempt(() => readMessage(error)) ??
+		attempt(() => JSON.stringify(error)) ??
+		attempt(() => String(error)) ??
+		"[unprintable error]"
+	);
+}
+
+/** Returns the first string among the common message properties of a plain or Error object. */
+function readMessage(error: object): string | undefined {
+	if (typeof error !== "object" || Array.isArray(error)) return undefined;
+	const errorObj = error as Record<string, unknown>;
+	for (const prop of MESSAGE_PROPS) {
+		if (!(prop in errorObj)) continue;
+		const value = errorObj[prop];
+		if (typeof value === "string") return value;
+	}
+	return undefined;
+}
+
+/** Runs `read`, turning a throw into `undefined` so the next fallback runs. */
+function attempt(read: () => string | undefined): string | undefined {
+	try {
+		return read();
+	} catch {
+		return undefined;
+	}
 }
