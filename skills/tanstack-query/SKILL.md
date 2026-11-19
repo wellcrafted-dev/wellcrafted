@@ -35,9 +35,11 @@ update.mutate({ id: userId, name: 'Ada' });
 
 - A query entry takes the method's arguments and returns native options. Its key is the namespace, the method name, then the arguments in one list: `users.get(id).queryKey` is `['users', 'get', [id]]` and `users.list().queryKey` is `['users', 'list', []]`. The list keeps an argument from reading as a name. `users.get.key`, `['users', 'get']`, covers every call; `.queryKey` is tagged with the cached data and error, before `select`.
 - A mutation entry is the options object itself, keyed by namespace and method: `['users', 'update']`. Methods take zero or one variables argument; adapt several to one object. Only the variables reach the method.
+- A namespace can have more than one part. For a feature with several kinds of data, give each its own map in a plain object, so methods stay plain verbs and the handle adds the noun: `folderWrites = { notes: resultMutations(['folder', 'notes'], { delete: notes.delete }) }`, then `const deleteNote = createMutation(() => folderWrites.notes.delete)`.
+- TanStack runs mutations in parallel. To make a group take turns, in order, give its prefix a shared scope: `client.setMutationDefaults(['folder'], { scope: { id: 'folder' } })`. The prefix decides who waits, so key a write outside it when it must not hold up the others.
 - Every write refreshes reads through one client rule: a `MutationCache` whose `onSettled` returns `client.invalidateQueries()`. Only observed queries refetch now, the rest when next used, and `staleTime: 'static'` queries never. It reads nothing from the write's key, so it cannot miss a read in another namespace, and a spread cannot drop it. Do not work out which reads a write affects by slicing its mutation key.
 - When one write should refresh less, list the keys it affects in `meta: { invalidates: [...] }` (typed through `Register`'s `mutationMeta`) and have the rule's `predicate` match them with `matchQuery`; a write without `meta` still refreshes everything. Use this for a measured cost, not by default.
-- The helpers take functions only. Put other behavior where its scope is:
+- The helpers take functions only. Put other behavior where it applies:
   - one use: spread, `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`;
   - a method or namespace: client defaults by key, `client.setQueryDefaults(users.list.key, {...})` or `setMutationDefaults`;
   - a variant several components share: spread into the adapter's `mutationOptions`/`queryOptions`, which infers callbacks without annotations, and reach the cache through query keys: `onSuccess: (saved, _in, _r, { client }) => client.setQueryData(users.get(saved.id).queryKey, saved)`. Define query factories first; writes refer to reads, never the reverse.
@@ -47,7 +49,7 @@ update.mutate({ id: userId, name: 'Ada' });
 - Query arguments are the key: keep them stable and JSON-serializable, and normalize before the factory when `get()` and `get(undefined)` should share an entry. Methods do not receive the abort signal; use `resultQueryOptions` for signals, custom keys, or generic/overloaded signatures.
 - Keep services independent of TanStack; direct calls remain Results and bypass the cache.
 
-The following explicit adapters remain useful for individual or custom definitions.
+Prefer the namespaces above; a one-entry map is fine. The explicit adapters below are for a function that needs a key of your own, the abort signal, or a generic or overloaded signature.
 
 ## 1. Definitions are plain TanStack options
 
