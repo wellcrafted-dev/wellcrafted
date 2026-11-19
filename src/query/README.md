@@ -59,7 +59,7 @@ Building the entries never calls a service. Methods may return a Result or a pro
 | `users.get.key` | `['users', 'get']`, the prefix of every argument variant |
 | `userWrites.update.mutationKey` | `['users', 'update']` |
 
-The arguments sit in one final tuple, so `users.get('list')` and a nested namespace's `list()` cannot share an entry. Use the full `.queryKey` for exact cache reads and writes; use a prefix (`users.get.key`, or the namespace itself) for invalidation and defaults.
+The arguments stay together in one list at the end, so an argument never reads as a name: `users.get('list')` is `['users', 'get', ['list']]`, while `list()` under the namespace `['users', 'get']` is `['users', 'get', 'list', []]`. Use the full `.queryKey` for exact cache reads and writes; use a prefix (`users.get.key`, or the namespace itself) for invalidation and defaults.
 
 ## Composing
 

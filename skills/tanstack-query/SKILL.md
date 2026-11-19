@@ -33,9 +33,9 @@ const update = createMutation(() => userWrites.update);
 update.mutate({ id: userId, name: 'Ada' });
 ```
 
-- A query entry takes the method's arguments and returns native options keyed `[...namespace, method, args]`, with the arguments in one final tuple (`[]` for none). `users.get.key` is the prefix of every argument variant; `.queryKey` is tagged with the cached data and error, before `select`.
-- A mutation entry is the options object itself, keyed `[...namespace, method]`. Methods take zero or one variables argument; adapt several to one object. Only the variables reach the method.
-- Every write refreshes reads through one client rule: a `MutationCache` whose `onSettled` returns `client.invalidateQueries()`. Only observed queries refetch now, the rest when next used, and `staleTime: 'static'` queries never. It reads nothing from the write's key, so it cannot miss a read in another namespace, and a spread cannot drop it. Do not derive scope by slicing mutation keys.
+- A query entry takes the method's arguments and returns native options. Its key is the namespace, the method name, then the arguments in one list: `users.get(id).queryKey` is `['users', 'get', [id]]` and `users.list().queryKey` is `['users', 'list', []]`. The list keeps an argument from reading as a name. `users.get.key`, `['users', 'get']`, covers every call; `.queryKey` is tagged with the cached data and error, before `select`.
+- A mutation entry is the options object itself, keyed by namespace and method: `['users', 'update']`. Methods take zero or one variables argument; adapt several to one object. Only the variables reach the method.
+- Every write refreshes reads through one client rule: a `MutationCache` whose `onSettled` returns `client.invalidateQueries()`. Only observed queries refetch now, the rest when next used, and `staleTime: 'static'` queries never. It reads nothing from the write's key, so it cannot miss a read in another namespace, and a spread cannot drop it. Do not work out which reads a write affects by slicing its mutation key.
 - When one write should refresh less, list the keys it affects in `meta: { invalidates: [...] }` (typed through `Register`'s `mutationMeta`) and have the rule's `predicate` match them with `matchQuery`; a write without `meta` still refreshes everything. Use this for a measured cost, not by default.
 - The helpers take functions only. Put other behavior where its scope is:
   - one use: spread, `createQuery(() => ({ ...users.list(), select: (all) => all.length }))`;
