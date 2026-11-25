@@ -7,8 +7,9 @@
  * - Level is a call-site decision, never a property of the error variant.
  * - DI-only — no global registry, no default logger singleton.
  *
- * Runtime-agnostic. The browser-safe bits live here. Bun/Node-only sinks
- * (e.g. a JSONL file appender) ship downstream so this entry stays pure.
+ * The entry has no Bun/Node-only sink implementation, but its `LogSink` type
+ * and `composeSinks` cleanup use `AsyncDisposable` and `Symbol.asyncDispose`.
+ * Consumers need matching type libraries and runtime support for disposal.
  */
 export type {
 	LogEvent,

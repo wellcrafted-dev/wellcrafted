@@ -33,6 +33,8 @@ declare const brand: unique symbol;
  *
  * @example Single brand — preventing ID mix-ups
  * ```typescript
+ * import type { Brand } from "wellcrafted/brand";
+ *
  * type UserId = string & Brand<"UserId">;
  * type OrderId = string & Brand<"OrderId">;
  *
@@ -42,6 +44,8 @@ declare const brand: unique symbol;
  *
  * @example Hierarchical brands — child assignable to parent
  * ```typescript
+ * import type { Brand } from "wellcrafted/brand";
+ *
  * type AbsolutePath = string & Brand<"AbsolutePath">;
  * type ConfigPath = AbsolutePath & Brand<"ConfigPath">;
  *
@@ -52,6 +56,8 @@ declare const brand: unique symbol;
  *
  * @example Multiple inheritance
  * ```typescript
+ * import type { Brand } from "wellcrafted/brand";
+ *
  * type Serializable = unknown & Brand<"Serializable">;
  * type Validated = unknown & Brand<"Validated">;
  * type SafeData = Serializable & Validated & Brand<"SafeData">;
@@ -65,6 +71,9 @@ declare const brand: unique symbol;
  * value position = runtime validator. One name, zero ambiguity.
  *
  * ```typescript
+ * import { type } from "arktype";
+ * import type { Brand } from "wellcrafted/brand";
+ *
  * // Type-only brand (no runtime validation needed)
  * type Guid = string & Brand<"Guid">;
  *
@@ -85,6 +94,7 @@ declare const brand: unique symbol;
  * import { type } from "arktype";
  * import { z } from "zod";
  * import * as v from "valibot";
+ * import type { Brand } from "wellcrafted/brand";
  *
  * // Define the type ONCE — it's just a type, no library dependency
  * type FileId = string & Brand<"FileId">;
@@ -98,8 +108,6 @@ declare const brand: unique symbol;
  * // Valibot
  * const FileId = v.pipe(v.string(), v.transform((s): FileId => s as FileId));
  * ```
- *
- * @see {@link https://wellcrafted.dev/integrations/validation-libraries | Using Brand with Validation Libraries}
  */
 type Brand<T extends string> = {
 	[brand]: { [K in T]: true };

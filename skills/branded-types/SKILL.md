@@ -1,130 +1,70 @@
 ---
 name: branded-types
-description: Type-safe distinct primitives with Brand from wellcrafted. Use when creating nominal types for IDs, tokens, or any primitive that shouldn't be interchangeable.
+description: Use wellcrafted Brand for compile-time distinctions and pair it with explicit constructor or validator boundaries.
 ---
 
-# Branded Types
+# Branded types
 
 ```typescript
-import type { Brand } from 'wellcrafted/brand';
+import type { Brand } from "wellcrafted/brand";
 ```
 
-## The Problem
-
-TypeScript's structural typing lets you pass any `string` where another `string` is expected. A `UserId` and an `OrderId` are both strings — the compiler won't stop you from mixing them up.
+`Brand<T>` is type-only. It adds no runtime validation, parsing, or serialization behavior.
 
 ```typescript
-function getUser(id: string) { /* ... */ }
-function getOrder(id: string) { /* ... */ }
+type UserId = string & Brand<"UserId">;
+type OrderId = string & Brand<"OrderId">;
 
-const userId = '123';
-const orderId = '456';
-getUser(orderId); // No error — but wrong
+function getUser(userId: UserId) {}
+
+declare const orderId: OrderId;
+getUser(orderId); // type error
 ```
 
-## The Brand Type
+## Create one boundary
 
-`Brand<T>` creates a phantom brand on a primitive. Two branded types from the same base are incompatible.
-
-```typescript
-type UserId = string & Brand<'UserId'>;
-type OrderId = string & Brand<'OrderId'>;
-
-function getUser(id: UserId) { /* ... */ }
-
-const userId = 'abc' as UserId;
-const orderId = 'xyz' as OrderId;
-getUser(userId);   // compiles
-getUser(orderId);  // type error
-```
-
-Zero runtime footprint — `Brand<T>` exists only at the type level.
-
-## Brand Constructor Pattern
-
-Never scatter `as UserId` casts across the codebase. Create a brand constructor — one function, one `as` cast, single source of truth.
+For an identity-only distinction, centralize the assertion in a PascalCase constructor:
 
 ```typescript
-import type { Brand } from 'wellcrafted/brand';
+type UserId = string & Brand<"UserId">;
 
-// 1. Define the branded type
-type UserId = string & Brand<'UserId'>;
-
-// 2. Create the brand constructor — THE ONLY place with `as UserId`
-// PascalCase matches the type name (TypeScript allows same-name type + value)
-function UserId(id: string): UserId {
-  return id as UserId;
+function UserId(value: string): UserId {
+  return value as UserId;
 }
 
-// 3. Use everywhere
-const id = UserId('abc-123');
-getUser(UserId(rawString));
+const userId = UserId(rawId);
 ```
 
-PascalCase constructors avoid parameter shadowing:
+Do not scatter `as UserId` through application code. One constructor keeps the conversion searchable and gives you one place to add validation later.
+
+For constrained data, validate before branding. The type and validator can share a name because TypeScript has separate type and value namespaces.
 
 ```typescript
-// No shadowing — UserId() is PascalCase, userId is camelCase
-function processUser(userId: string) {
-  getUser(UserId(userId));
-}
+import { z } from "zod";
+
+type Email = string & Brand<"Email">;
+const Email = z
+  .string()
+  .email()
+  .transform((value): Email => value as Email);
 ```
 
-## Adding Runtime Validation
+The assertion is safe only to the extent that the preceding runtime checks establish the application's rule. A direct assertion elsewhere bypasses that evidence.
 
-Brand constructors can validate before casting:
+## Assignability
+
+Different markers on the same base are incompatible. Brands can also form hierarchies through intersection:
 
 ```typescript
-function Email(value: string): Email {
-  if (!value.includes('@')) {
-    throw new Error(`Invalid email: ${value}`);
-  }
-  return value as Email;
-}
-type Email = string & Brand<'Email'>;
+type AbsolutePath = string & Brand<"AbsolutePath">;
+type ConfigPath = AbsolutePath & Brand<"ConfigPath">;
+
+declare const configPath: ConfigPath;
+const absolutePath: AbsolutePath = configPath;
 ```
 
-Add validation when the brand represents a constrained value (emails, UUIDs, positive numbers). Skip it when the brand is purely for identity distinction (UserId, OrderId).
+The child is assignable to the parent; the parent is not assignable to the child.
 
-## Anti-Patterns
+Branding does not change the runtime value. A branded string crosses JSON as a string, and the receiving boundary must validate and brand it again.
 
-### Scattered as casts
-
-```typescript
-// WRONG — assertions everywhere, no single source of truth
-const id = someString as UserId;           // file1.ts
-doSomething(otherId as UserId);            // file2.ts
-const parsed = key.split(':')[0] as UserId; // file3.ts
-
-// CORRECT — one constructor, used everywhere
-const id = UserId(someString);
-doSomething(UserId(otherId));
-const parsed = UserId(key.split(':')[0]);
-```
-
-### Missing constructor
-
-```typescript
-// WRONG — type exists but no constructor
-type PostId = string & Brand<'PostId'>;
-// Consumers forced to write `as PostId` everywhere
-
-// CORRECT — always pair the type with a constructor
-type PostId = string & Brand<'PostId'>;
-function PostId(id: string): PostId {
-  return id as PostId;
-}
-```
-
-## Naming Convention
-
-| Branded Type | Constructor |
-| --- | --- |
-| `UserId` | `UserId()` |
-| `OrderId` | `OrderId()` |
-| `Email` | `Email()` |
-| `ApiToken` | `ApiToken()` |
-
-The constructor uses PascalCase matching the type name. TypeScript allows a type and value to share the same name since they occupy different namespaces.
-
-See also: `patterns` skill for factory function patterns.
+Use the validation integration page for focused ArkType, Zod, and Valibot recipes. Use the brand reference for the exact exported type contract.

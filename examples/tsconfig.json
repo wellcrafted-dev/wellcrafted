@@ -1,0 +1,14 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"declaration": false,
+		"declarationMap": false,
+		"lib": ["ESNext", "DOM"],
+		"noEmit": true,
+		"outDir": "../dist-examples",
+		"rootDir": "..",
+		"skipLibCheck": false,
+		"types": []
+	},
+	"include": ["./*.ts"]
+}

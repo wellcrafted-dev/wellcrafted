@@ -146,7 +146,7 @@ Extract a leaf key into the key factory only when some code needs it without the
 ```typescript
 const { data: todo, error } = await runQuery(queryClient, todoQueries.detail(id));
 if (error instanceof CancelledError) return;
-if (error) return Err(error);
+if (error !== null) return Err(error);
 
 const { error: addError } = await runMutation(queryClient, addTodo, todo.title);
 ```
@@ -176,7 +176,7 @@ Services return Results. The `result*Options` adapters turn them into TanStack's
 // WRONG: unwraps and throws by hand before the adapter
 queryFn: async () => {
 	const { data, error } = await api.getTodo(id);
-	if (error) throw error;
+	if (error !== null) throw error;
 	return data;
 },
 
@@ -189,7 +189,7 @@ Mapping a service error to a UI error is fine; keep returning a Result:
 ```typescript
 queryFn: async () => {
 	const { data, error } = await api.getTodo(id);
-	if (error) return Err({ title: 'Could not load todo', description: error.message });
+	if (error !== null) return Err({ title: 'Could not load todo', description: error.message });
 	return Ok(data);
 },
 ```

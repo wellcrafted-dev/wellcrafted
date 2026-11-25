@@ -1,0 +1,147 @@
+---
+title: Standard Schema reference
+description: Current runtime, type, and namespace exports from wellcrafted/standard-schema.
+---
+
+# `wellcrafted/standard-schema`
+
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="ErrSchema" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="FAILURES" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="OkSchema" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="ResultSchema" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="hasJsonSchema" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="value" symbol="hasValidate" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="Err" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="Ok" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="Result" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="StandardJSONSchemaV1" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="StandardSchemaV1" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="type" symbol="StandardTypedV1" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardTypedV1.Props" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardTypedV1.Types" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardTypedV1.InferInput" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardTypedV1.InferOutput" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.Props" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.Result" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.SuccessResult" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.FailureResult" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.Options" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.Issue" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.PathSegment" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.InferInput" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardSchemaV1.InferOutput" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.Props" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.Converter" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.Target" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.Options" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.InferInput" */}
+{/* docs:export subpath="wellcrafted/standard-schema" kind="namespace" symbol="StandardJSONSchemaV1.InferOutput" */}
+
+This subpath wraps Standard Schema-compatible validators and JSON Schema converters around the `{ data, error }` Result shape.
+
+## Exports
+
+| Export | Kind | Contract |
+| --- | --- | --- |
+| `OkSchema` | Value | Wraps one schema as an Ok-shaped schema. |
+| `ErrSchema` | Value | Wraps one schema as an Err-shaped schema. |
+| `ResultSchema` | Value | Combines data and error schemas into a Result-shaped union schema. |
+| `FAILURES` | Value | Shared failure-result constants used by the wrappers' shape checks. |
+| `hasValidate` | Value | Guard for a callable `~standard.validate` member. |
+| `hasJsonSchema` | Value | Shallow guard for a non-null `~standard.jsonSchema` object. |
+| `Ok` | Type | Capability-preserving Ok wrapper type. |
+| `Err` | Type | Capability-preserving Err wrapper type. |
+| `Result` | Type | Capability-preserving Result wrapper type. |
+| `StandardTypedV1` | Type and namespace | Base Standard Typed contract and its helper types. |
+| `StandardSchemaV1` | Type and namespace | Runtime-validation contract and its result, issue, and inference types. |
+| `StandardJSONSchemaV1` | Type and namespace | JSON Schema conversion contract and its option and inference types. |
+
+`Ok`, `Err`, and `Result` are type-only exports on this subpath. Their runtime constructors live in `wellcrafted/result` and are not re-exported here.
+
+`FAILURES` is public today, with `EXPECTED_OBJECT`, `EXPECTED_DATA_ERROR_PROPS`, `EXPECTED_ERROR_NULL`, and `EXPECTED_ERROR_NOT_NULL` constants. Whether this implementation-facing object should remain public is a deferred API-cleanup question.
+
+## Result schema wrappers
+
+```typescript
+function OkSchema<TSchema extends StandardTypedV1>(
+  innerSchema: TSchema,
+): Ok<TSchema>;
+
+function ErrSchema<TSchema extends StandardTypedV1>(
+  innerSchema: TSchema,
+): Err<TSchema>;
+
+function ResultSchema<
+  TDataSchema extends StandardTypedV1,
+  TErrorSchema extends StandardTypedV1,
+>(
+  dataSchema: TDataSchema,
+  errorSchema: TErrorSchema,
+): Result<TDataSchema, TErrorSchema>;
+```
+
+An Ok or Err wrapper exposes runtime validation when its inner schema has `validate`, and JSON Schema conversion when its inner schema has `jsonSchema`. A Result wrapper exposes a capability only when both input schemas have it.
+
+Runtime validation first requires a non-null object with own or inherited `data` and `error` keys. It branches on `error === null`: Ok validates `data`; Err validates `error`. This is a shallow Result-shape check, not a deep payload check by itself. The inner schemas provide payload validation.
+
+The wrappers normalize the inactive output slot to `null`. An Err input with non-null `data` still follows the error branch; its returned value has `data: null`. Inner issues are prefixed with `data` or `error` in their paths.
+
+Generated JSON Schemas require both keys and set `additionalProperties: false`. Result conversion emits one Ok branch and one Err branch.
+
+## Capability guards
+
+```typescript
+function hasValidate<T extends StandardTypedV1>(
+  schema: T,
+): schema is T & StandardSchemaV1;
+
+function hasJsonSchema<T extends StandardTypedV1>(
+  schema: T,
+): schema is T & StandardJSONSchemaV1;
+```
+
+`hasValidate` checks that the validation member is callable. `hasJsonSchema` checks only that the converter member is a non-null object; it does not verify callable `input` and `output` members. A malformed converter can pass the guard and fail when invoked.
+
+## `StandardTypedV1` namespace
+
+The base type is `{ readonly "~standard": StandardTypedV1.Props<Input, Output> }`.
+
+| Member | Purpose |
+| --- | --- |
+| `StandardTypedV1.Props` | Version, vendor, and optional inferred-type metadata. |
+| `StandardTypedV1.Types` | Paired input and output types. |
+| `StandardTypedV1.InferInput` | Extracts a schema's input type. |
+| `StandardTypedV1.InferOutput` | Extracts a schema's output type. |
+
+## `StandardSchemaV1` namespace
+
+The validation type stores a `validate(value, options?)` function under `~standard`.
+
+| Member | Purpose |
+| --- | --- |
+| `StandardSchemaV1.Props` | Base typed properties plus the validation function. |
+| `StandardSchemaV1.Result` | Success-or-failure validation result. |
+| `StandardSchemaV1.SuccessResult` | Typed `value` with no issues. |
+| `StandardSchemaV1.FailureResult` | Readonly issue array. |
+| `StandardSchemaV1.Options` | Optional vendor `libraryOptions`. |
+| `StandardSchemaV1.Issue` | Message and optional path. |
+| `StandardSchemaV1.PathSegment` | Object form of a property-key path segment. |
+| `StandardSchemaV1.InferInput` | Extracts the input type. |
+| `StandardSchemaV1.InferOutput` | Extracts the output type. |
+
+Validation may return its result synchronously or as a Promise; the wrappers preserve either mode.
+
+## `StandardJSONSchemaV1` namespace
+
+The conversion type stores input and output converter functions under `~standard.jsonSchema`.
+
+| Member | Purpose |
+| --- | --- |
+| `StandardJSONSchemaV1.Props` | Base typed properties plus the converter. |
+| `StandardJSONSchemaV1.Converter` | `input(options)` and `output(options)` JSON Schema producers. |
+| `StandardJSONSchemaV1.Target` | Known draft/OpenAPI targets plus future strings. |
+| `StandardJSONSchemaV1.Options` | Required target and optional vendor `libraryOptions`. |
+| `StandardJSONSchemaV1.InferInput` | Extracts the input type. |
+| `StandardJSONSchemaV1.InferOutput` | Extracts the output type. |
+
+Converter functions may throw when the requested target is unsupported. Capability detection does not establish that every target is implemented.

@@ -1,0 +1,115 @@
+---
+title: Test Result-returning services
+description: Assert success, domain failures, infrastructure failures, and the side effects that each path permits.
+---
+
+# Test Result-returning services
+
+Test the returned data and the work that happened before it. An expected Err can still hide an unwanted write, while an Ok assertion alone says nothing about whether validation ran before I/O. Use `expectOk` and `expectErr` to narrow each branch, then assert on its fields and effects.
+
+For cache data, mutation lifecycle callbacks, cancellation, and invalidation, follow the [TanStack Query testing recipe](/integrations/tanstack-query#testing). It uses a fresh client with retries disabled.
+
+This illustrative Bun example is self-contained. Its storage fake has one atomic operation: return a record for a new label or `null` for a duplicate. A real persistence adapter should enforce uniqueness in storage and translate its unique-constraint outcome into that contract.
+
+```typescript
+/** Service tests check Result branches and allowed storage effects. */
+import { expect, test } from "bun:test";
+import { defineErrors, extractErrorMessage, type InferErrors } from "wellcrafted/error";
+import { Ok, tryAsync, type Result } from "wellcrafted/result";
+import { expectErr, expectOk } from "wellcrafted/testing";
+
+const LabelError = defineErrors({
+  Invalid: () => ({ message: "Use a label from 1 to 80 characters." }),
+  Duplicate: ({ label }: { label: string }) => ({
+    message: `Label "${label}" already exists.`,
+    label,
+  }),
+  WriteFailed: ({ cause }: { cause: unknown }) => ({
+    message: "Could not save the label.",
+    causeMessage: extractErrorMessage(cause),
+  }),
+});
+type LabelError = InferErrors<typeof LabelError>;
+
+function setup({ failWrite = false }: { failWrite?: boolean } = {}) {
+  const labels = new Set<string>();
+  const writes: string[] = [];
+
+  async function persist(label: string) {
+    writes.push(label);
+    if (failWrite) throw new Error("storage unavailable");
+    if (labels.has(label)) return null;
+    labels.add(label);
+    return { label };
+  }
+
+  return {
+    writes,
+    async create(label: string): Promise<Result<{ label: string }, LabelError>> {
+      if (label.length === 0 || label.length > 80) {
+        return LabelError.Invalid();
+      }
+      const saved = await tryAsync({
+        try: () => persist(label),
+        catch: (cause) => LabelError.WriteFailed({ cause }),
+      });
+      if (saved.error !== null) return saved;
+      if (saved.data === null) return LabelError.Duplicate({ label });
+      return Ok(saved.data);
+    },
+  };
+}
+
+test("valid input returns the saved label and performs one write", async () => {
+  const { create, writes } = setup();
+  expect(expectOk(await create("work"))).toEqual({ label: "work" });
+  expect(writes).toEqual(["work"]);
+});
+
+test("invalid boundaries return Invalid before storage is called", async () => {
+  const { create, writes } = setup();
+  for (const label of ["", "x".repeat(81)]) {
+    expect(expectErr(await create(label)).name).toBe("Invalid");
+  }
+  expect(writes).toEqual([]);
+});
+
+test("a duplicate returns a domain failure rather than another record", async () => {
+  const { create } = setup();
+  expectOk(await create("work"));
+  expect(expectErr(await create("work"))).toMatchObject({
+    name: "Duplicate",
+    label: "work",
+  });
+});
+
+test("a thrown storage failure becomes WriteFailed", async () => {
+  const { create, writes } = setup({ failWrite: true });
+  expect(expectErr(await create("work"))).toMatchObject({
+    name: "WriteFailed",
+    causeMessage: "storage unavailable",
+  });
+  expect(writes).toEqual(["work"]);
+});
+
+test("concurrent duplicate outcomes retain one success and one domain failure", async () => {
+  const { create } = setup();
+  const [first, second] = await Promise.all([create("work"), create("work")]);
+  expectOk(first);
+  expect(expectErr(second).name).toBe("Duplicate");
+});
+```
+
+Each test calls `setup()` for fresh storage and effects. The validation test proves there were no storage calls; the infrastructure test proves a call was attempted and its throw was classified. For a service with separate reads and writes, track both and assert that validation skips both, or that a read-only failure never reaches a write. For a lookup contract, assert the chosen missing-record behavior explicitly: a `NotFound` variant and `Ok(null)` mean different things.
+
+The concurrency test checks the service's handling of the fake adapter's two outcomes. It does not establish database race safety. Add an integration test against the real uniqueness constraint or transaction: run two creates together, assert one persisted record, and verify the adapter maps the losing write to the intended domain error. A read-before-write check alone cannot prevent both callers from observing absence.
+
+Test the smallest boundary around the operation that throws. Do not catch the whole test body, because assertion failures must reach the test runner. Assert on error identity and relevant structured fields; compare message text when its wording is part of the contract. Keep secrets out of error payloads and test any required redaction separately.
+
+## Extend the checks to other boundaries
+
+Use edge inputs that distinguish the service's rules: empty and over-limit values, exact accepted limits, missing resources, and storage rejection. For errors sent through JSON, add a round-trip test for the chosen compatible fields and validate the received envelope; see [serialization boundaries](/guides/serialization-boundaries).
+
+For sink delivery and reporting assertions, use [memorySink](/core/logger#testing-with-memorysink).
+
+The [Testing reference](/reference/testing) owns the exact `expectOk` and `expectErr` contracts, including opposite-branch throws and the `Err(null)` collision. Their discriminator allows legitimate `Ok(null)` values without a custom matcher.

@@ -4,6 +4,8 @@ description: 'Use Result-returning services with TanStack Query through plain qu
 icon: 'database'
 ---
 
+import TanStackQueryExample from "/snippets/tanstack-query.mdx";
+
 # TanStack Query Integration
 
 `wellcrafted/query` adapts Result-returning services for TanStack Query, and adapts TanStack back to Results for workflows:
@@ -17,7 +19,19 @@ icon: 'database'
 | `runQuery(client, options)` | TanStack to Result | Reads through the cache with `client.query` and returns a Result. |
 | `runMutation(client, options, variables)` | TanStack to Result | Runs a mutation through the mutation cache and returns a Result. |
 
-Install TanStack Query 5.102 or later. `@tanstack/query-core` is an optional peer dependency, and every framework adapter already depends on it.
+`@tanstack/query-core` is an optional peer dependency with range `^5.102.0`. Install it when using this subpath, or use a compatible framework adapter that provides it. The packed-consumer fixture tests 5.104.2:
+
+```bash
+bun add wellcrafted @tanstack/query-core@5.104.2
+```
+
+## Checked local example
+
+This complete example is checked against the built package and kept in sync with `examples/tanstack-query.ts`. It covers namespace helpers, explicit adapters, and imperative execution.
+
+<TanStackQueryExample />
+
+The following framework excerpts are partial application code; their service, UI, and application types are supplied by the application.
 
 ## Quick start
 
@@ -32,6 +46,7 @@ export const users = resultQueries(['users'], {
 });
 export const userWrites = resultMutations(['users'], {
   update: userService.update,
+  remove: userService.remove,
 });
 
 // Svelte 5:
@@ -43,10 +58,33 @@ update.mutate({ id: userId, name: 'Ada' });
 
 A query entry takes the method's arguments and returns options keyed `['users', 'get', [id]]`; `users.get.key` is the prefix `['users', 'get']`. A mutation entry is the options object itself, keyed `['users', 'update']`. No service runs until TanStack executes the options.
 
+The final argument tuple keeps keys unambiguous. `users.get('list')` has key `['users', 'get', ['list']]`. A method named `list` under the namespace `['users', 'get']` instead produces `['users', 'get', 'list', []]` when called with no arguments. `get()` and `get(undefined)` also produce different keys. Normalize arguments before the call if they should share an entry.
+
+### Group options by resource
+
+When a feature handles several resources, group their maps in a plain object. Each resource gets its own namespace, so both can use a method named `delete`.
+
+```typescript
+import { resultMutations } from 'wellcrafted/query';
+
+export const folderWrites = {
+  notes: resultMutations(['folder', 'notes'], { set: notes.set, delete: notes.delete }),
+  audio: resultMutations(['folder', 'audio'], { delete: audio.delete }),
+};
+
+folderWrites.notes.delete.mutationKey; // ['folder', 'notes', 'delete']
+const deleteNote = createMutation(() => folderWrites.notes.delete);
+```
+
+Keep one flat map when its methods already read clearly together.
+
 The helpers take functions only. Add behavior where its scope is:
 
 ```typescript
 // One use: spread. TanStack infers select.
+import { MutationCache, QueryClient } from '@tanstack/query-core';
+import { mutationOptions } from '@tanstack/svelte-query';
+
 const names = createQuery(() => ({ ...users.list(), select: (all) => all.map((u) => u.name) }));
 
 // Every write: refresh what is on screen. Only observed queries refetch now.
@@ -68,13 +106,68 @@ export const updateUser = mutationOptions({
 });
 ```
 
-The invalidation rule reads nothing from the write's key, so it cannot miss a read in another namespace. When one write should refresh less, list the keys it affects in `meta.invalidates` and have the rule honor them; the [query README](https://github.com/wellcrafted-dev/wellcrafted/blob/main/src/query/README.md#composing) shows the typed version.
+The invalidation rule runs after every write, successful or failed, and reads nothing from the write's key. Every query is marked stale; observed queries refetch now, inactive queries refetch when next used, and queries with `staleTime: 'static'` do not refetch on invalidation. Returning the invalidation promise keeps the mutation pending until the refetch completes. Cache callbacks run in addition to a definition's callbacks, so spreading an entry cannot accidentally replace the rule.
+
+### Selective invalidation
+
+When a write should refresh less, list affected keys in metadata. Without a list, this rule falls back to refreshing every query. An empty list opts out.
+
+```typescript
+import { matchQuery, MutationCache, QueryClient, type QueryKey } from '@tanstack/query-core';
+import { mutationOptions } from '@tanstack/svelte-query';
+
+declare module '@tanstack/query-core' {
+  interface Register {
+    mutationMeta: { invalidates?: QueryKey[] };
+  }
+}
+
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled: (_data, _error, _variables, _rollback, mutation, { client }) =>
+      client.invalidateQueries({
+        predicate: (query) =>
+          mutation.meta?.invalidates?.some((queryKey) =>
+            matchQuery({ queryKey }, query),
+          ) ?? true,
+      }),
+  }),
+});
+const removeUser = mutationOptions({
+  ...userWrites.remove,
+  meta: { invalidates: [users.list.key, users.get.key] },
+});
+```
+
+A selective list needs maintenance when a new read starts depending on a write. Use it when avoiding a refetch matters, rather than making every write enumerate its readers.
+
+### Defaults and shared variants
+
+Register broad defaults before narrow defaults; matching defaults merge in registration order. For example, call `setQueryDefaults(['users'], ...)` before `setQueryDefaults(users.list.key, ...)`. The same ordering applies to mutation defaults.
+
+### Run related writes one at a time
+
+TanStack runs mutations in parallel by default. To run the folder writes in order, give them a shared scope on the client before executing them.
+
+```typescript
+queryClient.setMutationDefaults(['folder'], { scope: { id: 'folder' } });
+```
+
+The prefix applies the default scope to both resource maps above. Within that client, mutations with the same scope ID wait for each other. Use a separate scope for writes that should run independently. [TanStack mutation scopes](https://tanstack.com/query/latest/docs/framework/react/guides/mutations#mutation-scopes)
+
+### Share a named variant
+
+Use the framework adapter's native `queryOptions` or `mutationOptions` to name a shared spread variant. These are TanStack helpers, while the `result*Options` adapters accept Result-returning functions. Define reads first and let write callbacks use their tagged keys.
 
 <Note>
-Mutation methods take zero or one variables argument; adapt several to one object. Query arguments become the key, so keep them stable and JSON-serializable. Methods are called without a receiver and without TanStack's query context; use the explicit adapters below for abort signals, custom keys, or generic and overloaded signatures.
+Query methods preserve zero, optional, and multiple arguments. Mutation methods take zero or one variables argument; adapt several to one object. Optional mutation inputs become `T | void`; hooks may omit them, but `runMutation` still needs `undefined` as its third argument. Only variables reach namespace mutation methods.
+
+Entries come from a plain object's own enumerable string properties. Numeric names become strings and symbols are skipped. Methods are called without a receiver, so pass bound methods or closures and annotate wrapper parameters. Query arguments become the key, so keep them stable and JSON-serializable. Methods do not receive TanStack's query context; use the explicit adapters below for abort signals, custom keys, or generic and overloaded signatures.
 </Note>
 
 ## Explicit adapters
+
+Start with a namespace even for one method. Use explicit adapters when you need a custom key, TanStack's context such as the abort signal, or control over a generic or overloaded signature.
 
 Create the client once:
 
@@ -120,6 +213,8 @@ export const addTodo = resultMutationOptions({
 });
 ```
 
+The direct-adapter approach is also illustrated by [Epicenter's account popover at commit `4d438c0`](https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/app-shell/src/account-popover/account-popover.svelte). The namespace helpers shown above are current wellcrafted APIs, rather than APIs attributed to that older consumer revision.
+
 ## Using definitions in components
 
 The definitions are plain TanStack options, so hooks take them directly. The error type comes from the service's Result.
@@ -136,7 +231,7 @@ function TodoList({ filter }: { filter: TodoFilter }) {
   const add = useMutation(addTodo);
 
   if (todos.isPending) return <Spinner />;
-  if (todos.error) return <ErrorMessage error={todos.error} />; // TodoError
+  if (todos.error !== null) return <ErrorMessage error={todos.error} />; // TodoError
 
   return (
     <>
@@ -179,6 +274,8 @@ function TodoList({ filter }: { filter: TodoFilter }) {
   </Tab>
 </Tabs>
 
+Options are snapshots. Build them inside the framework's reactive accessor when `queryKey`, `enabled`, or another option depends on changing state; constructing them once captures that moment's values. In React, call the factory during render with current props.
+
 Everything else in TanStack that accepts options works the same way: `useQueries` and `queryClient.query`. Override any option by spreading: `useQuery({ ...todoQueries.detail(id), enabled: !!id })`.
 
 ### Awaiting a mutation
@@ -201,7 +298,7 @@ function AddTodoButton({ title, onClose }: { title: string; onClose: () => void 
 
   async function submit() {
     const { error } = await runMutation(queryClient, addTodo, title);
-    if (error) return toast.error(error.message); // TodoError
+    if (error !== null) return toast.error(error.message); // TodoError
     onClose();
   }
 
@@ -225,7 +322,7 @@ function AddTodoButton({ title, onClose }: { title: string; onClose: () => void 
 
   async function submit() {
     const { error } = await runMutation(queryClient, addTodo, title);
-    if (error) return toast.error(error.message); // TodoError
+    if (error !== null) return toast.error(error.message); // TodoError
     onClose();
   }
 </script>
@@ -280,7 +377,7 @@ export const toggleTodo = resultMutationOptions({
 });
 ```
 
-Optimistic updates follow the standard TanStack shape, with the client from the context:
+If only one component needs an optimistic preview, render `mutation.variables` while the mutation is pending. Nothing changes in the cache, so there is nothing to roll back. When several observers must see the preview, update the shared cache and restore its snapshot on error. The client comes from the context:
 
 ```typescript
 export const renameTodo = resultMutationOptions({
@@ -293,8 +390,12 @@ export const renameTodo = resultMutationOptions({
     client.setQueryData(queryKey, (old) => old && { ...old, title });
     return { previous };
   },
-  onError: (_error, { id }, onMutateResult, { client }) => {
-    client.setQueryData(todoQueries.detail(id).queryKey, onMutateResult?.previous);
+  onError: (_error, { id }, rollback, { client }) => {
+    if (rollback?.previous !== undefined) {
+      client.setQueryData(todoQueries.detail(id).queryKey, rollback.previous);
+    } else {
+      client.removeQueries({ queryKey: todoQueries.detail(id).queryKey, exact: true });
+    }
   },
   onSettled: (_data, _error, { id }, _onMutateResult, { client }) =>
     client.invalidateQueries({ queryKey: todoQueries.detail(id).queryKey }),
@@ -313,16 +414,16 @@ import { queryClient } from './client';
 async function duplicateTodo(id: string) {
   const { data: todo, error } = await runQuery(queryClient, todoQueries.detail(id));
   if (error instanceof CancelledError) return;
-  if (error) return showError(error);
+  if (error !== null) return showError(error);
 
   const { error: addError } = await runMutation(queryClient, addTodo, todo.title);
-  if (addError) return showError(addError);
+  if (addError !== null) return showError(addError);
 }
 ```
 
 `runQuery` wraps `client.query`, which replaces TanStack's deprecated imperative reads. Fresh cached data returns without a request, stale or missing data is fetched, and concurrent calls for one key share a request. To accept any cached data and fetch only on a miss, pass `{ ...todoQueries.detail(id), staleTime: 'static' }`. Its error side includes `CancelledError`; check it with `instanceof`, since `isCancelledError` is deprecated upstream.
 
-`runMutation` runs through a public `MutationObserver`, so the definition's callbacks run, invalidation happens, and `useIsMutating`, `useMutationState`, mutation scopes, and devtools all see it.
+`runMutation` runs through a public `MutationObserver`, so the definition's callbacks run, invalidation happens, and `useIsMutating`, `useMutationState`, mutation scopes, and devtools all see it. The observer is reset in `finally`, allowing the completed mutation to be garbage collected after `gcTime`. The helpers catch and cast thrown values to their declared error types; they do not validate an unexpected service or callback throw at runtime.
 
 <Note>
 The imperative helpers exist to go through the cache: deduplication, cache fill, staleness, mutation callbacks, and `isMutating`. If nothing observes the data, call the service directly.
@@ -337,7 +438,7 @@ To change the error a component sees, map it inside `queryFn` and keep returning
 ```typescript
 queryFn: async () => {
   const { data, error } = await api.getTodo(id);
-  if (error) return Err({ title: 'Could not load todo', description: error.message });
+  if (error !== null) return Err({ title: 'Could not load todo', description: error.message });
   return Ok(data);
 },
 ```
@@ -358,7 +459,7 @@ export const queryClient = new QueryClient();
   </Tab>
   <Tab title="SSR or per session">
 
-Create a client per request or session and use the same definitions. No definition holds a client, so nothing leaks between requests.
+Create a client per request or session and reuse definitions only when their captured dependencies are safe to share. The options hold no client, but closures can still capture session state; isolate authenticated transport and other per-request dependencies.
 
 When a definition needs per-session transport, build the option factories inside the session constructor. They close over the transport and still take no client; the key factory stays at module level.
 
@@ -377,11 +478,102 @@ export function createTodoQueries(api: TodoApi) {
   </Tab>
 </Tabs>
 
+## Testing
+
+Create a fresh client per test with retries off. Definitions take no client, so the same options can be tested without mocking a module-level cache. Use [`expectOk` and `expectErr`](/reference/testing) for narrowed assertions. The setup below makes the service behavior explicit:
+
+```typescript
+import { expect, test } from 'bun:test';
+import { MutationCache, QueryClient } from '@tanstack/query-core';
+import { resultMutations, resultQueries, runMutation, runQuery } from 'wellcrafted/query';
+import { Err, Ok, type Result } from 'wellcrafted/result';
+import { expectErr, expectOk } from 'wellcrafted/testing';
+
+function setup({ failWrite = false, invalidateEveryWrite = true } = {}) {
+  const error = { name: 'Unavailable', message: 'Write was rejected.' };
+  const reads = { count: 0 };
+  const users = resultQueries(['users'], {
+    list: (): Result<{ id: string; name: string }[], typeof error> => {
+      reads.count++;
+      return Ok([{ id: 'u1', name: 'Ada' }]);
+    },
+    get: (id: string) =>
+      id === 'missing' ? Err(error) : Ok({ id, name: 'Ada' }),
+  });
+  const writes = resultMutations(['users'], {
+    update: (input: { id: string; name: string }) =>
+      failWrite ? Err(error) : Ok(input),
+  });
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false, gcTime: 0 },
+    },
+    mutationCache: new MutationCache({
+      onSettled: (_data, _error, _variables, _rollback, _mutation, { client }) =>
+        invalidateEveryWrite ? client.invalidateQueries() : undefined,
+    }),
+  });
+  return { client, users, writes, reads };
+}
+
+test('reads into the cache and accepts cached data with static freshness', async () => {
+  const { client, users, reads } = setup();
+  try {
+    const query = users.list();
+    const loaded = expectOk(await runQuery(client, query));
+    expect(client.getQueryData(query.queryKey)).toEqual<typeof loaded>(loaded);
+    const cached = [{ id: 'cached', name: 'Cached' }];
+    client.setQueryData(query.queryKey, cached);
+    expect(expectOk(await runQuery(client, { ...query, staleTime: 'static' }))).toEqual(cached);
+    expect(reads.count).toBe(1);
+    expect(expectErr(await runQuery(client, users.get('missing'))).name).toBe('Unavailable');
+  } finally {
+    client.clear();
+  }
+});
+
+for (const failWrite of [false, true]) {
+  test(`invalidates cached reads after a ${failWrite ? 'failed' : 'successful'} write`, async () => {
+    const { client, users, writes } = setup({ failWrite });
+    try {
+      const query = users.list();
+      expectOk(await runQuery(client, query));
+      const result = await runMutation(client, writes.update, { id: 'u1', name: 'Grace' });
+      if (failWrite) expect(expectErr(result).name).toBe('Unavailable');
+      else expect(expectOk(result).name).toBe('Grace');
+      expect(client.getQueryState(query.queryKey)?.isInvalidated).toBe(true);
+    } finally {
+      client.clear();
+    }
+  });
+}
+
+test('a failed write leaves reads unchanged when policy only invalidates on success', async () => {
+  const { client, users, writes } = setup({ failWrite: true, invalidateEveryWrite: false });
+  try {
+    const query = users.list();
+    expectOk(await runQuery(client, query));
+    const successOnly = {
+      ...writes.update,
+      onSuccess: (_saved: unknown, _input: unknown, _rollback: unknown, { client }: { client: QueryClient }) =>
+        client.invalidateQueries(),
+    };
+    expectErr(await runMutation(client, successOnly, { id: 'u1', name: 'Grace' }));
+    expect(client.getQueryState(query.queryKey)?.isInvalidated).toBe(false);
+  } finally {
+    client.clear();
+  }
+});
+```
+
+A failed write does not inherently leave the cache untouched. With the recommended global `onSettled` policy, both outcomes invalidate. With a deliberately success-only policy, an Err leaves reads alone. Test the policy you configured, along with service errors, cache writes, and static freshness.
+
 ## Migrating from 0.44
 
 | Before | After |
 | --- | --- |
-| `createQueryFactories(queryClient)` | Delete. Import `resultQueryOptions` and `resultMutationOptions`. |
+| `createQueryFactories(queryClient)` | Remove the client binding. Use namespace helpers for service methods or explicit Result options adapters for custom definitions. |
 | `defineQuery(...)` / `defineMutation(...)` | `resultQueryOptions(...)` / `resultMutationOptions(...)` |
 | `useQuery(userQuery.options)` | `useQuery(userQuery)` |
 | `createQuery(() => userQuery.options)` | `createQuery(() => userQuery)` |
@@ -394,13 +586,15 @@ export function createTodoQueries(api: TodoApi) {
 ## See Also
 
 <CardGroup>
-  <Card title="Result Pattern" icon="code-branch" href="/core/result-pattern">
+  <Card title="Result Pattern" icon="code-branch" href="/guides/composing-results">
     Learn the fundamentals of Result types and error handling
   </Card>
-  <Card title="Error System" icon="triangle-exclamation" href="/core/error-system">
+  <Card title="Error System" icon="triangle-exclamation" href="/guides/defining-error-vocabularies">
     Define typed error variants with defineErrors
   </Card>
-  <Card title="Service Layer Pattern" icon="layer-group" href="/patterns/service-layer">
+  <Card title="Service Layer Pattern" icon="layer-group" href="/guides/service-boundaries">
     Build services that return Results
   </Card>
 </CardGroup>
+
+For exact exports and execution contracts, see the [Query reference](/reference/query). The [namespace design record](/adr/0001-result-namespaces-produce-native-tanstack-options) preserves the rationale for native options and tuple keys.

@@ -1,0 +1,65 @@
+---
+title: Put Results at service boundaries
+description: Convert narrow throwing operations into domain errors and propagate them through linear service code.
+---
+
+import ServiceBoundaryExample from "/snippets/service-boundary.mdx";
+
+# Put Results at service boundaries
+
+A service boundary is where an uncontrolled throwing API becomes a controlled error vocabulary. Wrap only the operation that throws, give that failure a domain name, and let the rest of the service use `Result` returns and early exits.
+
+This partial task excerpt is adapted from [Epicenter's transcription service flow at commit `4d438c0`](https://github.com/EpicenterHQ/epicenter/blob/4d438c0/packages/client/src/transcribe.ts). It omits imports, the `UserError` vocabulary, and setup; [`examples/service-boundary.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/examples/service-boundary.ts) is the canonical runnable source.
+
+```typescript
+function findUser(
+  records: Map<string, User>,
+  userId: string,
+): Result<User | null, UserError> {
+  return trySync({
+    try: () => {
+      if (userId === "storage-offline") {
+        throw new Error("storage is offline");
+      }
+      return records.get(userId) ?? null;
+    },
+    catch: (cause) =>
+      UserError.ReadFailed({ cause: extractErrorMessage(cause) }),
+  });
+}
+
+function getDisplayName(
+  records: Map<string, User>,
+  userId: string,
+): Result<string, UserError> {
+  const userResult = findUser(records, userId);
+  if (userResult.error !== null) return userResult;
+  if (userResult.data === null) return UserError.NotFound({ userId });
+
+  return Ok(userResult.data.displayName);
+}
+```
+
+The `trySync` block owns one failure unit: reading the record. `getDisplayName` does not catch anything. It manually propagates `ReadFailed`, classifies a successful empty lookup as `NotFound`, and leaves the happy path at the bottom.
+
+## Checked local example
+
+The local canonical example includes the imports, error vocabulary, and service factory omitted from the adapted excerpt above. The snippet is checked against `examples/service-boundary.ts`.
+
+<ServiceBoundaryExample />
+
+## Keep dependencies explicit
+
+Pass databases, clients, filesystems, clocks, and configuration into a service factory or method. A service should not reach into UI state or emit notifications. Explicit inputs make the boundary testable and keep its `Result<T, E>` signature useful outside one screen or framework.
+
+## Wrap at the narrowest useful point
+
+Use a separate `trySync` or `tryAsync` boundary when sequential operations have different failure meanings. A broad catch around an entire workflow can only produce a vague error and makes it unclear which work completed before the failure.
+
+When you destructure a Result, remember that `error` is the raw error body. Return `Err(error)` if you need to rebuild a Result. Returning the already-narrowed Result object, as the example does, avoids that extra wrapper.
+
+## Choose where errors change vocabulary
+
+Propagate an error unchanged while it still means the same thing to the caller. Create a new variant when crossing into a domain that needs a different contract—for example, turning a storage failure into a user-facing account-loading failure while preserving the original value as context.
+
+A raw `cause: unknown` is useful inside one process, but it may not be JSON-compatible. This example normalizes it to a string at the storage boundary to match the canonical file. If an error will cross a wire, worker, IPC, log, or persistence boundary, make that ownership decision deliberately. The [serialization boundary guide](/guides/serialization-boundaries) shows the distinction.

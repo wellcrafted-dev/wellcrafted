@@ -1,0 +1,62 @@
+---
+title: 'Quick start'
+description: 'Define a typed error and handle success and failure with ordinary TypeScript.'
+icon: 'play'
+---
+
+import QuickStartExample from "/snippets/quick-start.mdx";
+
+# Quick start
+
+This example defines one expected failure, returns it through the familiar `{ data, error }` shape, and exercises both outcomes.
+
+<QuickStartExample />
+
+The checked source lives in [`examples/quick-start.ts`](https://github.com/wellcrafted-dev/wellcrafted/blob/main/examples/quick-start.ts). The documentation check compares the example above with that file so they cannot drift unnoticed.
+
+## Define the failure vocabulary
+
+`defineErrors` turns each key into a factory. `PortError.Invalid({ input })` returns an `Err` value directly:
+
+```typescript
+{
+  data: null,
+  error: {
+    name: "Invalid",
+    message: 'Expected a port from 1 to 65535, received "not-a-port".',
+    input: "not-a-port",
+  },
+}
+```
+
+The tagged error body is under `.error`. `InferErrors<typeof PortError>` derives the union of every variant in the namespace for the function signature.
+
+## Return and handle the Result
+
+`Ok(port)` creates `{ data: port, error: null }`. An error factory creates `{ data: null, error: taggedError }`. Checking `error !== null` narrows the matching `data` field without a method chain or a new control-flow model.
+
+The exact null check works for any Result that follows the non-null-error convention. A shorter `if (error)` check also works for object errors from `defineErrors`, but it misclassifies permitted falsy errors such as `0` or an empty string.
+
+## Run the repository example
+
+The repository uses Bun:
+
+```bash
+bun install --frozen-lockfile
+bun run docs:examples
+```
+
+The example prints one successful port, one expected validation message, and a final confirmation that both paths passed.
+
+<Warning>
+  `defineErrors` requires `message`, reserves `name`, and shallow-freezes the tagged body. It does not require the remaining fields to be JSON-compatible. If this Result crosses a JSON boundary, every field in the complete value must be JSON-compatible, and the receiver must validate untrusted data separately.
+</Warning>
+
+<CardGroup>
+  <Card title="Migrate one boundary" icon="arrows-rotate" href="/start/migrating-from-try-catch">
+    Introduce Results without rewriting an application at once.
+  </Card>
+  <Card title="Installation details" icon="download" href="/start/installation">
+    Review subpaths and the tested compatibility matrix.
+  </Card>
+</CardGroup>

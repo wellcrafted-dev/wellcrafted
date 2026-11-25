@@ -298,7 +298,7 @@ This applies to:
 - **Ternary expressions** that pick between fundamentally different messages
 - **Lookup tables** keyed on input fields (covered by the string literal union rule above)
 
-> See also: `docs/core/error-system.mdx` § "3b. Avoid Conditional Logic on Factory Inputs" for the canonical reference with full examples.
+> See also: `docs/guides/defining-error-vocabularies.mdx` § "Keep the vocabulary closed" for the public guidance on keeping variants distinct.
 
 ## Service Implementation Pattern
 

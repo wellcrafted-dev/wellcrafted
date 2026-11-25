@@ -6,7 +6,7 @@ description: Apply Wellcrafted's current native TanStack Query integration. Use 
 # Query layer
 
 Read the maintained [TanStack Query skill](../../../skills/tanstack-query/SKILL.md)
-for usage and [query README](../../../src/query/README.md) for API details.
+for usage and [Query reference](../../../docs/reference/query.mdx) for API details.
 Verify exports against `src/query/index.ts` and inference/runtime behavior
 against `src/query/{namespaces,utils}.ts`.
 

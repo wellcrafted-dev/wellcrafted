@@ -8,6 +8,8 @@ icon: 'scroll'
 
 `wellcrafted/logger` is a small structured logger built around the errors you already define with `defineErrors`. You create a logger with a source name and a sink, log typed errors with `warn` or `error`, and log free-form diagnostics with `info`, `debug`, or `trace`. There is no global logger and no transport framework; a sink is a function that receives one event.
 
+This guide covers reporting ownership, sink composition, and application adapters. See the [Logger reference](/reference/logger) for the complete export contract.
+
 ```typescript
 import { defineErrors } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
@@ -75,7 +77,7 @@ const { error } = await tryAsync({
   try: () => upload(file),
   catch: (cause) => UploadError.Failed({ fileName: file.name, cause }),
 });
-if (error) log.error(error);
+if (error !== null) log.error(error);
 ```
 
 Both forms produce the same event. The logger unwraps the `Err`, so `event.data` is the tagged error object itself, the same object as `result.error`, and `event.message` is that error's `message`. Don't wrap the error in `Err(...)` again before logging; the factory has already done that, and the logger accepts the raw error too. A native `Error` also works, which helps when replacing `console.warn(error)` in a `catch` block.
@@ -179,6 +181,8 @@ Wrap expression bodies in braces, and annotate standalone functions as returning
 
 A sink that needs to do asynchronous work can start it from a synchronous receiver. That work then belongs to the sink: the logger doesn't wait for it, retry it, or see its failures.
 
+When sending JSON, first choose or normalize fields for that boundary. `LogEvent.data` is `unknown`, so a native error, bigint, or cyclic value may lose details or fail serialization; logging does not enforce JSON-compatible payloads. See [serialization boundaries](/guides/serialization-boundaries).
+
 ```typescript
 const remoteSink: LogSink = (event) => {
   void fetch('/api/logs', {
@@ -206,6 +210,27 @@ const authLog = createLogger('workspace/auth', sink);
 If a sink throws, the failure is contained. The logger reports the thrown value and the original event through `console.error` with a `[wellcrafted/logger] Sink failed` prefix, then continues with the next sink. The logging call returns normally, so a broken sink can't interrupt your code or replace the Result passing through `tapErr`. `createLogger` uses the same guard for a single sink. The emergency report is best-effort; if `console.error` itself throws, that is swallowed too.
 
 A sink can also implement `Symbol.asyncDispose` to flush and close a resource it owns. The composed sink's dispose awaits each member's dispose in order and skips members that don't have one; if a member's dispose throws, later members are not disposed. Sinks without resources, like `consoleSink`, don't need it.
+
+## Count failures for alerts
+
+Use the stable variant name to group failures in your monitoring tool. This example adds a synchronous counter alongside console logging. The app supplies `countFailure` to record or enqueue the counter update.
+
+```typescript
+import { composeSinks, consoleSink, createLogger, type LogSink } from 'wellcrafted/logger';
+
+function createUploadLogger(countFailure: (source: string, name: string) => void) {
+  const countStorageFailures: LogSink = ({ source, level, data }) => {
+    if (level !== 'error' || !data || typeof data !== 'object') return;
+    if ('name' in data && data.name === 'StorageUnavailable') {
+      countFailure(source, data.name);
+    }
+  };
+
+  return createLogger('app/upload', composeSinks(consoleSink, countStorageFailures));
+}
+```
+
+At the boundary that handles an upload failure, log a final `StorageUnavailable` error with `log.error`. Configure your monitoring tool to alert on a sustained rise in that counter. An expected rejection such as `InvalidFile` can still appear in logs and stays out of this counter. Keep labels to stable values such as the source and variant name. File names, error messages, and raw causes can contain sensitive data or create a separate counter for every event.
 
 ## Testing with memorySink
 
