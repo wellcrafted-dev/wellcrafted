@@ -58,7 +58,25 @@ update.mutate({ id: userId, name: 'Ada' });
 
 A query entry takes the method's arguments and returns options keyed `['users', 'get', [id]]`; `users.get.key` is the prefix `['users', 'get']`. A mutation entry is the options object itself, keyed `['users', 'update']`. No service runs until TanStack executes the options.
 
-The final argument tuple keeps keys unambiguous: `users.get('list')` has key `['users', 'get', ['list']]`, distinct from a nested namespace's `list()` key. `get()` and `get(undefined)` also produce different keys; normalize arguments before the call if they should share an entry.
+The final argument tuple keeps keys unambiguous. `users.get('list')` has key `['users', 'get', ['list']]`. A method named `list` under the namespace `['users', 'get']` instead produces `['users', 'get', 'list', []]` when called with no arguments. `get()` and `get(undefined)` also produce different keys. Normalize arguments before the call if they should share an entry.
+
+### Group options by resource
+
+When a feature handles several resources, group their maps in a plain object. Each resource gets its own namespace, so both can use a method named `delete`.
+
+```typescript
+import { resultMutations } from 'wellcrafted/query';
+
+export const folderWrites = {
+  notes: resultMutations(['folder', 'notes'], { set: notes.set, delete: notes.delete }),
+  audio: resultMutations(['folder', 'audio'], { delete: audio.delete }),
+};
+
+folderWrites.notes.delete.mutationKey; // ['folder', 'notes', 'delete']
+const deleteNote = createMutation(() => folderWrites.notes.delete);
+```
+
+Keep one flat map when its methods already read clearly together.
 
 The helpers take functions only. Add behavior where its scope is:
 
@@ -127,6 +145,18 @@ A selective list needs maintenance when a new read starts depending on a write. 
 
 Register broad defaults before narrow defaults; matching defaults merge in registration order. For example, call `setQueryDefaults(['users'], ...)` before `setQueryDefaults(users.list.key, ...)`. The same ordering applies to mutation defaults.
 
+### Run related writes one at a time
+
+TanStack runs mutations in parallel by default. To run the folder writes in order, give them a shared scope on the client before executing them.
+
+```typescript
+queryClient.setMutationDefaults(['folder'], { scope: { id: 'folder' } });
+```
+
+The prefix applies the default scope to both resource maps above. Within that client, mutations with the same scope ID wait for each other. Use a separate scope for writes that should run independently. [TanStack mutation scopes](https://tanstack.com/query/latest/docs/framework/react/guides/mutations#mutation-scopes)
+
+### Share a named variant
+
 Use the framework adapter's native `queryOptions` or `mutationOptions` to name a shared spread variant. These are TanStack helpers, while the `result*Options` adapters accept Result-returning functions. Define reads first and let write callbacks use their tagged keys.
 
 <Note>
@@ -136,6 +166,8 @@ Entries come from a plain object's own enumerable string properties. Numeric nam
 </Note>
 
 ## Explicit adapters
+
+Start with a namespace even for one method. Use explicit adapters when you need a custom key, TanStack's context such as the abort signal, or control over a generic or overloaded signature.
 
 Create the client once:
 

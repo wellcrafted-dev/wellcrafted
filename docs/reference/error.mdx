@@ -30,7 +30,7 @@ import {
 | Export | Kind | Contract |
 | --- | --- | --- |
 | `defineErrors` | Value | Converts a variant configuration into factories that return Err wrappers. |
-| `extractErrorMessage` | Value | Produces display text from an unknown value using a fixed precedence. |
+| `extractErrorMessage` | Value | Returns display text for an unknown value without throwing. |
 | `AnyTaggedError` | Type | Minimum `{ name: string; message: string }` tagged-error shape. |
 | `ErrorBody` | Type | Low-level constructor body constraint requiring `message: string`. |
 | `ErrorsConfig` | Type | Low-level record of variant constructor functions. |
@@ -76,14 +76,11 @@ Freezing is shallow: nested objects and arrays remain mutable. JSON compatibilit
 function extractErrorMessage(error: unknown): string;
 ```
 
-The extractor checks values in this order:
+Use this helper inside a catch handler when you need text from an unknown thrown value. Since 0.47.1 it always returns a string without throwing.
 
-1. Native `Error` instances use `.message`.
-2. Strings pass through; numbers, booleans, bigint values, and symbols become strings.
-3. `null` and `undefined` become their literal names.
-4. Arrays use `JSON.stringify`.
-5. Objects use the first string field among `message`, `error`, `description`, `title`, `reason`, and `details`.
-6. Other objects try `JSON.stringify`, then fall back to `String` if stringification throws.
-7. Remaining values use `String`.
+1. Primitives use `String`, including `null`, `undefined`, bigint values, and symbols.
+2. Objects other than arrays use the first string property among `message`, `error`, `description`, `title`, `reason`, and `details`.
+3. A native `Error` with no readable string property tries `String(error)` next.
+4. The remaining fallbacks try `JSON.stringify`, then `String`, then return `"[unprintable error]"`.
 
-This helper is not total despite its current return type. A cyclic array or an array containing bigint throws because the array branch does not catch `JSON.stringify`. A custom object `toJSON()` can return `undefined`, producing `undefined` at runtime. Those behaviors are recorded as deferred API issues rather than changed in this documentation pass.
+A throwing property getter or a value that fails JSON conversion, such as a cyclic array, falls through to the next step. A `toJSON()` that returns `undefined` also falls through. The returned text is for display. Apply your application's redaction rules before exposing it to users or sending it to logs.

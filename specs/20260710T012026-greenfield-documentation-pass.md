@@ -1,9 +1,19 @@
 # Greenfield Documentation Pass
 
 **Date**: 2026-07-10
-**Status**: Implemented; draft PR refresh verified on 2026-11-14
+**Status**: Implemented. Local verification repeated for the 0.47.1 draft refresh on 2026-11-25
 **Author**: Maintainer-approved specification
 **Branch**: `codex/docs-greenfield-pass`
+
+## Refresh for 0.47.1 on 2026-11-25
+
+Draft PR #138 includes `main` at `4daaa4f`. The [deletion audit](20261114T000000-documentation-refresh-deletion-audit.md) records where the additional material lives.
+
+- [x] Preserve the 0.47.1 release and its error-message fix from main.
+- [x] Move the new Query recipes into the integration and restore a short alerting example in the Logger guide.
+- [x] Correct the Error reference and remove the superseded warning from the merged JSDoc.
+- [x] Check the migrated examples before retiring the Query README again.
+- [x] Verify the final tree and all redirects. The draft PR description records the GitHub CI result.
 
 ## Refresh against current main: 2026-11-14
 
@@ -782,7 +792,7 @@ The documentation must not erase names that are currently importable. `ErrorBody
 
 ### Documented runtime/type mismatches
 
-`once` marks the first call as used before invoking the wrapped function. If that invocation throws, later calls return `undefined` without retrying despite the `TReturn` signature. `extractErrorMessage` can throw for cyclic or bigint-containing arrays and can return `undefined` when a custom `toJSON()` does so despite its `string` signature. The reference records current behavior; changing either contract requires separate API work.
+`once` marks the first call as used before invoking the wrapped function. If that invocation throws, later calls return `undefined` without retrying despite the `TReturn` signature. The previous `extractErrorMessage` mismatch was fixed on main in 0.47.1 and is documented in the Error reference.
 
 ### Query type dependency
 

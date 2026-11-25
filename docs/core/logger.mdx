@@ -211,6 +211,27 @@ If a sink throws, the failure is contained. The logger reports the thrown value 
 
 A sink can also implement `Symbol.asyncDispose` to flush and close a resource it owns. The composed sink's dispose awaits each member's dispose in order and skips members that don't have one; if a member's dispose throws, later members are not disposed. Sinks without resources, like `consoleSink`, don't need it.
 
+## Count failures for alerts
+
+Use the stable variant name to group failures in your monitoring tool. This example adds a synchronous counter alongside console logging. The app supplies `countFailure` to record or enqueue the counter update.
+
+```typescript
+import { composeSinks, consoleSink, createLogger, type LogSink } from 'wellcrafted/logger';
+
+function createUploadLogger(countFailure: (source: string, name: string) => void) {
+  const countStorageFailures: LogSink = ({ source, level, data }) => {
+    if (level !== 'error' || !data || typeof data !== 'object') return;
+    if ('name' in data && data.name === 'StorageUnavailable') {
+      countFailure(source, data.name);
+    }
+  };
+
+  return createLogger('app/upload', composeSinks(consoleSink, countStorageFailures));
+}
+```
+
+At the boundary that handles an upload failure, log a final `StorageUnavailable` error with `log.error`. Configure your monitoring tool to alert on a sustained rise in that counter. An expected rejection such as `InvalidFile` can still appear in logs and stays out of this counter. Keep labels to stable values such as the source and variant name. File names, error messages, and raw causes can contain sensitive data or create a separate counter for every event.
+
 ## Testing with memorySink
 
 `memorySink()` returns a sink and the plain array it pushes events into. Each call creates a new array, so tests don't share state:

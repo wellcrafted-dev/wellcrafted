@@ -2,11 +2,31 @@
 
 **Review date:** 2026-11-14  
 **PR:** #138, `codex/docs-greenfield-pass`  
-**Current-main baseline:** `15d869c6c009641ed5db53f0b9e7f04e212afd6a` (wellcrafted 0.47.0)  
+**November 14 baseline:** `15d869c6c009641ed5db53f0b9e7f04e212afd6a` (wellcrafted 0.47.0)\
+**November 25 baseline:** `4daaa4fc7355f5bbcecd06dcfba866fb2b2e058a` (wellcrafted 0.47.1)\
 **Original documentation checkpoint:** `0f18ee68a48f0beb7aab14c363add1e1e9308e1c`  
 **Status:** Content preservation, exact deletions, and post-deletion proof complete; draft-PR publication is recorded in the parent specification.
 
-This audit compares the proposed documentation removals with current `main`, rather than treating the July audit as continuing proof. Of the original 23 removed documentation owners, `docs/integrations/testing.mdx` and `src/query/README.md` gained substantive content after the original baseline. The other 21 owners have no post-baseline changes. Current `main` also rewrote the TanStack integration and added a Logger guide and Query architecture decision. Those newer materials need explicit preservation.
+Of the original 23 removed documentation owners, `docs/integrations/testing.mdx` and `src/query/README.md` gained substantive content after the July baseline. The other 21 owners have no post-baseline changes. Main also rewrote the TanStack integration and added a Logger guide and Query architecture decision.
+
+## November 25 review
+
+Of the 24 paths removed by this PR, only `src/query/README.md` changed between the two November baselines. Its added sections are carried into the TanStack integration, with the updated TanStack skill retained.
+
+| Material reviewed | Where it lives now |
+| --- | --- |
+| Concrete example distinguishing a method argument from a nested namespace path | [TanStack integration quick start](../docs/integrations/tanstack-query.mdx#quick-start) shows both full keys. |
+| Group option maps by resource under a shared feature prefix | [Group options by resource](../docs/integrations/tanstack-query.mdx#group-options-by-resource) shows separate notes and audio maps with independently named keys. |
+| Run related mutations one at a time with a shared scope | [Run related writes one at a time](../docs/integrations/tanstack-query.mdx#run-related-writes-one-at-a-time) sets a scope through client defaults and explains where it applies. |
+| Prefer namespace helpers and choose an explicit adapter for custom keys, query context, or unusual signatures | [Explicit adapters](../docs/integrations/tanstack-query.mdx#explicit-adapters) gives the decision before the recipe. |
+| Count structured failures by variant and separate system alerts from expected rejections | [Count failures for alerts](../docs/core/logger.mdx#count-failures-for-alerts) restores this lesson from the removed reliability essay. The example leaves alert thresholds with the application and uses only stable labels. |
+| Main's `extractErrorMessage` fix | [Error reference](../docs/reference/error.mdx#extracterrormessage) describes the 0.47.1 string fallback behavior. The implementation and regression tests come from main. |
+
+The removal list still covers 24 source paths. The 21 old public URLs keep their mapped destinations.
+
+Before retiring the updated Query README, a temporary strict TypeScript check and Bun run exercised the new key grouping and scope examples against the built package. The first write finished before the second began. The same check verified the Logger example counted the final storage failure and skipped both the expected rejection and the retry warning. Main's 26 error-message tests passed. The README was then removed from the final tree.
+
+The final local tree passed the frozen install, formatting, lint, typecheck, build, all 250 tests, examples, packed consumer, compatibility fixtures, export coverage, claims, and snippet checks. Lint reported one existing unused-suppression warning. Mint validation, broken links, and the configuration check for all 21 redirects passed. The live preview returned 307 for each old URL and 200 for its direct destination. The preview also rendered the new Query and Logger sections and the Error reference correction. The PR description records CI for the pushed commit.
 
 “Relocate” below describes the required final disposition. It does not claim that a pending migration has passed review. Source text remains recoverable at the baseline commit regardless of whether its original path is removed. Unsupported claims are corrected or dropped; their disappearance must not be counted as loss of a supported API contract.
 
@@ -31,7 +51,7 @@ This audit compares the proposed documentation removals with current `main`, rat
 | `docs/philosophy/brand-implementation.mdx` | No | Brand-representation decision: nested private markers, intersection behavior, explicit hierarchies and verified assignability. | Runtime identity, serialization markers, automatic validation and universal composition promises. |
 | `docs/philosophy/for-the-pragmatic-fp-developer.mdx` | No | Pragmatic-tradeoffs decision: explicit propagation cost, when raw exceptions fit, when an effect system provides needed capabilities. | Persona targeting and superiority framing. |
 | `docs/philosophy/from-effect-to-pragmatic-errors.mdx` | No | Pragmatic-tradeoffs decision: TypeScript control-flow constraints, manual translation cost, honest Effect escape hatch. | Unmeasured competitor size/performance and universal simplicity claims. |
-| `docs/philosophy/production-reliability.mdx` | No | Service and serialization guides retain concrete boundary classification and transport lessons with checked examples. | Uptime, production-hours, importer counts, incident-prevention, reliability anecdotes and vanity metrics. None should reappear in public copy. |
+| `docs/philosophy/production-reliability.mdx` | No | Service and serialization guides retain boundary classification and transport lessons with checked examples. The Logger guide now shows how to count selected failures for alerts. | Uptime, production-hours, importer counts, incident-prevention claims, reliability anecdotes, and prescribed alert thresholds. |
 | `docs/philosophy/developer-experience.mdx` | No | Composition guide and Testing reference retain ordinary narrowing, explicit branching and actual assertion behavior. | Unmeasured debugging speed, productivity, universal editor behavior and anecdotal claims. |
 | `docs/philosophy/design-principles.mdx` | No | README, error-contract and pragmatic-tradeoffs decisions: plain data, normal TypeScript control flow, explicit costs, larger-system escape hatch. | Absolute serialization, portability and never-throws claims. |
 | `src/README.md` | No | README plus guides/reference: package mental model, application workflows, exact public API owners. | A duplicate public tutorial tree in source folders. |

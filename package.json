@@ -1,6 +1,6 @@
 {
 	"name": "wellcrafted",
-	"version": "0.47.0",
+	"version": "0.47.1",
 	"description": "Plain error data and ergonomic Result types for TypeScript applications",
 	"type": "module",
 	"files": [
