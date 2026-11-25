@@ -7,6 +7,8 @@ description: Assert success, domain failures, infrastructure failures, and the s
 
 Test the returned data and the work that happened before it. An expected Err can still hide an unwanted write, while an Ok assertion alone says nothing about whether validation ran before I/O. Use `expectOk` and `expectErr` to narrow each branch, then assert on its fields and effects.
 
+For cache data, mutation lifecycle callbacks, cancellation, and invalidation, follow the [TanStack Query testing recipe](/integrations/tanstack-query#testing). It uses a fresh client with retries disabled.
+
 This illustrative Bun example is self-contained. Its storage fake has one atomic operation: return a record for a new label or `null` for a duplicate. A real persistence adapter should enforce uniqueness in storage and translate its unique-constraint outcome into that contract.
 
 ```typescript
@@ -108,6 +110,6 @@ Test the smallest boundary around the operation that throws. Do not catch the wh
 
 Use edge inputs that distinguish the service's rules: empty and over-limit values, exact accepted limits, missing resources, and storage rejection. For errors sent through JSON, add a round-trip test for the chosen compatible fields and validate the received envelope; see [serialization boundaries](/guides/serialization-boundaries).
 
-For Query cache data, mutation lifecycle callbacks, cancellation, and invalidation assertions, use a fresh client with retries disabled and follow [TanStack Query testing](/integrations/tanstack-query#testing). For sink delivery and reporting assertions, use [memorySink](/core/logger#testing-with-memorysink).
+For sink delivery and reporting assertions, use [memorySink](/core/logger#testing-with-memorysink).
 
 The [Testing reference](/reference/testing) owns the exact `expectOk` and `expectErr` contracts, including opposite-branch throws and the `Err(null)` collision. Their discriminator allows legitimate `Ok(null)` values without a custom matcher.

@@ -65,6 +65,8 @@ startApplication(result.data);
 
 Move upward one caller at a time. A layer can return the same error, transform it into its own vocabulary, recover with `Ok(fallback)`, or turn it back into a throw where an external contract requires one.
 
+Keep `try/finally` when your function owns a resource such as an open file. After acquiring it, do the work in `try` and release it in `finally`. The cleanup runs even if you return an `Err` early. Await any work that still uses the resource before leaving `try`. Decide how to report a cleanup failure: an exception escaping `finally` replaces the Result you were about to return.
+
 ## 3. Keep a compatibility adapter
 
 Callers do not all need to migrate together. Keep the old throwing contract at the edge while new code consumes the Result-returning function:

@@ -7,6 +7,8 @@ description: Model expected failures as named plain-object variants with the fie
 
 Use one `defineErrors` call to name the expected failures in a domain. Each variant produces a plain error body with a stable `name`, a human-readable `message`, and any fields callers need for branching, logging, transport, or UI.
 
+For the factory signature, inference helpers, and runtime behavior, see the [Error API reference](/reference/error#defineerrors).
+
 ```typescript
 import {
   defineErrors,

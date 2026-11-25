@@ -1,10 +1,10 @@
 # Documentation refresh deletion audit
 
-**Review date:** 2026-11-14  
-**PR:** #138, `codex/docs-greenfield-pass`  
+**Review date:** 2026-11-14\
+**PR:** #138, `codex/docs-greenfield-pass`\
 **November 14 baseline:** `15d869c6c009641ed5db53f0b9e7f04e212afd6a` (wellcrafted 0.47.0)\
 **November 25 baseline:** `4daaa4fc7355f5bbcecd06dcfba866fb2b2e058a` (wellcrafted 0.47.1)\
-**Original documentation checkpoint:** `0f18ee68a48f0beb7aab14c363add1e1e9308e1c`  
+**Original documentation checkpoint:** `0f18ee68a48f0beb7aab14c363add1e1e9308e1c`\
 **Status:** Content preservation, exact deletions, and post-deletion proof complete; draft-PR publication is recorded in the parent specification.
 
 Of the original 23 removed documentation owners, `docs/integrations/testing.mdx` and `src/query/README.md` gained substantive content after the July baseline. The other 21 owners have no post-baseline changes. Main also rewrote the TanStack integration and added a Logger guide and Query architecture decision.
@@ -36,7 +36,7 @@ The final local tree passed the frozen install, formatting, lint, typecheck, bui
 | --- | --- | --- | --- |
 | `docs/getting-started/installation.mdx` | No | `docs/start/installation.mdx`: package managers, supported subpaths, compiler/module-resolution requirements, tested runtime matrix; current Query optional peer range. | Unsupported root imports, legacy module resolution, contributor setup mixed into consumer instructions, obsolete undeclared-Query-dependency claim. |
 | `docs/getting-started/quick-start.mdx` | No | `docs/start/quick-start.mdx` plus `examples/quick-start.ts`: complete first define/return/handle loop, successful and failed paths. | Undefined helpers, duplicate API tours, unverified standalone examples. |
-| `docs/migration/from-try-catch.mdx` | No | `docs/start/migrating-from-try-catch.mdx`: narrow boundaries, staged caller migration, explicit propagation, throwing adapter for legacy callers, Effect escape hatch. | Persona copy, stale combinator history, duplicate tutorials and broken links. |
+| `docs/migration/from-try-catch.mdx` | No | `docs/start/migrating-from-try-catch.mdx`: narrow boundaries, staged caller migration, explicit propagation, cleanup with `try/finally`, throwing adapter for legacy callers, Effect escape hatch. | Persona copy, stale combinator history, duplicate tutorials, broken links, and the cleanup example that could close a file twice. |
 | `docs/core/result-pattern.mdx` | No | `docs/guides/composing-results.mdx`, `docs/reference/result.mdx`, `docs/decisions/result-shape.mdx`: control flow, all current exports, exact error discrimination, `Ok(null)` and the `Err(null)` collision. | Generic truthy-error checks, ambiguous absence guidance, duplicated reference; `resolve` must disappear from current API guidance because main removed it. |
 | `docs/core/error-system.mdx` | No | Vocabulary and serialization guides, Error reference, error-contract decision: constructor functions, tagged variant bodies inside Err wrappers, reserved `name`, `message`, shallow freeze, deliberate cause fields. | Perfect or type-enforced serialization, deep immutability, stale builder shapes, tagged-body/Err-wrapper confusion. |
 | `docs/core/brand-types.mdx` | No | Brand reference, validation integration, brand-representation decision: compile-time marking, runtime validation recipes, hierarchy and assignability. | Claims that brands validate data, change runtime values, or add serialized markers. |
@@ -141,7 +141,11 @@ These are explicit proposed `docs.json` redirects. They cover every removed site
 | `/philosophy/developer-experience` | `/guides/composing-results` |
 | `/philosophy/design-principles` | `/decisions/pragmatic-tradeoffs` |
 
-The former `/integrations/hono-serialization` page was a compatibility notice in the original PR. This refresh removes that notice separately from the original 23 owners and configures a permanent redirect to `/integrations/hono`. A live local-preview check found that the existing MDX file shadowed the configured redirect, so retaining both defeated the redirect request. The notice had no unique HTTP guidance; the full canonical Hono guide remains. This makes the proposed removal count 24 owners: the original 23 plus one compatibility notice. The redirect count is 21 site routes, because the three source READMEs have no Mint page route.
+The original draft PR had already replaced `/integrations/hono-serialization` with a compatibility notice. That notice shadowed the configured redirect in the local preview, so this refresh removes the file and redirects the old URL to [the Hono boundary guide](../docs/integrations/hono.mdx). This brings the removal count to 24 files and the redirect count to 21 site routes. The three source-folder READMEs have no Mint page route.
+
+Compared with `main`, the Hono rewrite intentionally drops the “Auto-Wrapping Results” and dynamic Epicenter route recipes. They normalized a mix of bare data and Results with `isResult`. The first passed parsed request JSON to the service without validation. Both used a truthiness check that misses falsy errors and returned HTTP 500 for every error they detected. The new guide keeps the useful part: return a JSON-compatible Result directly, choose the HTTP status for the failure, and validate untrusted data separately from sharing static route types.
+
+The page redirects do not remap old heading bookmarks. The service-testing and error-vocabulary landing pages link near the top to the relocated Query testing recipe and Error API reference.
 
 `/core/logger` remains a live route and needs no redirect. The navigation has six task guides after retaining Logger and adding the service-testing guide; the old four-guide or 24-route inventory does not limit useful current content. Redirects must resolve directly to existing pages, avoid chains/cycles, and be checked alongside navigation and internal links. Pinned Mint's local preview returns 307 for configured redirects; deployment is configured permanent but has not been deployed by this refresh.
 
